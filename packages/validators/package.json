@@ -1,0 +1,13 @@
+{
+  "name": "@zindagi/validators",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  }
+}
