@@ -4,7 +4,7 @@ import { isPublicPath } from "./routes";
 
 /**
  * Edge-safe Auth.js config — no Mongoose, bcrypt, or Node-only imports.
- * Used by middleware. Providers are added in auth.ts (Node runtime only).
+ * Used by proxy. Providers are added in auth.ts (Node runtime only).
  */
 export const authConfig = {
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
