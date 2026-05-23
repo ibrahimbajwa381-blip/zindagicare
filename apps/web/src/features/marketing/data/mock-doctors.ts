@@ -1,0 +1,73 @@
+import { getDemoDoctorImage } from "./demo-doctor-images";
+
+export const mockDoctors = [
+  {
+    id: "1",
+    name: "Dr. Ayesha Khan",
+    specialty: "General Physician",
+    hospital: "Hameed Latif Hospital",
+    rating: 4.9,
+    reviews: 312,
+    fee: 2500,
+    pmdcVerified: true,
+    imageUrl: getDemoDoctorImage("Dr. Ayesha Khan"),
+  },
+  {
+    id: "2",
+    name: "Dr. Hassan Raza",
+    specialty: "Cardiologist",
+    hospital: "Fatima Memorial",
+    rating: 4.8,
+    reviews: 198,
+    fee: 3500,
+    pmdcVerified: true,
+    imageUrl: getDemoDoctorImage("Dr. Hassan Raza"),
+  },
+  {
+    id: "3",
+    name: "Dr. Sara Ahmed",
+    specialty: "Dermatologist",
+    hospital: "Shalamar Hospital",
+    rating: 4.9,
+    reviews: 421,
+    fee: 3000,
+    pmdcVerified: true,
+    imageUrl: getDemoDoctorImage("Dr. Sara Ahmed"),
+  },
+  {
+    id: "4",
+    name: "Dr. Omar Siddiqui",
+    specialty: "Pediatrician",
+    hospital: "Children's Hospital",
+    rating: 4.7,
+    reviews: 156,
+    fee: 2800,
+    pmdcVerified: true,
+    imageUrl: getDemoDoctorImage("Dr. Omar Siddiqui"),
+  },
+  {
+    id: "5",
+    name: "Dr. Fatima Malik",
+    specialty: "Gynecologist",
+    hospital: "Services Hospital",
+    rating: 4.8,
+    reviews: 267,
+    fee: 3200,
+    pmdcVerified: true,
+    imageUrl: getDemoDoctorImage("Dr. Fatima Malik"),
+  },
+  {
+    id: "6",
+    name: "Dr. Usman Ali",
+    specialty: "Orthopedic Surgeon",
+    hospital: "Ghurki Trust Hospital",
+    rating: 4.6,
+    reviews: 89,
+    fee: 4000,
+    pmdcVerified: true,
+    imageUrl: getDemoDoctorImage("Dr. Usman Ali"),
+  },
+] as const;
+
+/** @deprecated Use getDemoDoctorImage — kept for any legacy imports */
+export const drAyeshaImage = getDemoDoctorImage("Dr. Ayesha Khan")!;
