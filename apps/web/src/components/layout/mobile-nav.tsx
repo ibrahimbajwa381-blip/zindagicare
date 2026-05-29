@@ -12,7 +12,7 @@ export type MobileNavLink = {
 };
 
 type MobileNavProps = {
-  links: MobileNavLink[];
+  links: readonly MobileNavLink[];
   footer?: React.ReactNode;
   className?: string;
 };
