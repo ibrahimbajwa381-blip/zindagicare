@@ -15,9 +15,9 @@ export function SundayBanner() {
 
   return (
     <PageSection id="sunday-free-consult" spacing="tall">
-        <div className="grid gap-12 lg:grid-cols-[1.15fr_auto] lg:items-center lg:gap-16 xl:gap-20">
+        <div className="grid gap-8 sm:gap-12 lg:grid-cols-[1.15fr_auto] lg:items-center lg:gap-16 xl:gap-20">
           <div>
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <p className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white sm:text-sm">
                 <Gift className="h-4 w-4" />
                 Rs. 0 · {sundayConsultCopy.durationLabel}
@@ -33,18 +33,18 @@ export function SundayBanner() {
               )}
             </div>
 
-            <h2 className="mt-6 font-display text-4xl font-semibold leading-[1.1] tracking-tight text-foreground sm:mt-8 sm:text-5xl lg:text-6xl xl:text-[3.75rem]">
+            <h2 className="mt-5 font-display text-3xl font-semibold leading-[1.12] tracking-tight text-foreground sm:mt-8 sm:text-5xl lg:text-6xl xl:text-[3.75rem]">
               <span className="text-brand-dark">Sunday</span> Free Consult
             </h2>
-            <p className="mt-3 text-xl font-semibold text-accent-dark sm:mt-4 sm:text-2xl lg:text-[1.75rem]">
+            <p className="mt-2 text-lg font-semibold text-accent-dark sm:mt-4 sm:text-2xl lg:text-[1.75rem]">
               Free video call with a PMDC-verified doctor — every Sunday.
             </p>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-700 sm:mt-6 sm:text-lg lg:text-xl">
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-700 sm:mt-6 sm:text-lg lg:text-xl">
               No consultation fee. Book one {sundayConsultCopy.durationLabel} slot per
               doctor, join online at your chosen time, and get medical guidance from home.
             </p>
 
-            <ul className="mt-8 space-y-3 text-sm text-slate-700 sm:mt-10 sm:space-y-4 sm:text-base lg:text-lg">
+            <ul className="mt-6 space-y-3 text-sm text-slate-700 sm:mt-10 sm:space-y-4 sm:text-base lg:text-lg">
               <li className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10">
                   <Video className="h-5 w-5 text-brand" />
@@ -67,10 +67,10 @@ export function SundayBanner() {
             </ul>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row lg:min-w-[18rem] lg:flex-col lg:items-stretch xl:min-w-[20rem]">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row lg:min-w-[18rem] lg:flex-col lg:items-stretch xl:min-w-[20rem]">
             <Button
               size="lg"
-              className="group h-14 w-full rounded-xl text-base shadow-premium sm:w-auto lg:min-w-full lg:text-lg"
+              className="group h-12 w-full rounded-xl text-base shadow-premium sm:h-14 sm:w-auto lg:min-w-full lg:text-lg"
               asChild
             >
               <Link href={siteConfig.links.sundayConsult}>
@@ -81,7 +81,7 @@ export function SundayBanner() {
             <Button
               size="lg"
               variant="outline"
-              className="h-14 w-full rounded-xl border-accent/40 bg-white text-base text-accent-dark hover:border-accent hover:bg-accent-muted sm:w-auto lg:min-w-full lg:text-lg"
+              className="h-12 w-full rounded-xl border-accent/40 bg-white text-base text-accent-dark hover:border-accent hover:bg-accent-muted sm:h-14 sm:w-auto lg:min-w-full lg:text-lg"
               asChild
             >
               <Link href={`${siteConfig.links.sundayConsult}#how-it-works`}>

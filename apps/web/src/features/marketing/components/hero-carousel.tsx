@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
@@ -19,8 +19,11 @@ type HeroCarouselProps = {
   onIndexChange: (index: number) => void;
 };
 
+const SWIPE_THRESHOLD_PX = 48;
+
 export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) {
   const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
 
   const goTo = useCallback(
     (index: number) => {
@@ -41,6 +44,24 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
     return () => window.clearInterval(timer);
   }, [goNext, isPaused]);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+    setIsPaused(true);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartX.current;
+    touchStartX.current = null;
+    setIsPaused(false);
+    if (start == null) return;
+    const endX = e.changedTouches[0]?.clientX;
+    if (endX == null) return;
+    const delta = endX - start;
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
+    if (delta < 0) goNext();
+    else goPrev();
+  };
+
   return (
     <div
       className={cn(
@@ -53,6 +74,8 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
       onMouseLeave={() => setIsPaused(false)}
       onFocusCapture={() => setIsPaused(true)}
       onBlurCapture={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {heroServices.map((service, index) => {
         const isActive = index === activeIndex;
@@ -77,12 +100,12 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
             />
 
             <div className="relative flex h-full flex-col overflow-hidden lg:flex-row">
-              <div className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden p-5 sm:p-8 lg:max-w-[58%] lg:p-10">
+              <div className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden p-4 pr-14 sm:p-8 sm:pr-8 lg:max-w-[58%] lg:p-10">
                 <div className="min-h-0 flex-1">
-                  <p className="text-xs font-medium uppercase tracking-wider text-brand-lighter/80 sm:text-sm">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-brand-lighter/80 sm:text-sm">
                     {service.carousel.eyebrow}
                   </p>
-                  <h2 className="mt-2 font-display text-2xl font-semibold leading-tight tracking-tight text-white sm:mt-3 sm:text-3xl lg:text-4xl">
+                  <h2 className="mt-1.5 font-display text-xl font-semibold leading-tight tracking-tight text-white sm:mt-3 sm:text-3xl lg:text-4xl">
                     {service.carousel.title}{" "}
                     <span className="text-gradient-hero">
                       {service.carousel.titleHighlight}
@@ -92,15 +115,15 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
                     <BadgeCheck className="h-4 w-4 shrink-0 text-brand-lighter" />
                     <span className="truncate">{service.carousel.badge}</span>
                   </div>
-                  <p className="mt-4 line-clamp-3 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
+                  <p className="mt-3 line-clamp-3 max-w-xl text-sm leading-relaxed text-white/80 sm:mt-4 sm:text-base">
                     {service.carousel.description}
                   </p>
                 </div>
 
-                <div className="mt-4 shrink-0 sm:mt-6">
+                <div className="mt-3 shrink-0 sm:mt-6">
                   <Button
                     size="lg"
-                    className="shadow-premium h-11 rounded-xl px-6 shadow-brand-dark/25"
+                    className="shadow-premium h-12 w-full rounded-xl px-6 shadow-brand-dark/25 sm:h-11 sm:w-auto"
                     asChild
                   >
                     <Link href={service.carousel.href}>
@@ -109,14 +132,14 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
                   </Button>
                 </div>
 
-                <div className="mt-4 flex shrink-0 flex-wrap items-center justify-between gap-4 border-t border-white/15 pt-4 sm:mt-6">
+                <div className="mt-3 hidden shrink-0 border-t border-white/15 pt-3 sm:mt-6 sm:block sm:pt-4">
                   <p className="text-xs text-brand-lighter/60">
                     Serving patients across {siteConfig.launchCity}
                   </p>
                 </div>
               </div>
 
-              <div className="relative h-32 w-full shrink-0 sm:h-36 lg:h-full lg:w-[42%] lg:max-w-md">
+              <div className="relative h-28 w-full shrink-0 sm:h-36 lg:h-full lg:w-[42%] lg:max-w-md">
                 <Image
                   src={service.image}
                   alt={service.imageAlt}
@@ -135,13 +158,13 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
         );
       })}
 
-      <div className="absolute right-4 top-4 z-20 flex gap-1 sm:right-6 sm:top-6">
+      <div className="absolute right-3 top-3 z-20 hidden gap-1 sm:right-6 sm:top-6 sm:flex">
         <CarouselNavButton direction="prev" onClick={goPrev} />
         <CarouselNavButton direction="next" onClick={goNext} />
       </div>
 
       <div
-        className="absolute bottom-4 right-4 z-20 flex items-center gap-2 sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-10"
+        className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0 lg:bottom-8 lg:right-10"
         role="tablist"
         aria-label="Hero services"
       >
@@ -178,7 +201,7 @@ function CarouselNavButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25"
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25 active:scale-95 sm:h-9 sm:w-9"
       aria-label={direction === "prev" ? "Previous service" : "Next service"}
     >
       <Icon className="h-5 w-5" />

@@ -7,10 +7,21 @@ import { Input, Label } from "@/components/ui/input";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
 
 const intents = [
-  { value: "patient", label: "Patient", description: "Book doctors & home care" },
-  { value: "doctor", label: "Doctor", description: "Offer consultations (requires verification)" },
-  { value: "nurse", label: "Nurse", description: "Home nursing services" },
-  { value: "rider", label: "Delivery rider", description: "Medicine delivery" },
+  {
+    value: "patient",
+    label: "Patient",
+    description: "Online consults, Sunday Free Consult & in-house care",
+  },
+  {
+    value: "doctor",
+    label: "Doctor",
+    description: "Online & Sunday consultations (requires verification)",
+  },
+  {
+    value: "nurse",
+    label: "Nurse",
+    description: "In-house medical & nursing services",
+  },
 ] as const;
 
 export function OnboardingForm() {

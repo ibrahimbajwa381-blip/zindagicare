@@ -21,25 +21,6 @@ export type HeroService = {
 
 export const heroServices: HeroService[] = [
   {
-    id: "home-care",
-    image: "/hero/home-care.jpg",
-    imageAlt: "Nurse providing in-home patient care",
-    carousel: {
-      eyebrow: "In-house patient treatment",
-      title: "Professional care at",
-      titleHighlight: "your home",
-      description:
-        "Licensed doctors and nurses visit you at home for check-ups, IV drips, injections, wound dressing, and post-operative care — with transparent pricing and verified staff across Lahore.",
-      badge: "IV drips · Nursing · Doctor visits",
-      ctaLabel: "Book home visit",
-      href: siteConfig.links.homeServices,
-    },
-    card: {
-      title: "Home Patient Care",
-      description: "Doctor or nurse visits at your doorstep with IVs and special treatments.",
-    },
-  },
-  {
     id: "online-consult",
     image: "/hero/online-consult.jpg",
     imageAlt: "Patient on a video call with a doctor",
@@ -48,75 +29,56 @@ export const heroServices: HeroService[] = [
       title: "Talk to PMDC doctors via",
       titleHighlight: "secure video",
       description:
-        "Book a slot, join a private HD video room, share symptoms and reports in chat, and receive digital prescriptions — including free 10-minute Sunday consults with verified specialists.",
-      badge: "Free Sunday slots · HD video · E-prescription",
-      ctaLabel: "Consult online now",
+        "Book a slot, join a private HD video room, share symptoms and reports in chat, and receive digital prescriptions from verified specialists across Lahore.",
+      badge: "HD video · E-prescription · Verified doctors",
+      ctaLabel: "Book online consultation",
       href: siteConfig.links.doctors,
     },
     card: {
-      title: "Consult Online Now",
-      description: "Instantly connect with specialists through secure video calls.",
+      title: "Online Consultation",
+      description: "Connect with specialists through secure video calls from home.",
     },
   },
   {
-    id: "in-clinic",
-    image: "/hero/in-clinic.jpg",
-    imageAlt: "Doctor consulting a patient in clinic",
+    id: "sunday-consult",
+    image: "/hero/online-consult.jpg",
+    imageAlt: "Patient joining a free Sunday video consultation",
     carousel: {
-      eyebrow: "In-clinic check-up",
-      title: "Book trusted doctors for",
-      titleHighlight: "in-person visits",
+      eyebrow: "Sunday Free Consult",
+      title: "Free doctor video call",
+      titleHighlight: "every Sunday",
       description:
-        "Choose your hospital or clinic, pick a time that works, and see PMDC-verified doctors in person — with ratings, fees, and location shown upfront before you confirm.",
-      badge: "500+ verified doctors",
-      ctaLabel: "Find a clinic appointment",
-      href: siteConfig.links.doctors,
+        "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one slot per doctor per week, join online at your chosen time — no clinic visit required.",
+      badge: "Rs. 0 · 10 minutes · Online only",
+      ctaLabel: "Book free Sunday slot",
+      href: siteConfig.links.sundayConsult,
     },
     card: {
-      title: "In-Clinic Appointments",
-      description: "Book an in-person visit at your preferred hospital or clinic.",
+      title: "Sunday Free Consult",
+      description: "Complimentary weekly video consults with verified doctors.",
     },
   },
   {
-    id: "lab-tests",
-    image: "/hero/lab-tests.jpg",
-    imageAlt: "Medical professional handling laboratory samples",
+    id: "in-house-medical",
+    image: "/hero/home-care.jpg",
+    imageAlt: "Medical professional providing in-house patient care",
     carousel: {
-      eyebrow: "Laboratory tests",
-      title: "Lab tests with",
-      titleHighlight: "home collection",
+      eyebrow: "In-house medical services",
+      title: "Licensed care at",
+      titleHighlight: "your home",
       description:
-        "Order blood work and diagnostics with sample pickup at home or partner labs in Lahore — track results in your account and enjoy exclusive discounts on popular panels.",
-      badge: "Home sample pickup · Partner labs",
-      ctaLabel: "Book a lab test",
+        "Doctors and nurses visit you for check-ups, IV drips, injections, wound dressing, and post-operative care — with transparent pricing and verified staff across Lahore.",
+      badge: "Doctor visits · Nursing · IV & injections",
+      ctaLabel: "Book in-house care",
       href: siteConfig.links.homeServices,
     },
     card: {
-      title: "Laboratory Tests",
-      description: "Avail exclusive discounts on lab tests with convenient sample collection.",
-    },
-  },
-  {
-    id: "medicines",
-    image: "/hero/medicines.jpg",
-    imageAlt: "Medicines prepared for home delivery",
-    carousel: {
-      eyebrow: "Medicine delivery",
-      title: "Prescription medicines",
-      titleHighlight: "to your door",
-      description:
-        "Upload or use your e-prescription, compare brands, and get authentic medicines delivered quickly — with dosage guidance so you know your medicines better.",
-      badge: "Verified pharmacies · Fast delivery",
-      ctaLabel: "Order medicines",
-      href: siteConfig.links.dashboard,
-    },
-    card: {
-      title: "Medicines",
-      description: "Order authentic medicines with guidance on dosage and usage.",
+      title: "In-house Medical Services",
+      description: "Professional medical care delivered at your doorstep.",
     },
   },
 ];
 
 /** Fixed carousel height — all slides share this size */
 export const HERO_CAROUSEL_HEIGHT =
-  "h-[26rem] sm:h-[28rem] lg:h-[30rem]" as const;
+  "h-[min(30rem,88dvh)] min-h-[24rem] sm:h-[28rem] sm:min-h-0 lg:h-[30rem]" as const;

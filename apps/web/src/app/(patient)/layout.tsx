@@ -12,7 +12,8 @@ export default function PatientLayout({
         links={[
           { href: siteConfig.links.dashboard, label: "Dashboard" },
           { href: siteConfig.links.sundayConsult, label: "Sunday Free Consult" },
-          { href: siteConfig.links.doctors, label: "Find doctors" },
+          { href: siteConfig.links.doctors, label: "Online consultation" },
+          { href: siteConfig.links.homeServices, label: "In-house medical" },
         ]}
       />
       <main className="flex-1">{children}</main>

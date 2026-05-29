@@ -11,8 +11,8 @@ export default function AuthLayout({
       variant="soft"
       bordered={false}
       spacing="default"
-      className="flex min-h-[min(100svh,900px)] items-center justify-center"
-      innerClassName="flex flex-col items-center gap-10 !py-16"
+      className="flex min-h-[min(100dvh,900px)] items-center justify-center"
+      innerClassName="flex w-full flex-col items-center gap-8 !py-10 sm:gap-10 sm:!py-16"
     >
       <SiteLogo size="xl" priority />
       {children}

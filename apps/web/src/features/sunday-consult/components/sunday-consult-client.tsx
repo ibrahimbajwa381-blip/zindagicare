@@ -265,10 +265,10 @@ export function SundayConsultClient() {
           </Card>
         )}
 
-        <h1 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
+        <h1 className="font-display text-xl font-semibold text-foreground sm:text-3xl">
           Book your free slot
         </h1>
-        <p className="mt-2 max-w-2xl text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
           Choose a doctor below for{" "}
           <strong className="font-medium text-slate-800">
             {formatNextSundayLong()}
@@ -277,14 +277,14 @@ export function SundayConsultClient() {
           {sundayConsultCopy.modality}.
         </p>
 
-        <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-2 lg:gap-4">
           <div className="space-y-3">
             {doctors.map((doc) => (
               <button
                 key={doc.doctorId}
                 type="button"
                 onClick={() => selectDoctor(doc)}
-                className={`w-full rounded-xl border p-4 text-left backdrop-blur-sm transition-all ${
+                className={`w-full rounded-xl border p-4 text-left backdrop-blur-sm transition-all active:scale-[0.99] ${
                   selectedDoctor?.doctorId === doc.doctorId
                     ? "border-brand bg-brand-muted/90 shadow-sm"
                     : `${surfaceInset} hover:border-brand-light/50 hover:bg-white hover:shadow-premium`

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Droplets, Home, Syringe, TestTube } from "lucide-react";
+import { ArrowRight, Bandage, Home, HeartPulse, Syringe } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
@@ -10,25 +10,25 @@ const services = [
   {
     icon: Home,
     title: "Doctor home visit",
-    desc: "Consult at your doorstep",
+    desc: "In-person check-up at your doorstep",
     color: "from-brand-dark to-brand",
   },
   {
     icon: Syringe,
-    title: "Nurse & IV drip",
-    desc: "Professional care at home",
+    title: "Nursing & IV therapy",
+    desc: "Injections, drips, and skilled nursing",
     color: "from-brand to-brand-light",
   },
   {
-    icon: TestTube,
-    title: "Sample collection",
-    desc: "Lab tests without the wait",
+    icon: Bandage,
+    title: "Wound & post-op care",
+    desc: "Dressings and recovery support at home",
     color: "from-brand-light to-accent-light",
   },
   {
-    icon: Droplets,
-    title: "Emergency visit",
-    desc: "Urgent home support",
+    icon: HeartPulse,
+    title: "Urgent in-house visit",
+    desc: "Timely medical support when you need it",
     color: "from-accent to-accent-dark",
   },
 ];
@@ -37,11 +37,11 @@ export function HomeServicesPreview() {
   return (
     <PageSection variant="accent" spacing="lg">
       <SectionHeader
-        eyebrow="At your door"
-        title="Home visit & IV services"
-        description="Geo-tracked scheduling, transparent pricing, and verified staff across Lahore."
+        eyebrow="At your home"
+        title="In-house medical services"
+        description="Geo-tracked scheduling, transparent pricing, and PMDC-verified staff across Lahore."
       />
-      <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
         {services.map(({ icon: Icon, title, desc, color }) => (
           <article
             key={title}
@@ -60,11 +60,11 @@ export function HomeServicesPreview() {
         ))}
       </div>
       <Button
-        className="mt-10 h-12 rounded-xl px-6 text-base shadow-premium"
+        className="mt-8 h-12 w-full rounded-xl px-6 text-base shadow-premium sm:mt-10 sm:w-auto"
         asChild
       >
         <Link href={siteConfig.links.homeServices}>
-          Explore home services
+          Explore in-house services
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>

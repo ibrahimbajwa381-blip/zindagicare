@@ -1,4 +1,4 @@
-import { CalendarCheck, MessageCircle, Search, Stethoscope } from "lucide-react";
+import { CalendarCheck, Home, Search, Video } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
@@ -7,26 +7,26 @@ const steps = [
   {
     icon: Search,
     step: "01",
-    title: "Search",
-    desc: "Find doctors by specialty, hospital, or rating in Lahore.",
+    title: "Choose a service",
+    desc: "Online video consultation, free Sunday consult, or in-house medical care at home.",
   },
   {
     icon: CalendarCheck,
     step: "02",
     title: "Book",
-    desc: "Clinic visit, paid online consult, or our free 10-minute Sunday video call.",
+    desc: "Pick a doctor and time slot, or schedule a verified visit to your address in Lahore.",
   },
   {
-    icon: Stethoscope,
+    icon: Video,
     step: "03",
-    title: "Consult",
-    desc: "Visit in person, at home, or join when video launches.",
+    title: "Get care",
+    desc: "Join your secure video call or receive licensed medical staff at your doorstep.",
   },
   {
-    icon: MessageCircle,
+    icon: Home,
     step: "04",
     title: "Follow up",
-    desc: "Prescriptions, reminders, and family health in one place.",
+    desc: "E-prescriptions, visit notes, and your health history in one account.",
   },
 ];
 
@@ -36,15 +36,15 @@ export function HowItWorksSection() {
       <SectionHeader
         eyebrow="Simple process"
         title="How it works"
-        description="From search to follow-up in four clear steps."
+        description="From booking to follow-up across our three launch services."
         align="center"
         className="mx-auto"
       />
-      <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:mt-14 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
         {steps.map((item) => (
           <article
             key={item.step}
-              className={`relative p-6 ${surfaceCardInteractive}`}
+            className={`relative p-6 ${surfaceCardInteractive}`}
           >
             <span className="font-display text-4xl font-semibold text-brand/25">
               {item.step}

@@ -6,9 +6,9 @@ export { theme } from "./theme";
 export const siteConfig = {
   name: "ZindagiCare",
   logo: "/logo1.png",
-  tagline: "Healthcare that feels premium, fast, and trustworthy",
+  tagline: "Online consults, free Sunday care, and in-house medical services",
   description:
-    "Book PMDC-verified doctors in Lahore. Free 10-minute Sunday video consults (Rs. 0), home visits, and medicine delivery — all in one place.",
+    "PMDC-verified doctors in Lahore — book secure online video consultations, free 10-minute Sunday consults (Rs. 0), and licensed in-house medical care at your home.",
   launchCity: LAUNCH_CITY,
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   links: {
@@ -18,5 +18,16 @@ export const siteConfig = {
     login: "/login",
     register: "/register",
     dashboard: "/dashboard",
+  },
+  nav: {
+    main: [
+      { label: "Online consultation", href: "/doctors" },
+      {
+        label: "Sunday Free Consult",
+        href: "/sunday-consult",
+        badge: "Free",
+      },
+      { label: "In-house medical services", href: "/home-services" },
+    ],
   },
 } as const;

@@ -8,7 +8,7 @@ export function DoctorBrowseSection() {
     <PageSection variant="neutral" spacing="lg">
       <SpecialtiesBrowseSection />
 
-      <div className="my-14 h-px bg-gradient-to-r from-transparent via-brand-light/50 to-transparent sm:my-16" />
+      <div className="my-10 h-px bg-gradient-to-r from-transparent via-brand-light/50 to-transparent sm:my-16" />
 
       <BrowseSectionRow
         title="Search doctor by condition"

@@ -21,14 +21,14 @@ export const surfaceMuted =
   "rounded-xl border border-brand-light/30 bg-brand-muted/70 backdrop-blur-sm";
 
 export const pageContainer =
-  "relative mx-auto w-full max-w-[100rem] px-5 sm:px-8 lg:px-14";
+  "relative mx-auto w-full max-w-[100rem] px-4 sm:px-8 lg:px-14";
 
 export const appHeaderShell =
-  "sticky top-0 z-50 border-b border-brand-light/25 bg-white/80 backdrop-blur-xl";
+  "sticky top-0 z-50 border-b border-brand-light/25 bg-white/80 backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]";
 
 export const appHeaderInner = cn(
   pageContainer,
-  "flex h-[4.75rem] items-center gap-6 text-sm font-medium text-slate-600",
+  "flex h-16 items-center gap-3 text-sm font-medium text-slate-600 sm:h-[4.75rem] sm:gap-6",
 );
 
 export function surfaceCardClass(className?: string) {

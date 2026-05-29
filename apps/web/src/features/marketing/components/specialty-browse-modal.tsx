@@ -73,7 +73,7 @@ export function SpecialtyBrowseModal({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="rounded-xl border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
               aria-label="Close"
             >
               <X className="h-5 w-5" />

@@ -29,7 +29,7 @@ export function SectionHeader({
       )}
       <h2
         className={cn(
-          "font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl",
+          "font-display text-2xl font-semibold tracking-tight text-foreground sm:text-4xl",
           eyebrow && "mt-3",
         )}
       >
@@ -38,7 +38,7 @@ export function SectionHeader({
       {description && (
         <p
           className={cn(
-            "mt-3 text-lg text-slate-600",
+            "mt-2 text-base text-slate-600 sm:mt-3 sm:text-lg",
             align === "center" && "mx-auto max-w-2xl",
             align === "left" && "max-w-2xl",
           )}

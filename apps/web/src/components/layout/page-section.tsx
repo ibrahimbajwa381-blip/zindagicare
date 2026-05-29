@@ -52,10 +52,10 @@ const variantStyles: Record<
 };
 
 const spacingClasses = {
-  sm: "py-10 sm:py-12",
-  default: "py-16 sm:py-20 lg:py-24",
-  lg: "py-20 sm:py-28",
-  tall: "py-16 sm:py-20 lg:py-24",
+  sm: "py-8 sm:py-12",
+  default: "py-12 sm:py-20 lg:py-24",
+  lg: "py-14 sm:py-28",
+  tall: "py-12 sm:py-20 lg:py-24",
 };
 
 export function PageSection({

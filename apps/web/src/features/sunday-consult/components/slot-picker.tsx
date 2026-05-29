@@ -29,7 +29,7 @@ export function SlotPicker({ slots, selectedSlotId, onSelect, disabled }: Props)
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
       {slots.map((slot) => {
         const available = slot.status === SlotStatuses.AVAILABLE;
         const selected = selectedSlotId === slot.slotId;
@@ -42,7 +42,7 @@ export function SlotPicker({ slots, selectedSlotId, onSelect, disabled }: Props)
             disabled={disabled || !available}
             onClick={() => available && onSelect(slot.slotId)}
             className={cn(
-              "rounded-lg px-3 py-2 text-sm text-foreground transition-all",
+              "min-h-11 rounded-xl px-3 py-2.5 text-sm text-foreground transition-all active:scale-[0.98]",
               surfaceInset,
               available && "hover:border-brand-light hover:bg-brand-muted/80",
               selected && "border-brand bg-brand-muted ring-2 ring-brand/30",

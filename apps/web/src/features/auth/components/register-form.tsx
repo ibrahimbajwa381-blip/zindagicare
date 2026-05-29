@@ -28,7 +28,7 @@ export function RegisterForm() {
         required
       />
       <FieldError message={state?.error} />
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Creating account…" : "Create account"}
       </Button>
     </form>

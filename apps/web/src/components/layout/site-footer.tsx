@@ -9,8 +9,8 @@ export function SiteFooter() {
         aria-hidden
         className="h-1 w-full bg-gradient-to-r from-brand via-brand-light to-brand-lighter"
       />
-      <div className="mx-auto w-full max-w-[100rem] px-5 py-16 sm:px-8 lg:px-14">
-        <div className="grid gap-12 md:grid-cols-4">
+      <div className="mx-auto w-full max-w-[100rem] px-4 py-12 pb-safe sm:px-8 sm:py-16 lg:px-14">
+        <div className="grid gap-10 sm:gap-12 md:grid-cols-4">
           <div className="md:col-span-2">
             <SiteLogo size="xl" className="-ml-0.5" />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/65">
@@ -24,19 +24,19 @@ export function SiteFooter() {
             <p className="text-xs font-semibold uppercase tracking-wider text-white/45">
               Services
             </p>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-4 space-y-1 text-sm sm:space-y-3">
               <li>
                 <Link
                   href={siteConfig.links.doctors}
-                  className="transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline"
+                  className="inline-flex min-h-11 items-center py-1 transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline sm:min-h-0 sm:py-0"
                 >
-                  Find doctors
+                  Online consultation
                 </Link>
               </li>
               <li>
                 <Link
                   href={siteConfig.links.sundayConsult}
-                  className="transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline"
+                  className="inline-flex min-h-11 items-center py-1 transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline sm:min-h-0 sm:py-0"
                 >
                   Sunday Free Consult
                 </Link>
@@ -44,9 +44,9 @@ export function SiteFooter() {
               <li>
                 <Link
                   href={siteConfig.links.homeServices}
-                  className="transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline"
+                  className="inline-flex min-h-11 items-center py-1 transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline sm:min-h-0 sm:py-0"
                 >
-                  Home visits
+                  In-house medical services
                 </Link>
               </li>
             </ul>
@@ -55,11 +55,11 @@ export function SiteFooter() {
             <p className="text-xs font-semibold uppercase tracking-wider text-white/45">
               Account
             </p>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-4 space-y-1 text-sm sm:space-y-3">
               <li>
                 <Link
                   href={siteConfig.links.login}
-                  className="transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline"
+                  className="inline-flex min-h-11 items-center py-1 transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline sm:min-h-0 sm:py-0"
                 >
                   Log in
                 </Link>
@@ -67,7 +67,7 @@ export function SiteFooter() {
               <li>
                 <Link
                   href={siteConfig.links.register}
-                  className="transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline"
+                  className="inline-flex min-h-11 items-center py-1 transition-colors hover:text-brand-lighter hover:underline-offset-2 hover:underline sm:min-h-0 sm:py-0"
                 >
                   Register
                 </Link>
