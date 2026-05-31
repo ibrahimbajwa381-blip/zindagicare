@@ -53,7 +53,7 @@ export default auth((req) => {
     !matchesPrefix(pathname, DOCTOR_VERIFICATION_EXEMPT_PREFIXES)
   ) {
     return NextResponse.redirect(
-      new URL(AUTH_ROUTES.doctorVerification, req.nextUrl.origin),
+      new URL(AUTH_ROUTES.doctorProfile, req.nextUrl.origin),
     );
   }
 

@@ -1,14 +1,13 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import bcrypt from "bcryptjs";
 import { Roles } from "@zindagi/shared";
 import { authConfig } from "./auth.config";
 import {
   findOrCreateGoogleUser,
   findOrCreatePhoneUser,
-  findUserByEmail,
   loadAuthUserPayload,
+  verifyCredentialsLogin,
 } from "@/server/services/auth.service";
 import { otpService } from "@/server/services/otp.service";
 
@@ -32,30 +31,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const email = String(credentials.email).toLowerCase();
+        const email = String(credentials.email).trim().toLowerCase();
         const password = String(credentials.password);
 
-        if (!process.env.MONGODB_URI) {
-          return null;
-        }
-
-        const user = await findUserByEmail(email);
-        const passwordHash = user?.passwordHash;
-        if (!passwordHash) {
-          return null;
-        }
-
-        if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) {
-          return null;
-        }
-
-        const valid = await bcrypt.compare(password, passwordHash);
-        if (!valid) {
-          return null;
-        }
-
-        const payload = await loadAuthUserPayload(String(user._id));
-        return payload;
+        return verifyCredentialsLogin(email, password);
       },
     }),
     Credentials({

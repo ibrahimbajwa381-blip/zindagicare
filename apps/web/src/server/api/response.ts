@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { AppError } from "@zindagi/shared";
 
 export function apiSuccess<T>(data: T, status = 200) {
@@ -14,6 +15,20 @@ export function apiError(error: unknown) {
         error: { code: error.code, message: error.message },
       },
       { status: error.statusCode },
+    );
+  }
+
+  if (error instanceof ZodError) {
+    return NextResponse.json(
+      {
+        success: false,
+        data: null,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: error.issues[0]?.message ?? "Invalid input",
+        },
+      },
+      { status: 400 },
     );
   }
 

@@ -1,3 +1,4 @@
+import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { SundayConsultClient } from "@/features/sunday-consult/components/sunday-consult-client";
 
 export const metadata = {
@@ -7,5 +8,10 @@ export const metadata = {
 };
 
 export default function SundayConsultPage() {
-  return <SundayConsultClient />;
+  return (
+    <>
+      <SundayBanner />
+      <SundayConsultClient />
+    </>
+  );
 }

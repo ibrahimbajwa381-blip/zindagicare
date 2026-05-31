@@ -5,21 +5,55 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { PageSection } from "@/components/layout/page-section";
-import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { surfaceCardInteractive, surfaceInset, surfaceMuted } from "@/lib/ui/surfaces";
 import { SundayExplainer } from "./sunday-explainer";
 import { formatNextSundayLong } from "@/lib/sunday/display";
-import { sundayConsultCopy } from "../data/sunday-consult-copy";
+import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { siteConfig } from "@/config/site";
 import { SlotPicker } from "./slot-picker";
-import { CountdownTimer } from "./countdown-timer";
 import { useSundayRealtime } from "../hooks/use-sunday-realtime";
 import { useMounted } from "@/hooks/use-mounted";
-import { formatKarachiDateTime } from "@/lib/format/datetime";
-import { Star, Video } from "lucide-react";
+import { Star } from "lucide-react";
+import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
+import type { SundayPatientBookingDto } from "../types";
+
+function DoctorAvatar({
+  name,
+  avatarUrl,
+  size = "md",
+}: {
+  name: string;
+  avatarUrl?: string;
+  size?: "md" | "lg";
+}) {
+  const src = resolveDoctorPortrait(name, avatarUrl);
+  const box = size === "lg" ? "h-16 w-16 rounded-2xl" : "h-12 w-12 rounded-xl";
+  const text = size === "lg" ? "text-base" : "text-sm";
+
+  if (src) {
+    return (
+      <span className={`relative shrink-0 overflow-hidden ring-1 ring-slate-200 ${box}`}>
+        <Image src={src} alt={name} fill className="object-cover object-top" sizes={size === "lg" ? "64px" : "48px"} />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center bg-slate-100 font-semibold text-slate-600 ${box} ${text}`}
+    >
+      {name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)}
+    </span>
+  );
+}
 
 type DoctorRow = {
   doctorId: string;
@@ -38,6 +72,7 @@ type DoctorRow = {
 
 export function SundayConsultClient() {
   const mounted = useMounted();
+  const { sunday: sundayCopy, dashboard: dashboardCopy } = useTranslations();
   const { data: session, status } = useSession();
   const isDev = process.env.NODE_ENV === "development";
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
@@ -48,11 +83,7 @@ export function SundayConsultClient() {
   const [instanceId, setInstanceId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [holdToken, setHoldToken] = useState<string | null>(null);
-  const [booking, setBooking] = useState<{
-    appointmentId: string;
-    scheduledStart: string;
-    doctorName?: string;
-  } | null>(null);
+  const [booking, setBooking] = useState<SundayPatientBookingDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,12 +115,7 @@ export function SundayConsultClient() {
     const res = await fetch("/api/v1/sunday/my-booking");
     const json = await res.json();
     if (json.success && json.data) {
-      const doc = json.data.doctorId as { userId?: { name?: string } };
-      setBooking({
-        appointmentId: json.data._id,
-        scheduledStart: json.data.scheduledStart,
-        doctorName: doc?.userId?.name,
-      });
+      setBooking(json.data as SundayPatientBookingDto);
     }
   }, [session?.user]);
 
@@ -197,11 +223,7 @@ export function SundayConsultClient() {
         throw new Error(confirmJson.error?.message ?? "Could not confirm booking");
       }
 
-      setBooking({
-        appointmentId: confirmJson.data.appointmentId,
-        scheduledStart: confirmJson.data.scheduledStart,
-        doctorName: selectedDoctor.name,
-      });
+      await loadMyBooking();
       setSelectedSlotId(null);
       await loadDoctors();
       if (selectedDoctor) await loadSlots(selectedDoctor);
@@ -216,7 +238,6 @@ export function SundayConsultClient() {
 
   return (
     <>
-      <SundayBanner />
       <PageSection id="how-it-works" variant="neutral" spacing="default" flipBlur>
         <div className="mb-10">
           <SundayExplainer showCta={false} />
@@ -240,27 +261,10 @@ export function SundayConsultClient() {
         {booking && (
           <Card className="mb-8 border-brand-light/40 bg-brand-muted/60 shadow-premium">
             <CardHeader>
-              <CardTitle className="text-lg">Your Sunday booking</CardTitle>
+              <CardTitle className="text-lg">{dashboardCopy.sundayBooking.title}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-slate-700">
-                {booking.doctorName} —{" "}
-                {mounted
-                  ? formatKarachiDateTime(booking.scheduledStart)
-                  : "Loading…"}
-              </p>
-              <div className="flex flex-wrap items-center gap-4">
-                <div>
-                  <p className="text-xs text-slate-500">Starts in</p>
-                  <CountdownTimer targetDate={booking.scheduledStart} />
-                </div>
-                <Button asChild>
-                  <Link href={`/dashboard?sunday=${booking.appointmentId}`}>
-                    <Video className="h-4 w-4" />
-                    Join session
-                  </Link>
-                </Button>
-              </div>
+            <CardContent>
+              <PatientSundayBookingCard booking={booking} variant="dashboard" />
             </CardContent>
           </Card>
         )}
@@ -273,8 +277,7 @@ export function SundayConsultClient() {
           <strong className="font-medium text-slate-800">
             {formatNextSundayLong()}
           </strong>
-          . {sundayConsultCopy.priceLabel} · {sundayConsultCopy.durationLabel} ·{" "}
-          {sundayConsultCopy.modality}.
+          . {sundayCopy.priceLabel} · {sundayCopy.durationLabel} · {sundayCopy.modality}.
         </p>
 
         <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-2 lg:gap-4">
@@ -291,25 +294,7 @@ export function SundayConsultClient() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  {doc.avatarUrl ? (
-                    <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200">
-                      <Image
-                        src={doc.avatarUrl}
-                        alt={doc.name}
-                        fill
-                        className="object-cover"
-                        sizes="48px"
-                      />
-                    </span>
-                  ) : (
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-semibold text-slate-600">
-                      {doc.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </span>
-                  )}
+                  <DoctorAvatar name={doc.name} avatarUrl={doc.avatarUrl} />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">{doc.name}</p>
                     <p className="text-sm text-slate-500">{doc.specialties[0]}</p>
@@ -332,7 +317,7 @@ export function SundayConsultClient() {
                 <p className="font-medium text-slate-800">No Sunday doctors listed yet</p>
                 <p className="mt-2">
                   Doctors who enable Sunday Free Consult will appear here with open{" "}
-                  {sundayConsultCopy.durationLabel} video slots. Check back soon or browse{" "}
+                  {sundayCopy.durationLabel} video slots. Check back soon or browse{" "}
                   <Link href={siteConfig.links.doctors} className="text-brand hover:underline">
                     all doctors
                   </Link>
@@ -351,6 +336,21 @@ export function SundayConsultClient() {
             <CardContent className="space-y-4">
               {selectedDoctor && (
                 <>
+                  <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                    <DoctorAvatar
+                      name={selectedDoctor.name}
+                      avatarUrl={selectedDoctor.avatarUrl}
+                      size="lg"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">{selectedDoctor.name}</p>
+                      <p className="text-sm text-slate-500">{selectedDoctor.specialties[0]}</p>
+                      <p className="mt-1 flex items-center gap-1 text-sm text-slate-600">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        {selectedDoctor.ratingAvg} ({selectedDoctor.ratingCount})
+                      </p>
+                    </div>
+                  </div>
                   <SlotPicker
                     slots={slots}
                     selectedSlotId={selectedSlotId}

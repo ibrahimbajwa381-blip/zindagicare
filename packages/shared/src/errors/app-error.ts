@@ -1,8 +1,11 @@
+export type AppErrorField = "email" | "phone" | "name" | "password";
+
 export class AppError extends Error {
   constructor(
     message: string,
     public readonly code: string,
     public readonly statusCode: number = 400,
+    public readonly field?: AppErrorField,
   ) {
     super(message);
     this.name = "AppError";

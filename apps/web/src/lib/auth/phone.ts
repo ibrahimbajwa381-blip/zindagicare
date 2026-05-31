@@ -1,16 +1,12 @@
+import { parsePakistaniLocalPhone } from "@zindagi/validators";
+
 /** Normalize Pakistani mobile to E.164 (+923xxxxxxxxx). */
 export function normalizePakistaniPhone(input: string): string {
-  const digits = input.replace(/\D/g, "");
-  if (digits.startsWith("92") && digits.length === 12) {
-    return `+${digits}`;
+  const local = parsePakistaniLocalPhone(input);
+  if (!local) {
+    throw new Error("Invalid Pakistani phone number");
   }
-  if (digits.startsWith("03") && digits.length === 11) {
-    return `+92${digits.slice(1)}`;
-  }
-  if (digits.length === 10 && digits.startsWith("3")) {
-    return `+92${digits}`;
-  }
-  throw new Error("Invalid Pakistani phone number");
+  return `+92${local.slice(1)}`;
 }
 
 export function maskPhone(e164: string): string {

@@ -5,34 +5,45 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@zindagi/shared";
-import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import {
   HERO_CAROUSEL_HEIGHT,
-  heroServices,
+  type HeroService,
 } from "@/features/marketing/data/hero-services";
 
 const AUTO_ADVANCE_MS = 3000;
 
+type HeroCarouselLabels = {
+  servingPatients: string;
+  prevService: string;
+  nextService: string;
+};
+
 type HeroCarouselProps = {
+  services: HeroService[];
   activeIndex: number;
   onIndexChange: (index: number) => void;
+  labels: HeroCarouselLabels;
 };
 
 const SWIPE_THRESHOLD_PX = 48;
 
-export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) {
+export function HeroCarousel({
+  services,
+  activeIndex,
+  onIndexChange,
+  labels,
+}: HeroCarouselProps) {
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const goTo = useCallback(
     (index: number) => {
       const next =
-        ((index % heroServices.length) + heroServices.length) %
-        heroServices.length;
+        ((index % services.length) + services.length) % services.length;
       onIndexChange(next);
     },
-    [onIndexChange],
+    [onIndexChange, services.length],
   );
 
   const goNext = useCallback(() => goTo(activeIndex + 1), [activeIndex, goTo]);
@@ -77,7 +88,7 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {heroServices.map((service, index) => {
+      {services.map((service, index) => {
         const isActive = index === activeIndex;
 
         return (
@@ -86,7 +97,7 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
             aria-hidden={!isActive}
             className={cn(
               "absolute inset-0 transition-opacity duration-500",
-              isActive ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none",
+              isActive ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0",
             )}
           >
             <div aria-hidden className="absolute inset-0 bg-hero-brand" />
@@ -133,9 +144,7 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
                 </div>
 
                 <div className="mt-3 hidden shrink-0 border-t border-white/15 pt-3 sm:mt-6 sm:block sm:pt-4">
-                  <p className="text-xs text-brand-lighter/60">
-                    Serving patients across {siteConfig.launchCity}
-                  </p>
+                  <p className="text-xs text-brand-lighter/60">{labels.servingPatients}</p>
                 </div>
               </div>
 
@@ -159,8 +168,8 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
       })}
 
       <div className="absolute right-3 top-3 z-20 hidden gap-1 sm:right-6 sm:top-6 sm:flex">
-        <CarouselNavButton direction="prev" onClick={goPrev} />
-        <CarouselNavButton direction="next" onClick={goNext} />
+        <CarouselNavButton direction="prev" onClick={goPrev} label={labels.prevService} />
+        <CarouselNavButton direction="next" onClick={goNext} label={labels.nextService} />
       </div>
 
       <div
@@ -168,13 +177,13 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
         role="tablist"
         aria-label="Hero services"
       >
-        {heroServices.map((service, index) => (
+        {services.map((service, index) => (
           <button
             key={service.id}
             type="button"
             role="tab"
             aria-selected={index === activeIndex}
-            aria-label={`Show ${service.carousel.eyebrow}`}
+            aria-label={service.carousel.eyebrow}
             onClick={() => goTo(index)}
             className={cn(
               "pointer-events-auto h-2 rounded-full transition-all duration-300",
@@ -192,9 +201,11 @@ export function HeroCarousel({ activeIndex, onIndexChange }: HeroCarouselProps) 
 function CarouselNavButton({
   direction,
   onClick,
+  label,
 }: {
   direction: "prev" | "next";
   onClick: () => void;
+  label: string;
 }) {
   const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
   return (
@@ -202,7 +213,7 @@ function CarouselNavButton({
       type="button"
       onClick={onClick}
       className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25 active:scale-95 sm:h-9 sm:w-9"
-      aria-label={direction === "prev" ? "Previous service" : "Next service"}
+      aria-label={label}
     >
       <Icon className="h-5 w-5" />
     </button>

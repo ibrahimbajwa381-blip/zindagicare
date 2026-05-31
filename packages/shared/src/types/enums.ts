@@ -75,6 +75,8 @@ export const HomeVisitServiceTypes = {
   DOCTOR_VISIT: "doctor_visit",
   NURSE: "nurse",
   IV_DRIP: "iv_drip",
+  INJECTION: "injection",
+  WOUND_CARE: "wound_care",
   SAMPLE_COLLECTION: "sample_collection",
   EMERGENCY: "emergency",
 } as const;

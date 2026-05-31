@@ -25,6 +25,9 @@ import {
 } from "@/lib/sunday/date-utils";
 import { publishSundayEvent } from "@/lib/realtime/sunday-emitter";
 import { sendBookingConfirmation } from "@/lib/notifications/sunday-reminders";
+import { isSundayConsultGloballyEnabled } from "./system-settings.service";
+import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import type { SundayPatientBookingDto } from "@/features/sunday-consult/types";
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -75,6 +78,9 @@ export class SundayConsultService {
 
   static async listSundayDoctors(city = "Lahore", dateKey?: string) {
     await SundayConsultService.ensureConnected();
+    const globallyEnabled = await isSundayConsultGloballyEnabled();
+    if (!globallyEnabled) return [];
+
     const sundayDate = dateKey
       ? parseSundayDateKey(dateKey)
       : getNextSundayDate();
@@ -104,10 +110,11 @@ export class SundayConsultService {
       const available = slots.filter((s) => s.status === SlotStatuses.AVAILABLE).length;
       const user = doc.userId as { name?: string; avatarUrl?: string } | null;
 
+      const name = user?.name ?? "Doctor";
       return {
         doctorId: doc._id.toString(),
-        name: user?.name ?? "Doctor",
-        avatarUrl: user?.avatarUrl,
+        name,
+        avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
         specialties: doc.specialties,
         ratingAvg: doc.ratingAvg,
         ratingCount: doc.ratingCount,
@@ -211,6 +218,15 @@ export class SundayConsultService {
   }
 
   static async assertPatientCanBook(patientId: string, doctorId: string, sundayDate: Date) {
+    const globallyEnabled = await isSundayConsultGloballyEnabled();
+    if (!globallyEnabled) {
+      throw new AppError(
+        "Sunday free consult is currently disabled",
+        ErrorCodes.FORBIDDEN,
+        403,
+      );
+    }
+
     const user = await UserModel.findById(patientId);
     if (!user) {
       throw new AppError("User not found", ErrorCodes.NOT_FOUND, 404);
@@ -603,22 +619,68 @@ export class SundayConsultService {
     return appointment;
   }
 
-  static async getPatientBooking(patientId: string, dateKey?: string) {
+  static async getPatientBooking(
+    patientId: string,
+    dateKey?: string,
+  ): Promise<SundayPatientBookingDto | null> {
     await SundayConsultService.ensureConnected();
     const sundayDate = dateKey
       ? parseSundayDateKey(dateKey)
       : getNextSundayDate();
+    const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
 
-    return AppointmentModel.findOne({
+    const appointment = await AppointmentModel.findOne({
       patientId,
       type: AppointmentTypes.SUNDAY_FREE,
-      scheduledStart: {
-        $gte: sundayDate,
-        $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
-      },
+      scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
       status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     })
-      .populate({ path: "doctorId", populate: { path: "userId", select: "name" } })
+      .populate({
+        path: "doctorId",
+        select: "specialties pmdcVerified ratingAvg ratingCount",
+        populate: { path: "userId", select: "name avatarUrl" },
+      })
       .lean();
+
+    return SundayConsultService.toPatientBookingDto(appointment);
+  }
+
+  private static toPatientBookingDto(
+    appointment: Record<string, unknown> | null,
+  ): SundayPatientBookingDto | null {
+    if (!appointment) return null;
+
+    const doctor = appointment.doctorId as {
+      _id?: { toString(): string };
+      specialties?: string[];
+      pmdcVerified?: boolean;
+      ratingAvg?: number;
+      ratingCount?: number;
+      userId?: { name?: string; avatarUrl?: string };
+    } | null;
+
+    if (!doctor?._id) return null;
+
+    const user = doctor.userId;
+    const name = user?.name ?? "Doctor";
+    const scheduledStart = appointment.scheduledStart as Date;
+    const scheduledEnd = appointment.scheduledEnd as Date;
+
+    return {
+      appointmentId: String(appointment._id),
+      scheduledStart: scheduledStart.toISOString(),
+      scheduledEnd: scheduledEnd.toISOString(),
+      status: appointment.status as SundayPatientBookingDto["status"],
+      sundayDateKey: formatSundayDateKey(scheduledStart),
+      doctor: {
+        doctorId: doctor._id.toString(),
+        name,
+        avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+        specialty: doctor.specialties?.[0] ?? "General Physician",
+        pmdcVerified: Boolean(doctor.pmdcVerified),
+        ratingAvg: doctor.ratingAvg ?? 0,
+        ratingCount: doctor.ratingCount ?? 0,
+      },
+    };
   }
 }

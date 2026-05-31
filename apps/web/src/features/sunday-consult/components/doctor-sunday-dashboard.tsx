@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +72,7 @@ export function DoctorSundayDashboard() {
   };
 
   return (
-    <PageShell variant="brand" spacing="default" narrow flipBlur>
+    <>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle
           title="Sunday Free Consult"
@@ -188,7 +187,7 @@ export function DoctorSundayDashboard() {
           )}
         </CardContent>
       </Card>
-    </PageShell>
+    </>
   );
 }
 

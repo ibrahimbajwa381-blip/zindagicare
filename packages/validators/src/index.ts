@@ -1,2 +1,6 @@
 export * from "./auth.schema";
+export * from "./pakistan-phone";
+export * from "./patient-profile.schema";
 export * from "./sunday-consult.schema";
+export * from "./home-visit.schema";
+export * from "./admin.schema";

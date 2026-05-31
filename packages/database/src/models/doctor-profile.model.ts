@@ -51,6 +51,14 @@ const doctorProfileSchema = new Schema(
       durationMins: { type: Number, default: 10, min: 5, max: 60 },
       maxSlots: { type: Number, default: 20, min: 1, max: 100 },
     },
+    /** General weekly clinic hours (day 0 = Sunday … 6 = Saturday, times in Asia/Karachi). */
+    weeklyAvailability: [
+      {
+        dayOfWeek: { type: Number, required: true, min: 0, max: 6 },
+        startTimeLocal: { type: String, required: true },
+        endTimeLocal: { type: String, required: true },
+      },
+    ],
     coverageCities: { type: [String], default: ["Lahore"] },
     homeVisitEnabled: { type: Boolean, default: false },
     homeVisitFee: { type: Number, default: 0, min: 0 },

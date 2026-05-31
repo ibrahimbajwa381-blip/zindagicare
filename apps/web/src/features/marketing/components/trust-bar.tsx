@@ -3,19 +3,22 @@ import { Gift, Lock, ShieldCheck, Star } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
+import { getServerTranslations } from "@/i18n/server";
 
-const items = [
-  { icon: ShieldCheck, label: "PMDC verified doctors" },
-  {
-    icon: Gift,
-    label: "Free Sunday video consult",
-    href: siteConfig.links.sundayConsult,
-  },
-  { icon: Lock, label: "Secure online video" },
-  { icon: Star, label: "In-house care in Lahore" },
-];
+export async function TrustBar() {
+  const { t } = await getServerTranslations();
 
-export function TrustBar() {
+  const items = [
+    { icon: ShieldCheck, label: t.trustBar.pmdcVerified },
+    {
+      icon: Gift,
+      label: t.trustBar.freeSunday,
+      href: siteConfig.links.sundayConsult,
+    },
+    { icon: Lock, label: t.trustBar.secureVideo },
+    { icon: Star, label: t.trustBar.homeCare },
+  ];
+
   return (
     <PageSection variant="accent" spacing="sm" flipBlur>
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-14 sm:gap-y-6 lg:gap-x-16">
@@ -36,7 +39,10 @@ export function TrustBar() {
             <Link
               key={label}
               href={href}
-              className={cn(rowClass, "hover:bg-white/60 hover:text-brand-dark active:bg-white/80 sm:hover:bg-transparent")}
+              className={cn(
+                rowClass,
+                "hover:bg-white/60 hover:text-brand-dark active:bg-white/80 sm:hover:bg-transparent",
+              )}
             >
               {content}
             </Link>

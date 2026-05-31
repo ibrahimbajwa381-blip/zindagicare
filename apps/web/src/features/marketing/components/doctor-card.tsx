@@ -13,6 +13,7 @@ type DoctorCardProps = {
   fee: number;
   pmdcVerified: boolean;
   imageUrl?: string;
+  pmdcLabel?: string;
 };
 
 function initials(name: string) {
@@ -33,6 +34,7 @@ export function DoctorCard({
   fee,
   pmdcVerified,
   imageUrl,
+  pmdcLabel = "PMDC",
 }: DoctorCardProps) {
   return (
     <Card
@@ -66,7 +68,7 @@ export function DoctorCard({
                   className="shrink-0 gap-1 border-brand-light/50 bg-brand-muted text-xs text-brand-muted-foreground"
                 >
                   <BadgeCheck className="h-3 w-3" />
-                  PMDC
+                  {pmdcLabel}
                 </Badge>
               )}
             </div>

@@ -13,3 +13,11 @@ export type DemoDoctorImageName = keyof typeof DEMO_DOCTOR_IMAGES;
 export function getDemoDoctorImage(name: string): string | undefined {
   return DEMO_DOCTOR_IMAGES[name as DemoDoctorImageName];
 }
+
+/** Prefer stored avatar; fall back to demo portrait for marketing / Sunday listings. */
+export function resolveDoctorPortrait(
+  name: string,
+  avatarUrl?: string | null,
+): string | undefined {
+  return avatarUrl ?? getDemoDoctorImage(name);
+}

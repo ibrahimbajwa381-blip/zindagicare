@@ -1,0 +1,51 @@
+import { z } from "zod";
+
+export const adminCreateDoctorSchema = z.object({
+  name: z.string().min(2).max(100),
+  email: z.string().email(),
+  password: z.string().min(8).optional(),
+  phone: z.string().optional(),
+  pmdcNumber: z.string().min(3).max(30),
+  specialties: z.array(z.string().min(1)).min(1).max(5),
+  sundayConsultEnabled: z.boolean().optional(),
+});
+
+export const adminUpdateDoctorSchema = z.object({
+  isListed: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  sundayConsultEnabled: z.boolean().optional(),
+  weeklyAvailability: z
+    .array(
+      z.object({
+        dayOfWeek: z.number().min(0).max(6),
+        startTimeLocal: z.string().regex(/^\d{2}:\d{2}$/),
+        endTimeLocal: z.string().regex(/^\d{2}:\d{2}$/),
+      }),
+    )
+    .optional(),
+  sundayMaxSlots: z.number().min(5).max(20).optional(),
+  sundaySlotDurationMins: z.number().min(5).max(60).optional(),
+});
+
+export const adminCancelAppointmentSchema = z.object({
+  reason: z.string().min(3).max(500).optional(),
+});
+
+export const adminReassignAppointmentSchema = z.object({
+  doctorId: z.string().min(1),
+});
+
+export const adminSundaySettingsSchema = z.object({
+  sundayConsultEnabled: z.boolean().optional(),
+  sundayDefaultMaxSlots: z.number().min(5).max(20).optional(),
+  sundaySlotDurationMins: z.number().min(5).max(60).optional(),
+});
+
+export const adminSendNotificationSchema = z.object({
+  title: z.string().min(2).max(200),
+  body: z.string().min(2).max(1000),
+  channel: z.enum(["in_app", "sms", "email"]),
+  audience: z.enum(["all", "patients", "doctors", "user"]),
+  userId: z.string().optional(),
+  userEmail: z.string().email().optional(),
+});

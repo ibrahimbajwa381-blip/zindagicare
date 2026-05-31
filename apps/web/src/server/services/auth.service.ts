@@ -4,12 +4,22 @@ import {
   connectDatabase,
   DoctorProfileModel,
   PatientProfileModel,
+  StaffProfileModel,
   UserModel,
 } from "@zindagi/database";
-import { AppError, Roles, VerificationStatuses, type Role } from "@zindagi/shared";
+import { AppError, Roles, VerificationStatuses, LAHORE_GEO, type Role } from "@zindagi/shared";
+import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 
 const BCRYPT_ROUNDS = 12;
+
+async function ensurePatientProfile(userId: { toString(): string }) {
+  await PatientProfileModel.findOneAndUpdate(
+    { userId },
+    { $setOnInsert: { userId } },
+    { upsert: true },
+  );
+}
 
 export function hashCnic(cnic: string): string {
   return createHash("sha256").update(cnic.replace(/-/g, "")).digest("hex");
@@ -22,9 +32,31 @@ export function cnicLast4(cnic: string): string {
 
 export async function findUserByEmail(email: string) {
   await connectDatabase();
-  return UserModel.findOne({ email: email.toLowerCase() })
-    .select("+passwordHash")
-    .lean<{ passwordHash?: string; bannedUntil?: Date; _id: { toString(): string } }>();
+  const normalized = email.trim().toLowerCase();
+  const doc = await UserModel.findOne({ email: normalized })
+    .select("+passwordHash bannedUntil isActive deletedAt")
+    .exec();
+  if (!doc || doc.deletedAt || doc.isActive === false) return null;
+  return {
+    _id: doc._id,
+    passwordHash: doc.passwordHash,
+    bannedUntil: doc.bannedUntil,
+  };
+}
+
+/** Email/password sign-in for Auth.js credentials provider. */
+export async function verifyCredentialsLogin(email: string, password: string) {
+  const user = await findUserByEmail(email);
+  if (!user?.passwordHash) return null;
+
+  if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) {
+    return null;
+  }
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) return null;
+
+  return loadAuthUserPayload(String(user._id));
 }
 
 export async function findUserByPhone(phone: string) {
@@ -42,12 +74,14 @@ export async function registerWithCredentials(input: {
   await connectDatabase();
   const email = input.email.toLowerCase();
   const phone = normalizePakistaniPhone(input.phone);
+  const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
 
   const existing = await UserModel.findOne({
-    $or: [{ email }, { phone }],
+    $or: [{ email }, { phone }, { phone: phoneLocal }],
   });
   if (existing) {
-    throw new AppError("Account already exists", "CONFLICT", 409);
+    const field = existing.email === email ? "email" : "phone";
+    throw new AppError("Account already exists", "CONFLICT", 409, field);
   }
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -63,7 +97,12 @@ export async function registerWithCredentials(input: {
     isActive: true,
   });
 
-  await PatientProfileModel.create({ userId: user._id });
+  try {
+    await ensurePatientProfile(user._id);
+  } catch (error) {
+    await UserModel.findByIdAndDelete(user._id);
+    throw error;
+  }
 
   return user;
 }
@@ -82,13 +121,14 @@ export async function findOrCreatePhoneUser(phone: string, name?: string) {
       phoneVerified: new Date(),
       onboardingCompleted: false,
     });
-    await PatientProfileModel.create({ userId: user._id });
+    await ensurePatientProfile(user._id);
   } else {
     user.phoneVerified = new Date();
     if (!user.authProviders.includes("phone")) {
       user.authProviders.push("phone");
     }
     await user.save();
+    await ensurePatientProfile(user._id);
   }
 
   return user;
@@ -113,7 +153,7 @@ export async function findOrCreateGoogleUser(input: {
       emailVerified: new Date(),
       onboardingCompleted: false,
     });
-    await PatientProfileModel.create({ userId: user._id });
+    await ensurePatientProfile(user._id);
   } else {
     if (!user.authProviders.includes("google")) {
       user.authProviders.push("google");
@@ -123,6 +163,7 @@ export async function findOrCreateGoogleUser(input: {
     }
     user.emailVerified = user.emailVerified ?? new Date();
     await user.save();
+    await ensurePatientProfile(user._id);
   }
 
   return user;
@@ -216,6 +257,32 @@ export async function completeOnboarding(
       { upsert: true },
     );
     user.onboardingCompleted = false;
+    await user.save();
+  }
+
+  if (data.intent === "nurse" || data.intent === "rider") {
+    await StaffProfileModel.updateOne(
+      { userId: user._id } as Record<string, unknown>,
+      {
+        $set: {
+          staffType: roleMap[data.intent],
+          isAvailable: true,
+          verificationStatus: VerificationStatuses.APPROVED,
+          serviceAreas: [
+            {
+              city: data.city,
+              geo: {
+                type: "Point",
+                coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat],
+              },
+              radiusKm: 15,
+            },
+          ],
+        },
+      },
+      { upsert: true },
+    );
+    user.onboardingCompleted = true;
     await user.save();
   }
 

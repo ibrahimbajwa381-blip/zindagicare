@@ -47,12 +47,14 @@ export async function POST() {
         onboardingCompleted: true,
         authProviders: ["credentials"],
       });
-    } else if (avatarUrl && !user.avatarUrl) {
+    } else if (avatarUrl) {
       user.avatarUrl = avatarUrl;
       await user.save();
     }
 
-    let profile = await DoctorProfileModel.findOne({ userId: user._id });
+    let profile = await DoctorProfileModel.findOne({
+      userId: user._id,
+    } as Record<string, unknown>);
     if (!profile) {
       // Omit hospitals on create — legacy DB index on specialties + hospitals.city
       // rejects documents with both array fields until that index is dropped.
@@ -67,7 +69,7 @@ export async function POST() {
         slug: demo.name.toLowerCase().replace(/\s+/g, "-"),
         ratingAvg: 4.8,
         ratingCount: 100,
-      });
+      } as never);
     } else {
       await DoctorProfileModel.updateOne(
         { _id: profile._id },

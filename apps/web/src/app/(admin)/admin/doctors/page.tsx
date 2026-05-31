@@ -1,6 +1,7 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
 import { AdminDoctorQueue } from "@/features/auth/components/admin-doctor-queue";
+import { AdminSubNav } from "@/features/admin/components/admin-sub-nav";
 
 export const metadata = { title: "Doctor verifications" };
 
@@ -12,6 +13,7 @@ export default function AdminDoctorsPage() {
         description="Approve doctors to publish their profile and enable consultations."
       />
       <div className="mt-8">
+        <AdminSubNav />
         <AdminDoctorQueue />
       </div>
     </PageShell>

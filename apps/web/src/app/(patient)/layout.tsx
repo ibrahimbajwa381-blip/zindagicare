@@ -1,5 +1,5 @@
-import { AppHeader } from "@/components/layout/app-header";
-import { siteConfig } from "@/config/site";
+import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function PatientLayout({
   children,
@@ -8,15 +8,9 @@ export default function PatientLayout({
 }) {
   return (
     <>
-      <AppHeader
-        links={[
-          { href: siteConfig.links.dashboard, label: "Dashboard" },
-          { href: siteConfig.links.sundayConsult, label: "Sunday Free Consult" },
-          { href: siteConfig.links.doctors, label: "Online consultation" },
-          { href: siteConfig.links.homeServices, label: "In-house medical" },
-        ]}
-      />
+      <SiteHeader enrichUserFromProfile />
       <main className="flex-1">{children}</main>
+      <SiteFooter />
     </>
   );
 }

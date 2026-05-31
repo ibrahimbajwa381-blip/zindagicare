@@ -15,6 +15,8 @@ export const siteConfig = {
     doctors: "/doctors",
     sundayConsult: "/sunday-consult",
     homeServices: "/home-services",
+    homeCareRequest: "/home-care/request",
+    homeCareVisits: "/home-care/visits",
     login: "/login",
     register: "/register",
     dashboard: "/dashboard",

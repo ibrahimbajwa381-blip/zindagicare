@@ -1,5 +1,6 @@
 import { SiteLogo } from "@/components/layout/site-logo";
 import { PageSection } from "@/components/layout/page-section";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 export default function AuthLayout({
   children,
@@ -14,7 +15,10 @@ export default function AuthLayout({
       className="flex min-h-[min(100dvh,900px)] items-center justify-center"
       innerClassName="flex w-full flex-col items-center gap-8 !py-10 sm:gap-10 sm:!py-16"
     >
-      <SiteLogo size="xl" priority />
+      <div className="flex w-full max-w-md flex-col items-center gap-4">
+        <SiteLogo size="xl" priority />
+        <LanguageSwitcher />
+      </div>
       {children}
     </PageSection>
   );

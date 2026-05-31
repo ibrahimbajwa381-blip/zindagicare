@@ -8,7 +8,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@zindagi/shared": "*",
-    "mongoose": "^8.9.0"
+    "@zindagi/shared": "*"
+  },
+  "peerDependencies": {
+    "mongoose": "^9.6.0"
   }
 }

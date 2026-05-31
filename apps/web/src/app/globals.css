@@ -75,6 +75,10 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+html[lang="ur"] body {
+  font-family: var(--font-urdu), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer utilities {
   .text-gradient-premium {
     background: linear-gradient(

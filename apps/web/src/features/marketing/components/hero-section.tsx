@@ -1,17 +1,26 @@
-"use client";
+import { getHeroServices } from "@/i18n/hero";
+import { formatMessage, getServerTranslations } from "@/i18n/server";
+import { siteConfig } from "@/config/site";
+import { HeroSectionClient } from "./hero-section-client";
 
-import { useState } from "react";
-import { HeroCarousel } from "./hero-carousel";
-import { HeroServiceCards } from "./hero-service-cards";
-import { PageSection } from "@/components/layout/page-section";
-
-export function HeroSection() {
-  const [activeIndex, setActiveIndex] = useState(0);
+export async function HeroSection() {
+  const { t } = await getServerTranslations();
+  const services = getHeroServices(t.hero);
+  const servingPatients = formatMessage(t.hero.servingPatients, {
+    city: siteConfig.launchCity,
+  });
 
   return (
-    <PageSection variant="soft" spacing="sm" innerClassName="space-y-4 sm:space-y-5">
-      <HeroCarousel activeIndex={activeIndex} onIndexChange={setActiveIndex} />
-      <HeroServiceCards activeIndex={activeIndex} onSelect={setActiveIndex} />
-    </PageSection>
+    <HeroSectionClient
+      services={services}
+      labels={{
+        learnMore: t.hero.learnMore,
+        swipeHint: t.hero.swipeHint,
+        servingPatients,
+        freeBadge: t.hero.freeBadge,
+        prevService: t.hero.prevService,
+        nextService: t.hero.nextService,
+      }}
+    />
   );
 }

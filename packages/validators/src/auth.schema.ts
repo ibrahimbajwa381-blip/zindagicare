@@ -1,22 +1,41 @@
 import { z } from "zod";
+import {
+  isValidPakistaniMobile,
+  normalizePhoneDigits,
+  PAKISTANI_PHONE_ERROR,
+  toPakistaniLocalPhone,
+} from "./pakistan-phone";
 
-const pakistaniPhone = z
+/** Accepts 03001234567, spaces, dashes, +92, 0092, etc. Outputs 03XXXXXXXXX. */
+export const pakistaniPhoneSchema = z
   .string()
-  .regex(/^(\+92|0)?3[0-9]{9}$/, "Enter a valid Pakistani mobile number");
+  .trim()
+  .min(1, "Enter your mobile number")
+  .transform(normalizePhoneDigits)
+  .refine(isValidPakistaniMobile, { message: PAKISTANI_PHONE_ERROR })
+  .transform(toPakistaniLocalPhone);
+
+const pakistaniPhone = pakistaniPhoneSchema;
 
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const registerSchema = z.object({
   name: z.string().min(2, "Name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Invalid email address"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Include at least one uppercase letter")
-    .regex(/[0-9]/, "Include at least one number"),
+    .min(6, "Password must be at least 6 characters"),
   phone: pakistaniPhone,
 });
 
@@ -33,8 +52,26 @@ export const onboardingSchema = z.object({
   city: z.string().min(2, "City is required"),
   locale: z.enum(["en", "ur"]).default("en"),
   dateOfBirth: z.string().optional(),
-  gender: z.enum(["male", "female", "other"]).optional(),
+  gender: z
+    .union([z.enum(["male", "female", "other"]), z.literal("")])
+    .optional()
+    .transform((value) => (value === "" ? undefined : value)),
 });
+
+const timeLocalSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, "Use HH:mm format (e.g. 16:00)");
+
+const weeklyAvailabilityEntrySchema = z
+  .object({
+    dayOfWeek: z.coerce.number().int().min(0).max(6),
+    startTimeLocal: timeLocalSchema,
+    endTimeLocal: timeLocalSchema,
+  })
+  .refine((data) => data.endTimeLocal > data.startTimeLocal, {
+    message: "End time must be after start time",
+    path: ["endTimeLocal"],
+  });
 
 export const doctorVerificationSchema = z.object({
   pmdcNumber: z
@@ -65,11 +102,50 @@ export const doctorVerificationSchema = z.object({
     )
     .min(1, "Add at least one practice location"),
   documentUrls: z.object({
-    pmdcCertificate: z.string().url("PMDC certificate URL required"),
-    cnicFront: z.string().url("CNIC front image required"),
-    cnicBack: z.string().url("CNIC back image required"),
-    degreeCertificate: z.string().url("Degree certificate required"),
+    pmdcCertificate: z.string().min(1, "PMDC certificate required"),
+    cnicFront: z.string().min(1, "CNIC front image required"),
+    cnicBack: z.string().min(1, "CNIC back image required"),
+    degreeCertificate: z.string().min(1, "Degree certificate required"),
   }),
+  weeklyAvailability: z
+    .array(weeklyAvailabilityEntrySchema)
+    .min(1, "Add at least one availability window"),
+  sundayConsult: z
+    .object({
+      enabled: z.boolean(),
+      startTimeLocal: timeLocalSchema.optional(),
+      endTimeLocal: timeLocalSchema.optional(),
+      slotDurationMins: z.coerce.number().int().min(5).max(60).default(10),
+    })
+    .optional()
+    .superRefine((data, ctx) => {
+      if (!data?.enabled) return;
+      if (!data.startTimeLocal) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sunday start time is required",
+          path: ["startTimeLocal"],
+        });
+      }
+      if (!data.endTimeLocal) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sunday end time is required",
+          path: ["endTimeLocal"],
+        });
+      }
+      if (
+        data.startTimeLocal &&
+        data.endTimeLocal &&
+        data.endTimeLocal <= data.startTimeLocal
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sunday end time must be after start time",
+          path: ["endTimeLocal"],
+        });
+      }
+    }),
 });
 
 export const adminDoctorDecisionSchema = z.object({

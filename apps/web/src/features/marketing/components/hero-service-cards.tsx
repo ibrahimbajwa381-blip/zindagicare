@@ -4,22 +4,30 @@ import type { MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@zindagi/shared";
-import { heroServices } from "@/features/marketing/data/hero-services";
+import type { HeroService } from "@/features/marketing/data/hero-services";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 type HeroServiceCardsProps = {
+  services: HeroService[];
   activeIndex: number;
   onSelect: (index: number) => void;
+  labels: {
+    learnMore: string;
+    swipeHint: string;
+    freeBadge: string;
+  };
 };
 
 export function HeroServiceCards({
+  services,
   activeIndex,
   onSelect,
+  labels,
 }: HeroServiceCardsProps) {
   return (
     <div className="-mx-4 sm:mx-0">
       <div className="browse-scroll flex gap-3 px-4 pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
-        {heroServices.map((service, index) => {
+        {services.map((service, index) => {
           const isActive = index === activeIndex;
 
           return (
@@ -45,7 +53,7 @@ export function HeroServiceCards({
                 />
                 {service.id === "sunday-consult" && (
                   <span className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm sm:text-xs">
-                    Free
+                    {labels.freeBadge}
                   </span>
                 )}
               </div>
@@ -61,7 +69,7 @@ export function HeroServiceCards({
                   onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
                   className="mt-2 inline-flex min-h-9 items-center text-xs font-medium text-brand hover:text-brand-dark sm:text-sm"
                 >
-                  Learn more →
+                  {labels.learnMore}
                 </Link>
               </div>
             </button>
@@ -69,7 +77,7 @@ export function HeroServiceCards({
         })}
       </div>
       <p className="mt-2 px-4 text-center text-[11px] text-slate-500 sm:hidden">
-        Swipe to explore services · tap a card to preview above
+        {labels.swipeHint}
       </p>
     </div>
   );

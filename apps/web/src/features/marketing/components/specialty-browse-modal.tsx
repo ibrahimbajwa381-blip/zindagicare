@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { allSpecialties } from "../data/browse-catalog";
 import { BrowseIconTile } from "./browse-icon-tile";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import { useLocale, useTranslations } from "@/i18n/locale-provider";
+import { localizeBrowseItems } from "@/i18n/browse";
 
 type SpecialtyBrowseModalProps = {
   open: boolean;
@@ -20,6 +22,13 @@ export function SpecialtyBrowseModal({
 }: SpecialtyBrowseModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState("");
+  const { locale } = useLocale();
+  const t = useTranslations();
+
+  const localizedAll = useMemo(
+    () => localizeBrowseItems(allSpecialties, locale),
+    [locale],
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -39,13 +48,13 @@ export function SpecialtyBrowseModal({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return allSpecialties;
-    return allSpecialties.filter(
+    if (!q) return localizedAll;
+    return localizedAll.filter(
       (item) =>
         item.label.toLowerCase().includes(q) ||
         item.slug.replace(/-/g, " ").includes(q),
     );
-  }, [query]);
+  }, [query, localizedAll]);
 
   return (
     <dialog
@@ -64,17 +73,17 @@ export function SpecialtyBrowseModal({
           <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
             <div>
               <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-                All specialties
+                {t.doctors.modalTitle}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                {allSpecialties.length} specialties · search to filter
+                {localizedAll.length} · {t.doctors.modalPlaceholder}
               </p>
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
-              aria-label="Close"
+              aria-label={t.common.closeMenu}
             >
               <X className="h-5 w-5" />
             </button>
@@ -87,7 +96,7 @@ export function SpecialtyBrowseModal({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search specialty, e.g. Cardiologist"
+                placeholder={t.doctors.modalPlaceholder}
                 className="h-11 rounded-xl pl-10"
                 autoFocus
               />
@@ -97,7 +106,7 @@ export function SpecialtyBrowseModal({
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
             {filtered.length === 0 ? (
               <p className="py-12 text-center text-sm text-slate-500">
-                No specialties match &ldquo;{query}&rdquo;
+                {t.doctors.modalEmpty}
               </p>
             ) : (
               <div className="grid grid-cols-3 gap-x-2 gap-y-6 sm:grid-cols-4 md:grid-cols-5">
@@ -119,7 +128,7 @@ export function SpecialtyBrowseModal({
               className="block text-center text-sm font-medium text-brand hover:text-brand-dark hover:underline"
               onClick={() => onOpenChange(false)}
             >
-              Browse all doctors in Lahore
+              {t.common.browseAll}
             </Link>
           </div>
         </div>

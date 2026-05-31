@@ -41,8 +41,8 @@ export const heroServices: HeroService[] = [
   },
   {
     id: "sunday-consult",
-    image: "/hero/online-consult.jpg",
-    imageAlt: "Patient joining a free Sunday video consultation",
+    image: "/hero/in-clinic.jpg",
+    imageAlt: "Doctor consulting with a patient in clinic",
     carousel: {
       eyebrow: "Sunday Free Consult",
       title: "Free doctor video call",

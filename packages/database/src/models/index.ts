@@ -14,3 +14,4 @@ export * from "./video-session.model";
 export * from "./home-visit.model";
 export * from "./payment.model";
 export * from "./audit-log.model";
+export * from "./system-settings.model";
