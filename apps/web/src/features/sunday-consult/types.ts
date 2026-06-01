@@ -1,5 +1,6 @@
 import type { AppointmentStatus } from "@zindagi/shared";
 
+<<<<<<< HEAD
 /** API response after confirming a Sunday free consult booking. */
 export type SundayConfirmBookingResult = {
   appointmentId: string;
@@ -8,6 +9,8 @@ export type SundayConfirmBookingResult = {
   status: AppointmentStatus;
 };
 
+=======
+>>>>>>> de54e62 (google verification)
 export type SundayPatientBookingDto = {
   appointmentId: string;
   scheduledStart: string;

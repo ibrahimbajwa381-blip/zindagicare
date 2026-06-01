@@ -13,7 +13,10 @@ import type {
   WeeklyAvailabilityDto,
 } from "@/features/doctor/types";
 import { formatDayOfWeek } from "@/features/doctor/types";
+<<<<<<< HEAD
 import { mongoFilter } from "@/lib/mongo/query";
+=======
+>>>>>>> de54e62 (google verification)
 
 export type { DoctorProfileDto, SundayConsultDto, WeeklyAvailabilityDto };
 export { formatDayOfWeek };
@@ -22,12 +25,19 @@ async function buildSundayConsultDto(
   doctorProfileId: string,
   profileDefaults?: { durationMins?: number; maxSlots?: number },
 ): Promise<SundayConsultDto> {
+<<<<<<< HEAD
   const template = await SundaySlotTemplateModel.findOne(
     mongoFilter({
       doctorId: doctorProfileId,
       isActive: true,
     }),
   ).lean();
+=======
+  const template = await SundaySlotTemplateModel.findOne({
+    doctorId: doctorProfileId,
+    isActive: true,
+  }).lean();
+>>>>>>> de54e62 (google verification)
 
   if (!template) {
     return {
@@ -112,7 +122,11 @@ export async function getDoctorProfile(userId: string): Promise<DoctorProfileDto
     throw new AppError("Forbidden", "FORBIDDEN", 403);
   }
 
+<<<<<<< HEAD
   const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }));
+=======
+  const profile = await DoctorProfileModel.findOne({ userId: user._id });
+>>>>>>> de54e62 (google verification)
   if (!profile) {
     throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
   }

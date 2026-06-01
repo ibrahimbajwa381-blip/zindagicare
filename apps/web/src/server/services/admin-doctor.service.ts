@@ -4,7 +4,10 @@ import {
   DoctorProfileModel,
   SundaySlotTemplateModel,
   UserModel,
+<<<<<<< HEAD
   type DoctorProfileDocument,
+=======
+>>>>>>> de54e62 (google verification)
 } from "@zindagi/database";
 import {
   AppError,
@@ -39,7 +42,11 @@ async function generateUniqueSlug(name: string, profileId: string): Promise<stri
     await DoctorProfileModel.findOne({
       slug,
       _id: { $ne: profileId },
+<<<<<<< HEAD
     } as Record<string, unknown>).lean()
+=======
+    }).lean()
+>>>>>>> de54e62 (google verification)
   ) {
     counter += 1;
     slug = `${base}-${counter}`;
@@ -153,7 +160,11 @@ export async function adminCreateDoctor(
     isActive: true,
   });
 
+<<<<<<< HEAD
   const profile = (await DoctorProfileModel.create({
+=======
+  const profile = await DoctorProfileModel.create({
+>>>>>>> de54e62 (google verification)
     userId: user._id,
     pmdcNumber: input.pmdcNumber,
     pmdcVerified: true,
@@ -164,6 +175,7 @@ export async function adminCreateDoctor(
     isListed: true,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
     coverageCities: ["Lahore"],
+<<<<<<< HEAD
   } as Record<string, unknown>)) as DoctorProfileDocument;
 
   const slug = await generateUniqueSlug(input.name, profile._id.toString());
@@ -172,6 +184,16 @@ export async function adminCreateDoctor(
   if (input.sundayConsultEnabled) {
     await SundaySlotTemplateModel.findOneAndUpdate(
       { doctorId: profile._id } as Record<string, unknown>,
+=======
+  });
+
+  profile.slug = await generateUniqueSlug(input.name, profile._id.toString());
+  await profile.save();
+
+  if (input.sundayConsultEnabled) {
+    await SundaySlotTemplateModel.findOneAndUpdate(
+      { doctorId: profile._id },
+>>>>>>> de54e62 (google verification)
       {
         $set: {
           startTimeLocal: "09:00",
@@ -223,9 +245,13 @@ export async function adminUpdateDoctor(
   }
 
   if (input.sundayMaxSlots !== undefined || input.sundaySlotDurationMins !== undefined) {
+<<<<<<< HEAD
     const template = await SundaySlotTemplateModel.findOne({
       doctorId: profile._id,
     } as Record<string, unknown>);
+=======
+    const template = await SundaySlotTemplateModel.findOne({ doctorId: profile._id });
+>>>>>>> de54e62 (google verification)
     if (template) {
       if (input.sundayMaxSlots !== undefined) template.maxSlots = input.sundayMaxSlots;
       if (input.sundaySlotDurationMins !== undefined) {
@@ -242,7 +268,11 @@ export async function adminUpdateDoctor(
         dayOfWeek: SUNDAY_CONSULT_CONFIG.dayOfWeek,
         timezone: SUNDAY_CONSULT_CONFIG.timezone,
         isActive: true,
+<<<<<<< HEAD
       } as Record<string, unknown>);
+=======
+      });
+>>>>>>> de54e62 (google verification)
     }
   }
 

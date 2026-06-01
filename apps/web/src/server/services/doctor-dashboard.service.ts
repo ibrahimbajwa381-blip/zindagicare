@@ -14,7 +14,10 @@ import {
   Roles,
 } from "@zindagi/shared";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
+<<<<<<< HEAD
 import { mongoFilter } from "@/lib/mongo/query";
+=======
+>>>>>>> de54e62 (google verification)
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -70,7 +73,11 @@ async function getDoctorProfileForUser(userId: string) {
   if (!user?.roles.includes(Roles.DOCTOR)) {
     throw new AppError("Forbidden", "FORBIDDEN", 403);
   }
+<<<<<<< HEAD
   const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }));
+=======
+  const profile = await DoctorProfileModel.findOne({ userId: user._id });
+>>>>>>> de54e62 (google verification)
   if (!profile) {
     throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
   }
@@ -90,6 +97,7 @@ export async function getDoctorDashboardSummary(
 
   const [patientIds, pendingRequests, sundayQueue, homeVisitRequests] =
     await Promise.all([
+<<<<<<< HEAD
       AppointmentModel.distinct("patientId", mongoFilter({ doctorId: profile._id })),
       AppointmentModel.countDocuments(
         mongoFilter({
@@ -114,6 +122,26 @@ export async function getDoctorDashboardSummary(
           "address.city": { $in: cities },
         }),
       ),
+=======
+      AppointmentModel.distinct("patientId", { doctorId: profile._id }),
+      AppointmentModel.countDocuments({
+        doctorId: profile._id,
+        type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+        scheduledStart: { $gte: now },
+      }),
+      AppointmentModel.countDocuments({
+        doctorId: profile._id,
+        type: AppointmentTypes.SUNDAY_FREE,
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+        scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
+      }),
+      HomeVisitModel.countDocuments({
+        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+        status: { $in: ACTIVE_HOME_VISIT_STATUSES },
+        "address.city": { $in: cities },
+      }),
+>>>>>>> de54e62 (google verification)
     ]);
 
   return {
@@ -145,11 +173,15 @@ export async function listDoctorPatients(userId: string): Promise<DoctorPatientR
   ]);
 
   const patientIds = grouped.map((row) => row._id);
+<<<<<<< HEAD
   const patients = await UserModel.find(
     mongoFilter({
       _id: { $in: patientIds.map((id) => String(id)) },
     }),
   )
+=======
+  const patients = await UserModel.find({ _id: { $in: patientIds } })
+>>>>>>> de54e62 (google verification)
     .select("name phone")
     .lean();
   const patientMap = new Map(
@@ -175,6 +207,7 @@ export async function listDoctorConsultRequests(
   const { profile } = await getDoctorProfileForUser(userId);
   const now = new Date();
 
+<<<<<<< HEAD
   const appointments = await AppointmentModel.find(
     mongoFilter({
       doctorId: profile._id,
@@ -183,6 +216,14 @@ export async function listDoctorConsultRequests(
       scheduledStart: { $gte: now },
     }),
   )
+=======
+  const appointments = await AppointmentModel.find({
+    doctorId: profile._id,
+    type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
+    status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+    scheduledStart: { $gte: now },
+  })
+>>>>>>> de54e62 (google verification)
     .populate("patientId", "name phone")
     .sort({ scheduledStart: 1 })
     .limit(50)
@@ -216,6 +257,7 @@ export async function listDoctorHomeVisitRequests(
     ? profile.coverageCities
     : ["Lahore"];
 
+<<<<<<< HEAD
   const visits = await HomeVisitModel.find(
     mongoFilter({
       serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
@@ -223,6 +265,13 @@ export async function listDoctorHomeVisitRequests(
       "address.city": { $in: cities },
     }),
   )
+=======
+  const visits = await HomeVisitModel.find({
+    serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+    status: { $in: ACTIVE_HOME_VISIT_STATUSES },
+    "address.city": { $in: cities },
+  })
+>>>>>>> de54e62 (google verification)
     .populate("patientId", "name phone")
     .sort({ scheduledAt: 1 })
     .limit(50)
@@ -237,8 +286,13 @@ export async function listDoctorHomeVisitRequests(
       status: visit.status,
       scheduledAt: visit.scheduledAt.toISOString(),
       address: {
+<<<<<<< HEAD
         line: visit.address?.line ?? "",
         city: visit.address?.city ?? "",
+=======
+        line: visit.address.line,
+        city: visit.address.city,
+>>>>>>> de54e62 (google verification)
       },
       patient: patient?._id
         ? {
@@ -249,8 +303,13 @@ export async function listDoctorHomeVisitRequests(
         : undefined,
       patientNotes: visit.patientNotes ?? undefined,
       pricing: {
+<<<<<<< HEAD
         total: visit.pricing?.total ?? 0,
         currency: visit.pricing?.currency ?? "PKR",
+=======
+        total: visit.pricing.total,
+        currency: visit.pricing.currency,
+>>>>>>> de54e62 (google verification)
       },
     };
   });

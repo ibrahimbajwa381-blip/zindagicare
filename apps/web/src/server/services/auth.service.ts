@@ -10,13 +10,20 @@ import {
 import { AppError, Roles, VerificationStatuses, LAHORE_GEO, type Role } from "@zindagi/shared";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+<<<<<<< HEAD
 import { mongoFilter } from "@/lib/mongo/query";
+=======
+>>>>>>> de54e62 (google verification)
 
 const BCRYPT_ROUNDS = 12;
 
 async function ensurePatientProfile(userId: { toString(): string }) {
   await PatientProfileModel.findOneAndUpdate(
+<<<<<<< HEAD
     mongoFilter({ userId: userId.toString() }),
+=======
+    { userId },
+>>>>>>> de54e62 (google verification)
     { $setOnInsert: { userId } },
     { upsert: true },
   );
@@ -184,7 +191,11 @@ export async function loadAuthUserPayload(userId: string) {
 
   let doctorVerificationStatus: string | undefined;
   if (user.roles?.includes(Roles.DOCTOR)) {
+<<<<<<< HEAD
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }))
+=======
+    const profile = await DoctorProfileModel.findOne({ userId: user._id })
+>>>>>>> de54e62 (google verification)
       .select("verificationStatus isListed")
       .lean();
     doctorVerificationStatus = profile?.verificationStatus;
@@ -237,7 +248,11 @@ export async function completeOnboarding(
 
   if (data.intent === "patient") {
     await PatientProfileModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({ userId: user._id }),
+=======
+      { userId: user._id },
+>>>>>>> de54e62 (google verification)
       {
         defaultCity: data.city,
         ...(data.dateOfBirth ? { dateOfBirth: new Date(data.dateOfBirth) } : {}),
@@ -249,7 +264,11 @@ export async function completeOnboarding(
 
   if (data.intent === "doctor") {
     await DoctorProfileModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({ userId: user._id }),
+=======
+      { userId: user._id },
+>>>>>>> de54e62 (google verification)
       {
         verificationStatus: VerificationStatuses.PENDING,
         isListed: false,

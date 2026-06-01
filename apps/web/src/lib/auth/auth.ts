@@ -16,7 +16,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
+<<<<<<< HEAD
       clientSecret: process.env.GOGLE_CLIENT_SECRET,
+=======
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+>>>>>>> de54e62 (google verification)
       allowDangerousEmailAccountLinking: false,
     }),
     Credentials({

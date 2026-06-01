@@ -27,6 +27,7 @@ import { publishSundayEvent } from "@/lib/realtime/sunday-emitter";
 import { sendBookingConfirmation } from "@/lib/notifications/sunday-reminders";
 import { isSundayConsultGloballyEnabled } from "./system-settings.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+<<<<<<< HEAD
 import type {
   SundayConfirmBookingResult,
   SundayPatientBookingDto,
@@ -50,6 +51,9 @@ function toConfirmBookingResult(doc: CreatedAppointmentRow): SundayConfirmBookin
     status: doc.status,
   };
 }
+=======
+import type { SundayPatientBookingDto } from "@/features/sunday-consult/types";
+>>>>>>> de54e62 (google verification)
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -117,12 +121,19 @@ export class SundayConsultService {
       .populate("userId", "name avatarUrl")
       .lean();
 
+<<<<<<< HEAD
     const instances = await SundaySlotInstanceModel.find(
       mongoFilter({
         sundayDate,
         doctorId: { $in: doctors.map((d) => d._id.toString()) },
       }),
     ).lean();
+=======
+    const instances = await SundaySlotInstanceModel.find({
+      sundayDate,
+      doctorId: { $in: doctors.map((d) => d._id) },
+    }).lean();
+>>>>>>> de54e62 (google verification)
 
     const instanceMap = new Map(
       instances.map((i) => [i.doctorId.toString(), i]),
@@ -164,9 +175,16 @@ export class SundayConsultService {
       throw new AppError("Sunday consult not available", ErrorCodes.NOT_FOUND, 404);
     }
 
+<<<<<<< HEAD
     let instance = await SundaySlotInstanceModel.findOne(
       mongoFilter({ doctorId, sundayDate }),
     );
+=======
+    let instance = await SundaySlotInstanceModel.findOne({
+      doctorId,
+      sundayDate,
+    });
+>>>>>>> de54e62 (google verification)
 
     if (!instance) {
       instance = await SundayConsultService.materializeInstance(
@@ -194,9 +212,16 @@ export class SundayConsultService {
   }
 
   static async materializeInstance(doctorId: string, sundayDate: Date) {
+<<<<<<< HEAD
     const template = await SundaySlotTemplateModel.findOne(
       mongoFilter({ doctorId, isActive: true }),
     );
+=======
+    const template = await SundaySlotTemplateModel.findOne({
+      doctorId,
+      isActive: true,
+    });
+>>>>>>> de54e62 (google verification)
 
     if (!template) {
       throw new AppError(
@@ -223,7 +248,11 @@ export class SundayConsultService {
     }));
 
     const instance = await SundaySlotInstanceModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({ doctorId, sundayDate }),
+=======
+      { doctorId, sundayDate },
+>>>>>>> de54e62 (google verification)
       {
         $setOnInsert: {
           doctorId,
@@ -236,10 +265,14 @@ export class SundayConsultService {
       { upsert: true, new: true },
     );
 
+<<<<<<< HEAD
     if (!instance) {
       throw new AppError("Could not materialize Sunday slots", "INTERNAL_ERROR", 500);
     }
     return instance;
+=======
+    return instance!;
+>>>>>>> de54e62 (google verification)
   }
 
   static async assertPatientCanBook(patientId: string, doctorId: string, sundayDate: Date) {
@@ -269,6 +302,7 @@ export class SundayConsultService {
       throw new AppError("Account suspended", ErrorCodes.USER_BANNED, 403);
     }
 
+<<<<<<< HEAD
     const existing = await AppointmentModel.findOne(
       mongoFilter({
         patientId,
@@ -281,6 +315,18 @@ export class SundayConsultService {
         status: { $in: ACTIVE_APPOINTMENT_STATUSES },
       }),
     );
+=======
+    const existing = await AppointmentModel.findOne({
+      patientId,
+      doctorId,
+      type: AppointmentTypes.SUNDAY_FREE,
+      scheduledStart: {
+        $gte: sundayDate,
+        $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+    });
+>>>>>>> de54e62 (google verification)
 
     if (existing) {
       throw new AppError(
@@ -318,7 +364,11 @@ export class SundayConsultService {
     const heldUntil = new Date(Date.now() + SUNDAY_CONSULT_CONFIG.holdDurationMs);
 
     const updated = await SundaySlotInstanceModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({
+=======
+      {
+>>>>>>> de54e62 (google verification)
         _id: instanceId,
         slots: {
           $elemMatch: {
@@ -326,7 +376,11 @@ export class SundayConsultService {
             status: SlotStatuses.AVAILABLE,
           },
         },
+<<<<<<< HEAD
       }),
+=======
+      },
+>>>>>>> de54e62 (google verification)
       {
         $set: {
           "slots.$.status": SlotStatuses.HELD,
@@ -362,7 +416,11 @@ export class SundayConsultService {
     slotId: string,
     holdToken: string,
     patientNotes?: string,
+<<<<<<< HEAD
   ): Promise<SundayConfirmBookingResult> {
+=======
+  ) {
+>>>>>>> de54e62 (google verification)
     await SundayConsultService.ensureConnected();
 
     const instance = await SundaySlotInstanceModel.findById(instanceId);
@@ -396,13 +454,18 @@ export class SundayConsultService {
     );
     const doctorUser = doctor?.userId as { name?: string; phone?: string } | null;
 
+<<<<<<< HEAD
     const appointment = (await AppointmentModel.create({
+=======
+    const appointment = await AppointmentModel.create({
+>>>>>>> de54e62 (google verification)
       type: AppointmentTypes.SUNDAY_FREE,
       status: AppointmentStatuses.CONFIRMED,
       patientId,
       doctorId,
       scheduledStart: slot.startAt,
       scheduledEnd: slot.endAt,
+<<<<<<< HEAD
       sundaySlotInstanceId: instance._id.toString(),
       sundaySlotId: slotId,
       patientNotes,
@@ -420,6 +483,23 @@ export class SundayConsultService {
         $set: {
           "slots.$.status": SlotStatuses.BOOKED,
           "slots.$.appointmentId": result.appointmentId,
+=======
+      sundaySlotInstanceId: instance._id,
+      sundaySlotId: slotId,
+      patientNotes,
+      isOnline: true,
+    });
+
+    await SundaySlotInstanceModel.updateOne(
+      {
+        _id: instanceId,
+        "slots.slotId": slotId,
+      },
+      {
+        $set: {
+          "slots.$.status": SlotStatuses.BOOKED,
+          "slots.$.appointmentId": appointment._id,
+>>>>>>> de54e62 (google verification)
           "slots.$.heldUntil": undefined,
           "slots.$.holdToken": undefined,
         },
@@ -444,7 +524,11 @@ export class SundayConsultService {
       status: SlotStatuses.BOOKED,
     });
 
+<<<<<<< HEAD
     return result;
+=======
+    return appointment;
+>>>>>>> de54e62 (google verification)
   }
 
   static async releaseHold(
@@ -455,8 +539,13 @@ export class SundayConsultService {
   ) {
     await SundayConsultService.ensureConnected();
 
+<<<<<<< HEAD
     const updated = (await SundaySlotInstanceModel.findOneAndUpdate(
       mongoFilter({
+=======
+    const updated = await SundaySlotInstanceModel.findOneAndUpdate(
+      {
+>>>>>>> de54e62 (google verification)
         _id: instanceId,
         slots: {
           $elemMatch: {
@@ -466,7 +555,11 @@ export class SundayConsultService {
             patientId,
           },
         },
+<<<<<<< HEAD
       }),
+=======
+      },
+>>>>>>> de54e62 (google verification)
       {
         $set: {
           "slots.$.status": SlotStatuses.AVAILABLE,
@@ -476,7 +569,11 @@ export class SundayConsultService {
         },
       },
       { new: true },
+<<<<<<< HEAD
     )) as { doctorId: { toString(): string }; sundayDate: Date } | null;
+=======
+    );
+>>>>>>> de54e62 (google verification)
 
     if (updated) {
       publishSundayEvent({
@@ -504,13 +601,21 @@ export class SundayConsultService {
   ) {
     await SundayConsultService.ensureConnected();
 
+<<<<<<< HEAD
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
+=======
+    const profile = await DoctorProfileModel.findOne({ userId });
+>>>>>>> de54e62 (google verification)
     if (!profile) {
       throw new AppError("Doctor profile required", ErrorCodes.FORBIDDEN, 403);
     }
 
     const template = await SundaySlotTemplateModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({ doctorId: profile._id }),
+=======
+      { doctorId: profile._id },
+>>>>>>> de54e62 (google verification)
       {
         $set: {
           ...input,
@@ -532,7 +637,11 @@ export class SundayConsultService {
   static async toggleSundayConsult(userId: string, enabled: boolean) {
     await SundayConsultService.ensureConnected();
     const profile = await DoctorProfileModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({ userId }),
+=======
+      { userId },
+>>>>>>> de54e62 (google verification)
       { $set: { sundayConsultEnabled: enabled } },
       { new: true },
     );
@@ -544,7 +653,11 @@ export class SundayConsultService {
 
   static async getDoctorQueue(userId: string, dateKey?: string) {
     await SundayConsultService.ensureConnected();
+<<<<<<< HEAD
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
+=======
+    const profile = await DoctorProfileModel.findOne({ userId });
+>>>>>>> de54e62 (google verification)
     if (!profile) {
       throw new AppError("Doctor profile not found", ErrorCodes.NOT_FOUND, 404);
     }
@@ -554,19 +667,31 @@ export class SundayConsultService {
       : getNextSundayDate();
 
     const [instance, appointments] = await Promise.all([
+<<<<<<< HEAD
       SundaySlotInstanceModel.findOne(
         mongoFilter({ doctorId: profile._id, sundayDate }),
       ).lean(),
       AppointmentModel.find(
         mongoFilter({
+=======
+      SundaySlotInstanceModel.findOne({
+        doctorId: profile._id,
+        sundayDate,
+      }).lean(),
+      AppointmentModel.find({
+>>>>>>> de54e62 (google verification)
         doctorId: profile._id,
         type: AppointmentTypes.SUNDAY_FREE,
         scheduledStart: {
           $gte: sundayDate,
           $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
         },
+<<<<<<< HEAD
         }),
       )
+=======
+      })
+>>>>>>> de54e62 (google verification)
         .populate("patientId", "name phone")
         .sort({ scheduledStart: 1 })
         .lean(),
@@ -586,11 +711,16 @@ export class SundayConsultService {
     doctorNotes?: string,
   ) {
     await SundayConsultService.ensureConnected();
+<<<<<<< HEAD
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
+=======
+    const profile = await DoctorProfileModel.findOne({ userId });
+>>>>>>> de54e62 (google verification)
     if (!profile) {
       throw new AppError("Forbidden", ErrorCodes.FORBIDDEN, 403);
     }
 
+<<<<<<< HEAD
     const appointment = (await AppointmentModel.findOne(
       mongoFilter({
         _id: appointmentId,
@@ -598,6 +728,13 @@ export class SundayConsultService {
         type: AppointmentTypes.SUNDAY_FREE,
       }),
     )) as HydratedDocument<AppointmentDocument> | null;
+=======
+    const appointment = await AppointmentModel.findOne({
+      _id: appointmentId,
+      doctorId: profile._id,
+      type: AppointmentTypes.SUNDAY_FREE,
+    });
+>>>>>>> de54e62 (google verification)
 
     if (!appointment) {
       throw new AppError("Appointment not found", ErrorCodes.NOT_FOUND, 404);
@@ -626,10 +763,17 @@ export class SundayConsultService {
 
       if (appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
         await SundaySlotInstanceModel.updateOne(
+<<<<<<< HEAD
           mongoFilter({
             _id: appointment.sundaySlotInstanceId,
             "slots.slotId": appointment.sundaySlotId,
           }),
+=======
+          {
+            _id: appointment.sundaySlotInstanceId,
+            "slots.slotId": appointment.sundaySlotId,
+          },
+>>>>>>> de54e62 (google verification)
           { $set: { "slots.$.status": SlotStatuses.NO_SHOW } },
         );
       }
@@ -640,10 +784,17 @@ export class SundayConsultService {
 
     if (status === "completed" && appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
       await SundaySlotInstanceModel.updateOne(
+<<<<<<< HEAD
         mongoFilter({
           _id: appointment.sundaySlotInstanceId,
           "slots.slotId": appointment.sundaySlotId,
         }),
+=======
+        {
+          _id: appointment.sundaySlotInstanceId,
+          "slots.slotId": appointment.sundaySlotId,
+        },
+>>>>>>> de54e62 (google verification)
         { $set: { "slots.$.status": SlotStatuses.COMPLETED } },
       );
     }
@@ -661,6 +812,7 @@ export class SundayConsultService {
       : getNextSundayDate();
     const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
 
+<<<<<<< HEAD
     const appointment = await AppointmentModel.findOne(
       mongoFilter({
         patientId,
@@ -669,6 +821,14 @@ export class SundayConsultService {
         status: { $in: ACTIVE_APPOINTMENT_STATUSES },
       }),
     )
+=======
+    const appointment = await AppointmentModel.findOne({
+      patientId,
+      type: AppointmentTypes.SUNDAY_FREE,
+      scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
+      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+    })
+>>>>>>> de54e62 (google verification)
       .populate({
         path: "doctorId",
         select: "specialties pmdcVerified ratingAvg ratingCount",

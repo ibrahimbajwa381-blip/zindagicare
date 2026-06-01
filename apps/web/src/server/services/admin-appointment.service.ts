@@ -112,7 +112,11 @@ export async function adminCancelAppointment(
       {
         _id: appointment.sundaySlotInstanceId,
         "slots.slotId": appointment.sundaySlotId,
+<<<<<<< HEAD
       } as Record<string, unknown>,
+=======
+      },
+>>>>>>> de54e62 (google verification)
       {
         $set: {
           "slots.$.status": SlotStatuses.CANCELLED,

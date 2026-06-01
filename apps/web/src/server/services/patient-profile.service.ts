@@ -10,7 +10,10 @@ import {
   type UpdatePatientProfileInput,
 } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+<<<<<<< HEAD
 import { mongoFilter } from "@/lib/mongo/query";
+=======
+>>>>>>> de54e62 (google verification)
 
 export type PatientProfileDto = {
   user: {
@@ -58,9 +61,13 @@ export async function getPatientProfile(userId: string): Promise<PatientProfileD
     throw new AppError("User not found", "NOT_FOUND", 404);
   }
 
+<<<<<<< HEAD
   const profile = await PatientProfileModel.findOne(
     mongoFilter({ userId: user._id }),
   ).lean();
+=======
+  const profile = await PatientProfileModel.findOne({ userId: user._id }).lean();
+>>>>>>> de54e62 (google verification)
 
   return {
     user: {
@@ -166,7 +173,11 @@ export async function updatePatientProfile(
 
   if (Object.keys(profileUpdate).length > 0) {
     await PatientProfileModel.findOneAndUpdate(
+<<<<<<< HEAD
       mongoFilter({ userId: user._id }),
+=======
+      { userId: user._id },
+>>>>>>> de54e62 (google verification)
       { $set: profileUpdate },
       { upsert: true },
     );
