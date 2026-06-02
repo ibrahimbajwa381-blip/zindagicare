@@ -4,7 +4,6 @@ import {
   SundaySlotTemplateModel,
   UserModel,
 } from "@zindagi/database";
-import { Types } from "mongoose";
 import {
   AppError,
   Roles,
@@ -16,6 +15,9 @@ import type { doctorVerificationSchema } from "@zindagi/validators";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { SundayConsultService } from "./sunday-consult.service";
 import { cnicLast4, hashCnic } from "./auth.service";
+import { mongoFilter } from "@/lib/mongo/query";
+import type { HydratedDocument } from "mongoose";
+import type { DoctorProfileDocument } from "@zindagi/database";
 
 type VerificationInput = z.infer<typeof doctorVerificationSchema>;
 
@@ -45,10 +47,9 @@ async function generateUniqueSlug(name: string, profileId: string): Promise<stri
   let slug = base;
   let counter = 0;
   while (
-    await DoctorProfileModel.findOne({
-      slug,
-      _id: { $ne: new Types.ObjectId(profileId) },
-    }).lean()
+    await DoctorProfileModel.findOne(
+      mongoFilter({ slug, _id: { $ne: profileId } }),
+    ).lean()
   ) {
     counter += 1;
     slug = `${base}-${counter}`;
@@ -62,7 +63,7 @@ async function upsertSundayTemplateFromOnboarding(
 ) {
   if (!sundayConsult.enabled || !sundayConsult.startTimeLocal || !sundayConsult.endTimeLocal) {
     await SundaySlotTemplateModel.findOneAndUpdate(
-      { doctorId: doctorProfileId },
+      mongoFilter({ doctorId: doctorProfileId }),
       { $set: { isActive: false } },
     );
     return null;
@@ -77,7 +78,7 @@ async function upsertSundayTemplateFromOnboarding(
   );
 
   return SundaySlotTemplateModel.findOneAndUpdate(
-    { doctorId: doctorProfileId },
+    mongoFilter({ doctorId: doctorProfileId }),
     {
       $set: {
         startTimeLocal: sundayConsult.startTimeLocal,
@@ -103,7 +104,9 @@ export async function submitDoctorVerification(
     throw new AppError("Forbidden", "FORBIDDEN", 403);
   }
 
-  const profile = await DoctorProfileModel.findOne({ userId: user._id });
+  const profile = (await DoctorProfileModel.findOne(
+    mongoFilter({ userId: user._id }),
+  )) as HydratedDocument<DoctorProfileDocument> | null;
   if (!profile) {
     throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
   }
@@ -177,7 +180,9 @@ export async function decideDoctorVerification(
   rejectionReason?: string,
 ) {
   await connectDatabase();
-  const profile = await DoctorProfileModel.findById(doctorProfileId);
+  const profile = (await DoctorProfileModel.findById(
+    doctorProfileId,
+  )) as HydratedDocument<DoctorProfileDocument> | null;
   if (!profile) throw new AppError("Not found", "NOT_FOUND", 404);
 
   const user = await UserModel.findById(profile.userId);
@@ -187,15 +192,14 @@ export async function decideDoctorVerification(
     profile.verificationStatus = VerificationStatuses.APPROVED;
     profile.pmdcVerified = true;
     profile.isListed = true;
-    profile.verifiedBy = new Types.ObjectId(adminUserId);
+    profile.verifiedBy = adminUserId as unknown as DoctorProfileDocument["verifiedBy"];
     profile.verifiedAt = new Date();
     profile.rejectionReason = undefined;
     profile.slug = await generateUniqueSlug(user.name, profile._id.toString());
 
-    const sundayTemplate = await SundaySlotTemplateModel.findOne({
-      doctorId: profile._id,
-      isActive: true,
-    });
+    const sundayTemplate = await SundaySlotTemplateModel.findOne(
+      mongoFilter({ doctorId: profile._id, isActive: true }),
+    );
 
     if (sundayTemplate) {
       profile.sundayConsultEnabled = true;

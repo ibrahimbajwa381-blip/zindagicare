@@ -65,8 +65,8 @@ export async function getAdminSundayOverview(
 
   const instances = await SundaySlotInstanceModel.find({
     sundayDate,
-    doctorId: { $in: doctors.map((d) => d._id) },
-  }).lean();
+    doctorId: { $in: doctors.map((d) => d._id.toString()) },
+  } as Record<string, unknown>).lean();
 
   const instanceMap = new Map(
     instances.map((i) => [i.doctorId.toString(), i]),
@@ -168,7 +168,7 @@ export async function resetWeeklySundaySlots(dateKey?: string) {
     }));
 
     await SundaySlotInstanceModel.findOneAndUpdate(
-      { doctorId: template.doctorId, sundayDate },
+      { doctorId: template.doctorId, sundayDate } as Record<string, unknown>,
       {
         $set: {
           slots,
@@ -196,7 +196,7 @@ export async function applyDefaultSlotsToAllDoctors() {
   let updated = 0;
   for (const doctor of doctors) {
     await SundaySlotTemplateModel.findOneAndUpdate(
-      { doctorId: doctor._id },
+      { doctorId: doctor._id } as Record<string, unknown>,
       {
         $set: {
           slotDurationMins: settings.sundaySlotDurationMins,

@@ -27,7 +27,29 @@ import { publishSundayEvent } from "@/lib/realtime/sunday-emitter";
 import { sendBookingConfirmation } from "@/lib/notifications/sunday-reminders";
 import { isSundayConsultGloballyEnabled } from "./system-settings.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
-import type { SundayPatientBookingDto } from "@/features/sunday-consult/types";
+import type {
+  SundayConfirmBookingResult,
+  SundayPatientBookingDto,
+} from "@/features/sunday-consult/types";
+import { mongoFilter } from "@/lib/mongo/query";
+import type { HydratedDocument } from "mongoose";
+import type { AppointmentDocument } from "@zindagi/database";
+
+type CreatedAppointmentRow = {
+  _id: { toString(): string };
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  status: SundayConfirmBookingResult["status"];
+};
+
+function toConfirmBookingResult(doc: CreatedAppointmentRow): SundayConfirmBookingResult {
+  return {
+    appointmentId: doc._id.toString(),
+    scheduledStart: doc.scheduledStart.toISOString(),
+    scheduledEnd: doc.scheduledEnd.toISOString(),
+    status: doc.status,
+  };
+}
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -95,10 +117,12 @@ export class SundayConsultService {
       .populate("userId", "name avatarUrl")
       .lean();
 
-    const instances = await SundaySlotInstanceModel.find({
-      sundayDate,
-      doctorId: { $in: doctors.map((d) => d._id) },
-    }).lean();
+    const instances = await SundaySlotInstanceModel.find(
+      mongoFilter({
+        sundayDate,
+        doctorId: { $in: doctors.map((d) => d._id.toString()) },
+      }),
+    ).lean();
 
     const instanceMap = new Map(
       instances.map((i) => [i.doctorId.toString(), i]),
@@ -140,10 +164,9 @@ export class SundayConsultService {
       throw new AppError("Sunday consult not available", ErrorCodes.NOT_FOUND, 404);
     }
 
-    let instance = await SundaySlotInstanceModel.findOne({
-      doctorId,
-      sundayDate,
-    });
+    let instance = await SundaySlotInstanceModel.findOne(
+      mongoFilter({ doctorId, sundayDate }),
+    );
 
     if (!instance) {
       instance = await SundayConsultService.materializeInstance(
@@ -171,10 +194,9 @@ export class SundayConsultService {
   }
 
   static async materializeInstance(doctorId: string, sundayDate: Date) {
-    const template = await SundaySlotTemplateModel.findOne({
-      doctorId,
-      isActive: true,
-    });
+    const template = await SundaySlotTemplateModel.findOne(
+      mongoFilter({ doctorId, isActive: true }),
+    );
 
     if (!template) {
       throw new AppError(
@@ -201,7 +223,7 @@ export class SundayConsultService {
     }));
 
     const instance = await SundaySlotInstanceModel.findOneAndUpdate(
-      { doctorId, sundayDate },
+      mongoFilter({ doctorId, sundayDate }),
       {
         $setOnInsert: {
           doctorId,
@@ -214,7 +236,10 @@ export class SundayConsultService {
       { upsert: true, new: true },
     );
 
-    return instance!;
+    if (!instance) {
+      throw new AppError("Could not materialize Sunday slots", "INTERNAL_ERROR", 500);
+    }
+    return instance;
   }
 
   static async assertPatientCanBook(patientId: string, doctorId: string, sundayDate: Date) {
@@ -244,16 +269,18 @@ export class SundayConsultService {
       throw new AppError("Account suspended", ErrorCodes.USER_BANNED, 403);
     }
 
-    const existing = await AppointmentModel.findOne({
-      patientId,
-      doctorId,
-      type: AppointmentTypes.SUNDAY_FREE,
-      scheduledStart: {
-        $gte: sundayDate,
-        $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
-      },
-      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-    });
+    const existing = await AppointmentModel.findOne(
+      mongoFilter({
+        patientId,
+        doctorId,
+        type: AppointmentTypes.SUNDAY_FREE,
+        scheduledStart: {
+          $gte: sundayDate,
+          $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
+        },
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+      }),
+    );
 
     if (existing) {
       throw new AppError(
@@ -291,7 +318,7 @@ export class SundayConsultService {
     const heldUntil = new Date(Date.now() + SUNDAY_CONSULT_CONFIG.holdDurationMs);
 
     const updated = await SundaySlotInstanceModel.findOneAndUpdate(
-      {
+      mongoFilter({
         _id: instanceId,
         slots: {
           $elemMatch: {
@@ -299,7 +326,7 @@ export class SundayConsultService {
             status: SlotStatuses.AVAILABLE,
           },
         },
-      },
+      }),
       {
         $set: {
           "slots.$.status": SlotStatuses.HELD,
@@ -335,7 +362,7 @@ export class SundayConsultService {
     slotId: string,
     holdToken: string,
     patientNotes?: string,
-  ) {
+  ): Promise<SundayConfirmBookingResult> {
     await SundayConsultService.ensureConnected();
 
     const instance = await SundaySlotInstanceModel.findById(instanceId);
@@ -369,28 +396,30 @@ export class SundayConsultService {
     );
     const doctorUser = doctor?.userId as { name?: string; phone?: string } | null;
 
-    const appointment = await AppointmentModel.create({
+    const appointment = (await AppointmentModel.create({
       type: AppointmentTypes.SUNDAY_FREE,
       status: AppointmentStatuses.CONFIRMED,
       patientId,
       doctorId,
       scheduledStart: slot.startAt,
       scheduledEnd: slot.endAt,
-      sundaySlotInstanceId: instance._id,
+      sundaySlotInstanceId: instance._id.toString(),
       sundaySlotId: slotId,
       patientNotes,
       isOnline: true,
-    });
+    } as Record<string, unknown>)) as CreatedAppointmentRow;
+
+    const result = toConfirmBookingResult(appointment);
 
     await SundaySlotInstanceModel.updateOne(
-      {
+      mongoFilter({
         _id: instanceId,
         "slots.slotId": slotId,
-      },
+      }),
       {
         $set: {
           "slots.$.status": SlotStatuses.BOOKED,
-          "slots.$.appointmentId": appointment._id,
+          "slots.$.appointmentId": result.appointmentId,
           "slots.$.heldUntil": undefined,
           "slots.$.holdToken": undefined,
         },
@@ -415,7 +444,7 @@ export class SundayConsultService {
       status: SlotStatuses.BOOKED,
     });
 
-    return appointment;
+    return result;
   }
 
   static async releaseHold(
@@ -426,8 +455,8 @@ export class SundayConsultService {
   ) {
     await SundayConsultService.ensureConnected();
 
-    const updated = await SundaySlotInstanceModel.findOneAndUpdate(
-      {
+    const updated = (await SundaySlotInstanceModel.findOneAndUpdate(
+      mongoFilter({
         _id: instanceId,
         slots: {
           $elemMatch: {
@@ -437,7 +466,7 @@ export class SundayConsultService {
             patientId,
           },
         },
-      },
+      }),
       {
         $set: {
           "slots.$.status": SlotStatuses.AVAILABLE,
@@ -447,7 +476,7 @@ export class SundayConsultService {
         },
       },
       { new: true },
-    );
+    )) as { doctorId: { toString(): string }; sundayDate: Date } | null;
 
     if (updated) {
       publishSundayEvent({
@@ -475,13 +504,13 @@ export class SundayConsultService {
   ) {
     await SundayConsultService.ensureConnected();
 
-    const profile = await DoctorProfileModel.findOne({ userId });
+    const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
     if (!profile) {
       throw new AppError("Doctor profile required", ErrorCodes.FORBIDDEN, 403);
     }
 
     const template = await SundaySlotTemplateModel.findOneAndUpdate(
-      { doctorId: profile._id },
+      mongoFilter({ doctorId: profile._id }),
       {
         $set: {
           ...input,
@@ -503,7 +532,7 @@ export class SundayConsultService {
   static async toggleSundayConsult(userId: string, enabled: boolean) {
     await SundayConsultService.ensureConnected();
     const profile = await DoctorProfileModel.findOneAndUpdate(
-      { userId },
+      mongoFilter({ userId }),
       { $set: { sundayConsultEnabled: enabled } },
       { new: true },
     );
@@ -515,7 +544,7 @@ export class SundayConsultService {
 
   static async getDoctorQueue(userId: string, dateKey?: string) {
     await SundayConsultService.ensureConnected();
-    const profile = await DoctorProfileModel.findOne({ userId });
+    const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
     if (!profile) {
       throw new AppError("Doctor profile not found", ErrorCodes.NOT_FOUND, 404);
     }
@@ -525,18 +554,19 @@ export class SundayConsultService {
       : getNextSundayDate();
 
     const [instance, appointments] = await Promise.all([
-      SundaySlotInstanceModel.findOne({
-        doctorId: profile._id,
-        sundayDate,
-      }).lean(),
-      AppointmentModel.find({
+      SundaySlotInstanceModel.findOne(
+        mongoFilter({ doctorId: profile._id, sundayDate }),
+      ).lean(),
+      AppointmentModel.find(
+        mongoFilter({
         doctorId: profile._id,
         type: AppointmentTypes.SUNDAY_FREE,
         scheduledStart: {
           $gte: sundayDate,
           $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
         },
-      })
+        }),
+      )
         .populate("patientId", "name phone")
         .sort({ scheduledStart: 1 })
         .lean(),
@@ -556,16 +586,18 @@ export class SundayConsultService {
     doctorNotes?: string,
   ) {
     await SundayConsultService.ensureConnected();
-    const profile = await DoctorProfileModel.findOne({ userId });
+    const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
     if (!profile) {
       throw new AppError("Forbidden", ErrorCodes.FORBIDDEN, 403);
     }
 
-    const appointment = await AppointmentModel.findOne({
-      _id: appointmentId,
-      doctorId: profile._id,
-      type: AppointmentTypes.SUNDAY_FREE,
-    });
+    const appointment = (await AppointmentModel.findOne(
+      mongoFilter({
+        _id: appointmentId,
+        doctorId: profile._id,
+        type: AppointmentTypes.SUNDAY_FREE,
+      }),
+    )) as HydratedDocument<AppointmentDocument> | null;
 
     if (!appointment) {
       throw new AppError("Appointment not found", ErrorCodes.NOT_FOUND, 404);
@@ -594,10 +626,10 @@ export class SundayConsultService {
 
       if (appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
         await SundaySlotInstanceModel.updateOne(
-          {
+          mongoFilter({
             _id: appointment.sundaySlotInstanceId,
             "slots.slotId": appointment.sundaySlotId,
-          },
+          }),
           { $set: { "slots.$.status": SlotStatuses.NO_SHOW } },
         );
       }
@@ -608,10 +640,10 @@ export class SundayConsultService {
 
     if (status === "completed" && appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
       await SundaySlotInstanceModel.updateOne(
-        {
+        mongoFilter({
           _id: appointment.sundaySlotInstanceId,
           "slots.slotId": appointment.sundaySlotId,
-        },
+        }),
         { $set: { "slots.$.status": SlotStatuses.COMPLETED } },
       );
     }
@@ -629,12 +661,14 @@ export class SundayConsultService {
       : getNextSundayDate();
     const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
 
-    const appointment = await AppointmentModel.findOne({
-      patientId,
-      type: AppointmentTypes.SUNDAY_FREE,
-      scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
-      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-    })
+    const appointment = await AppointmentModel.findOne(
+      mongoFilter({
+        patientId,
+        type: AppointmentTypes.SUNDAY_FREE,
+        scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+      }),
+    )
       .populate({
         path: "doctorId",
         select: "specialties pmdcVerified ratingAvg ratingCount",

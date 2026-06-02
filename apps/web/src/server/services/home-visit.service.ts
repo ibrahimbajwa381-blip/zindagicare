@@ -5,6 +5,8 @@ import {
   UserModel,
   type HomeVisitDocument,
 } from "@zindagi/database";
+import { mongoFilter } from "@/lib/mongo/query";
+import type { HydratedDocument } from "mongoose";
 import {
   AppError,
   ErrorCodes,
@@ -262,10 +264,12 @@ export class HomeVisitService {
   ): Promise<HomeVisitDto> {
     await HomeVisitService.ensureConnected();
 
-    const visit = await HomeVisitModel.findOne({
-      _id: visitId,
-      deletedAt: { $exists: false },
-    })
+    const visit = await HomeVisitModel.findOne(
+      mongoFilter({
+        _id: visitId,
+        deletedAt: { $exists: false },
+      }),
+    )
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
       .lean();
@@ -335,7 +339,9 @@ export class HomeVisitService {
   static async autoAssignStaff(visitId: string) {
     await HomeVisitService.ensureConnected();
 
-    const visit = await HomeVisitModel.findById(visitId);
+    const visit = (await HomeVisitModel.findById(visitId)) as HydratedDocument<
+      HomeVisitDocument
+    > | null;
     if (!visit) {
       throw new AppError("Visit not found", ErrorCodes.NOT_FOUND, 404);
     }
@@ -343,7 +349,11 @@ export class HomeVisitService {
       throw new AppError("Visit is not pending assignment", ErrorCodes.CONFLICT, 409);
     }
 
-    const [lng, lat] = visit.address.geo.coordinates;
+    const coords = visit.address?.geo?.coordinates;
+    if (!coords || coords.length < 2) {
+      throw new AppError("Visit address is missing location", ErrorCodes.VALIDATION, 400);
+    }
+    const [lng, lat] = coords;
     const match = await HomeVisitService.findNearestAvailableStaff(lng, lat);
 
     if (!match) {
@@ -356,7 +366,9 @@ export class HomeVisitService {
 
     visit.assignedStaffId = match.userId as never;
     visit.status = HomeVisitStatuses.ASSIGNED;
-    visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
+    if (visit.pricing) {
+      visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
+    }
     await visit.save();
 
     return { staffId: match.userId, staffName: match.name, distanceKm: match.distanceKm };

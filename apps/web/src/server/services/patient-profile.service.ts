@@ -10,6 +10,7 @@ import {
   type UpdatePatientProfileInput,
 } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { mongoFilter } from "@/lib/mongo/query";
 
 export type PatientProfileDto = {
   user: {
@@ -57,7 +58,9 @@ export async function getPatientProfile(userId: string): Promise<PatientProfileD
     throw new AppError("User not found", "NOT_FOUND", 404);
   }
 
-  const profile = await PatientProfileModel.findOne({ userId: user._id }).lean();
+  const profile = await PatientProfileModel.findOne(
+    mongoFilter({ userId: user._id }),
+  ).lean();
 
   return {
     user: {
@@ -163,7 +166,7 @@ export async function updatePatientProfile(
 
   if (Object.keys(profileUpdate).length > 0) {
     await PatientProfileModel.findOneAndUpdate(
-      { userId: user._id },
+      mongoFilter({ userId: user._id }),
       { $set: profileUpdate },
       { upsert: true },
     );

@@ -4,6 +4,7 @@ import {
   DoctorProfileModel,
   SundaySlotTemplateModel,
   UserModel,
+  type DoctorProfileDocument,
 } from "@zindagi/database";
 import {
   AppError,
@@ -38,7 +39,7 @@ async function generateUniqueSlug(name: string, profileId: string): Promise<stri
     await DoctorProfileModel.findOne({
       slug,
       _id: { $ne: profileId },
-    }).lean()
+    } as Record<string, unknown>).lean()
   ) {
     counter += 1;
     slug = `${base}-${counter}`;
@@ -152,7 +153,7 @@ export async function adminCreateDoctor(
     isActive: true,
   });
 
-  const profile = await DoctorProfileModel.create({
+  const profile = (await DoctorProfileModel.create({
     userId: user._id,
     pmdcNumber: input.pmdcNumber,
     pmdcVerified: true,
@@ -163,14 +164,14 @@ export async function adminCreateDoctor(
     isListed: true,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
     coverageCities: ["Lahore"],
-  });
+  } as Record<string, unknown>)) as DoctorProfileDocument;
 
-  profile.slug = await generateUniqueSlug(input.name, profile._id.toString());
-  await profile.save();
+  const slug = await generateUniqueSlug(input.name, profile._id.toString());
+  await DoctorProfileModel.findByIdAndUpdate(profile._id, { $set: { slug } });
 
   if (input.sundayConsultEnabled) {
     await SundaySlotTemplateModel.findOneAndUpdate(
-      { doctorId: profile._id },
+      { doctorId: profile._id } as Record<string, unknown>,
       {
         $set: {
           startTimeLocal: "09:00",
@@ -222,7 +223,9 @@ export async function adminUpdateDoctor(
   }
 
   if (input.sundayMaxSlots !== undefined || input.sundaySlotDurationMins !== undefined) {
-    const template = await SundaySlotTemplateModel.findOne({ doctorId: profile._id });
+    const template = await SundaySlotTemplateModel.findOne({
+      doctorId: profile._id,
+    } as Record<string, unknown>);
     if (template) {
       if (input.sundayMaxSlots !== undefined) template.maxSlots = input.sundayMaxSlots;
       if (input.sundaySlotDurationMins !== undefined) {
@@ -239,7 +242,7 @@ export async function adminUpdateDoctor(
         dayOfWeek: SUNDAY_CONSULT_CONFIG.dayOfWeek,
         timezone: SUNDAY_CONSULT_CONFIG.timezone,
         isActive: true,
-      });
+      } as Record<string, unknown>);
     }
   }
 

@@ -26,7 +26,9 @@ const NEXT_STATUS: Partial<Record<string, string>> = {
   [HomeVisitStatuses.ARRIVED]: HomeVisitStatuses.COMPLETED,
 };
 
-const STATUS_BUTTON_LABEL: Record<string, keyof ReturnType<typeof useTranslations>["homeCare"]> = {
+type NurseStatusButtonKey = "markEnRoute" | "markArrived" | "markCompleted";
+
+const STATUS_BUTTON_LABEL: Partial<Record<string, NurseStatusButtonKey>> = {
   [HomeVisitStatuses.ASSIGNED]: "markEnRoute",
   [HomeVisitStatuses.EN_ROUTE]: "markArrived",
   [HomeVisitStatuses.ARRIVED]: "markCompleted",

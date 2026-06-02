@@ -10,12 +10,13 @@ import {
 import { AppError, Roles, VerificationStatuses, LAHORE_GEO, type Role } from "@zindagi/shared";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { mongoFilter } from "@/lib/mongo/query";
 
 const BCRYPT_ROUNDS = 12;
 
 async function ensurePatientProfile(userId: { toString(): string }) {
   await PatientProfileModel.findOneAndUpdate(
-    { userId },
+    mongoFilter({ userId: userId.toString() }),
     { $setOnInsert: { userId } },
     { upsert: true },
   );
@@ -183,7 +184,7 @@ export async function loadAuthUserPayload(userId: string) {
 
   let doctorVerificationStatus: string | undefined;
   if (user.roles?.includes(Roles.DOCTOR)) {
-    const profile = await DoctorProfileModel.findOne({ userId: user._id })
+    const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }))
       .select("verificationStatus isListed")
       .lean();
     doctorVerificationStatus = profile?.verificationStatus;
@@ -236,7 +237,7 @@ export async function completeOnboarding(
 
   if (data.intent === "patient") {
     await PatientProfileModel.findOneAndUpdate(
-      { userId: user._id },
+      mongoFilter({ userId: user._id }),
       {
         defaultCity: data.city,
         ...(data.dateOfBirth ? { dateOfBirth: new Date(data.dateOfBirth) } : {}),
@@ -248,7 +249,7 @@ export async function completeOnboarding(
 
   if (data.intent === "doctor") {
     await DoctorProfileModel.findOneAndUpdate(
-      { userId: user._id },
+      mongoFilter({ userId: user._id }),
       {
         verificationStatus: VerificationStatuses.PENDING,
         isListed: false,

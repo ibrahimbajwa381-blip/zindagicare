@@ -14,6 +14,7 @@ import {
   Roles,
 } from "@zindagi/shared";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
+import { mongoFilter } from "@/lib/mongo/query";
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -69,7 +70,7 @@ async function getDoctorProfileForUser(userId: string) {
   if (!user?.roles.includes(Roles.DOCTOR)) {
     throw new AppError("Forbidden", "FORBIDDEN", 403);
   }
-  const profile = await DoctorProfileModel.findOne({ userId: user._id });
+  const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }));
   if (!profile) {
     throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
   }
@@ -89,24 +90,30 @@ export async function getDoctorDashboardSummary(
 
   const [patientIds, pendingRequests, sundayQueue, homeVisitRequests] =
     await Promise.all([
-      AppointmentModel.distinct("patientId", { doctorId: profile._id }),
-      AppointmentModel.countDocuments({
-        doctorId: profile._id,
-        type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
-        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-        scheduledStart: { $gte: now },
-      }),
-      AppointmentModel.countDocuments({
-        doctorId: profile._id,
-        type: AppointmentTypes.SUNDAY_FREE,
-        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-        scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
-      }),
-      HomeVisitModel.countDocuments({
-        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
-        status: { $in: ACTIVE_HOME_VISIT_STATUSES },
-        "address.city": { $in: cities },
-      }),
+      AppointmentModel.distinct("patientId", mongoFilter({ doctorId: profile._id })),
+      AppointmentModel.countDocuments(
+        mongoFilter({
+          doctorId: profile._id,
+          type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
+          status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+          scheduledStart: { $gte: now },
+        }),
+      ),
+      AppointmentModel.countDocuments(
+        mongoFilter({
+          doctorId: profile._id,
+          type: AppointmentTypes.SUNDAY_FREE,
+          status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+          scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
+        }),
+      ),
+      HomeVisitModel.countDocuments(
+        mongoFilter({
+          serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+          status: { $in: ACTIVE_HOME_VISIT_STATUSES },
+          "address.city": { $in: cities },
+        }),
+      ),
     ]);
 
   return {
@@ -138,7 +145,11 @@ export async function listDoctorPatients(userId: string): Promise<DoctorPatientR
   ]);
 
   const patientIds = grouped.map((row) => row._id);
-  const patients = await UserModel.find({ _id: { $in: patientIds } })
+  const patients = await UserModel.find(
+    mongoFilter({
+      _id: { $in: patientIds.map((id) => String(id)) },
+    }),
+  )
     .select("name phone")
     .lean();
   const patientMap = new Map(
@@ -164,12 +175,14 @@ export async function listDoctorConsultRequests(
   const { profile } = await getDoctorProfileForUser(userId);
   const now = new Date();
 
-  const appointments = await AppointmentModel.find({
-    doctorId: profile._id,
-    type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
-    status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-    scheduledStart: { $gte: now },
-  })
+  const appointments = await AppointmentModel.find(
+    mongoFilter({
+      doctorId: profile._id,
+      type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
+      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+      scheduledStart: { $gte: now },
+    }),
+  )
     .populate("patientId", "name phone")
     .sort({ scheduledStart: 1 })
     .limit(50)
@@ -203,11 +216,13 @@ export async function listDoctorHomeVisitRequests(
     ? profile.coverageCities
     : ["Lahore"];
 
-  const visits = await HomeVisitModel.find({
-    serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
-    status: { $in: ACTIVE_HOME_VISIT_STATUSES },
-    "address.city": { $in: cities },
-  })
+  const visits = await HomeVisitModel.find(
+    mongoFilter({
+      serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+      status: { $in: ACTIVE_HOME_VISIT_STATUSES },
+      "address.city": { $in: cities },
+    }),
+  )
     .populate("patientId", "name phone")
     .sort({ scheduledAt: 1 })
     .limit(50)
@@ -222,8 +237,8 @@ export async function listDoctorHomeVisitRequests(
       status: visit.status,
       scheduledAt: visit.scheduledAt.toISOString(),
       address: {
-        line: visit.address.line,
-        city: visit.address.city,
+        line: visit.address?.line ?? "",
+        city: visit.address?.city ?? "",
       },
       patient: patient?._id
         ? {
@@ -234,8 +249,8 @@ export async function listDoctorHomeVisitRequests(
         : undefined,
       patientNotes: visit.patientNotes ?? undefined,
       pricing: {
-        total: visit.pricing.total,
-        currency: visit.pricing.currency,
+        total: visit.pricing?.total ?? 0,
+        currency: visit.pricing?.currency ?? "PKR",
       },
     };
   });
