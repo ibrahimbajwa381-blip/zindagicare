@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
+import { Button } from "@/components/ui/button";
+import { siteConfig } from "@/config/site";
 import {
   DoctorEmptyState,
   DoctorListCard,
@@ -46,6 +49,13 @@ export default async function DoctorPatientsPage() {
                 patient.lastVisitAt
                   ? `Last visit ${formatDateTime(patient.lastVisitAt)} · ${patient.appointmentCount} appointment${patient.appointmentCount === 1 ? "" : "s"}`
                   : `${patient.appointmentCount} appointment${patient.appointmentCount === 1 ? "" : "s"}`
+              }
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`${siteConfig.links.doctorMessages}?patient=${patient.id}`}>
+                    Message
+                  </Link>
+                </Button>
               }
             />
           ))

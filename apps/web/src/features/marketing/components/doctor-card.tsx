@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { BadgeCheck, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ type DoctorCardProps = {
   pmdcVerified: boolean;
   imageUrl?: string;
   pmdcLabel?: string;
+  href?: string;
 };
 
 function initials(name: string) {
@@ -35,10 +37,11 @@ export function DoctorCard({
   pmdcVerified,
   imageUrl,
   pmdcLabel = "PMDC",
+  href,
 }: DoctorCardProps) {
-  return (
+  const card = (
     <Card
-      className={`group overflow-hidden duration-300 hover:-translate-y-1 ${surfaceCardInteractive}`}
+      className={`group h-full overflow-hidden duration-300 hover:-translate-y-1 ${surfaceCardInteractive} ${href ? "cursor-pointer" : ""}`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start gap-4">
@@ -91,4 +94,14 @@ export function DoctorCard({
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+        {card}
+      </Link>
+    );
+  }
+
+  return card;
 }

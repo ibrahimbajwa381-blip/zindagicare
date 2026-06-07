@@ -1,0 +1,17 @@
+import type { NextRequest } from "next/server";
+import { withApiHandler } from "@/server/api/with-api-handler";
+import { OnlineConsultService } from "@/server/services/online-consult.service";
+
+type Params = { params: Promise<{ paymentId: string }> };
+
+export async function GET(req: NextRequest, { params }: Params) {
+  const { paymentId } = await params;
+
+  const handler = withApiHandler(
+    async ({ session }) =>
+      OnlineConsultService.getPaymentStatus(paymentId, session!.user!.id),
+    { auth: true },
+  );
+
+  return handler(req);
+}

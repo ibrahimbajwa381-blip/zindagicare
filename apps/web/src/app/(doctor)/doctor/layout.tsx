@@ -30,6 +30,7 @@ export default async function DoctorLayout({
         links={[
           { href: "/", label: t.nav.home },
           { href: "/doctor/profile", label: "Workspace" },
+          { href: "/doctor/messages", label: "Messages" },
           { href: "/doctor/sunday-consult", label: "Sunday consult" },
         ]}
         sections={accountSection ? [accountSection] : []}

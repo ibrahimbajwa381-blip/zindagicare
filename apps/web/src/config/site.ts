@@ -20,6 +20,8 @@ export const siteConfig = {
     login: "/login",
     register: "/register",
     dashboard: "/dashboard",
+    messages: "/messages",
+    doctorMessages: "/doctor/messages",
   },
   nav: {
     main: [

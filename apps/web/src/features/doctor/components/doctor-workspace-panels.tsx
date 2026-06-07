@@ -45,11 +45,13 @@ export function DoctorListCard({
   subtitle,
   meta,
   badge,
+  action,
 }: {
   title: string;
   subtitle?: string;
   meta?: string;
   badge?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div
@@ -60,7 +62,10 @@ export function DoctorListCard({
         {subtitle && <p className="mt-0.5 text-sm text-slate-600">{subtitle}</p>}
         {meta && <p className="mt-1 text-xs text-slate-500">{meta}</p>}
       </div>
-      {badge && <Badge variant="secondary">{badge}</Badge>}
+      <div className="flex shrink-0 items-center gap-2">
+        {action}
+        {badge && <Badge variant="secondary">{badge}</Badge>}
+      </div>
     </div>
   );
 }

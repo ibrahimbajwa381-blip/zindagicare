@@ -95,9 +95,9 @@ export const ur: Dictionary = {
     nextService: "اگلی خدمت",
     services: [
       {
-        imageAlt: "مریض ڈاکٹر کے ساتھ ویڈیو کال پر",
+        imageAlt: "ڈاکٹر اسامہ ریاض، زندگی کیئر کے بانی، طبی لباس میں",
         carousel: {
-          eyebrow: "آن لائن مشاورت",
+          eyebrow: "ڈاکٹر اسامہ ریاض · بانی",
           title: "پی ایم ڈی سی ڈاکٹرز سے",
           titleHighlight: "محفوظ ویڈیو",
           description:
@@ -492,6 +492,19 @@ export const ur: Dictionary = {
     modalPlaceholder: "خصوصیت تلاش کریں…",
     modalEmpty: "آپ کی تلاش سے کوئی خصوصیت نہیں ملی۔",
   },
+  doctorProfile: {
+    backToDoctors: "تمام ڈاکٹروں پر واپس",
+    about: "تعارف",
+    education: "تعلیم اور قابلیت",
+    practicesAt: "علاج کی جگہ",
+    languages: "زبانیں",
+    experience: "تجربہ",
+    yearsExperience: "سال کا تجربہ",
+    reviews: "مریضوں کے جائزے",
+    reviewsEmpty: "ابھی کوئی جائزہ نہیں۔ ادا شدہ مشاورت مکمل ہونے کے بعد جائزے ظاہر ہوں گے۔",
+    videoConsult: "ویڈیو مشاورت",
+    perConsultation: "فی مشاورت",
+  },
   onboarding: {
     joiningAs: "میں شامل ہو رہا/رہی ہوں بطور",
     patient: "مریض",
@@ -514,6 +527,7 @@ export const ur: Dictionary = {
     description: "آپ کی اپائنٹمنٹس اور خاندانی صحت کا مرکز۔",
     nav: {
       dashboard: "ڈیش بورڈ",
+      messages: "پیغامات",
     },
     header: {
       patientAccount: "مریض اکاؤنٹ",
@@ -583,5 +597,31 @@ export const ur: Dictionary = {
         other: "دیگر",
       },
     },
+  },
+  chat: {
+    pageTitle: "پیغامات",
+    pageDescription:
+      "ادا شدہ مشاورت کے بعد ڈاکٹروں سے چیٹ کریں۔ اتوار کی مفت مشاورت میں پیغامات شامل نہیں۔",
+    title: "چیٹس",
+    searchPlaceholder: "چیٹس تلاش کریں",
+    emptyTitle: "ابھی کوئی گفتگو نہیں",
+    emptyDescription:
+      "ڈاکٹر کو پیغام بھیجنے کے لیے ادا شدہ آن لائن مشاورت بک کریں۔ اتوار کے مفت سلاٹ صرف ویڈیو کے لیے ہیں۔",
+    newChatLabel: "نئی چیٹ",
+    newChatTitle: "ڈاکٹر کو پیغام بھیجیں",
+    newChatSearchPlaceholder: "اپنی ادا شدہ مشاورت کے ڈاکٹر تلاش کریں",
+    newChatEmpty: "کوئی ادا شدہ مشاورت نہیں ملی۔ چیٹ کے لیے ادا شدہ مشاورت بک کریں۔",
+    selectChatTitle: "زندگی کیئر پیغامات",
+    selectChatDescription:
+      "اپنی ادا شدہ مشاورت کی چیٹ منتخب کریں۔ اتوار کی مفت مشاورت میں پیغامات شامل نہیں۔",
+    messagePlaceholder: "پیغام لکھیں",
+    backLabel: "واپس",
+    doctorPageTitle: "مریضوں کے پیغامات",
+    doctorPageDescription:
+      "ان مریضوں کا جواب دیں جنہوں نے ادا شدہ مشاورت مکمل کی۔ اتوار کی مفت مشاورت کے مریضوں کو یہاں پیغام نہیں بھیجا جا سکتا۔",
+    doctorNewChatSearchPlaceholder: "ادا شدہ مشاورت کے مریض نام یا فون سے تلاش کریں",
+    doctorNewChatEmpty: "ادا شدہ مشاورت کے کوئی مریض نہیں ملے۔",
+    doctorSelectChatDescription:
+      "اپنی ادا شدہ مشاورت کے مریض کی گفتگو منتخب کریں۔ اتوار کی مفت مشاورت میں چیٹ شامل نہیں۔",
   },
 };

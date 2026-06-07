@@ -44,6 +44,8 @@ export const PaymentProviders = {
   STRIPE: "stripe",
   JAZZCASH: "jazzcash",
   EASYPAISA: "easypaisa",
+  /** MVP placeholder — swap to jazzcash when JAZZCASH_LIVE=true */
+  DUMMY: "dummy",
 } as const;
 
 export type PaymentProvider =
@@ -132,6 +134,7 @@ export type VideoSessionStatus =
 
 export const ChatThreadTypes = {
   APPOINTMENT: "appointment",
+  DIRECT: "direct",
   SUPPORT: "support",
 } as const;
 

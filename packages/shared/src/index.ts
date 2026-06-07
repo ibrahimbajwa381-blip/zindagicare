@@ -3,6 +3,7 @@ export * from "./auth";
 export * from "./constants/cities";
 export * from "./constants/specialties";
 export * from "./constants/sunday-consult";
+export * from "./constants/online-consult";
 export * from "./constants/home-care";
 export * from "./errors/app-error";
 export * from "./utils/cn";

@@ -4,7 +4,7 @@ import type { Dictionary } from "./dictionaries/en";
 
 const heroIds = ["online-consult", "sunday-consult", "in-house-medical"] as const;
 const heroImages = [
-  "/hero/online-consult.jpg",
+  "/hero/dr-usama-riyaz.png",
   "/hero/in-clinic.jpg",
   "/hero/home-care.jpg",
 ] as const;

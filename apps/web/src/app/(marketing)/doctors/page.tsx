@@ -1,6 +1,6 @@
 import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
-import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-section";
+import { DoctorsConsultClient } from "@/features/marketing/components/doctors-consult-client";
 
 export const metadata = {
   title: "Online Consultation",
@@ -14,10 +14,10 @@ export default function DoctorsPage() {
       <PageSection variant="soft" spacing="default" innerClassName="!py-12 sm:!py-16">
         <PageTitle
           title="Online consultation"
-          description="Book a secure video consult with PMDC-verified doctors in Lahore. Search by specialty and ratings — full search coming soon."
+          description="Choose a PMDC-verified doctor, pick a slot, and complete a test payment during MVP. Free care is available only on Sundays."
         />
       </PageSection>
-      <TopDoctorsSection />
+      <DoctorsConsultClient />
     </>
   );
 }

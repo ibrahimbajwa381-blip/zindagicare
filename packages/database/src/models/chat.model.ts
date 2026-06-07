@@ -19,6 +19,8 @@ const chatThreadSchema = new Schema(
       sparse: true,
       unique: true,
     },
+    /** Sorted participant pair key for one direct thread per doctor–patient pair */
+    directKey: { type: String, sparse: true, unique: true },
     participantIds: {
       type: [{ type: Schema.Types.ObjectId, ref: "User" }],
       required: true,

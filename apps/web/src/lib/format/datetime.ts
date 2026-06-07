@@ -16,3 +16,12 @@ export function formatKarachiDateTime(iso: string | Date): string {
     timeZone: KARACHI_TZ,
   });
 }
+
+export function formatKarachiDate(iso: string | Date): string {
+  return new Date(iso).toLocaleDateString("en-PK", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: KARACHI_TZ,
+  });
+}

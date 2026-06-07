@@ -155,7 +155,12 @@ export function HeroCarousel({
                   fill
                   priority={index === 0}
                   sizes="(max-width: 1024px) 100vw, 42vw"
-                  className="object-cover object-center lg:object-[center_20%]"
+                  className={cn(
+                    "object-cover",
+                    service.id === "online-consult"
+                      ? "object-top lg:object-[center_15%]"
+                      : "object-center lg:object-[center_20%]",
+                  )}
                 />
                 <div
                   aria-hidden

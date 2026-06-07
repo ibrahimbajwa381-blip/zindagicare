@@ -19,13 +19,18 @@ type Props = {
   selectedSlotId: string | null;
   onSelect: (slotId: string) => void;
   disabled?: boolean;
+  emptyMessage?: string;
 };
 
-export function SlotPicker({ slots, selectedSlotId, onSelect, disabled }: Props) {
+export function SlotPicker({ slots, selectedSlotId, onSelect, disabled, emptyMessage }: Props) {
   const mounted = useMounted();
 
   if (!slots.length) {
-    return <p className="text-sm text-slate-500">No slots available for this Sunday.</p>;
+    return (
+      <p className="text-sm text-slate-500">
+        {emptyMessage ?? "No slots available for this Sunday."}
+      </p>
+    );
   }
 
   return (

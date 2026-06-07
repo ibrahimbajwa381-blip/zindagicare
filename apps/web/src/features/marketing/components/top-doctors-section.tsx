@@ -6,9 +6,39 @@ import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
 import { Button } from "@/components/ui/button";
 import { getServerTranslations } from "@/i18n/server";
+import { PublicDoctorService } from "@/server/services/public-doctor.service";
+import { doctorProfilePath, nameToDoctorSlug } from "@/lib/doctors/profile-path";
 
 export async function TopDoctorsSection() {
   const { t } = await getServerTranslations();
+  const featured = await PublicDoctorService.getFeaturedDoctors(6);
+
+  const doctors =
+    featured.length > 0
+      ? featured.map((doctor) => ({
+          key: doctor.doctorId,
+          href: doctorProfilePath(doctor.slug, doctor.doctorId),
+          name: doctor.name,
+          specialty: doctor.specialty,
+          hospital: doctor.hospital,
+          rating: doctor.rating,
+          reviews: doctor.reviews,
+          fee: doctor.fee,
+          pmdcVerified: doctor.pmdcVerified,
+          imageUrl: doctor.imageUrl,
+        }))
+      : mockDoctors.map((doctor) => ({
+          key: doctor.id,
+          href: doctorProfilePath(nameToDoctorSlug(doctor.name)),
+          name: doctor.name,
+          specialty: doctor.specialty,
+          hospital: doctor.hospital,
+          rating: doctor.rating,
+          reviews: doctor.reviews,
+          fee: doctor.fee,
+          pmdcVerified: doctor.pmdcVerified,
+          imageUrl: doctor.imageUrl,
+        }));
 
   return (
     <PageSection variant="brand" spacing="lg" flipBlur>
@@ -27,8 +57,20 @@ export async function TopDoctorsSection() {
         </Button>
       </div>
       <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-        {mockDoctors.map((doctor) => (
-          <DoctorCard key={doctor.id} {...doctor} pmdcLabel={t.common.pmdc} />
+        {doctors.map((doctor) => (
+          <DoctorCard
+            key={doctor.key}
+            href={doctor.href}
+            name={doctor.name}
+            specialty={doctor.specialty}
+            hospital={doctor.hospital}
+            rating={doctor.rating}
+            reviews={doctor.reviews}
+            fee={doctor.fee}
+            pmdcVerified={doctor.pmdcVerified}
+            imageUrl={doctor.imageUrl}
+            pmdcLabel={t.common.pmdc}
+          />
         ))}
       </div>
     </PageSection>

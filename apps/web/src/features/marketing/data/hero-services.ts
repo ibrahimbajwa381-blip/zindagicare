@@ -22,8 +22,8 @@ export type HeroService = {
 export const heroServices: HeroService[] = [
   {
     id: "online-consult",
-    image: "/hero/online-consult.jpg",
-    imageAlt: "Patient on a video call with a doctor",
+    image: "/hero/dr-usama-riyaz.png",
+    imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
     carousel: {
       eyebrow: "Online consultation",
       title: "Talk to PMDC doctors via",

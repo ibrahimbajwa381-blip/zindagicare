@@ -4,6 +4,15 @@ import { Roles, VerificationStatuses } from "@zindagi/shared";
 import { getDemoDoctorImage } from "@/features/marketing/data/demo-doctor-images";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
 
+const DEFAULT_WEEKLY_AVAILABILITY = [
+  { dayOfWeek: 1, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 2, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 3, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 4, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 5, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 6, startTimeLocal: "09:00", endTimeLocal: "13:00" },
+];
+
 /** Dev-only seed: demo Sunday doctors in Lahore */
 export async function POST() {
   if (process.env.NODE_ENV === "production") {
@@ -64,8 +73,11 @@ export async function POST() {
         pmdcVerified: true,
         verificationStatus: VerificationStatuses.APPROVED,
         sundayConsultEnabled: true,
+        videoConsultEnabled: true,
         isListed: true,
         coverageCities: ["Lahore"],
+        consultationFee: 2500,
+        weeklyAvailability: DEFAULT_WEEKLY_AVAILABILITY,
         slug: demo.name.toLowerCase().replace(/\s+/g, "-"),
         ratingAvg: 4.8,
         ratingCount: 100,
@@ -76,7 +88,13 @@ export async function POST() {
         {
           $set: {
             sundayConsultEnabled: true,
+            videoConsultEnabled: true,
             isListed: true,
+            consultationFee: profile.consultationFee || 2500,
+            weeklyAvailability:
+              profile.weeklyAvailability?.length > 0
+                ? profile.weeklyAvailability
+                : DEFAULT_WEEKLY_AVAILABILITY,
             verificationStatus: VerificationStatuses.APPROVED,
             coverageCities: profile.coverageCities?.includes("Lahore")
               ? profile.coverageCities

@@ -17,6 +17,8 @@ import { formatMessage } from "@/i18n/messages";
 import { getLocale } from "@/i18n/server";
 import { getPatientProfile } from "@/server/services/patient-profile.service";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
+import { loadPatientOnlineBooking } from "@/features/consult/components/patient-online-booking-section";
+import { PatientOnlineBookingSection } from "@/features/consult/components/patient-online-booking-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 export const metadata = { title: "Dashboard" };
@@ -29,9 +31,10 @@ export default async function PatientDashboardPage() {
 
   const locale = await getLocale();
   const t = getDictionary(locale);
-  const [profile, sundayBooking] = await Promise.all([
+  const [profile, sundayBooking, onlineBooking] = await Promise.all([
     getPatientProfile(session.user.id),
     SundayConsultService.getPatientBooking(session.user.id),
+    loadPatientOnlineBooking(session.user.id),
   ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
 
@@ -47,15 +50,30 @@ export default async function PatientDashboardPage() {
         <PatientProfileSection initialProfile={profile} initialSundayBooking={sundayBooking} />
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className={surfaceCardInteractive}>
           <CardHeader>
-            <CardTitle className="text-base">{t.dashboard.upcomingAppointments}</CardTitle>
+            <CardTitle className="text-base">{t.dashboard.nav.messages}</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-500">
-            {t.dashboard.noAppointments}
+          <CardContent className="space-y-3 text-sm text-slate-500">
+            <p>{t.chat.pageDescription}</p>
+            <Button asChild variant="outline" size="sm">
+              <Link href={siteConfig.links.messages}>{t.dashboard.nav.messages}</Link>
+            </Button>
           </CardContent>
         </Card>
+        {onlineBooking ? (
+          <PatientOnlineBookingSection initialBooking={onlineBooking} />
+        ) : (
+          <Card className={surfaceCardInteractive}>
+            <CardHeader>
+              <CardTitle className="text-base">{t.dashboard.upcomingAppointments}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-500">
+              {t.dashboard.noAppointments}
+            </CardContent>
+          </Card>
+        )}
         <PatientSundayBookingSection
           variant="dashboard"
           initialBooking={sundayBooking}

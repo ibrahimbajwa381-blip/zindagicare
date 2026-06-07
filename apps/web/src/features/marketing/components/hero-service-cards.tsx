@@ -49,7 +49,12 @@ export function HeroServiceCards({
                   alt={service.imageAlt}
                   fill
                   sizes="(max-width: 640px) 42vw, 20vw"
-                  className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                  className={cn(
+                    "object-cover transition-transform duration-300 group-hover:scale-105",
+                    service.id === "online-consult"
+                      ? "object-top"
+                      : "object-center",
+                  )}
                 />
                 {service.id === "sunday-consult" && (
                   <span className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm sm:text-xs">

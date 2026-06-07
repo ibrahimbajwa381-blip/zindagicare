@@ -94,9 +94,9 @@ export const en = {
     nextService: "Next service",
     services: [
       {
-        imageAlt: "Patient on a video call with a doctor",
+        imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
         carousel: {
-          eyebrow: "Online consultation",
+          eyebrow: "Dr. Usama Riyaz · Founder",
           title: "Talk to PMDC doctors via",
           titleHighlight: "secure video",
           description:
@@ -491,6 +491,19 @@ export const en = {
     modalPlaceholder: "Search specialty…",
     modalEmpty: "No specialties match your search.",
   },
+  doctorProfile: {
+    backToDoctors: "Back to all doctors",
+    about: "About",
+    education: "Education & qualifications",
+    practicesAt: "Practices at",
+    languages: "Languages",
+    experience: "Experience",
+    yearsExperience: "years of experience",
+    reviews: "Patient reviews",
+    reviewsEmpty: "No reviews yet. Reviews appear after completed paid consultations.",
+    videoConsult: "Video consultation",
+    perConsultation: "per consultation",
+  },
   onboarding: {
     joiningAs: "I am joining as",
     patient: "Patient",
@@ -512,6 +525,7 @@ export const en = {
     description: "Your appointments and family health hub.",
     nav: {
       dashboard: "Dashboard",
+      messages: "Messages",
     },
     header: {
       patientAccount: "Patient account",
@@ -581,6 +595,32 @@ export const en = {
         other: "Other",
       },
     },
+  },
+  chat: {
+    pageTitle: "Messages",
+    pageDescription:
+      "Chat with doctors after a paid consultation. Sunday free consults do not include messaging.",
+    title: "Chats",
+    searchPlaceholder: "Search chats",
+    emptyTitle: "No conversations yet",
+    emptyDescription:
+      "Book a paid online consultation to message your doctor. Sunday free slots are video-only.",
+    newChatLabel: "New chat",
+    newChatTitle: "Message a doctor",
+    newChatSearchPlaceholder: "Search doctors from your paid consultations",
+    newChatEmpty: "No paid consultations found. Book a paid consult to unlock chat.",
+    selectChatTitle: "ZindagiCare Messages",
+    selectChatDescription:
+      "Select a chat from your paid consultations. Messaging is not included with Sunday free consults.",
+    messagePlaceholder: "Type a message",
+    backLabel: "Back",
+    doctorPageTitle: "Patient messages",
+    doctorPageDescription:
+      "Reply to patients who completed a paid consultation. Sunday free patients cannot be messaged here.",
+    doctorNewChatSearchPlaceholder: "Search paid-consult patients by name or phone",
+    doctorNewChatEmpty: "No paid-consult patients found.",
+    doctorSelectChatDescription:
+      "Select a patient from your paid consultations. Sunday free consults do not include chat.",
   },
 };
 
