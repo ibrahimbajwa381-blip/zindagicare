@@ -96,7 +96,13 @@ export class PublicDoctorService {
   }
 
   static async getFeaturedDoctors(limit = 6): Promise<FeaturedDoctorCard[]> {
-    const doctors = await OnlineConsultService.listConsultDoctors();
+    let doctors: Awaited<ReturnType<typeof OnlineConsultService.listConsultDoctors>>;
+    try {
+      doctors = await OnlineConsultService.listConsultDoctors();
+    } catch {
+      return [];
+    }
+
     return doctors.slice(0, limit).map((doc) => ({
       doctorId: doc.doctorId,
       slug: doc.slug ?? nameToDoctorSlug(doc.name),
