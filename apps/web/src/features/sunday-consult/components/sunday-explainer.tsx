@@ -22,11 +22,14 @@ import { useTranslations } from "@/i18n/locale-provider";
 type SundayExplainerProps = {
   variant?: "compact" | "full";
   showCta?: boolean;
+  /** Hide title + lead paragraph when the parent page provides its own intro. */
+  hideIntro?: boolean;
 };
 
 export function SundayExplainer({
   variant = "full",
   showCta = true,
+  hideIntro = false,
 }: SundayExplainerProps) {
   const t = useTranslations();
   const copy = t.sunday;
@@ -75,17 +78,21 @@ export function SundayExplainer({
         </span>
       </div>
 
-      <h2 className="mt-4 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-        {ex.whatIsTitle}
-      </h2>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
-        {formatMessage(ex.whatIsBody, {
-          duration: copy.durationLabel,
-          modality: copy.modality,
-        })}
-      </p>
+      {!hideIntro && (
+        <>
+          <h2 className="mt-4 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            {ex.whatIsTitle}
+          </h2>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+            {formatMessage(ex.whatIsBody, {
+              duration: copy.durationLabel,
+              modality: copy.modality,
+            })}
+          </p>
+        </>
+      )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className={`grid gap-4 sm:grid-cols-3 ${hideIntro ? "mt-4" : "mt-6"}`}>
         <div className={`flex gap-3 p-4 ${surfaceInset} bg-brand-muted/80`}>
           <Calendar className="h-5 w-5 shrink-0 text-brand" />
           <div>
