@@ -20,6 +20,10 @@ import { Star } from "lucide-react";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
 import type { SundayPatientBookingDto } from "../types";
+import {
+  AppointmentConfirmationModal,
+  type AppointmentConfirmationDetails,
+} from "@/features/consult/components/appointment-confirmation-modal";
 
 function DoctorAvatar({
   name,
@@ -74,7 +78,6 @@ export function SundayConsultClient() {
   const mounted = useMounted();
   const { sunday: sundayCopy, dashboard: dashboardCopy } = useTranslations();
   const { data: session, status } = useSession();
-  const isDev = process.env.NODE_ENV === "development";
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorRow | null>(null);
   const [slots, setSlots] = useState<
@@ -85,18 +88,17 @@ export function SundayConsultClient() {
   const [holdToken, setHoldToken] = useState<string | null>(null);
   const [booking, setBooking] = useState<SundayPatientBookingDto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [seedMessage, setSeedMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [confirmationDetails, setConfirmationDetails] =
+    useState<AppointmentConfirmationDetails | null>(null);
 
   const loadDoctors = useCallback(async () => {
     const res = await fetch("/api/v1/sunday/doctors");
     const json = await res.json();
     if (json.success) {
       setDoctors(json.data ?? []);
-      return (json.data ?? []) as DoctorRow[];
     }
-    return [];
   }, []);
 
   const loadSlots = useCallback(async (doctor: DoctorRow) => {
@@ -121,47 +123,20 @@ export function SundayConsultClient() {
 
   useEffect(() => {
     loadDoctors();
-    if (session?.user) loadMyBooking();
-  }, [loadDoctors, loadMyBooking, session?.user]);
-
-  const runSeed = useCallback(async () => {
-    setSeeding(true);
-    setError(null);
-    setSeedMessage(null);
-    try {
-      const res = await fetch("/api/internal/seed-sunday", { method: "POST" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.success) {
-        throw new Error(
-          json.error?.message ?? json.error ?? "Could not seed demo doctors",
-        );
-      }
-      const count = json.created?.length ?? 3;
-      const list = await loadDoctors();
-      setSeedMessage(
-        list.length > 0
-          ? `Loaded ${list.length} demo doctor${list.length === 1 ? "" : "s"} with Sunday slots.`
-          : `Seeded ${count} doctors — refresh if the list is still empty.`,
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Seed failed");
-    } finally {
-      setSeeding(false);
-    }
   }, [loadDoctors]);
 
   useEffect(() => {
-    if (!mounted || !isDev) return;
-    let cancelled = false;
-    (async () => {
-      const list = await loadDoctors();
-      if (cancelled || list.length > 0) return;
-      await runSeed();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mounted, isDev, loadDoctors, runSeed]);
+    if (status !== "authenticated") return;
+    loadMyBooking();
+  }, [loadMyBooking, status]);
+
+  useEffect(() => {
+    if (booking) {
+      setSelectedDoctor(null);
+      setSelectedSlotId(null);
+      setHoldToken(null);
+    }
+  }, [booking]);
 
   useSundayRealtime(
     selectedDoctor?.doctorId ?? null,
@@ -223,6 +198,20 @@ export function SundayConsultClient() {
         throw new Error(confirmJson.error?.message ?? "Could not confirm booking");
       }
 
+      const confirmed = confirmJson.data as {
+        scheduledStart: string;
+        scheduledEnd: string;
+      };
+
+      setConfirmationDetails({
+        doctorName: selectedDoctor.name,
+        doctorSpecialty: selectedDoctor.specialties[0],
+        scheduledStart: confirmed.scheduledStart,
+        scheduledEnd: confirmed.scheduledEnd,
+        type: "sunday",
+      });
+      setConfirmationOpen(true);
+
       await loadMyBooking();
       setSelectedSlotId(null);
       await loadDoctors();
@@ -234,30 +223,17 @@ export function SundayConsultClient() {
     }
   };
 
-  const seedDemo = () => runSeed();
-
   return (
     <>
+      <AppointmentConfirmationModal
+        open={confirmationOpen}
+        onOpenChange={setConfirmationOpen}
+        details={confirmationDetails}
+      />
       <PageSection id="how-it-works" variant="neutral" spacing="default" flipBlur>
-        <div className="mb-10">
-          <SundayExplainer showCta={false} />
+        <div className="mb-8 sm:mb-10">
+          <SundayExplainer showCta={false} hideIntro />
         </div>
-        {mounted && isDev && (
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={seedDemo}
-              disabled={seeding || loading}
-            >
-              {seeding ? "Seeding…" : "Seed demo doctors"}
-            </Button>
-            {seedMessage && (
-              <p className="text-sm text-brand-dark">{seedMessage}</p>
-            )}
-          </div>
-        )}
-
         {booking && (
           <Card className="mb-8 border-brand-light/40 bg-brand-muted/60 shadow-premium">
             <CardHeader>
@@ -269,122 +245,137 @@ export function SundayConsultClient() {
           </Card>
         )}
 
-        <h1 className="font-display text-xl font-semibold text-foreground sm:text-3xl">
-          Book your free slot
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-          Choose a doctor below for{" "}
-          <strong className="font-medium text-slate-800">
-            {formatNextSundayLong()}
-          </strong>
-          . {sundayCopy.priceLabel} · {sundayCopy.durationLabel} · {sundayCopy.modality}.
-        </p>
-
-        <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-2 lg:gap-4">
-          <div className="space-y-3">
-            {doctors.map((doc) => (
-              <button
-                key={doc.doctorId}
-                type="button"
-                onClick={() => selectDoctor(doc)}
-                className={`w-full rounded-xl border p-4 text-left backdrop-blur-sm transition-all active:scale-[0.99] ${
-                  selectedDoctor?.doctorId === doc.doctorId
-                    ? "border-brand bg-brand-muted/90 shadow-sm"
-                    : `${surfaceInset} hover:border-brand-light/50 hover:bg-white hover:shadow-premium`
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <DoctorAvatar name={doc.name} avatarUrl={doc.avatarUrl} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{doc.name}</p>
-                    <p className="text-sm text-slate-500">{doc.specialties[0]}</p>
-                    <p className="mt-1 flex items-center gap-1 text-sm">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                      {doc.ratingAvg} ({doc.ratingCount})
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {doc.pmdcVerified && <Badge variant="secondary">PMDC</Badge>}
-                    <p className="mt-2 text-xs text-slate-500">
-                      {doc.isFull ? "Full" : `${doc.availableSlots} slots left`}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
-            {!doctors.length && (
-              <div className={`border-dashed p-6 text-sm text-slate-600 ${surfaceMuted}`}>
-                <p className="font-medium text-slate-800">No Sunday doctors listed yet</p>
-                <p className="mt-2">
-                  Doctors who enable Sunday Free Consult will appear here with open{" "}
-                  {sundayCopy.durationLabel} video slots. Check back soon or browse{" "}
-                  <Link href={siteConfig.links.doctors} className="text-brand hover:underline">
-                    all doctors
-                  </Link>
-                  .
-                </p>
-              </div>
-            )}
+        {booking ? (
+          <div className={`rounded-2xl border border-brand-light/40 bg-brand-muted/50 p-6 sm:p-8 ${surfaceMuted}`}>
+            <h1 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+              {sundayCopy.alreadyBookedTitle}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
+              {sundayCopy.alreadyBookedMessage}
+            </p>
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">{sundayCopy.alreadyBookedHint}</p>
           </div>
+        ) : (
+          <>
+            <h1 className="font-display text-xl font-semibold text-foreground sm:text-3xl">
+              Book your free slot
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+              Choose a doctor below for{" "}
+              <strong className="font-medium text-slate-800">
+                {formatNextSundayLong()}
+              </strong>
+              . {sundayCopy.priceLabel} · {sundayCopy.durationLabel} · {sundayCopy.modality}.
+            </p>
+            <p className="mt-1 max-w-2xl text-xs text-slate-500">{sundayCopy.oneSlotDesc}</p>
 
-          <Card className={surfaceCardInteractive}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {selectedDoctor ? `Book with ${selectedDoctor.name}` : "Select a doctor"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedDoctor && (
-                <>
-                  <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-                    <DoctorAvatar
-                      name={selectedDoctor.name}
-                      avatarUrl={selectedDoctor.avatarUrl}
-                      size="lg"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground">{selectedDoctor.name}</p>
-                      <p className="text-sm text-slate-500">{selectedDoctor.specialties[0]}</p>
-                      <p className="mt-1 flex items-center gap-1 text-sm text-slate-600">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        {selectedDoctor.ratingAvg} ({selectedDoctor.ratingCount})
-                      </p>
-                    </div>
-                  </div>
-                  <SlotPicker
-                    slots={slots}
-                    selectedSlotId={selectedSlotId}
-                    onSelect={setSelectedSlotId}
-                    disabled={loading || !!booking}
-                  />
-                  {error && <p className="text-sm text-red-600">{error}</p>}
-                  <Button
-                    variant="default"
-                    className="w-full bg-brand text-white hover:bg-brand-dark"
-                    disabled={!selectedSlotId || loading || !!booking}
-                    onClick={reserveAndConfirm}
+            <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-2 lg:gap-4">
+              <div className="space-y-3">
+                {doctors.map((doc) => (
+                  <button
+                    key={doc.doctorId}
+                    type="button"
+                    onClick={() => selectDoctor(doc)}
+                    className={`w-full rounded-xl border p-4 text-left backdrop-blur-sm transition-all active:scale-[0.99] ${
+                      selectedDoctor?.doctorId === doc.doctorId
+                        ? "border-brand bg-brand-muted/90 shadow-sm"
+                        : `${surfaceInset} hover:border-brand-light/50 hover:bg-white hover:shadow-premium`
+                    }`}
                   >
-                    {!mounted
-                      ? "Loading…"
-                      : status === "authenticated"
-                        ? loading
-                          ? "Booking…"
-                          : "Confirm free booking"
-                        : "Log in to book"}
-                  </Button>
-                </>
-              )}
-              {mounted && status === "unauthenticated" && (
-                <p className="text-center text-sm text-slate-500">
-                  <Link href={siteConfig.links.register} className="text-brand">
-                    Create account
-                  </Link>{" "}
-                  for free Sunday consults.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <DoctorAvatar name={doc.name} avatarUrl={doc.avatarUrl} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{doc.name}</p>
+                        <p className="text-sm text-slate-500">{doc.specialties[0]}</p>
+                        <p className="mt-1 flex items-center gap-1 text-sm">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          {doc.ratingAvg} ({doc.ratingCount})
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {doc.pmdcVerified && <Badge variant="secondary">PMDC</Badge>}
+                        <p className="mt-2 text-xs text-slate-500">
+                          {doc.isFull ? "Full" : `${doc.availableSlots} slots left`}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                {!doctors.length && (
+                  <div className={`border-dashed p-6 text-sm text-slate-600 ${surfaceMuted}`}>
+                    <p className="font-medium text-slate-800">No Sunday doctors listed yet</p>
+                    <p className="mt-2">
+                      Doctors who enable Sunday Free Consult will appear here with open{" "}
+                      {sundayCopy.durationLabel} video slots. Check back soon or browse{" "}
+                      <Link href={siteConfig.links.doctors} className="text-brand hover:underline">
+                        all doctors
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <Card className={surfaceCardInteractive}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {selectedDoctor ? `Book with ${selectedDoctor.name}` : "Select a doctor"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedDoctor && (
+                    <>
+                      <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                        <DoctorAvatar
+                          name={selectedDoctor.name}
+                          avatarUrl={selectedDoctor.avatarUrl}
+                          size="lg"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">{selectedDoctor.name}</p>
+                          <p className="text-sm text-slate-500">{selectedDoctor.specialties[0]}</p>
+                          <p className="mt-1 flex items-center gap-1 text-sm text-slate-600">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            {selectedDoctor.ratingAvg} ({selectedDoctor.ratingCount})
+                          </p>
+                        </div>
+                      </div>
+                      <SlotPicker
+                        slots={slots}
+                        selectedSlotId={selectedSlotId}
+                        onSelect={setSelectedSlotId}
+                        disabled={loading}
+                      />
+                      {error && <p className="text-sm text-red-600">{error}</p>}
+                      <Button
+                        variant="default"
+                        className="w-full bg-brand text-white hover:bg-brand-dark"
+                        disabled={!selectedSlotId || loading}
+                        onClick={reserveAndConfirm}
+                      >
+                        {!mounted
+                          ? "Loading…"
+                          : status === "authenticated"
+                            ? loading
+                              ? "Booking…"
+                              : "Confirm free booking"
+                            : "Log in to book"}
+                      </Button>
+                    </>
+                  )}
+                  {mounted && status === "unauthenticated" && (
+                    <p className="text-center text-sm text-slate-500">
+                      <Link href={siteConfig.links.register} className="text-brand">
+                        Create account
+                      </Link>{" "}
+                      for free Sunday consults.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </PageSection>
     </>
   );

@@ -1,22 +1,49 @@
+import Link from "next/link";
+import { HelpCircle, MessageCircle } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
-import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
 import { getServerTranslations } from "@/i18n/server";
+import { siteConfig } from "@/config/site";
+import { FaqAccordion } from "./faq-accordion";
 
 export async function FaqSection() {
   const { t } = await getServerTranslations();
 
   return (
-    <PageSection variant="brand" spacing="lg" innerClassName="mx-auto max-w-3xl">
-      <SectionHeader eyebrow={t.faq.eyebrow} title={t.faq.title} align="center" />
-      <dl className="mt-8 space-y-3 sm:mt-12 sm:space-y-4">
-        {t.faq.items.map((faq) => (
-          <div key={faq.q} className={`p-6 ${surfaceCardInteractive}`}>
-            <dt className="font-display text-base font-semibold text-foreground">{faq.q}</dt>
-            <dd className="mt-2 text-sm leading-relaxed text-slate-600">{faq.a}</dd>
+    <PageSection variant="soft" spacing="lg" flipBlur>
+      <div className="mx-auto max-w-3xl">
+        <SectionHeader
+          eyebrow={t.faq.eyebrow}
+          title={t.faq.title}
+          description={t.faq.description}
+          align="center"
+        />
+
+        <div className="mt-8 sm:mt-10">
+          <FaqAccordion items={t.faq.items} />
+        </div>
+
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-brand-light/25 bg-white/80 px-5 py-4 text-center backdrop-blur-sm sm:mt-8 sm:flex-row sm:justify-between sm:text-left">
+          <div className="flex items-start gap-3 sm:items-center">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-muted text-accent">
+              <HelpCircle className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <div>
+              <p className="font-display text-sm font-semibold text-foreground sm:text-base">
+                {t.faq.stillHaveQuestions}
+              </p>
+              <p className="mt-0.5 text-sm text-slate-600">{t.faq.stillHaveQuestionsHint}</p>
+            </div>
           </div>
-        ))}
-      </dl>
+          <Link
+            href={siteConfig.links.register}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {t.faq.getStarted}
+          </Link>
+        </div>
+      </div>
     </PageSection>
   );
 }

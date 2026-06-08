@@ -110,13 +110,13 @@ export const en = {
         },
       },
       {
-        imageAlt: "Doctor consulting with a patient in clinic",
+        imageAlt: "Free Sunday video consultation on ZindagiCare",
         carousel: {
           eyebrow: "Sunday Free Consult",
           title: "Free doctor video call",
           titleHighlight: "every Sunday",
           description:
-            "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one slot per doctor per week, join online at your chosen time — no clinic visit required.",
+            "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one free slot per week (first come, first served), join online at your chosen time — no clinic visit required.",
           badge: "Rs. 0 · 10 minutes · Online only",
           ctaLabel: "Book free Sunday slot",
         },
@@ -156,18 +156,26 @@ export const en = {
     durationLabel: `${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} minutes`,
     modality: "Secure video call on ZindagiCare",
     bannerTitle: "Sunday Free Consult",
+    heroHeadline: "Free doctor video call",
+    heroHeadlineHighlight: "every Sunday",
     bannerSubtitle: "Free video call with a PMDC-verified doctor — every Sunday.",
     bannerBody:
-      "No consultation fee. Book one {duration} slot per doctor, join online at your chosen time, and get medical guidance from home.",
+      "No consultation fee. Book one {duration} free slot per week, join online at your chosen time, and get medical guidance from home.",
     onlineOnlyTitle: "Online only",
     onlineOnlyDesc: "secure video on ZindagiCare, no clinic visit.",
     oneSlotTitle: "One free slot",
-    oneSlotDesc: "per doctor per week · booking opens 7 days before Sunday.",
+    oneSlotDesc: "one per patient per week · first come, first served · booking opens 7 days before Sunday.",
+    alreadyBookedTitle: "Your appointment this week",
+    alreadyBookedMessage:
+      "You have already booked your free consultation for this week. Slots are limited and assigned on a first come, first served basis — only one appointment per patient each week.",
+    alreadyBookedHint: "Your confirmed appointment is shown above. Join from your dashboard at the booked time.",
     bookCta: "Book free Sunday slot",
     howItWorks: "How it works",
+    howItWorksDesc: "Three quick steps to book your free Sunday consult.",
+    rulesTitle: "Good to know",
     rules: [
       "Completely free — no consultation fee on Sundays.",
-      `One free slot per doctor per patient each Sunday (${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} min).`,
+      `One free slot per patient each week (${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} min) — first come, first served.`,
       "Booking opens 7 days before the upcoming Sunday (Pakistan time).",
       "Returning patients may get 24-hour early access to book first.",
       "Join from your phone or laptop at the booked time — no clinic visit needed.",
@@ -232,6 +240,11 @@ export const en = {
   faq: {
     eyebrow: "FAQ",
     title: "Frequently asked questions",
+    description:
+      "Quick answers about online consults, Sunday free care, and in-house medical visits in Lahore.",
+    stillHaveQuestions: "Still have questions?",
+    stillHaveQuestionsHint: "Create a free account and our team can guide you to the right service.",
+    getStarted: "Get started free",
     items: [
       {
         q: "What services does ZindagiCare offer at launch?",
@@ -239,7 +252,7 @@ export const en = {
       },
       {
         q: "What is Sunday Free Consult?",
-        a: "It is a free 10-minute video consultation with a PMDC-verified doctor every Sunday — no consultation fee. You book one slot per doctor per week on ZindagiCare, join the secure video call at your chosen time from home, and booking usually opens 7 days before that Sunday (Pakistan time).",
+        a: "It is a free 10-minute video consultation with a PMDC-verified doctor every Sunday — no consultation fee. You book one free slot per week on ZindagiCare (first come, first served), join the secure video call at your chosen time from home, and booking usually opens 7 days before that Sunday (Pakistan time).",
       },
       {
         q: "How does online consultation work?",
@@ -258,6 +271,7 @@ export const en = {
   homeServices: {
     eyebrow: "At your home",
     title: "In-house medical services",
+    bannerBadge: "Doctor visits · Nursing · IV & injections",
     description:
       "Geo-tracked scheduling, transparent pricing, and PMDC-verified staff across Lahore.",
     items: [
@@ -268,6 +282,8 @@ export const en = {
     ],
     hero: {
       badge: "Lahore · Licensed nurses & doctors",
+      heroHeadline: "Licensed medical care at",
+      heroHeadlineHighlight: "your home",
       headline: "Medical care at your doorstep",
       subheadline: "IV drips, injections, wound care & more — without leaving home",
       body:
@@ -553,6 +569,18 @@ export const en = {
     sundayConsultDesc:
       "Free 10-minute video call with a verified doctor on {date} — Rs. 0, from home.",
     bookSunday: "Book free Sunday slot",
+    appointmentConfirmation: {
+      title: "Appointment confirmed!",
+      subtitle: "This is your appointment. Please save the details below.",
+      doctor: "Your doctor",
+      dateTime: "Date & time",
+      slot: "Time slot",
+      videoConsult: "Secure video on ZindagiCare",
+      feePaid: "Consultation fee paid:",
+      reminder: "Join from your dashboard at the booked time.",
+      viewDashboard: "View dashboard",
+      gotIt: "Got it",
+    },
     sundayBooking: {
       title: "Your Sunday free consult",
       subtitle: "Confirmed slot with your doctor — join online at the booked time.",

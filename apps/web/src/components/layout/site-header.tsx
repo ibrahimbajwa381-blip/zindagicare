@@ -26,7 +26,6 @@ export async function SiteHeader({ enrichUserFromProfile = false }: SiteHeaderPr
     sundayConsult: t.nav.sundayConsult,
     homeServices: t.nav.homeServices,
     freeBadge: t.nav.freeBadge,
-    sectionTitle: t.footer.account,
     myDashboard: t.dashboard.header.myDashboard,
     signOut: t.dashboard.header.signOut,
     login: t.auth.login,
@@ -92,14 +91,7 @@ export async function SiteHeader({ enrichUserFromProfile = false }: SiteHeaderPr
           menuLabel={t.common.menu}
           openMenuLabel={t.common.openMenu}
           closeMenuLabel={t.common.closeMenu}
-          footer={
-            <div className="flex flex-col gap-3">
-              <LanguageSwitcher className="w-full justify-center" size="header" />
-              {session?.user ? (
-                <AppHeaderUser enrichFromProfile={enrichUserFromProfile} variant="drawer" />
-              ) : null}
-            </div>
-          }
+          footer={<LanguageSwitcher className="w-full justify-center" size="header" />}
         />
       </div>
     </header>

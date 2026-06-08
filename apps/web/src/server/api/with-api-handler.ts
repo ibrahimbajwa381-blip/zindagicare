@@ -14,6 +14,8 @@ type HandlerContext<TBody> = {
 
 type Options<TBody> = {
   auth?: boolean;
+  /** Skip session lookup — for public read endpoints. */
+  public?: boolean;
   roles?: string[];
   bodySchema?: ZodType<TBody>;
 };
@@ -24,7 +26,9 @@ export function withApiHandler<TBody = unknown>(
 ) {
   return async (req: NextRequest) => {
     try {
-      const session = (await auth()) as Session | null;
+      const session = options.public
+        ? null
+        : ((await auth()) as Session | null);
 
       if (options.auth && !session?.user?.id) {
         throw new AppError("Unauthorized", "UNAUTHORIZED", 401);

@@ -16,8 +16,14 @@ export function useSundayRealtime(
     const url = `/api/v1/sunday/events?doctorId=${doctorId}&date=${dateKey}`;
     const source = new EventSource(url);
 
-    source.onmessage = () => {
-      onEventRef.current();
+    source.onmessage = (message) => {
+      try {
+        const payload = JSON.parse(message.data) as { type?: string };
+        if (!payload.type || payload.type === "connected") return;
+        onEventRef.current();
+      } catch {
+        // Ignore malformed events.
+      }
     };
 
     source.onerror = () => {

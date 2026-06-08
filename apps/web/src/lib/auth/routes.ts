@@ -38,7 +38,6 @@ export const PUBLIC_PATH_PREFIXES = [
   "/api/payments/jazzcash",
   "/api/v1/payments/mock",
   "/api/v1/payments/test",
-  "/api/internal/seed-sunday",
   "/api/internal/seed-home-care",
   "/api/internal/bootstrap-admin",
   "/api/v1/auth/otp/request",
@@ -94,3 +93,20 @@ export function matchesPrefix(pathname: string, prefixes: readonly string[]) {
 export function isPublicPath(pathname: string) {
   return matchesPrefix(pathname, PUBLIC_PATH_PREFIXES);
 }
+
+/**
+ * Protected app routes that run auth middleware.
+ * Keep in sync with the matcher in apps/web/src/proxy.ts.
+ * Marketing pages, public APIs, and SSE streams are intentionally omitted.
+ */
+export const MIDDLEWARE_PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/doctor",
+  "/admin",
+  "/nurse",
+  "/rider",
+  "/messages",
+  "/onboarding",
+  "/home-care/visits",
+  "/logout",
+] as const;

@@ -181,8 +181,48 @@ html[lang="ur"] body {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 
-  .specialty-browse-dialog::backdrop {
+  .specialty-browse-dialog::backdrop,
+  .appointment-confirmation-dialog::backdrop {
     background: rgb(26 26 26 / 0.45);
     backdrop-filter: blur(4px);
+  }
+
+  @keyframes mobile-menu-item-in {
+    from {
+      opacity: 0;
+      transform: translate3d(1.25rem, 0, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes mobile-menu-rise-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 0.75rem, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .mobile-menu-item-animate {
+    animation: mobile-menu-item-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mobile-menu-rise-animate {
+    animation: mobile-menu-rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-menu-item-animate,
+    .mobile-menu-rise-animate {
+      animation: none;
+    }
   }
 }

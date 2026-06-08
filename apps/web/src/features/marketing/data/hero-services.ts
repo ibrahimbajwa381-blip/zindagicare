@@ -1,5 +1,8 @@
 import { siteConfig } from "@/config/site";
 
+export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.png";
+export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care.jpg";
+
 export type HeroService = {
   id: string;
   image: string;
@@ -41,14 +44,14 @@ export const heroServices: HeroService[] = [
   },
   {
     id: "sunday-consult",
-    image: "/hero/in-clinic.jpg",
-    imageAlt: "Doctor consulting with a patient in clinic",
+    image: SUNDAY_FREE_CONSULT_HERO_IMAGE,
+    imageAlt: "Free Sunday video consultation on ZindagiCare",
     carousel: {
       eyebrow: "Sunday Free Consult",
       title: "Free doctor video call",
       titleHighlight: "every Sunday",
       description:
-        "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one slot per doctor per week, join online at your chosen time — no clinic visit required.",
+        "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one free slot per week (first come, first served), join online at your chosen time — no clinic visit required.",
       badge: "Rs. 0 · 10 minutes · Online only",
       ctaLabel: "Book free Sunday slot",
       href: siteConfig.links.sundayConsult,

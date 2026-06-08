@@ -12,7 +12,6 @@ export function dashboardHref(roles?: string[]) {
 }
 
 type AccountSectionLabels = {
-  sectionTitle: string;
   myDashboard: string;
   signOut: string;
   login: string;
@@ -25,7 +24,6 @@ export function buildAccountMobileSection(
 ): MobileNavSection | null {
   if (!session?.user) {
     return {
-      title: labels.sectionTitle,
       links: [
         { href: siteConfig.links.login, label: labels.login },
         { href: siteConfig.links.register, label: labels.createAccount },
@@ -34,7 +32,6 @@ export function buildAccountMobileSection(
   }
 
   return {
-    title: labels.sectionTitle,
     links: [
       {
         href: dashboardHref(session.user.roles),
@@ -53,7 +50,6 @@ export function buildMarketingMobileNav(
     sundayConsult: string;
     homeServices: string;
     freeBadge: string;
-    sectionTitle: string;
     myDashboard: string;
     signOut: string;
     login: string;
@@ -61,7 +57,6 @@ export function buildMarketingMobileNav(
   },
 ): { links: MobileNavLink[]; sections: MobileNavSection[] } {
   const links: MobileNavLink[] = [
-    { href: "/", label: labels.home },
     { href: siteConfig.links.doctors, label: labels.onlineConsult },
     {
       href: siteConfig.links.sundayConsult,
@@ -72,7 +67,6 @@ export function buildMarketingMobileNav(
   ];
 
   const accountSection = buildAccountMobileSection(session, {
-    sectionTitle: labels.sectionTitle,
     myDashboard: labels.myDashboard,
     signOut: labels.signOut,
     login: labels.login,

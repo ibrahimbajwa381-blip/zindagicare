@@ -5,6 +5,7 @@ import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
 import { Button } from "@/components/ui/button";
 import { getServerTranslations } from "@/i18n/server";
+import { HomeServicesBanner } from "./home-services-banner";
 
 const serviceIcons = [Home, Syringe, Bandage, HeartPulse] as const;
 const serviceColors = [
@@ -20,26 +21,23 @@ type Props = {
 };
 
 export async function HomeServicesPreview({ variant = "preview" }: Props) {
+  if (variant === "preview") {
+    return <HomeServicesBanner />;
+  }
+
   const { t } = await getServerTranslations();
-  const isCatalog = variant === "catalog";
-  const header = isCatalog ? t.homeServices.catalog : t.homeServices;
+  const header = t.homeServices.catalog;
 
   return (
-    <PageSection variant={isCatalog ? "accent" : "accent"} spacing="lg" flipBlur={isCatalog}>
+    <PageSection variant="accent" spacing="lg" flipBlur>
       <SectionHeader
         eyebrow={header.eyebrow}
         title={header.title}
         description={header.description}
-        align={isCatalog ? "center" : "left"}
-        className={isCatalog ? "mx-auto" : undefined}
+        align="center"
+        className="mx-auto"
       />
-      <div
-        className={`mt-8 grid gap-4 sm:gap-5 ${
-          isCatalog
-            ? "sm:mt-12 sm:grid-cols-2 lg:grid-cols-4"
-            : "sm:mt-12 sm:grid-cols-2 lg:grid-cols-4"
-        }`}
-      >
+      <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
         {t.homeServices.items.map((service, index) => {
           const Icon = serviceIcons[index];
           const color = serviceColors[index];
@@ -58,17 +56,15 @@ export async function HomeServicesPreview({ variant = "preview" }: Props) {
           );
         })}
       </div>
-      {!isCatalog && (
-        <Button
-          className="mt-8 h-12 w-full rounded-xl px-6 text-base shadow-premium sm:mt-10 sm:w-auto"
-          asChild
-        >
-          <Link href="/home-care/request">
-            {t.homeCare.bookVisit}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      )}
+      <Button
+        className="mx-auto mt-8 flex h-12 w-full rounded-xl px-6 text-base shadow-premium sm:mt-10 sm:w-auto"
+        asChild
+      >
+        <Link href="/home-care/request">
+          {t.homeCare.bookVisit}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
     </PageSection>
   );
 }

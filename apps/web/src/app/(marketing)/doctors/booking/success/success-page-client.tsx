@@ -8,6 +8,10 @@ import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
+import {
+  AppointmentConfirmationModal,
+  type AppointmentConfirmationDetails,
+} from "@/features/consult/components/appointment-confirmation-modal";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
@@ -17,6 +21,9 @@ export default function ConsultBookingSuccessPage() {
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [confirmationDetails, setConfirmationDetails] =
+    useState<AppointmentConfirmationDetails | null>(null);
 
   useEffect(() => {
     if (!paymentId) {
@@ -36,7 +43,17 @@ export default function ConsultBookingSuccessPage() {
       if (cancelled) return;
 
       if (json.success && json.data?.status === "paid" && json.data.booking) {
-        setBooking(json.data.booking as OnlinePatientBookingDto);
+        const confirmed = json.data.booking as OnlinePatientBookingDto;
+        setBooking(confirmed);
+        setConfirmationDetails({
+          doctorName: confirmed.doctor.name,
+          doctorSpecialty: confirmed.doctor.specialty,
+          scheduledStart: confirmed.scheduledStart,
+          scheduledEnd: confirmed.scheduledEnd,
+          consultationFee: confirmed.consultationFee,
+          type: "online",
+        });
+        setConfirmationOpen(true);
         setLoading(false);
         return;
       }
@@ -64,6 +81,11 @@ export default function ConsultBookingSuccessPage() {
 
   return (
     <>
+      <AppointmentConfirmationModal
+        open={confirmationOpen}
+        onOpenChange={setConfirmationOpen}
+        details={confirmationDetails}
+      />
       <PageSection variant="soft" spacing="default" innerClassName="!py-12 sm:!py-16">
         <PageTitle
           title={loading ? "Confirming payment…" : error ? "Payment pending" : "Booking confirmed"}

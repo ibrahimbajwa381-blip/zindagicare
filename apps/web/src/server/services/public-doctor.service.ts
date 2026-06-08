@@ -11,6 +11,7 @@ import type {
 import { nameToDoctorSlug } from "@/lib/doctors/profile-path";
 import { mongoFilter } from "@/lib/mongo/query";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
+import type { WeeklyWindow } from "@/lib/consult/slot-utils";
 
 const PUBLIC_DOCTOR_FILTER = {
   isListed: true,
@@ -63,6 +64,52 @@ async function mapProfileDoc(
   };
 }
 
+async function queryFeaturedDoctors(limit: number): Promise<FeaturedDoctorCard[]> {
+  await connectDatabase();
+
+  const doctors = await DoctorProfileModel.find(PUBLIC_DOCTOR_FILTER)
+    .populate("userId", "name avatarUrl")
+    .sort({ ratingAvg: -1, ratingCount: -1 })
+    .limit(limit)
+    .lean();
+
+  return doctors.map((doc) => {
+    const user = doc.userId as { name?: string; avatarUrl?: string } | null;
+    const name = user?.name ?? "Doctor";
+
+    return {
+      doctorId: doc._id.toString(),
+      slug: doc.slug ?? nameToDoctorSlug(name),
+      name,
+      specialty: doc.specialties?.[0] ?? "General Physician",
+      hospital: doc.hospitals?.[0]?.name ?? "Lahore",
+      rating: doc.ratingAvg ?? 0,
+      reviews: doc.ratingCount ?? 0,
+      fee: doc.consultationFee ?? 0,
+      pmdcVerified: doc.pmdcVerified ?? false,
+      imageUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+    };
+  });
+}
+
+const FEATURED_CACHE_MS = 60_000;
+const featuredDoctorsCache = new Map<
+  string,
+  { at: number; data: FeaturedDoctorCard[] }
+>();
+
+async function getFeaturedDoctorsCached(limit: number): Promise<FeaturedDoctorCard[]> {
+  const key = String(limit);
+  const hit = featuredDoctorsCache.get(key);
+  if (hit && Date.now() - hit.at < FEATURED_CACHE_MS) {
+    return hit.data;
+  }
+
+  const data = await queryFeaturedDoctors(limit);
+  featuredDoctorsCache.set(key, { at: Date.now(), data });
+  return data;
+}
+
 export class PublicDoctorService {
   static async ensureConnected() {
     await connectDatabase();
@@ -89,31 +136,23 @@ export class PublicDoctorService {
 
     if (!doc) return null;
 
-    const consultDoctors = await OnlineConsultService.listConsultDoctors();
-    const availability = consultDoctors.find((d) => d.doctorId === doc!._id.toString());
+    const weeklyAvailability = (doc.weeklyAvailability ?? []) as WeeklyWindow[];
+    const availability =
+      doc.videoConsultEnabled && weeklyAvailability.length > 0
+        ? await OnlineConsultService.getDoctorAvailabilitySummary(
+            doc._id.toString(),
+            weeklyAvailability,
+          )
+        : undefined;
 
     return mapProfileDoc(doc, availability);
   }
 
   static async getFeaturedDoctors(limit = 6): Promise<FeaturedDoctorCard[]> {
-    let doctors: Awaited<ReturnType<typeof OnlineConsultService.listConsultDoctors>>;
     try {
-      doctors = await OnlineConsultService.listConsultDoctors();
+      return await getFeaturedDoctorsCached(limit);
     } catch {
       return [];
     }
-
-    return doctors.slice(0, limit).map((doc) => ({
-      doctorId: doc.doctorId,
-      slug: doc.slug ?? nameToDoctorSlug(doc.name),
-      name: doc.name,
-      specialty: doc.specialties[0] ?? "General Physician",
-      hospital: doc.hospital ?? "Lahore",
-      rating: doc.ratingAvg,
-      reviews: doc.ratingCount,
-      fee: doc.consultationFee,
-      pmdcVerified: doc.pmdcVerified,
-      imageUrl: doc.avatarUrl,
-    }));
   }
 }

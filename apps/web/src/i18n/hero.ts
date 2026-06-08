@@ -1,12 +1,16 @@
 import { siteConfig } from "@/config/site";
-import type { HeroService } from "@/features/marketing/data/hero-services";
+import {
+  HOME_SERVICES_HERO_IMAGE,
+  SUNDAY_FREE_CONSULT_HERO_IMAGE,
+  type HeroService,
+} from "@/features/marketing/data/hero-services";
 import type { Dictionary } from "./dictionaries/en";
 
 const heroIds = ["online-consult", "sunday-consult", "in-house-medical"] as const;
 const heroImages = [
   "/hero/dr-usama-riyaz.png",
-  "/hero/in-clinic.jpg",
-  "/hero/home-care.jpg",
+  SUNDAY_FREE_CONSULT_HERO_IMAGE,
+  HOME_SERVICES_HERO_IMAGE,
 ] as const;
 const heroHrefs = [
   siteConfig.links.doctors,

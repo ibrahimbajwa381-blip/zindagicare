@@ -109,9 +109,39 @@ export type CheckoutResult = {
   };
 };
 
+const EXPIRE_SWEEP_INTERVAL_MS = 60_000;
+let lastExpireSweepAt = 0;
+
 export class OnlineConsultService {
   private static async ensureConnected() {
     await connectDatabase();
+  }
+
+  static async getDoctorAvailabilitySummary(
+    doctorId: string,
+    weeklyAvailability: WeeklyWindow[],
+  ) {
+    await OnlineConsultService.ensureConnected();
+
+    const rangeStart = new Date();
+    const rangeEnd = new Date(
+      rangeStart.getTime() +
+        ONLINE_CONSULT_CONFIG.lookaheadDays * 24 * 60 * 60 * 1000,
+    );
+    const booked = await OnlineConsultService.getBookedRanges(
+      [doctorId],
+      rangeStart,
+      rangeEnd,
+    );
+    const availableSlots = OnlineConsultService.countAvailableSlots(
+      weeklyAvailability,
+      booked,
+    );
+
+    return {
+      availableSlots,
+      isFull: availableSlots === 0,
+    };
   }
 
   private static async getBookedRanges(
@@ -153,6 +183,10 @@ export class OnlineConsultService {
 
   static async expireStalePendingBookings() {
     await OnlineConsultService.ensureConnected();
+    const now = Date.now();
+    if (now - lastExpireSweepAt < EXPIRE_SWEEP_INTERVAL_MS) return;
+    lastExpireSweepAt = now;
+
     const cutoff = new Date(Date.now() - ONLINE_CONSULT_CONFIG.paymentHoldDurationMs);
 
     const stale = await AppointmentModel.find(

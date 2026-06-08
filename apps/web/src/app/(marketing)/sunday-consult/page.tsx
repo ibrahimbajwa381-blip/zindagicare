@@ -4,7 +4,7 @@ import { SundayConsultClient } from "@/features/sunday-consult/components/sunday
 export const metadata = {
   title: "Sunday Free Consult",
   description:
-    "Book a free 10-minute video consultation with PMDC-verified doctors every Sunday on ZindagiCare. No fee, online from home, one slot per doctor per week.",
+    "Book a free 10-minute video consultation with PMDC-verified doctors every Sunday on ZindagiCare. No fee, online from home, one free slot per patient per week.",
 };
 
 export default function SundayConsultPage() {

@@ -7,12 +7,10 @@ import { useSession } from "next-auth/react";
 import { Star } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceInset, surfaceMuted } from "@/lib/ui/surfaces";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { siteConfig } from "@/config/site";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
-import { useMounted } from "@/hooks/use-mounted";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
 
@@ -60,22 +58,16 @@ function DoctorAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string })
 }
 
 export function DoctorsConsultClient() {
-  const mounted = useMounted();
-  const { data: session } = useSession();
-  const isDev = process.env.NODE_ENV === "development";
+  const { data: session, status } = useSession();
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [seeding, setSeeding] = useState(false);
 
   const loadDoctors = useCallback(async () => {
     const res = await fetch("/api/v1/consult/doctors");
     const json = await res.json();
     if (json.success) {
       setDoctors(json.data ?? []);
-      return (json.data ?? []) as DoctorRow[];
     }
-    return [];
   }, []);
 
   const loadMyBooking = useCallback(async () => {
@@ -87,52 +79,17 @@ export function DoctorsConsultClient() {
     }
   }, [session?.user]);
 
-  const runSeed = useCallback(async () => {
-    setSeeding(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/internal/seed-sunday", { method: "POST" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.success) {
-        throw new Error(json.error?.message ?? json.error ?? "Could not seed demo doctors");
-      }
-      await loadDoctors();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Seed failed");
-    } finally {
-      setSeeding(false);
-    }
+  useEffect(() => {
+    loadDoctors();
   }, [loadDoctors]);
 
   useEffect(() => {
-    loadDoctors();
-    if (session?.user) loadMyBooking();
-  }, [loadDoctors, loadMyBooking, session?.user]);
-
-  useEffect(() => {
-    if (!mounted || !isDev) return;
-    let cancelled = false;
-    (async () => {
-      const list = await loadDoctors();
-      if (cancelled || list.length > 0) return;
-      await runSeed();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mounted, isDev, loadDoctors, runSeed]);
+    if (status !== "authenticated") return;
+    loadMyBooking();
+  }, [loadMyBooking, status]);
 
   return (
     <PageSection variant="brand" spacing="lg" flipBlur>
-      {mounted && isDev && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" onClick={runSeed} disabled={seeding}>
-            {seeding ? "Seeding…" : "Seed demo doctors"}
-          </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </div>
-      )}
-
       {booking && (
         <div className="mb-8">
           <PatientOnlineBookingCard booking={booking} variant="profile" />

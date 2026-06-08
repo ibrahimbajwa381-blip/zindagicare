@@ -48,6 +48,8 @@ const appointmentSchema = new Schema(
       ref: "SundaySlotInstance",
     },
     sundaySlotId: { type: String },
+    /** YYYY-MM-DD (Asia/Karachi Sunday) — one free consult per patient per week */
+    sundayDateKey: { type: String, index: true },
     clinic: {
       hospitalName: String,
       address: String,
@@ -80,14 +82,14 @@ appointmentSchema.index({ type: 1, status: 1, scheduledStart: 1 });
 appointmentSchema.index(
   {
     patientId: 1,
-    doctorId: 1,
     type: 1,
-    scheduledStart: 1,
+    sundayDateKey: 1,
   },
   {
     unique: true,
     partialFilterExpression: {
       type: AppointmentTypes.SUNDAY_FREE,
+      sundayDateKey: { $type: "string" },
       status: {
         $in: [
           AppointmentStatuses.PENDING,

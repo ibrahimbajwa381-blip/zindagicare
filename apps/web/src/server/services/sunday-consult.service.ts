@@ -57,9 +57,15 @@ const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.IN_PROGRESS,
 ];
 
+const HOLD_SWEEP_INTERVAL_MS = 60_000;
+let lastHoldSweepAt = 0;
+
 export class SundayConsultService {
   static async ensureConnected() {
     await connectDatabase();
+    const now = Date.now();
+    if (now - lastHoldSweepAt < HOLD_SWEEP_INTERVAL_MS) return;
+    lastHoldSweepAt = now;
     await SundayConsultService.releaseExpiredHolds();
   }
 
@@ -269,22 +275,29 @@ export class SundayConsultService {
       throw new AppError("Account suspended", ErrorCodes.USER_BANNED, 403);
     }
 
+    const sundayDateKey = formatSundayDateKey(sundayDate);
+
     const existing = await AppointmentModel.findOne(
       mongoFilter({
         patientId,
-        doctorId,
         type: AppointmentTypes.SUNDAY_FREE,
-        scheduledStart: {
-          $gte: sundayDate,
-          $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
-        },
+        $or: [
+          { sundayDateKey },
+          {
+            sundayDateKey: { $exists: false },
+            scheduledStart: {
+              $gte: sundayDate,
+              $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+        ],
         status: { $in: ACTIVE_APPOINTMENT_STATUSES },
       }),
     );
 
     if (existing) {
       throw new AppError(
-        "You already have a free Sunday slot with this doctor",
+        "You already have your free consultation for this week. One appointment per patient — first come, first served.",
         ErrorCodes.CONFLICT,
         409,
       );
@@ -396,6 +409,8 @@ export class SundayConsultService {
     );
     const doctorUser = doctor?.userId as { name?: string; phone?: string } | null;
 
+    const sundayDateKey = formatSundayDateKey(instance.sundayDate);
+
     const appointment = (await AppointmentModel.create({
       type: AppointmentTypes.SUNDAY_FREE,
       status: AppointmentStatuses.CONFIRMED,
@@ -403,6 +418,7 @@ export class SundayConsultService {
       doctorId,
       scheduledStart: slot.startAt,
       scheduledEnd: slot.endAt,
+      sundayDateKey,
       sundaySlotInstanceId: instance._id.toString(),
       sundaySlotId: slotId,
       patientNotes,

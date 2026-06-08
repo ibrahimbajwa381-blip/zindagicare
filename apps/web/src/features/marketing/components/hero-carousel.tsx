@@ -154,12 +154,15 @@ export function HeroCarousel({
                   alt={service.imageAlt}
                   fill
                   priority={index === 0}
+                  loading={index === 0 ? "eager" : "lazy"}
                   sizes="(max-width: 1024px) 100vw, 42vw"
                   className={cn(
                     "object-cover",
                     service.id === "online-consult"
                       ? "object-top lg:object-[center_15%]"
-                      : "object-center lg:object-[center_20%]",
+                      : service.id === "sunday-consult"
+                        ? "object-center lg:object-[center_35%]"
+                        : "object-center lg:object-[center_20%]",
                   )}
                 />
                 <div

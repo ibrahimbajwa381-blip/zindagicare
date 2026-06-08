@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Weekly free 10-minute consultations on Sundays (Asia/Karachi). Core differentiator: atomic slot booking, one free slot per patient per doctor per Sunday, no-show bans, realtime availability.
+Weekly free 10-minute consultations on Sundays (Asia/Karachi). Core differentiator: atomic slot booking, one free slot per patient per week (first come, first served), no-show bans, realtime availability.
 
 ## 2. Data model
 
@@ -46,7 +46,7 @@ Production: add Socket.io server with Redis adapter; same event payload.
 | Case | Handling |
 |------|----------|
 | Double book | `findOneAndUpdate` with `slots.status: available` |
-| One per doctor/Sunday | Service check + partial unique index on Appointment |
+| One per patient/Sunday | Service check + partial unique index on Appointment (`patientId + sundayDateKey`) |
 | Hold expiry | `releaseExpiredHolds()` on each request + cron |
 | User banned | `sundayBannedUntil` / `noShowCount >= 3` |
 | Early access | `earlyAccessSunday` opens booking 24h earlier |
