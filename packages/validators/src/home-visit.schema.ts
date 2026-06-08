@@ -8,6 +8,8 @@ const geoSchema = z.object({
 
 export const createHomeVisitSchema = z.object({
   serviceType: z.enum([
+    HomeVisitServiceTypes.DOCTOR_VISIT,
+    HomeVisitServiceTypes.NURSE,
     HomeVisitServiceTypes.IV_DRIP,
     HomeVisitServiceTypes.INJECTION,
     HomeVisitServiceTypes.WOUND_CARE,

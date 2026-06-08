@@ -185,9 +185,7 @@ export class OnlineConsultService {
       isListed: true,
       verificationStatus: VerificationStatuses.APPROVED,
       coverageCities: city,
-      videoConsultEnabled: true,
       consultationFee: { $gte: ONLINE_CONSULT_CONFIG.minConsultationFee },
-      "weeklyAvailability.0": { $exists: true },
     };
 
     if (specialty?.trim()) {
@@ -259,7 +257,6 @@ export class OnlineConsultService {
     if (
       !doctor?.isListed ||
       doctor.verificationStatus !== VerificationStatuses.APPROVED ||
-      !doctor.videoConsultEnabled ||
       (doctor.consultationFee ?? 0) < ONLINE_CONSULT_CONFIG.minConsultationFee
     ) {
       throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
@@ -315,8 +312,7 @@ export class OnlineConsultService {
       .lean();
     if (
       !doctor?.isListed ||
-      doctor.verificationStatus !== VerificationStatuses.APPROVED ||
-      !doctor.videoConsultEnabled
+      doctor.verificationStatus !== VerificationStatuses.APPROVED
     ) {
       throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
     }

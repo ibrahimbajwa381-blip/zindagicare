@@ -1,8 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PageShell } from "@/components/layout/page-shell";
-import { PageTitle } from "@/components/layout/page-title";
-import { ChatApp } from "@/features/chat/components/chat-app";
+import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
+import { DoctorWorkspaceMessages } from "@/features/doctor/components/doctor-workspace-messages";
 import { getLocale } from "@/i18n/server";
 import { getDictionary } from "@/i18n";
 
@@ -26,33 +25,17 @@ export default async function DoctorMessagesPage({ searchParams }: PageProps) {
   const t = getDictionary(locale);
 
   return (
-    <PageShell variant="brand" spacing="default" flipBlur>
-      <PageTitle
-        eyebrow="Doctor workspace"
+    <>
+      <DoctorPageHeader
+        eyebrow="Communications"
         title={t.chat.doctorPageTitle}
         description={t.chat.doctorPageDescription}
       />
-      <div className="mt-6">
-        <ChatApp
-          currentUserId={session.user.id}
-          isDoctorView
-          initialParticipantId={patientId}
-          copy={{
-            title: t.chat.title,
-            searchPlaceholder: t.chat.searchPlaceholder,
-            emptyTitle: t.chat.emptyTitle,
-            emptyDescription: t.chat.emptyDescription,
-            newChatLabel: t.chat.newChatLabel,
-            newChatTitle: t.chat.newChatTitle,
-            newChatSearchPlaceholder: t.chat.doctorNewChatSearchPlaceholder,
-            newChatEmpty: t.chat.doctorNewChatEmpty,
-            selectChatTitle: t.chat.selectChatTitle,
-            selectChatDescription: t.chat.doctorSelectChatDescription,
-            messagePlaceholder: t.chat.messagePlaceholder,
-            backLabel: t.chat.backLabel,
-          }}
-        />
-      </div>
-    </PageShell>
+      <DoctorWorkspaceMessages
+        currentUserId={session.user.id}
+        initialParticipantId={patientId}
+        copy={t.chat}
+      />
+    </>
   );
 }

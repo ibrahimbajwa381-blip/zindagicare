@@ -1,16 +1,24 @@
 import { Roles } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
-import { AppUserMenu } from "@/components/layout/app-user-menu";
+import { AppUserMenu, type AccountType } from "@/components/layout/app-user-menu";
 import { auth } from "@/lib/auth";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
 import { getPatientProfile } from "@/server/services/patient-profile.service";
 
 function dashboardHref(roles?: string[]) {
-  if (roles?.includes(Roles.DOCTOR)) return "/doctor/sunday-consult";
+  if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorProfile;
   if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
     return AUTH_ROUTES.adminDashboard;
   }
   return siteConfig.links.dashboard;
+}
+
+function resolveAccountType(roles?: string[]): AccountType {
+  if (roles?.includes(Roles.DOCTOR)) return "doctor";
+  if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
+    return "admin";
+  }
+  return "patient";
 }
 
 type AppHeaderUserProps = {
@@ -58,6 +66,7 @@ export async function AppHeaderUser({
       phone={phone}
       city={city}
       dashboardHref={href}
+      accountType={resolveAccountType(session.user.roles)}
       className={className}
       variant={variant}
     />

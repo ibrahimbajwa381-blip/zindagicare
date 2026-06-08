@@ -1,5 +1,6 @@
 import {
   connectDatabase,
+  DoctorProfileModel,
   HomeVisitModel,
   StaffProfileModel,
   UserModel,
@@ -11,12 +12,15 @@ import {
   AppError,
   ErrorCodes,
   HomeVisitStatuses,
+  HomeVisitServiceTypes,
   HOME_CARE_PRICING,
   HOME_CARE_MATCH_RADIUS_KM,
   LAHORE_GEO,
   LAUNCH_CITY,
   Roles,
+  VerificationStatuses,
   isAdmin,
+  isDoctorHomeVisitService,
   type HomeVisitServiceType,
   type HomeVisitStatus,
 } from "@zindagi/shared";
@@ -61,7 +65,13 @@ export type HomeVisitDto = {
   };
   patientNotes?: string;
   patient?: { id: string; name: string; phone?: string };
-  assignedStaff?: { id: string; name: string; phone?: string };
+  assignedStaff?: {
+    id: string;
+    name: string;
+    phone?: string;
+    role?: "nurse" | "doctor";
+    specialties?: string[];
+  };
   visitReport?: {
     url: string;
     originalName: string;
@@ -98,7 +108,10 @@ function getBasePrice(serviceType: HomeVisitServiceType): number {
   );
 }
 
-function serializeVisit(doc: Record<string, unknown>): HomeVisitDto {
+function serializeVisit(
+  doc: Record<string, unknown>,
+  assigneeMeta?: { role?: "nurse" | "doctor"; specialties?: string[] },
+): HomeVisitDto {
   const patient = doc.patientId as
     | { _id?: { toString(): string }; name?: string; phone?: string }
     | undefined;
@@ -146,6 +159,8 @@ function serializeVisit(doc: Record<string, unknown>): HomeVisitDto {
           id: staff._id.toString(),
           name: staff.name ?? "Staff",
           phone: staff.phone,
+          role: assigneeMeta?.role,
+          specialties: assigneeMeta?.specialties,
         }
       : undefined,
     visitReport: report?.url
@@ -169,6 +184,52 @@ function refId(ref: unknown): string | undefined {
     return (ref as { _id: { toString(): string } })._id.toString();
   }
   return (ref as { toString(): string }).toString();
+}
+
+async function getAssigneeMeta(
+  staffUserId: string | undefined,
+  serviceType: HomeVisitServiceType,
+): Promise<{ role?: "nurse" | "doctor"; specialties?: string[] } | undefined> {
+  if (!staffUserId) return undefined;
+  if (isDoctorHomeVisitService(serviceType)) {
+    const profile = await DoctorProfileModel.findOne(
+      mongoFilter({ userId: staffUserId }),
+    ).lean();
+    return {
+      role: "doctor",
+      specialties: profile?.specialties ?? [],
+    };
+  }
+  return { role: "nurse" };
+}
+
+async function getBusyStaffIds(
+  scheduledAt: Date,
+  serviceType: HomeVisitServiceType,
+): Promise<string[]> {
+  const windowMs = 2 * 60 * 60 * 1000;
+  const ids = await HomeVisitModel.find({
+    serviceType,
+    assignedStaffId: { $exists: true },
+    status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+    scheduledAt: {
+      $gte: new Date(scheduledAt.getTime() - windowMs),
+      $lte: new Date(scheduledAt.getTime() + windowMs),
+    },
+    deletedAt: { $exists: false },
+  }).distinct("assignedStaffId");
+  return ids.map((id) => id.toString());
+}
+
+function nearestGeoDistanceKm(
+  lng: number,
+  lat: number,
+  points: { lng: number; lat: number }[],
+): number {
+  if (!points.length) {
+    return haversineKm(lng, lat, LAHORE_GEO.lng, LAHORE_GEO.lat);
+  }
+  return Math.min(...points.map((p) => haversineKm(lng, lat, p.lng, p.lat)));
 }
 
 export class HomeVisitService {
@@ -225,6 +286,15 @@ export class HomeVisitService {
     ]);
   }
 
+  static async serializeVisitDoc(
+    doc: Record<string, unknown>,
+  ): Promise<HomeVisitDto> {
+    const serviceType = doc.serviceType as HomeVisitServiceType;
+    const staff = doc.assignedStaffId as { _id?: { toString(): string } } | undefined;
+    const meta = await getAssigneeMeta(staff?._id?.toString(), serviceType);
+    return serializeVisit(doc, meta);
+  }
+
   static async listVisits(
     userId: string,
     roles: string[],
@@ -244,6 +314,10 @@ export class HomeVisitService {
     } else if (roles.includes(Roles.NURSE) && scope === "assigned") {
       filter.assignedStaffId = userId;
       filter.status = { $in: ACTIVE_STATUSES };
+    } else if (roles.includes(Roles.DOCTOR) && scope === "assigned") {
+      filter.assignedStaffId = userId;
+      filter.serviceType = HomeVisitServiceTypes.DOCTOR_VISIT;
+      filter.status = { $in: ACTIVE_STATUSES };
     } else {
       filter.patientId = userId;
     }
@@ -254,7 +328,11 @@ export class HomeVisitService {
       .populate("assignedStaffId", "name phone")
       .lean();
 
-    return visits.map((v) => serializeVisit(v as Record<string, unknown>));
+    return Promise.all(
+      visits.map((v) =>
+        HomeVisitService.serializeVisitDoc(v as Record<string, unknown>),
+      ),
+    );
   }
 
   static async getById(
@@ -280,7 +358,7 @@ export class HomeVisitService {
 
     HomeVisitService.assertCanAccess(visit as HomeVisitDocument, userId, roles);
 
-    return serializeVisit(visit as Record<string, unknown>);
+    return HomeVisitService.serializeVisitDoc(visit as Record<string, unknown>);
   }
 
   static assertCanAccess(
@@ -336,6 +414,62 @@ export class HomeVisitService {
     return best;
   }
 
+  static async findNearestAvailableDoctor(
+    lng: number,
+    lat: number,
+    city: string,
+    scheduledAt: Date,
+  ) {
+    const busyIds = await getBusyStaffIds(scheduledAt, HomeVisitServiceTypes.DOCTOR_VISIT);
+
+    const doctors = await DoctorProfileModel.find({
+      verificationStatus: VerificationStatuses.APPROVED,
+      homeVisitEnabled: true,
+      isListed: true,
+      coverageCities: city,
+      deletedAt: { $exists: false },
+    })
+      .populate("userId", "name phone isActive")
+      .lean();
+
+    let best: {
+      userId: string;
+      distanceKm: number;
+      name: string;
+      specialties: string[];
+    } | null = null;
+
+    for (const doctor of doctors) {
+      const user = doctor.userId as {
+        _id?: { toString(): string };
+        name?: string;
+        isActive?: boolean;
+      };
+      if (!user?._id || user.isActive === false) continue;
+      const userId = user._id.toString();
+      if (busyIds.includes(userId)) continue;
+
+      const geoPoints = (doctor.hospitals ?? [])
+        .filter((h) => h.geo?.coordinates?.length === 2)
+        .map((h) => ({
+          lng: h.geo!.coordinates[0],
+          lat: h.geo!.coordinates[1],
+        }));
+
+      const dist = nearestGeoDistanceKm(lng, lat, geoPoints);
+      if (dist <= HOME_CARE_MATCH_RADIUS_KM && (!best || dist < best.distanceKm)) {
+        best = {
+          userId,
+          distanceKm: dist,
+          name: user.name ?? "Doctor",
+          specialties: doctor.specialties ?? [],
+        };
+      }
+    }
+
+    return best;
+  }
+
   static async autoAssignStaff(visitId: string) {
     await HomeVisitService.ensureConnected();
 
@@ -354,6 +488,37 @@ export class HomeVisitService {
       throw new AppError("Visit address is missing location", ErrorCodes.VALIDATION, 400);
     }
     const [lng, lat] = coords;
+    const city = visit.address?.city ?? LAUNCH_CITY;
+
+    if (isDoctorHomeVisitService(visit.serviceType)) {
+      const match = await HomeVisitService.findNearestAvailableDoctor(
+        lng,
+        lat,
+        city,
+        visit.scheduledAt,
+      );
+      if (!match) {
+        throw new AppError(
+          "No available doctor found in your area",
+          ErrorCodes.NOT_FOUND,
+          404,
+        );
+      }
+      visit.assignedStaffId = match.userId as never;
+      visit.status = HomeVisitStatuses.ASSIGNED;
+      if (visit.pricing) {
+        visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
+      }
+      await visit.save();
+      return {
+        staffId: match.userId,
+        staffName: match.name,
+        distanceKm: match.distanceKm,
+        role: "doctor" as const,
+        specialties: match.specialties,
+      };
+    }
+
     const match = await HomeVisitService.findNearestAvailableStaff(lng, lat);
 
     if (!match) {
@@ -371,7 +536,12 @@ export class HomeVisitService {
     }
     await visit.save();
 
-    return { staffId: match.userId, staffName: match.name, distanceKm: match.distanceKm };
+    return {
+      staffId: match.userId,
+      staffName: match.name,
+      distanceKm: match.distanceKm,
+      role: "nurse" as const,
+    };
   }
 
   static async assignStaff(visitId: string, input: AssignHomeVisitInput) {
@@ -397,7 +567,29 @@ export class HomeVisitService {
     }
 
     const staff = await UserModel.findById(input.staffId);
-    if (!staff?.roles?.includes(Roles.NURSE)) {
+    if (!staff) {
+      throw new AppError("Staff member not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if (isDoctorHomeVisitService(visit.serviceType)) {
+      if (!staff.roles?.includes(Roles.DOCTOR)) {
+        throw new AppError("Invalid doctor", ErrorCodes.VALIDATION, 400);
+      }
+      const profile = await DoctorProfileModel.findOne(
+        mongoFilter({ userId: staff._id }),
+      ).lean();
+      if (
+        !profile ||
+        profile.verificationStatus !== VerificationStatuses.APPROVED ||
+        !profile.homeVisitEnabled
+      ) {
+        throw new AppError(
+          "Doctor is not approved for home visits",
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
+    } else if (!staff.roles?.includes(Roles.NURSE)) {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
     }
 
@@ -405,7 +597,11 @@ export class HomeVisitService {
     visit.status = HomeVisitStatuses.ASSIGNED;
     await visit.save();
 
-    return { staffId: input.staffId, staffName: staff.name ?? "Nurse" };
+    return {
+      staffId: input.staffId,
+      staffName: staff.name ?? (isDoctorHomeVisitService(visit.serviceType) ? "Doctor" : "Nurse"),
+      role: isDoctorHomeVisitService(visit.serviceType) ? "doctor" : "nurse",
+    };
   }
 
   static async updateStatus(
@@ -430,7 +626,11 @@ export class HomeVisitService {
 
     if (input.status === HomeVisitStatuses.CANCELLED) {
       const canCancel =
-        admin || (isPatient && visit.status === HomeVisitStatuses.REQUESTED);
+        admin ||
+        (isPatient && visit.status === HomeVisitStatuses.REQUESTED) ||
+        (isAssignedStaff &&
+          visit.status !== HomeVisitStatuses.COMPLETED &&
+          visit.status !== HomeVisitStatuses.CANCELLED);
       if (!canCancel) {
         throw new AppError("Cannot cancel at this stage", ErrorCodes.FORBIDDEN, 403);
       }
@@ -516,7 +716,7 @@ export class HomeVisitService {
       .populate("userId", "name phone")
       .lean();
 
-    return profiles.map((p) => {
+    const nurses = profiles.map((p) => {
       const user = p.userId as { _id?: { toString(): string }; name?: string; phone?: string };
       const area = p.serviceAreas?.[0];
       return {
@@ -527,5 +727,42 @@ export class HomeVisitService {
         radiusKm: area?.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM,
       };
     });
+
+    const doctors = await HomeVisitService.listAvailableDoctors();
+
+    return { nurses, doctors };
+  }
+
+  static async listAvailableDoctors(city?: string) {
+    await HomeVisitService.ensureConnected();
+
+    const filter: Record<string, unknown> = {
+      verificationStatus: VerificationStatuses.APPROVED,
+      homeVisitEnabled: true,
+      isListed: true,
+      deletedAt: { $exists: false },
+    };
+    if (city) filter.coverageCities = city;
+
+    const profiles = await DoctorProfileModel.find(filter)
+      .populate("userId", "name phone isActive")
+      .lean();
+
+    return profiles
+      .filter((p) => {
+        const user = p.userId as { isActive?: boolean; _id?: { toString(): string } };
+        return user?.isActive !== false && user?._id;
+      })
+      .map((p) => {
+        const user = p.userId as { _id?: { toString(): string }; name?: string; phone?: string };
+        return {
+          id: user?._id?.toString() ?? "",
+          name: user?.name ?? "Doctor",
+          phone: user?.phone,
+          specialties: p.specialties ?? [],
+          serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
+          homeVisitFee: p.homeVisitFee ?? HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
+        };
+      });
   }
 }

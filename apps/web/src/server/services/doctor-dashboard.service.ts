@@ -211,16 +211,13 @@ export async function listDoctorConsultRequests(
 export async function listDoctorHomeVisitRequests(
   userId: string,
 ): Promise<DoctorHomeVisitRow[]> {
-  const { profile } = await getDoctorProfileForUser(userId);
-  const cities = profile.coverageCities?.length
-    ? profile.coverageCities
-    : ["Lahore"];
+  await getDoctorProfileForUser(userId);
 
   const visits = await HomeVisitModel.find(
     mongoFilter({
       serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+      assignedStaffId: userId,
       status: { $in: ACTIVE_HOME_VISIT_STATUSES },
-      "address.city": { $in: cities },
     }),
   )
     .populate("patientId", "name phone")

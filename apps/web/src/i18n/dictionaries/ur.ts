@@ -426,9 +426,11 @@ export const ur: Dictionary = {
   homeCare: {
     requestTitle: "گھر پر دیکھ بھال کی درخواست",
     requestDesc:
-      "لاہور میں گھر پر IV تھراپی، انجیکشن، یا زخم کی دیکھ بھال بک کریں۔ تصدیق شدہ نرس آپ کے مقام سے ملائی جائے گی۔",
+      "لاہور میں گھر پر ڈاکٹر یا نرس بک کریں — IV تھراپی، انجیکشن، زخم کی دیکھ بھال، یا ڈاکٹر کا گھر وزٹ۔ ہم آپ کے مقام کے قریب دستیاب فراہم کنندہ سے ملائیں گے۔",
     serviceType: "خدمت کی قسم",
     services: {
+      doctorVisit: "ڈاکٹر کا گھر وزٹ",
+      generalNurse: "عام نرس وزٹ",
       ivDrip: "IV ڈرپ تھراپی",
       injection: "انجیکشن",
       woundCare: "زخم کی دیکھ بھال",
@@ -522,7 +524,15 @@ export const ur: Dictionary = {
     eyebrow: "مریض پورٹل",
     pageTitle: "آپ کا صحت ڈیش بورڈ",
     welcomeMessage:
-      "خوش آمدید، {name}۔ نیچے اپائنٹمنٹس اور اپنے طبی پروفائل کا انتظام کریں۔",
+      "خوش آمدید، {name}۔ اوپر مشاورت، پیغامات اور دورے — نیچے پروفائل کی تفصیلات۔",
+    activitiesTitle: "آپ کی سرگرمیاں",
+    activitiesDescription: "مشاورت، ڈاکٹروں کے ساتھ پیغامات، اور گھریلو دورے۔",
+    messages: {
+      description: "ادا شدہ مشاورت کے بعد جن ڈاکٹروں کو آپ پیغام بھیج سکتے ہیں۔",
+      viewAll: "پیغامات کھولیں",
+      loading: "آپ کے ڈاکٹر لوڈ ہو رہے ہیں…",
+      tapToChat: "چیٹ شروع کرنے کے لیے ٹیپ کریں",
+    },
     title: "سلام، {name}",
     description: "آپ کی اپائنٹمنٹس اور خاندانی صحت کا مرکز۔",
     nav: {
@@ -531,6 +541,8 @@ export const ur: Dictionary = {
     },
     header: {
       patientAccount: "مریض اکاؤنٹ",
+      doctorAccount: "ڈاکٹر اکاؤنٹ",
+      adminAccount: "ایڈمن اکاؤنٹ",
       myDashboard: "میرا ڈیش بورڈ",
       signOut: "لاگ آؤٹ",
       signingOut: "لاگ آؤٹ ہو رہا ہے…",

@@ -1,0 +1,64 @@
+import { z } from "zod";
+import { pakistaniPhoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
+
+const timeLocalSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, "Use HH:mm format (e.g. 16:00)");
+
+const hospitalSchema = z.object({
+  name: z.string().min(2, "Hospital name is required"),
+  city: z.string().min(2, "City is required"),
+  address: z.string().optional(),
+});
+
+export const updateDoctorProfileSchema = z.object({
+  name: z.string().min(2, "Name is required").optional(),
+  phone: pakistaniPhoneSchema.optional(),
+  avatarUrl: z.string().min(1, "Invalid profile photo URL").optional(),
+  bio: z.string().max(2000).optional().nullable(),
+  consultationFee: z.coerce.number().min(0).optional(),
+  languages: z.array(z.string().trim().min(1)).min(1, "Add at least one language").optional(),
+  hospitals: z.array(hospitalSchema).min(1, "Add at least one practice location").optional(),
+  weeklyAvailability: z
+    .array(weeklyAvailabilityEntrySchema)
+    .min(1, "Add at least one availability window")
+    .optional(),
+  sundayConsult: z
+    .object({
+      enabled: z.boolean(),
+      startTimeLocal: timeLocalSchema.optional(),
+      endTimeLocal: timeLocalSchema.optional(),
+      slotDurationMins: z.coerce.number().int().min(5).max(60).optional(),
+    })
+    .optional()
+    .superRefine((data, ctx) => {
+      if (!data?.enabled) return;
+      if (!data.startTimeLocal) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sunday start time is required",
+          path: ["startTimeLocal"],
+        });
+      }
+      if (!data.endTimeLocal) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sunday end time is required",
+          path: ["endTimeLocal"],
+        });
+      }
+      if (
+        data.startTimeLocal &&
+        data.endTimeLocal &&
+        data.endTimeLocal <= data.startTimeLocal
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Sunday end time must be after start time",
+          path: ["endTimeLocal"],
+        });
+      }
+    }),
+});
+
+export type UpdateDoctorProfileInput = z.infer<typeof updateDoctorProfileSchema>;

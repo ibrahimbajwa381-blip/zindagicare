@@ -15,12 +15,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { useTranslations } from "@/i18n/locale-provider";
 import { surfaceCard } from "@/lib/ui/surfaces";
-import { MapPin, Syringe, Droplets, Bandage } from "lucide-react";
+import { MapPin, Syringe, Droplets, Bandage, Stethoscope, UserRound } from "lucide-react";
 
 const SERVICE_META: Record<
   string,
-  { icon: typeof Syringe; labelKey: "ivDrip" | "injection" | "woundCare" }
+  {
+    icon: typeof Syringe;
+    labelKey: "doctorVisit" | "generalNurse" | "ivDrip" | "injection" | "woundCare";
+  }
 > = {
+  [HomeVisitServiceTypes.DOCTOR_VISIT]: { icon: Stethoscope, labelKey: "doctorVisit" },
+  [HomeVisitServiceTypes.NURSE]: { icon: UserRound, labelKey: "generalNurse" },
   [HomeVisitServiceTypes.IV_DRIP]: { icon: Droplets, labelKey: "ivDrip" },
   [HomeVisitServiceTypes.INJECTION]: { icon: Syringe, labelKey: "injection" },
   [HomeVisitServiceTypes.WOUND_CARE]: { icon: Bandage, labelKey: "woundCare" },
@@ -168,7 +173,7 @@ export function HomeCareRequestForm() {
         <form onSubmit={submit} className="space-y-6" noValidate>
           <div>
             <Label>{h.serviceType}</Label>
-            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {HOME_CARE_MVP_SERVICES.map((type) => {
                 const meta = SERVICE_META[type];
                 const Icon = meta.icon;

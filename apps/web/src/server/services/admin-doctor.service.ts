@@ -18,10 +18,21 @@ import type {
   adminUpdateDoctorSchema,
 } from "@zindagi/validators";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
+import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { SundayConsultService } from "./sunday-consult.service";
+import { decideDoctorVerification } from "./doctor-verification.service";
 
 type CreateDoctorInput = z.infer<typeof adminCreateDoctorSchema>;
 type UpdateDoctorInput = z.infer<typeof adminUpdateDoctorSchema>;
+
+const DEFAULT_WEEKLY_AVAILABILITY = [
+  { dayOfWeek: 1, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 2, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 3, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 4, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 5, startTimeLocal: "09:00", endTimeLocal: "17:00" },
+  { dayOfWeek: 6, startTimeLocal: "09:00", endTimeLocal: "13:00" },
+];
 
 const BCRYPT_ROUNDS = 12;
 
@@ -53,12 +64,16 @@ export type AdminDoctorRow = {
   name: string;
   email?: string;
   phone?: string;
+  avatarUrl?: string;
+  slug?: string;
   pmdcNumber?: string;
   specialties: string[];
   verificationStatus: string;
   isListed: boolean;
   isActive: boolean;
   sundayConsultEnabled: boolean;
+  homeVisitEnabled: boolean;
+  homeVisitFee: number;
   weeklyAvailability: { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string }[];
 };
 
@@ -70,29 +85,38 @@ function mapDoctorRow(
       name?: string;
       email?: string;
       phone?: string;
+      avatarUrl?: string;
       isActive?: boolean;
     };
+    slug?: string;
     pmdcNumber?: string;
     specialties?: string[];
     verificationStatus?: string;
     isListed?: boolean;
     sundayConsultEnabled?: boolean;
+    homeVisitEnabled?: boolean;
+    homeVisitFee?: number;
     weeklyAvailability?: AdminDoctorRow["weeklyAvailability"];
   },
 ): AdminDoctorRow {
   const user = profile.userId;
+  const name = user?.name ?? "Doctor";
   return {
     id: profile._id.toString(),
     userId: user?._id?.toString() ?? "",
-    name: user?.name ?? "Doctor",
+    name,
     email: user?.email ?? undefined,
     phone: user?.phone ?? undefined,
+    avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+    slug: profile.slug ?? undefined,
     pmdcNumber: profile.pmdcNumber ?? undefined,
     specialties: profile.specialties ?? [],
     verificationStatus: profile.verificationStatus ?? VerificationStatuses.PENDING,
     isListed: profile.isListed ?? false,
     isActive: user?.isActive !== false,
     sundayConsultEnabled: profile.sundayConsultEnabled ?? false,
+    homeVisitEnabled: profile.homeVisitEnabled ?? false,
+    homeVisitFee: profile.homeVisitFee ?? 0,
     weeklyAvailability: profile.weeklyAvailability ?? [],
   };
 }
@@ -117,7 +141,7 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
   }
 
   const profiles = await DoctorProfileModel.find(userFilter ?? {})
-    .populate("userId", "name email phone isActive")
+    .populate("userId", "name email phone isActive avatarUrl")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -162,7 +186,11 @@ export async function adminCreateDoctor(
     verifiedBy: adminUserId,
     verifiedAt: new Date(),
     isListed: true,
+    videoConsultEnabled: true,
+    consultationFee: 2500,
+    weeklyAvailability: DEFAULT_WEEKLY_AVAILABILITY,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
+    homeVisitEnabled: true,
     coverageCities: ["Lahore"],
   } as Record<string, unknown>)) as DoctorProfileDocument;
 
@@ -199,6 +227,7 @@ export async function adminCreateDoctor(
 }
 
 export async function adminUpdateDoctor(
+  adminUserId: string,
   doctorProfileId: string,
   input: UpdateDoctorInput,
 ): Promise<AdminDoctorRow> {
@@ -206,25 +235,48 @@ export async function adminUpdateDoctor(
   const profile = await DoctorProfileModel.findById(doctorProfileId);
   if (!profile) throw new AppError("Doctor not found", "NOT_FOUND", 404);
 
-  if (input.isListed !== undefined) profile.isListed = input.isListed;
+  if (input.verificationStatus === VerificationStatuses.APPROVED) {
+    await decideDoctorVerification(adminUserId, doctorProfileId, "approve");
+  } else if (input.verificationStatus === VerificationStatuses.REJECTED) {
+    await decideDoctorVerification(
+      adminUserId,
+      doctorProfileId,
+      "reject",
+      input.rejectionReason,
+    );
+  }
+
+  const refreshed = await DoctorProfileModel.findById(doctorProfileId);
+  if (!refreshed) throw new AppError("Doctor not found", "NOT_FOUND", 404);
+
+  if (input.isListed !== undefined) {
+    refreshed.isListed = input.isListed;
+    refreshed.videoConsultEnabled = input.isListed;
+  }
   if (input.sundayConsultEnabled !== undefined) {
-    profile.sundayConsultEnabled = input.sundayConsultEnabled;
+    refreshed.sundayConsultEnabled = input.sundayConsultEnabled;
+  }
+  if (input.homeVisitEnabled !== undefined) {
+    refreshed.homeVisitEnabled = input.homeVisitEnabled;
+  }
+  if (input.homeVisitFee !== undefined) {
+    refreshed.homeVisitFee = input.homeVisitFee;
   }
   if (input.weeklyAvailability !== undefined) {
-    profile.set("weeklyAvailability", input.weeklyAvailability);
+    refreshed.set("weeklyAvailability", input.weeklyAvailability);
   }
 
-  await profile.save();
+  await refreshed.save();
 
   if (input.isActive !== undefined) {
-    await UserModel.findByIdAndUpdate(profile.userId, {
+    await UserModel.findByIdAndUpdate(refreshed.userId, {
       $set: { isActive: input.isActive },
     });
   }
 
   if (input.sundayMaxSlots !== undefined || input.sundaySlotDurationMins !== undefined) {
     const template = await SundaySlotTemplateModel.findOne({
-      doctorId: profile._id,
+      doctorId: refreshed._id,
     } as Record<string, unknown>);
     if (template) {
       if (input.sundayMaxSlots !== undefined) template.maxSlots = input.sundayMaxSlots;
@@ -232,9 +284,9 @@ export async function adminUpdateDoctor(
         template.slotDurationMins = input.sundaySlotDurationMins;
       }
       await template.save();
-    } else if (profile.sundayConsultEnabled) {
+    } else if (refreshed.sundayConsultEnabled) {
       await SundaySlotTemplateModel.create({
-        doctorId: profile._id,
+        doctorId: refreshed._id,
         startTimeLocal: "09:00",
         endTimeLocal: "12:00",
         slotDurationMins: input.sundaySlotDurationMins ?? 10,
@@ -246,7 +298,7 @@ export async function adminUpdateDoctor(
     }
   }
 
-  const populated = await DoctorProfileModel.findById(profile._id)
+  const populated = await DoctorProfileModel.findById(refreshed._id)
     .populate("userId", "name email phone isActive")
     .lean();
 

@@ -1,36 +1,38 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DoctorProfileDetail } from "@/features/doctor/components/doctor-profile-section";
-import type { DoctorProfileDto } from "@/features/doctor/types";
-import { surfaceCard } from "@/lib/ui/surfaces";
+import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
+import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 
 type PendingDoctor = {
   _id: string;
   pmdcNumber?: string;
   specialties?: string[];
   verificationSubmittedAt?: string;
-  userId?: { name?: string; email?: string; phone?: string };
+  userId?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    avatarUrl?: string;
+  };
 };
 
 export function AdminDoctorQueue() {
   const [doctors, setDoctors] = useState<PendingDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DoctorProfileDto | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [actionPending, setActionPending] = useState(false);
 
   async function load() {
     setLoading(true);
+    setError(undefined);
     const res = await fetch("/api/v1/admin/doctors/pending");
     const json = await res.json();
     setLoading(false);
-    if (!res.ok) {
+    if (!json.success) {
       setError(json?.error?.message ?? "Failed to load queue");
       return;
     }
@@ -41,131 +43,123 @@ export function AdminDoctorQueue() {
     load();
   }, []);
 
-  async function loadDetail(doctorProfileId: string) {
-    setSelectedId(doctorProfileId);
-    setDetailLoading(true);
-    const res = await fetch(`/api/v1/admin/doctors/${doctorProfileId}`);
-    const json = await res.json();
-    setDetailLoading(false);
-    if (res.ok) {
-      setDetail(json.data);
-    } else {
-      setDetail(null);
-    }
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center text-sm text-slate-500 shadow-sm">
+        Loading pending applications…
+      </div>
+    );
   }
 
-  async function decide(doctorProfileId: string, action: "approve" | "reject") {
-    let rejectionReason: string | undefined;
-    if (action === "reject") {
-      rejectionReason = window.prompt("Rejection reason for the doctor:") ?? undefined;
-      if (!rejectionReason) return;
-    }
-
-    setActionPending(true);
-    const res = await fetch("/api/v1/admin/doctors/decide", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ doctorProfileId, action, rejectionReason }),
-    });
-    setActionPending(false);
-
-    if (!res.ok) {
-      alert("Action failed");
-      return;
-    }
-
-    setSelectedId(null);
-    setDetail(null);
-    await load();
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+        {error}
+      </div>
+    );
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Loading pending doctors…</p>;
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!doctors.length) {
-    return <p className="text-sm text-slate-500">No pending verifications.</p>;
+    return (
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+        <p className="font-medium text-slate-900">No pending applications</p>
+        <p className="mt-2 text-sm text-slate-500">
+          Doctors appear here after they submit their verification form with PMDC documents.
+        </p>
+      </div>
+    );
   }
+
+  const submitted = doctors.filter((d) => d.verificationSubmittedAt).length;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <ul className={`divide-y divide-brand-light/20 overflow-hidden lg:col-span-2 ${surfaceCard}`}>
-        {doctors.map((d) => (
-          <li key={d._id}>
-            <button
-              type="button"
-              onClick={() => loadDetail(d._id)}
-              className={`flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-white/90 ${
-                selectedId === d._id ? "bg-brand-light/10" : ""
-              }`}
-            >
-              <p className="font-medium text-slate-900">{d.userId?.name ?? "Doctor"}</p>
-              <p className="text-sm text-slate-600">
-                {d.userId?.email ?? d.userId?.phone} · PMDC {d.pmdcNumber}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {(d.specialties ?? []).map((s) => (
-                  <Badge key={s} variant="secondary">
-                    {s}
-                  </Badge>
-                ))}
-              </div>
-              {d.verificationSubmittedAt && (
-                <p className="text-xs text-slate-500">
-                  Submitted{" "}
-                  {new Date(d.verificationSubmittedAt).toLocaleDateString("en-PK")}
-                </p>
-              )}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">In queue</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{doctors.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Ready for review</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{submitted}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Incomplete</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">
+            {doctors.length - submitted}
+          </p>
+        </div>
+      </div>
 
-      <Card className={`lg:col-span-3 ${surfaceCard}`}>
-        <CardHeader>
-          <CardTitle className="text-base">Application review</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!selectedId && (
-            <p className="text-sm text-slate-500">
-              Select a doctor from the queue to review their full profile and documents.
-            </p>
-          )}
-          {selectedId && detailLoading && (
-            <p className="text-sm text-slate-500">Loading profile…</p>
-          )}
-          {selectedId && !detailLoading && detail && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">{detail.user.name}</h3>
-                <p className="text-sm text-slate-600">
-                  {detail.user.email ?? detail.user.phone}
-                </p>
-              </div>
-
-              <DoctorProfileDetail profile={detail} showDocuments />
-
-              <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
-                <Button
-                  onClick={() => decide(selectedId, "approve")}
-                  disabled={actionPending}
-                >
-                  {actionPending ? "Processing…" : "Approve & activate profile"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => decide(selectedId, "reject")}
-                  disabled={actionPending}
-                >
-                  Reject
-                </Button>
-              </div>
-              <p className="text-xs text-slate-500">
-                Approving will list the doctor publicly, enable Sunday consult slots if
-                configured, and mark their onboarding complete.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-4">Doctor</th>
+                <th className="px-5 py-4">Specialty</th>
+                <th className="px-5 py-4">PMDC</th>
+                <th className="px-5 py-4">Submitted</th>
+                <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {doctors.map((d) => {
+                const name = d.userId?.name ?? "Doctor";
+                const avatar = resolveDoctorPortrait(name, d.userId?.avatarUrl);
+                return (
+                  <tr key={d._id} className="transition hover:bg-slate-50/60">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <AdminDoctorAvatar name={name} avatarUrl={avatar} size="md" />
+                        <div>
+                          <p className="font-semibold text-slate-900">{name}</p>
+                          <p className="text-xs text-slate-500">
+                            {d.userId?.email ?? d.userId?.phone ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {(d.specialties ?? []).slice(0, 2).map((s) => (
+                          <Badge key={s} variant="secondary" className="text-xs">
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-mono text-xs">{d.pmdcNumber ?? "—"}</td>
+                    <td className="px-5 py-4 text-slate-600">
+                      {d.verificationSubmittedAt
+                        ? new Date(d.verificationSubmittedAt).toLocaleDateString("en-PK", {
+                            dateStyle: "medium",
+                          })
+                        : "—"}
+                    </td>
+                    <td className="px-5 py-4">
+                      {d.verificationSubmittedAt ? (
+                        <Badge>Ready for review</Badge>
+                      ) : (
+                        <Badge variant="outline">Incomplete</Badge>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <Button size="sm" asChild>
+                        <Link href={`/admin/doctors/review/${d._id}`}>
+                          <Eye className="h-4 w-4" />
+                          View application
+                        </Link>
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

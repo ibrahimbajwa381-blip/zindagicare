@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { PageShell } from "@/components/layout/page-shell";
+import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
 import { DoctorSundayDashboard } from "@/features/sunday-consult/components/doctor-sunday-dashboard";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 import { VerificationStatuses } from "@zindagi/shared";
@@ -19,17 +17,13 @@ export default async function DoctorSundayPage() {
   }
 
   return (
-    <PageShell variant="brand" spacing="default" narrow flipBlur>
-      <div className="mb-6">
-        <Link
-          href="/doctor/profile"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-dark"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          Back to workspace
-        </Link>
-      </div>
+    <>
+      <DoctorPageHeader
+        eyebrow="Programs"
+        title="Sunday free consult"
+        description="Manage your Sunday consult queue, slot settings, and patient bookings."
+      />
       <DoctorSundayDashboard />
-    </PageShell>
+    </>
   );
 }

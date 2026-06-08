@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
 import {
   DoctorEmptyState,
   DoctorListCard,
-  DoctorWorkspaceHeader,
   formatDateTime,
 } from "@/features/doctor/components/doctor-workspace-panels";
 import { listDoctorPatients } from "@/server/services/doctor-dashboard.service";
@@ -29,38 +28,48 @@ export default async function DoctorPatientsPage() {
   const patients = await listDoctorPatients(session.user.id);
 
   return (
-    <PageShell variant="brand" spacing="default" narrow flipBlur>
-      <DoctorWorkspaceHeader
+    <>
+      <DoctorPageHeader
+        eyebrow="Patient care"
         title="My patients"
-        description="Patients you have consulted through ZindagiCare."
-        count={patients.length}
+        description="Patients you have consulted through paid online or clinic bookings on ZindagiCare."
+        actions={
+          <span className="rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand-dark">
+            {patients.length} total
+          </span>
+        }
       />
 
-      <div className="space-y-3">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         {patients.length === 0 ? (
           <DoctorEmptyState message="No patients yet. They will appear here after consultations are booked." />
         ) : (
-          patients.map((patient) => (
-            <DoctorListCard
-              key={patient.id}
-              title={patient.name}
-              subtitle={patient.phone}
-              meta={
-                patient.lastVisitAt
-                  ? `Last visit ${formatDateTime(patient.lastVisitAt)} · ${patient.appointmentCount} appointment${patient.appointmentCount === 1 ? "" : "s"}`
-                  : `${patient.appointmentCount} appointment${patient.appointmentCount === 1 ? "" : "s"}`
-              }
-              action={
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`${siteConfig.links.doctorMessages}?patient=${patient.id}`}>
-                    Message
-                  </Link>
-                </Button>
-              }
-            />
-          ))
+          <div className="divide-y divide-slate-100">
+            {patients.map((patient) => (
+              <div key={patient.id} className="p-4 sm:p-5">
+                <DoctorListCard
+                  title={patient.name}
+                  subtitle={patient.phone}
+                  meta={
+                    patient.lastVisitAt
+                      ? `Last visit ${formatDateTime(patient.lastVisitAt)} · ${patient.appointmentCount} appointment${patient.appointmentCount === 1 ? "" : "s"}`
+                      : `${patient.appointmentCount} appointment${patient.appointmentCount === 1 ? "" : "s"}`
+                  }
+                  action={
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        href={`${siteConfig.links.doctorMessages}?patient=${patient.id}`}
+                      >
+                        Message
+                      </Link>
+                    </Button>
+                  }
+                />
+              </div>
+            ))}
+          </div>
         )}
       </div>
-    </PageShell>
+    </>
   );
 }

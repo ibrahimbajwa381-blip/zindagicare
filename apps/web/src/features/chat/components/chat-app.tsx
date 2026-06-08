@@ -35,6 +35,8 @@ type ChatAppProps = {
   isDoctorView?: boolean;
   initialThreadId?: string;
   initialParticipantId?: string;
+  /** Shorter height when embedded in doctor workspace overview */
+  embedded?: boolean;
 };
 
 type ViewMode = "inbox" | "conversation" | "new";
@@ -52,6 +54,7 @@ export function ChatApp({
   isDoctorView = false,
   initialThreadId,
   initialParticipantId,
+  embedded = false,
 }: ChatAppProps) {
   const [threads, setThreads] = useState<ChatThreadDto[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | undefined>(initialThreadId);
@@ -254,10 +257,11 @@ export function ChatApp({
   const messageState = activeThreadId ? messagesByThread[activeThreadId] : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className={cn("mx-auto w-full", embedded ? "max-w-none" : "max-w-6xl")}>
       <div
         className={cn(
-          "grid min-h-[calc(100dvh-8rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg",
+          "grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm",
+          embedded ? "min-h-[28rem] md:min-h-[32rem]" : "min-h-[calc(100dvh-8rem)]",
           "md:grid-cols-[360px_1fr]",
         )}
       >
@@ -297,7 +301,7 @@ export function ChatApp({
 
         <div
           className={cn(
-            "min-h-[calc(100dvh-8rem)]",
+            embedded ? "min-h-[28rem] md:min-h-[32rem]" : "min-h-[calc(100dvh-8rem)]",
             view === "conversation" ? "block" : "hidden md:block",
           )}
         >

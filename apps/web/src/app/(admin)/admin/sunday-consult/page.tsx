@@ -1,21 +1,17 @@
-import { PageShell } from "@/components/layout/page-shell";
-import { PageTitle } from "@/components/layout/page-title";
-import { AdminSubNav } from "@/features/admin/components/admin-sub-nav";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminSundayControl } from "@/features/admin/components/admin-sunday-control";
 
 export const metadata = { title: "Sunday consult control" };
 
 export default function AdminSundayConsultPage() {
   return (
-    <PageShell variant="accent" spacing="default" narrow flipBlur>
-      <PageTitle
+    <>
+      <AdminPageHeader
+        eyebrow="Programs"
         title="Sunday free consult"
-        description="Enable or disable the program, configure slots, view queue, and reset weekly availability."
+        description="Enable or disable the program, configure slots, view the queue, and reset weekly availability."
       />
-      <div className="mt-8">
-        <AdminSubNav />
-        <AdminSundayControl />
-      </div>
-    </PageShell>
+      <AdminSundayControl />
+    </>
   );
 }

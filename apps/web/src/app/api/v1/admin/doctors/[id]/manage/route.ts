@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const { id } = await params;
     const body = adminUpdateDoctorSchema.parse(await req.json());
-    const doctor = await adminUpdateDoctor(id, body);
+    const doctor = await adminUpdateDoctor(session.user.id, id, body);
     return apiSuccess({ doctor });
   } catch (error) {
     return apiError(error);

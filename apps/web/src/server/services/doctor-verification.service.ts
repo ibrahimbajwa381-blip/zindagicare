@@ -15,6 +15,9 @@ import type { doctorVerificationSchema } from "@zindagi/validators";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { SundayConsultService } from "./sunday-consult.service";
 import { cnicLast4, hashCnic } from "./auth.service";
+import {
+  isDoctorAvatarUrlForUser,
+} from "@/server/services/doctor-avatar.storage";
 import { mongoFilter } from "@/lib/mongo/query";
 import type { HydratedDocument } from "mongoose";
 import type { DoctorProfileDocument } from "@zindagi/database";
@@ -115,6 +118,13 @@ export async function submitDoctorVerification(
     throw new AppError("Already verified", "CONFLICT", 409);
   }
 
+  if (!isDoctorAvatarUrlForUser(userId, input.avatarUrl)) {
+    throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+  }
+
+  user.avatarUrl = input.avatarUrl;
+  await user.save();
+
   const coverageCities = [
     ...new Set(input.hospitals.map((hospital) => hospital.city.trim())),
   ];
@@ -166,10 +176,9 @@ export async function listPendingDoctorVerifications() {
   await connectDatabase();
   return DoctorProfileModel.find({
     verificationStatus: VerificationStatuses.PENDING,
-    verificationSubmittedAt: { $exists: true },
   })
     .populate("userId", "name email phone avatarUrl")
-    .sort({ verificationSubmittedAt: 1 })
+    .sort({ verificationSubmittedAt: 1, createdAt: 1 })
     .lean();
 }
 
@@ -192,6 +201,8 @@ export async function decideDoctorVerification(
     profile.verificationStatus = VerificationStatuses.APPROVED;
     profile.pmdcVerified = true;
     profile.isListed = true;
+    profile.videoConsultEnabled = true;
+    profile.homeVisitEnabled = true;
     profile.verifiedBy = adminUserId as unknown as DoctorProfileDocument["verifiedBy"];
     profile.verifiedAt = new Date();
     profile.rejectionReason = undefined;
@@ -203,13 +214,19 @@ export async function decideDoctorVerification(
 
     if (sundayTemplate) {
       profile.sundayConsultEnabled = true;
-      await profile.save();
-      await SundayConsultService.materializeInstance(
-        profile._id.toString(),
-        getNextSundayDate(),
-      );
-    } else {
-      await profile.save();
+    }
+
+    await profile.save();
+
+    if (sundayTemplate) {
+      try {
+        await SundayConsultService.materializeInstance(
+          profile._id.toString(),
+          getNextSundayDate(),
+        );
+      } catch (err) {
+        console.error("[decideDoctorVerification] Sunday slot materialize failed:", err);
+      }
     }
 
     await UserModel.findByIdAndUpdate(profile.userId, {
@@ -218,6 +235,7 @@ export async function decideDoctorVerification(
   } else {
     profile.verificationStatus = VerificationStatuses.REJECTED;
     profile.isListed = false;
+    profile.videoConsultEnabled = false;
     profile.sundayConsultEnabled = false;
     profile.rejectionReason = rejectionReason ?? "Application rejected";
     await profile.save();

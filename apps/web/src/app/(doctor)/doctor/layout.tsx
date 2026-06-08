@@ -1,8 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { AppHeader } from "@/components/layout/app-header";
-import { buildAccountMobileSection } from "@/lib/nav/mobile-menu";
-import { getServerTranslations } from "@/i18n/server";
+import { DoctorProfileModel, UserModel, connectDatabase } from "@zindagi/database";
+import { VerificationStatuses } from "@zindagi/shared";
+import { DoctorShell } from "@/features/doctor/components/doctor-shell";
+import { mongoFilter } from "@/lib/mongo/query";
 
 export default async function DoctorLayout({
   children,
@@ -10,32 +11,36 @@ export default async function DoctorLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/doctor/sunday-consult");
+  if (!session?.user) redirect("/login?callbackUrl=/doctor/profile");
   if (!session.user.roles?.includes("doctor")) {
     redirect("/dashboard");
   }
 
-  const { t } = await getServerTranslations();
-  const accountSection = buildAccountMobileSection(session, {
-    sectionTitle: t.footer.account,
-    myDashboard: t.dashboard.header.myDashboard,
-    signOut: t.dashboard.header.signOut,
-    login: t.auth.login,
-    createAccount: t.auth.createAccount,
-  });
+  await connectDatabase();
+  const [user, doctorProfile] = await Promise.all([
+    UserModel.findById(session.user.id).select("name email avatarUrl").lean(),
+    DoctorProfileModel.findOne(mongoFilter({ userId: session.user.id }))
+      .select("slug verificationStatus")
+      .lean(),
+  ]);
+
+  const verificationStatus =
+    doctorProfile?.verificationStatus ?? session.user.doctorVerificationStatus;
+
+  const showFullNav = verificationStatus === VerificationStatuses.APPROVED;
 
   return (
-    <>
-      <AppHeader
-        links={[
-          { href: "/", label: t.nav.home },
-          { href: "/doctor/profile", label: "Workspace" },
-          { href: "/doctor/messages", label: "Messages" },
-          { href: "/doctor/sunday-consult", label: "Sunday consult" },
-        ]}
-        sections={accountSection ? [accountSection] : []}
-      />
-      <main className="flex-1">{children}</main>
-    </>
+    <DoctorShell
+      showFullNav={showFullNav}
+      verificationStatus={verificationStatus}
+      doctorSlug={doctorProfile?.slug}
+      user={{
+        name: user?.name ?? session.user.name,
+        email: user?.email ?? session.user.email,
+        avatarUrl: user?.avatarUrl,
+      }}
+    >
+      {children}
+    </DoctorShell>
   );
 }

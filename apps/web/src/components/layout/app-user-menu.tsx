@@ -8,12 +8,15 @@ import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 
+export type AccountType = "patient" | "doctor" | "admin";
+
 export type AppUserMenuProps = {
   name: string;
   email?: string | null;
   phone?: string | null;
   city?: string | null;
   dashboardHref?: string;
+  accountType?: AccountType;
   className?: string;
   variant?: "header" | "drawer";
 };
@@ -34,17 +37,32 @@ function contactLine(email?: string | null, phone?: string | null) {
   return null;
 }
 
+function accountLabel(
+  labels: {
+    patientAccount: string;
+    doctorAccount: string;
+    adminAccount: string;
+  },
+  accountType: AccountType,
+) {
+  if (accountType === "doctor") return labels.doctorAccount;
+  if (accountType === "admin") return labels.adminAccount;
+  return labels.patientAccount;
+}
+
 export function AppUserMenu({
   name,
   email,
   phone,
   city,
   dashboardHref = siteConfig.links.dashboard,
+  accountType = "patient",
   className,
   variant = "header",
 }: AppUserMenuProps) {
   const t = useTranslations();
   const labels = t.dashboard.header;
+  const accountTypeLabel = accountLabel(labels, accountType);
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +125,7 @@ export function AppUserMenu({
           {secondary ? (
             <span className="truncate text-xs text-slate-500">{secondary}</span>
           ) : (
-            <span className="text-xs text-slate-500">{labels.patientAccount}</span>
+            <span className="text-xs text-slate-500">{accountTypeLabel}</span>
           )}
         </span>
         <ChevronDown
@@ -144,7 +162,7 @@ export function AppUserMenu({
                   <p className="mt-0.5 truncate text-xs text-slate-600">{phone.trim()}</p>
                 ) : null}
                 <span className="mt-2 inline-flex rounded-full border border-brand-light/40 bg-brand-muted/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark">
-                  {labels.patientAccount}
+                  {accountTypeLabel}
                 </span>
                 {city?.trim() ? (
                   <p className="mt-2 text-xs text-slate-500">

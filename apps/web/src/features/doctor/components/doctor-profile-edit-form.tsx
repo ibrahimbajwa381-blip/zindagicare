@@ -1,0 +1,515 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useMemo, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FieldError, Input, Label } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { formatTime12h, TimePicker } from "@/components/ui/time-picker";
+import type { DoctorProfileDto } from "@/features/doctor/types";
+import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
+
+const DAYS = [
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+  { value: 0, label: "Sunday" },
+];
+
+type AvailabilityDay = {
+  enabled: boolean;
+  startTimeLocal: string;
+  endTimeLocal: string;
+};
+
+type HospitalRow = {
+  name: string;
+  city: string;
+  address: string;
+};
+
+function buildAvailabilityFromProfile(
+  weeklyAvailability: DoctorProfileDto["weeklyAvailability"],
+): Record<number, AvailabilityDay> {
+  const base: Record<number, AvailabilityDay> = {
+    1: { enabled: false, startTimeLocal: "16:00", endTimeLocal: "20:00" },
+    2: { enabled: false, startTimeLocal: "16:00", endTimeLocal: "20:00" },
+    3: { enabled: false, startTimeLocal: "16:00", endTimeLocal: "20:00" },
+    4: { enabled: false, startTimeLocal: "16:00", endTimeLocal: "20:00" },
+    5: { enabled: false, startTimeLocal: "16:00", endTimeLocal: "20:00" },
+    6: { enabled: false, startTimeLocal: "10:00", endTimeLocal: "14:00" },
+    0: { enabled: false, startTimeLocal: "10:00", endTimeLocal: "14:00" },
+  };
+
+  for (const slot of weeklyAvailability) {
+    base[slot.dayOfWeek] = {
+      enabled: true,
+      startTimeLocal: slot.startTimeLocal,
+      endTimeLocal: slot.endTimeLocal,
+    };
+  }
+
+  return base;
+}
+
+function previewSundaySlots(start: string, end: string, durationMins: number): string[] {
+  const [startH, startM] = start.split(":").map(Number);
+  const [endH, endM] = end.split(":").map(Number);
+  const startTotal = startH * 60 + startM;
+  const endTotal = endH * 60 + endM;
+  const slots: string[] = [];
+  for (let t = startTotal; t + durationMins <= endTotal; t += durationMins) {
+    const h = Math.floor(t / 60);
+    const m = t % 60;
+    const slotStart = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    const endSlot = t + durationMins;
+    const eh = Math.floor(endSlot / 60);
+    const em = endSlot % 60;
+    const slotEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+    slots.push(`${formatTime12h(slotStart)} – ${formatTime12h(slotEnd)}`);
+  }
+  return slots;
+}
+
+type Props = {
+  profile: DoctorProfileDto;
+};
+
+export function DoctorProfileEditForm({ profile }: Props) {
+  const router = useRouter();
+  const { update } = useSession();
+  const [error, setError] = useState<string>();
+  const [fieldError, setFieldError] = useState<string>();
+  const [pending, setPending] = useState(false);
+
+  const [name, setName] = useState(profile.user.name);
+  const [phone, setPhone] = useState(profile.user.phone ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(profile.user.avatarUrl ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
+  const [consultationFee, setConsultationFee] = useState(
+    String(profile.consultationFee ?? 0),
+  );
+  const [languages, setLanguages] = useState(profile.languages.join(", "));
+  const [hospitals, setHospitals] = useState<HospitalRow[]>(
+    profile.hospitals.length
+      ? profile.hospitals.map((h) => ({
+          name: h.name,
+          city: h.city,
+          address: h.address ?? "",
+        }))
+      : [{ name: "", city: "Lahore", address: "" }],
+  );
+  const [availability, setAvailability] = useState(() =>
+    buildAvailabilityFromProfile(profile.weeklyAvailability),
+  );
+  const [sundayEnabled, setSundayEnabled] = useState(profile.sundayConsult.enabled);
+  const [sundayStart, setSundayStart] = useState(
+    profile.sundayConsult.startTimeLocal ?? "16:00",
+  );
+  const [sundayEnd, setSundayEnd] = useState(
+    profile.sundayConsult.endTimeLocal ?? "18:00",
+  );
+  const [slotDurationMins, setSlotDurationMins] = useState(
+    profile.sundayConsult.slotDurationMins ?? 10,
+  );
+
+  function updateAvailability(day: number, patch: Partial<AvailabilityDay>) {
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], ...patch },
+    }));
+  }
+
+  function updateHospital(index: number, patch: Partial<HospitalRow>) {
+    setHospitals((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function addHospital() {
+    setHospitals((prev) => [...prev, { name: "", city: "Lahore", address: "" }]);
+  }
+
+  function removeHospital(index: number) {
+    setHospitals((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  }
+
+  const sundaySlotPreview = useMemo(() => {
+    if (!sundayEnabled) return [];
+    return previewSundaySlots(sundayStart, sundayEnd, slotDurationMins);
+  }, [sundayEnabled, sundayStart, sundayEnd, slotDurationMins]);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPending(true);
+    setError(undefined);
+    setFieldError(undefined);
+
+    const weeklyAvailability = DAYS.filter((d) => availability[d.value]?.enabled).map(
+      (d) => ({
+        dayOfWeek: d.value,
+        startTimeLocal: availability[d.value].startTimeLocal,
+        endTimeLocal: availability[d.value].endTimeLocal,
+      }),
+    );
+
+    if (!weeklyAvailability.length) {
+      setError("Select at least one day for your clinic availability.");
+      setPending(false);
+      return;
+    }
+
+    const cleanedHospitals = hospitals
+      .map((h) => ({
+        name: h.name.trim(),
+        city: h.city.trim(),
+        address: h.address.trim() || undefined,
+      }))
+      .filter((h) => h.name && h.city);
+
+    if (!cleanedHospitals.length) {
+      setError("Add at least one practice location.");
+      setPending(false);
+      return;
+    }
+
+    const languageList = languages
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (!languageList.length) {
+      setError("Add at least one language.");
+      setPending(false);
+      return;
+    }
+
+    const body = {
+      name: name.trim(),
+      phone: phone.trim() || undefined,
+      ...(avatarUrl && avatarUrl !== profile.user.avatarUrl
+        ? { avatarUrl }
+        : {}),
+      bio: bio.trim() || null,
+      consultationFee: Number(consultationFee) || 0,
+      languages: languageList,
+      hospitals: cleanedHospitals,
+      weeklyAvailability,
+      sundayConsult: {
+        enabled: sundayEnabled,
+        startTimeLocal: sundayEnabled ? sundayStart : undefined,
+        endTimeLocal: sundayEnabled ? sundayEnd : undefined,
+        slotDurationMins,
+      },
+    };
+
+    const res = await fetch("/api/v1/doctor/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    setPending(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const message = data?.error?.message ?? "Could not save profile. Check your inputs.";
+      setError(message);
+      if (data?.error?.field) {
+        setFieldError(data.error.field);
+      }
+      return;
+    }
+
+    await update({ name: name.trim() });
+    router.push("/doctor/profile");
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-8">
+      <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
+        <p className="font-medium text-slate-900">Credentials are read-only</p>
+        <p className="mt-1">
+          PMDC ({profile.pmdcNumber ?? "—"}), degree, and verification documents cannot
+          be changed here. Contact support if your credentials need updating.
+        </p>
+        <p className="mt-2 text-xs text-slate-500">
+          Specialty: {profile.specialties.join(", ") || "—"}
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold text-slate-900">Profile photo</h2>
+        <DoctorProfilePhotoUpload
+          name={name}
+          value={avatarUrl || undefined}
+          onUploaded={setAvatarUrl}
+        />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold text-slate-900">Contact & bio</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="name">Display name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="phone">Mobile number</Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="03001234567"
+            />
+            {fieldError === "phone" && (
+              <FieldError message="This phone number is already registered." />
+            )}
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="bio">Professional bio</Label>
+          <textarea
+            id="bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={4}
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            placeholder="Brief summary of your practice and expertise"
+          />
+        </div>
+        <div>
+          <Label htmlFor="languages">Languages (comma-separated)</Label>
+          <Input
+            id="languages"
+            value={languages}
+            onChange={(e) => setLanguages(e.target.value)}
+            placeholder="English, Urdu"
+          />
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900">Practice locations</h2>
+          <Button type="button" variant="outline" size="sm" onClick={addHospital}>
+            <Plus className="mr-1 h-4 w-4" />
+            Add location
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {hospitals.map((hospital, index) => (
+            <div
+              key={index}
+              className="rounded-xl border border-slate-200 p-4"
+            >
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Location {index + 1}
+                </p>
+                {hospitals.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => removeHospital(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor={`hospital-name-${index}`}>Hospital / clinic</Label>
+                  <Input
+                    id={`hospital-name-${index}`}
+                    value={hospital.name}
+                    onChange={(e) => updateHospital(index, { name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`hospital-city-${index}`}>City</Label>
+                  <Input
+                    id={`hospital-city-${index}`}
+                    value={hospital.city}
+                    onChange={(e) => updateHospital(index, { city: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="mt-3">
+                <Label htmlFor={`hospital-address-${index}`}>Address</Label>
+                <Input
+                  id={`hospital-address-${index}`}
+                  value={hospital.address}
+                  onChange={(e) => updateHospital(index, { address: e.target.value })}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <Label htmlFor="consultationFee">Consultation fee (PKR)</Label>
+          <Input
+            id="consultationFee"
+            type="number"
+            min={0}
+            value={consultationFee}
+            onChange={(e) => setConsultationFee(e.target.value)}
+            className="max-w-xs"
+          />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-900">Weekly availability</h2>
+        <p className="text-xs text-slate-500">
+          When are you available for paid online or clinic consultations?
+        </p>
+        <div className="space-y-2">
+          {DAYS.map((day) => {
+            const slot = availability[day.value];
+            return (
+              <div
+                key={day.value}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3"
+              >
+                <div className="flex min-w-[120px] items-center gap-2 text-sm">
+                  <input
+                    id={`availability-day-${day.value}`}
+                    type="checkbox"
+                    checked={slot.enabled}
+                    onChange={(e) =>
+                      updateAvailability(day.value, { enabled: e.target.checked })
+                    }
+                  />
+                  <label htmlFor={`availability-day-${day.value}`}>{day.label}</label>
+                </div>
+                {slot.enabled && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <TimePicker
+                      id={`availability-start-${day.value}`}
+                      value={slot.startTimeLocal}
+                      onChange={(startTimeLocal) =>
+                        updateAvailability(day.value, { startTimeLocal })
+                      }
+                    />
+                    <span className="text-xs text-slate-500">to</span>
+                    <TimePicker
+                      id={`availability-end-${day.value}`}
+                      value={slot.endTimeLocal}
+                      onChange={(endTimeLocal) =>
+                        updateAvailability(day.value, { endTimeLocal })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-brand-light/30 bg-brand-light/5 p-4">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={sundayEnabled}
+            onChange={(e) => setSundayEnabled(e.target.checked)}
+            className="mt-1"
+          />
+          <div>
+            <p className="text-sm font-semibold text-slate-900">
+              Offer free Sunday online consultation
+            </p>
+            <p className="text-xs text-slate-600">
+              Patients can book free slots on the Sunday consult page when this is enabled.
+            </p>
+          </div>
+        </label>
+
+        {sundayEnabled && (
+          <div className="space-y-3 pl-7">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="sunday-start">From</Label>
+                <TimePicker
+                  id="sunday-start"
+                  value={sundayStart}
+                  onChange={setSundayStart}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sunday-end">To</Label>
+                <TimePicker
+                  id="sunday-end"
+                  value={sundayEnd}
+                  onChange={setSundayEnd}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Slot duration (mins)</Label>
+                <Input
+                  type="number"
+                  min={5}
+                  max={60}
+                  value={slotDurationMins}
+                  onChange={(e) => setSlotDurationMins(Number(e.target.value))}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            {sundaySlotPreview.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-medium text-slate-700">
+                  Slots patients will see ({sundaySlotPreview.length} total):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {sundaySlotPreview.map((slot) => (
+                    <Badge key={slot} variant="secondary">
+                      {slot}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-700">
+                Adjust your time window — end time must be after start time.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save profile"}
+        </Button>
+        <Button type="button" variant="outline" disabled={pending} onClick={() => router.back()}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}

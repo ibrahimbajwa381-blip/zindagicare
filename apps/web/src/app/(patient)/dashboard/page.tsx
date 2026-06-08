@@ -6,12 +6,10 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PatientDashboardMessagesSection } from "@/features/patient/components/patient-dashboard-messages-section";
 import { PatientSundayBookingSection } from "@/features/sunday-consult/components/patient-sunday-booking-section";
-import { SundayExplainer } from "@/features/sunday-consult/components/sunday-explainer";
 import { PatientVisitsSection } from "@/features/home-care/components/patient-visits-section";
-import {
-  PatientProfileSection,
-} from "@/features/patient/components/patient-profile-section";
+import { PatientProfileSection } from "@/features/patient/components/patient-profile-section";
 import { getDictionary } from "@/i18n";
 import { formatMessage } from "@/i18n/messages";
 import { getLocale } from "@/i18n/server";
@@ -19,6 +17,7 @@ import { getPatientProfile } from "@/server/services/patient-profile.service";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
 import { loadPatientOnlineBooking } from "@/features/consult/components/patient-online-booking-section";
 import { PatientOnlineBookingSection } from "@/features/consult/components/patient-online-booking-section";
+import { cn } from "@zindagi/shared";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 export const metadata = { title: "Dashboard" };
@@ -46,56 +45,61 @@ export default async function PatientDashboardPage() {
         description={formatMessage(t.dashboard.welcomeMessage, { name: displayName })}
       />
 
-      <div className="mt-8">
-        <PatientProfileSection initialProfile={profile} initialSundayBooking={sundayBooking} />
-      </div>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className={surfaceCardInteractive}>
-          <CardHeader>
-            <CardTitle className="text-base">{t.dashboard.nav.messages}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-slate-500">
-            <p>{t.chat.pageDescription}</p>
-            <Button asChild variant="outline" size="sm">
-              <Link href={siteConfig.links.messages}>{t.dashboard.nav.messages}</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        {onlineBooking ? (
-          <PatientOnlineBookingSection initialBooking={onlineBooking} />
-        ) : (
-          <Card className={surfaceCardInteractive}>
-            <CardHeader>
-              <CardTitle className="text-base">{t.dashboard.upcomingAppointments}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-slate-500">
-              {t.dashboard.noAppointments}
-            </CardContent>
-          </Card>
-        )}
-        <PatientSundayBookingSection
-          variant="dashboard"
-          initialBooking={sundayBooking}
-        />
-      </div>
-
-      <div className="mt-8">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-semibold">{t.homeCare.visitsTitle}</h2>
-            <p className="text-sm text-slate-500">{t.homeCare.visitsDesc}</p>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href={siteConfig.links.homeCareRequest}>{t.homeCare.bookVisit}</Link>
-          </Button>
+      <section className="mt-8 space-y-8">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-slate-900">
+            {t.dashboard.activitiesTitle}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">{t.dashboard.activitiesDescription}</p>
         </div>
-        <PatientVisitsSection />
-      </div>
 
-      <div className="mt-8">
-        <SundayExplainer variant="compact" />
-      </div>
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+          <PatientDashboardMessagesSection />
+          {onlineBooking ? (
+            <PatientOnlineBookingSection initialBooking={onlineBooking} />
+          ) : (
+            <Card className={cn(surfaceCardInteractive, "flex h-full flex-col")}>
+              <CardHeader>
+                <CardTitle className="text-base">{t.dashboard.upcomingAppointments}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col justify-center text-sm text-slate-500">
+                {t.dashboard.noAppointments}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {sundayBooking ? (
+          <PatientSundayBookingSection
+            variant="dashboard"
+            initialBooking={sundayBooking}
+          />
+        ) : null}
+
+        <div>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg font-semibold">{t.homeCare.visitsTitle}</h3>
+              <p className="text-sm text-slate-500">{t.homeCare.visitsDesc}</p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href={siteConfig.links.homeCareRequest}>{t.homeCare.bookVisit}</Link>
+            </Button>
+          </div>
+          <PatientVisitsSection />
+        </div>
+
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-4">
+          <h2 className="font-display text-lg font-semibold text-slate-900">
+            {t.dashboard.profile.title}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">{t.dashboard.profile.subtitle}</p>
+        </div>
+        <PatientProfileSection initialProfile={profile} />
+      </section>
     </PageShell>
   );
 }

@@ -1,13 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PageShell } from "@/components/layout/page-shell";
-import {
-  DoctorEmptyState,
-  DoctorListCard,
-  DoctorWorkspaceHeader,
-  formatDateTime,
-} from "@/features/doctor/components/doctor-workspace-panels";
-import { listDoctorHomeVisitRequests } from "@/server/services/doctor-dashboard.service";
+import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
+import { DoctorHomeVisitsDashboard } from "@/features/home-care/components/doctor-home-visits-dashboard";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 import { VerificationStatuses } from "@zindagi/shared";
 
@@ -23,31 +17,14 @@ export default async function DoctorHomeVisitsPage() {
     redirect("/doctor/profile");
   }
 
-  const visits = await listDoctorHomeVisitRequests(session.user.id);
-
   return (
-    <PageShell variant="brand" spacing="default" narrow flipBlur>
-      <DoctorWorkspaceHeader
+    <>
+      <DoctorPageHeader
+        eyebrow="Home treatment"
         title="In-house visit requests"
-        description="Doctor home visit requests in your coverage cities."
-        count={visits.length}
+        description="Doctor home visits assigned to you by admin — update status as you travel to the patient."
       />
-
-      <div className="space-y-3">
-        {visits.length === 0 ? (
-          <DoctorEmptyState message="No in-house doctor visit requests in your area right now." />
-        ) : (
-          visits.map((visit) => (
-            <DoctorListCard
-              key={visit.id}
-              title={visit.patient?.name ?? "Patient"}
-              subtitle={visit.patient?.phone}
-              meta={`${visit.address.line}, ${visit.address.city} · ${formatDateTime(visit.scheduledAt)} · ${visit.pricing.currency} ${visit.pricing.total}${visit.patientNotes ? ` · ${visit.patientNotes}` : ""}`}
-              badge={visit.status.replace("_", " ")}
-            />
-          ))
-        )}
-      </div>
-    </PageShell>
+      <DoctorHomeVisitsDashboard />
+    </>
   );
 }

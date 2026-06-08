@@ -30,13 +30,10 @@ import { FieldError, Input, Label } from "@/components/ui/input";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { useLocale, useTranslations } from "@/i18n/locale-provider";
 import type { PatientProfileDto } from "@/server/services/patient-profile.service";
-import type { SundayPatientBookingDto } from "@/features/sunday-consult/types";
-import { PatientSundayBookingSection } from "@/features/sunday-consult/components/patient-sunday-booking-section";
 import { surfaceCard } from "@/lib/ui/surfaces";
 
 type Props = {
   initialProfile: PatientProfileDto;
-  initialSundayBooking?: SundayPatientBookingDto | null;
 };
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
@@ -70,10 +67,7 @@ function profileInitials(name: string) {
     .join("");
 }
 
-export function PatientProfileSection({
-  initialProfile,
-  initialSundayBooking = null,
-}: Props) {
+export function PatientProfileSection({ initialProfile }: Props) {
   const router = useRouter();
   const { update } = useSession();
   const { locale, setLocale } = useLocale();
@@ -327,10 +321,6 @@ export function PatientProfileSection({
           </form>
         ) : (
           <div className="space-y-6">
-            <PatientSundayBookingSection
-              variant="profile"
-              initialBooking={initialSundayBooking}
-            />
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <ProfileSection title={p.account} icon={UserRound} accent="brand">
               <div className="grid gap-3">

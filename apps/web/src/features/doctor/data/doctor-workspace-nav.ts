@@ -1,0 +1,153 @@
+import {
+  CalendarClock,
+  Home,
+  LayoutDashboard,
+  MessageSquare,
+  Sun,
+  UserCog,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
+
+export type DoctorNavBadgeKey =
+  | "messages"
+  | "patients"
+  | "pendingRequests"
+  | "sundayQueue"
+  | "homeVisits";
+
+export type DoctorWorkspaceNavItem = {
+  href: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  badgeKey?: DoctorNavBadgeKey;
+};
+
+export type DoctorWorkspaceNavSection = {
+  title: string;
+  items: DoctorWorkspaceNavItem[];
+};
+
+export const DOCTOR_WORKSPACE_ACTIONS: DoctorWorkspaceNavItem[] = [
+  {
+    href: "/doctor/messages",
+    label: "Patient messages",
+    description: "Chat after paid consultations",
+    icon: MessageSquare,
+    badgeKey: "messages",
+  },
+  {
+    href: "/doctor/patients",
+    label: "My patients",
+    description: "Patients you have consulted",
+    icon: Users,
+    badgeKey: "patients",
+  },
+  {
+    href: "/doctor/requests",
+    label: "Consult requests",
+    description: "Online & clinic appointments",
+    icon: CalendarClock,
+    badgeKey: "pendingRequests",
+  },
+  {
+    href: "/doctor/sunday-consult",
+    label: "Free Sunday consult",
+    description: "Free consult queue this Sunday",
+    icon: Sun,
+    badgeKey: "sundayQueue",
+  },
+  {
+    href: "/doctor/home-visits",
+    label: "Home visits",
+    description: "In-house doctor visits assigned to you",
+    icon: Home,
+    badgeKey: "homeVisits",
+  },
+];
+
+export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
+  {
+    title: "Profile",
+    items: [
+      {
+        href: "/doctor/profile",
+        label: "Overview",
+        description: "Your workspace dashboard",
+        icon: LayoutDashboard,
+        exact: true,
+      },
+      {
+        href: "/doctor/profile/edit",
+        label: "Edit profile",
+        description: "Bio, fee, schedule & locations",
+        icon: UserCog,
+      },
+    ],
+  },
+  {
+    title: "Practice",
+    items: DOCTOR_WORKSPACE_ACTIONS,
+  },
+];
+
+export const DOCTOR_ONBOARDING_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
+  {
+    title: "Onboarding",
+    items: [
+      {
+        href: "/doctor/profile",
+        label: "Overview",
+        description: "Application status",
+        icon: LayoutDashboard,
+        exact: true,
+      },
+    ],
+  },
+];
+
+export type DoctorNavStats = {
+  unreadMessages: number;
+  patients: number;
+  pendingRequests: number;
+  sundayQueue: number;
+  homeVisits: number;
+};
+
+export function doctorNavBadgeCount(
+  item: DoctorWorkspaceNavItem,
+  stats: DoctorNavStats,
+): number | null {
+  if (!item.badgeKey) return null;
+
+  switch (item.badgeKey) {
+    case "messages":
+      return stats.unreadMessages > 0 ? stats.unreadMessages : null;
+    case "patients":
+      return stats.patients > 0 ? stats.patients : null;
+    case "pendingRequests":
+      return stats.pendingRequests > 0 ? stats.pendingRequests : null;
+    case "sundayQueue":
+      return stats.sundayQueue > 0 ? stats.sundayQueue : null;
+    case "homeVisits":
+      return stats.homeVisits > 0 ? stats.homeVisits : null;
+    default:
+      return null;
+  }
+}
+
+export function summaryToNavStats(
+  summary: DoctorDashboardSummary,
+  unreadMessages = 0,
+): DoctorNavStats {
+  return {
+    unreadMessages,
+    patients: summary.patients,
+    pendingRequests: summary.pendingRequests,
+    sundayQueue: summary.sundayQueue,
+    homeVisits: summary.homeVisitRequests,
+  };
+}

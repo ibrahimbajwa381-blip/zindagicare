@@ -62,7 +62,7 @@ const timeLocalSchema = z
   .string()
   .regex(/^\d{2}:\d{2}$/, "Use HH:mm format (e.g. 16:00)");
 
-const weeklyAvailabilityEntrySchema = z
+export const weeklyAvailabilityEntrySchema = z
   .object({
     dayOfWeek: z.coerce.number().int().min(0).max(6),
     startTimeLocal: timeLocalSchema,
@@ -90,6 +90,7 @@ export const doctorVerificationSchema = z.object({
     .max(new Date().getFullYear()),
   experienceYears: z.coerce.number().int().min(0).max(60),
   specialties: z.array(z.string().min(2)).min(1, "Select at least one specialty"),
+  avatarUrl: z.string().min(1, "Profile photo is required"),
   bio: z.string().max(2000).optional(),
   consultationFee: z.coerce.number().min(0).optional(),
   hospitals: z

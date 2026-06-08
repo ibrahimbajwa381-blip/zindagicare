@@ -1,10 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PageShell } from "@/components/layout/page-shell";
+import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
 import {
   DoctorEmptyState,
   DoctorListCard,
-  DoctorWorkspaceHeader,
   formatDateTime,
 } from "@/features/doctor/components/doctor-workspace-panels";
 import { listDoctorConsultRequests } from "@/server/services/doctor-dashboard.service";
@@ -32,28 +31,36 @@ export default async function DoctorRequestsPage() {
   const requests = await listDoctorConsultRequests(session.user.id);
 
   return (
-    <PageShell variant="brand" spacing="default" narrow flipBlur>
-      <DoctorWorkspaceHeader
+    <>
+      <DoctorPageHeader
+        eyebrow="Scheduling"
         title="Consult requests"
         description="Upcoming online and in-clinic appointments assigned to you."
-        count={requests.length}
+        actions={
+          <span className="rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand-dark">
+            {requests.length} active
+          </span>
+        }
       />
 
-      <div className="space-y-3">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         {requests.length === 0 ? (
           <DoctorEmptyState message="No pending consult requests right now." />
         ) : (
-          requests.map((request) => (
-            <DoctorListCard
-              key={request.id}
-              title={request.patient.name}
-              subtitle={request.patient.phone}
-              meta={`${formatType(request.type)} · ${formatDateTime(request.scheduledStart)}${request.patientNotes ? ` · ${request.patientNotes}` : ""}`}
-              badge={request.status.replace("_", " ")}
-            />
-          ))
+          <div className="divide-y divide-slate-100">
+            {requests.map((request) => (
+              <div key={request.id} className="p-4 sm:p-5">
+                <DoctorListCard
+                  title={request.patient.name}
+                  subtitle={request.patient.phone}
+                  meta={`${formatType(request.type)} · ${formatDateTime(request.scheduledStart)}${request.patientNotes ? ` · ${request.patientNotes}` : ""}`}
+                  badge={request.status.replace("_", " ")}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </div>
-    </PageShell>
+    </>
   );
 }

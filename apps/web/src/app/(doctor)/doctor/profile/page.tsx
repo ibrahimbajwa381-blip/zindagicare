@@ -1,20 +1,21 @@
 import { auth } from "@/lib/auth";
 import { VerificationStatuses } from "@zindagi/shared";
 import { redirect } from "next/navigation";
-import { PageShell } from "@/components/layout/page-shell";
-import { DoctorDashboardHero } from "@/features/doctor/components/doctor-dashboard-hero";
+import { DoctorProfileOverview } from "@/features/doctor/components/doctor-profile-overview";
 import { DoctorProfileSection } from "@/features/doctor/components/doctor-profile-section";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DoctorWorkspaceMessages } from "@/features/doctor/components/doctor-workspace-messages";
 import { getDoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
+import { getDictionary } from "@/i18n";
+import { getLocale } from "@/i18n/server";
 
 export const metadata = { title: "Doctor workspace" };
 
-type Props = { searchParams: Promise<{ submitted?: string }> };
+type Props = { searchParams: Promise<{ submitted?: string; patient?: string }> };
 
 export default async function DoctorProfilePage({ searchParams }: Props) {
   const session = await auth();
-  const { submitted } = await searchParams;
+  const { submitted, patient: patientId } = await searchParams;
 
   if (!session?.user) redirect("/login?callbackUrl=/doctor/profile");
   if (!session.user.roles?.includes("doctor")) redirect("/onboarding");
@@ -37,27 +38,40 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
         homeVisitRequests: 0,
       };
 
-  return (
-    <PageShell variant="soft" spacing="default" narrow>
-      <DoctorDashboardHero profile={profile} summary={summary} />
+  const locale = await getLocale();
+  const t = getDictionary(locale);
 
+  return (
+    <div className="space-y-6">
       {submitted === "1" && isPending && (
-        <Card className="mt-6 border-emerald-200 bg-emerald-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base text-emerald-900">
-              Application submitted successfully
-            </CardTitle>
-            <CardDescription className="text-emerald-800">
-              An admin will review your credentials shortly. Your workspace unlocks once
-              your profile is approved.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+          <p className="font-semibold">Application submitted successfully</p>
+          <p className="mt-1">
+            An admin will review your credentials shortly. Your workspace unlocks once
+            your profile is approved.
+          </p>
+        </div>
       )}
 
-      <div className="mt-8">
-        <DoctorProfileSection profile={profile} />
-      </div>
-    </PageShell>
+      {isApproved ? (
+        <DoctorProfileOverview
+          profile={profile}
+          summary={summary}
+          messagesPanel={
+            <DoctorWorkspaceMessages
+              embedded
+              currentUserId={session.user.id}
+              initialParticipantId={patientId}
+              copy={t.chat}
+            />
+          }
+        />
+      ) : (
+        <>
+          <DoctorProfileOverview profile={profile} summary={summary} />
+          <DoctorProfileSection profile={profile} />
+        </>
+      )}
+    </div>
   );
 }

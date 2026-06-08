@@ -16,7 +16,6 @@ const PUBLIC_DOCTOR_FILTER = {
   isListed: true,
   verificationStatus: VerificationStatuses.APPROVED,
   deletedAt: null,
-  videoConsultEnabled: true,
 } as const;
 
 function mapHospitals(

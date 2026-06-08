@@ -24,12 +24,26 @@ export const HOME_CARE_PRICING: Record<
 
 /** Lahore MVP — services patients can request from the booking form. */
 export const HOME_CARE_MVP_SERVICES = [
+  HomeVisitServiceTypes.DOCTOR_VISIT,
+  HomeVisitServiceTypes.NURSE,
   HomeVisitServiceTypes.IV_DRIP,
   HomeVisitServiceTypes.INJECTION,
   HomeVisitServiceTypes.WOUND_CARE,
 ] as const;
 
 export type HomeCareMvpService = (typeof HOME_CARE_MVP_SERVICES)[number];
+
+/** Nurse-dispatched home care (IV, injection, wound care, general nurse). */
+export const HOME_CARE_NURSE_SERVICES = [
+  HomeVisitServiceTypes.NURSE,
+  HomeVisitServiceTypes.IV_DRIP,
+  HomeVisitServiceTypes.INJECTION,
+  HomeVisitServiceTypes.WOUND_CARE,
+] as const;
+
+export function isDoctorHomeVisitService(serviceType: string): boolean {
+  return serviceType === HomeVisitServiceTypes.DOCTOR_VISIT;
+}
 
 /** Max distance (km) a nurse can be auto-matched from the visit address. */
 export const HOME_CARE_MATCH_RADIUS_KM = 15;

@@ -1,3 +1,4 @@
+import { cn } from "@zindagi/shared";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
@@ -12,11 +13,11 @@ export function PatientOnlineBookingSection({ initialBooking }: Props) {
   if (!initialBooking) return null;
 
   return (
-    <Card className={surfaceCardInteractive}>
+    <Card className={cn(surfaceCardInteractive, "flex h-full flex-col")}>
       <CardHeader>
         <CardTitle className="text-base">Online consultation</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-1 flex-col">
         <PatientOnlineBookingCard booking={initialBooking} variant="dashboard" />
       </CardContent>
     </Card>

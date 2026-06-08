@@ -13,6 +13,10 @@ export const adminCreateDoctorSchema = z.object({
 export const adminUpdateDoctorSchema = z.object({
   isListed: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  homeVisitEnabled: z.boolean().optional(),
+  homeVisitFee: z.number().min(0).max(50000).optional(),
+  verificationStatus: z.enum(["approved", "rejected"]).optional(),
+  rejectionReason: z.string().min(3).max(500).optional(),
   sundayConsultEnabled: z.boolean().optional(),
   weeklyAvailability: z
     .array(

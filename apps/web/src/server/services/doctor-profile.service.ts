@@ -5,7 +5,13 @@ import {
   UserModel,
   type DoctorProfileDocument,
 } from "@zindagi/database";
-import { AppError, Roles, VerificationStatuses } from "@zindagi/shared";
+import {
+  AppError,
+  Roles,
+  SUNDAY_CONSULT_CONFIG,
+  VerificationStatuses,
+} from "@zindagi/shared";
+import type { UpdateDoctorProfileInput } from "@zindagi/validators";
 
 import type {
   DoctorProfileDto,
@@ -13,7 +19,12 @@ import type {
   WeeklyAvailabilityDto,
 } from "@/features/doctor/types";
 import { formatDayOfWeek } from "@/features/doctor/types";
+import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { mongoFilter } from "@/lib/mongo/query";
+import { SundayConsultService } from "./sunday-consult.service";
+import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { isDoctorAvatarUrlForUser } from "@/server/services/doctor-avatar.storage";
 
 export type { DoctorProfileDto, SundayConsultDto, WeeklyAvailabilityDto };
 export { formatDayOfWeek };
@@ -125,6 +136,171 @@ export async function getDoctorProfile(userId: string): Promise<DoctorProfileDto
   return mapProfileToDto(profile, user, sundayConsult);
 }
 
+function computeMaxSundaySlots(
+  startTimeLocal: string,
+  endTimeLocal: string,
+  slotDurationMins: number,
+): number {
+  const [startH, startM] = startTimeLocal.split(":").map(Number);
+  const [endH, endM] = endTimeLocal.split(":").map(Number);
+  const totalMins = endH * 60 + endM - (startH * 60 + startM);
+  if (totalMins <= 0) return 1;
+  return Math.min(
+    Math.floor(totalMins / slotDurationMins),
+    SUNDAY_CONSULT_CONFIG.defaultMaxSlots,
+  );
+}
+
+async function upsertSundayTemplateFromProfileEdit(
+  doctorProfileId: string,
+  sundayConsult: NonNullable<UpdateDoctorProfileInput["sundayConsult"]>,
+) {
+  if (
+    !sundayConsult.enabled ||
+    !sundayConsult.startTimeLocal ||
+    !sundayConsult.endTimeLocal
+  ) {
+    await SundaySlotTemplateModel.findOneAndUpdate(
+      mongoFilter({ doctorId: doctorProfileId }),
+      { $set: { isActive: false } },
+    );
+    return;
+  }
+
+  const slotDurationMins =
+    sundayConsult.slotDurationMins ?? SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins;
+  const maxSlots = computeMaxSundaySlots(
+    sundayConsult.startTimeLocal,
+    sundayConsult.endTimeLocal,
+    slotDurationMins,
+  );
+
+  await SundaySlotTemplateModel.findOneAndUpdate(
+    mongoFilter({ doctorId: doctorProfileId }),
+    {
+      $set: {
+        startTimeLocal: sundayConsult.startTimeLocal,
+        endTimeLocal: sundayConsult.endTimeLocal,
+        slotDurationMins,
+        maxSlots,
+        dayOfWeek: SUNDAY_CONSULT_CONFIG.dayOfWeek,
+        timezone: SUNDAY_CONSULT_CONFIG.timezone,
+        isActive: true,
+      },
+    },
+    { upsert: true, new: true },
+  );
+
+  await SundayConsultService.materializeInstance(
+    doctorProfileId,
+    getNextSundayDate(),
+  );
+}
+
+export async function updateDoctorProfile(
+  userId: string,
+  data: UpdateDoctorProfileInput,
+): Promise<DoctorProfileDto> {
+  await connectDatabase();
+
+  const user = await UserModel.findById(userId);
+  if (!user?.roles.includes(Roles.DOCTOR)) {
+    throw new AppError("Forbidden", "FORBIDDEN", 403);
+  }
+
+  const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }));
+  if (!profile) {
+    throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
+  }
+
+  if (profile.verificationStatus === VerificationStatuses.PENDING) {
+    throw new AppError(
+      "Profile cannot be edited while pending admin review",
+      "FORBIDDEN",
+      403,
+    );
+  }
+
+  if (profile.verificationStatus !== VerificationStatuses.APPROVED) {
+    throw new AppError(
+      "Use verification to resubmit your application",
+      "FORBIDDEN",
+      403,
+    );
+  }
+
+  if (data.name !== undefined) {
+    user.name = data.name.trim();
+  }
+
+  if (data.phone !== undefined) {
+    const normalized = normalizePakistaniPhone(data.phone);
+    const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(data.phone));
+    if (normalized !== user.phone && phoneLocal !== user.phone) {
+      const existing = await UserModel.findOne({
+        _id: { $ne: user._id },
+        $or: [{ phone: normalized }, { phone: phoneLocal }],
+      });
+      if (existing) {
+        throw new AppError("Phone number already in use", "CONFLICT", 409, "phone");
+      }
+      user.phone = normalized;
+    }
+  }
+
+  if (data.avatarUrl !== undefined) {
+    if (!isDoctorAvatarUrlForUser(userId, data.avatarUrl)) {
+      throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    user.avatarUrl = data.avatarUrl;
+  }
+
+  if (
+    data.name !== undefined ||
+    data.phone !== undefined ||
+    data.avatarUrl !== undefined
+  ) {
+    await user.save();
+  }
+
+  if (data.bio !== undefined) {
+    profile.bio = data.bio ?? undefined;
+  }
+  if (data.consultationFee !== undefined) {
+    profile.consultationFee = data.consultationFee;
+  }
+  if (data.languages !== undefined) {
+    profile.languages = data.languages;
+  }
+  if (data.hospitals !== undefined) {
+    const hospitals = data.hospitals.map((h) => ({
+      name: h.name.trim(),
+      city: h.city.trim(),
+      address: h.address?.trim() || undefined,
+    }));
+    profile.set("hospitals", hospitals);
+    profile.coverageCities = [
+      ...new Set(data.hospitals.map((hospital) => hospital.city.trim())),
+    ];
+  }
+  if (data.weeklyAvailability !== undefined) {
+    profile.set("weeklyAvailability", data.weeklyAvailability);
+  }
+
+  await profile.save();
+
+  if (data.sundayConsult !== undefined) {
+    await upsertSundayTemplateFromProfileEdit(profile._id.toString(), data.sundayConsult);
+  }
+
+  const sundayConsult = await buildSundayConsultDto(profile._id.toString(), {
+    durationMins: profile.sundaySlotDefaults?.durationMins,
+    maxSlots: profile.sundaySlotDefaults?.maxSlots,
+  });
+
+  return mapProfileToDto(profile, user, sundayConsult);
+}
+
 export async function getDoctorProfileForAdmin(
   doctorProfileId: string,
 ): Promise<DoctorProfileDto> {
@@ -168,8 +344,5 @@ export async function canDoctorAccessDocument(
 }
 
 export function isDoctorProfileEditable(status: string): boolean {
-  return (
-    status !== VerificationStatuses.PENDING &&
-    status !== VerificationStatuses.APPROVED
-  );
+  return status === VerificationStatuses.APPROVED;
 }

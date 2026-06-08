@@ -147,14 +147,14 @@ export function DoctorProfileSection({ profile, showResubmitLink = true }: Props
             profile.slug && (
               <section>
                 <h3 className="mb-2 font-semibold text-slate-900">Public listing</h3>
-                <p className="text-slate-600">
-                  Listed under{" "}
+                <div className="text-slate-600">
+                  <span>Listed under </span>
                   {profile.specialties.map((s) => (
                     <Badge key={s} variant="secondary" className="mr-1">
                       {s}
                     </Badge>
                   ))}
-                </p>
+                </div>
               </section>
             )}
         </CardContent>

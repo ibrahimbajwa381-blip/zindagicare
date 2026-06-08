@@ -1,14 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { siteConfig } from "@/config/site";
-import { formatMessage } from "@/i18n/messages";
 import { useTranslations } from "@/i18n/locale-provider";
-import { formatNextSundayLong } from "@/lib/sunday/display";
-import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import type { SundayPatientBookingDto } from "../types";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
 
@@ -54,39 +48,17 @@ export function PatientSundayBookingSection({
     return <PatientSundayBookingCard booking={booking} variant="profile" />;
   }
 
-  if (loading) {
-    return (
-      <Card className="border-brand-light/40 bg-brand-muted/50">
-        <CardContent className="py-6 text-sm text-slate-500">{d.sundayBooking.loading}</CardContent>
-      </Card>
-    );
-  }
-
-  if (booking) {
-    return (
-      <Card className="border-brand-light/40 bg-brand-muted/50 shadow-premium">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{d.sundayConsult}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PatientSundayBookingCard booking={booking} variant="dashboard" />
-        </CardContent>
-      </Card>
-    );
+  if (loading || !booking) {
+    return null;
   }
 
   return (
-    <Card className={surfaceCardInteractive}>
-      <CardHeader>
+    <Card className="border-brand-light/40 bg-brand-muted/50 shadow-premium">
+      <CardHeader className="pb-2">
         <CardTitle className="text-base">{d.sundayConsult}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-slate-600">
-          {formatMessage(d.sundayConsultDesc, { date: formatNextSundayLong() })}
-        </p>
-        <Button asChild>
-          <Link href={siteConfig.links.sundayConsult}>{d.bookSunday}</Link>
-        </Button>
+      <CardContent>
+        <PatientSundayBookingCard booking={booking} variant="dashboard" />
       </CardContent>
     </Card>
   );

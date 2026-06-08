@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatTime12h, TimePicker } from "@/components/ui/time-picker";
+import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
 
 const DAYS = [
   { value: 1, label: "Monday" },
@@ -60,9 +61,10 @@ function previewSundaySlots(
 
 export function DoctorVerificationForm() {
   const router = useRouter();
-  const { update } = useSession();
+  const { update, data: session } = useSession();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>();
   const [specialty, setSpecialty] = useState<string>(
     SPECIALTIES[0] ?? "General Physician",
   );
@@ -108,6 +110,12 @@ export function DoctorVerificationForm() {
       return;
     }
 
+    if (!avatarUrl) {
+      setError("Please upload your profile photo.");
+      setPending(false);
+      return;
+    }
+
     const requiredDocs = [
       "pmdcCertificate",
       "cnicFront",
@@ -130,6 +138,7 @@ export function DoctorVerificationForm() {
       graduationYear: form.get("graduationYear"),
       experienceYears: form.get("experienceYears"),
       specialties: [specialty],
+      avatarUrl,
       bio: form.get("bio") || undefined,
       consultationFee: form.get("consultationFee") || 0,
       hospitals: [
@@ -177,6 +186,16 @@ export function DoctorVerificationForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-slate-900">Profile photo</h2>
+        <DoctorProfilePhotoUpload
+          name={session?.user?.name ?? "Doctor"}
+          value={avatarUrl}
+          onUploaded={setAvatarUrl}
+          required
+        />
+      </section>
+
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Identity & PMDC</h2>
         <div>
