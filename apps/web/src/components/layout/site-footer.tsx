@@ -1,10 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
-import { formatMessage, getServerTranslations } from "@/i18n/server";
+import { formatMessage } from "@/i18n/messages";
+import { useTranslations } from "@/i18n/locale-provider";
 
-export async function SiteFooter() {
-  const { t } = await getServerTranslations();
+export function SiteFooter() {
+  const t = useTranslations();
 
   return (
     <footer className="border-t border-accent-dark/40 bg-gradient-to-br from-accent-dark via-accent to-[#082a66] text-white/80">

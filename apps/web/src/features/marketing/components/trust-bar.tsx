@@ -1,12 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import { Gift, Lock, ShieldCheck, Star } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
-import { getServerTranslations } from "@/i18n/server";
+import { useTranslations } from "@/i18n/locale-provider";
 
-export async function TrustBar() {
-  const { t } = await getServerTranslations();
+export function TrustBar() {
+  const t = useTranslations();
 
   const items = [
     { icon: ShieldCheck, label: t.trustBar.pmdcVerified },

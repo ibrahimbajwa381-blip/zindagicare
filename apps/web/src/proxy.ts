@@ -73,6 +73,7 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
+    "/consult/:path*",
     "/dashboard/:path*",
     "/doctor/:path*",
     "/admin/:path*",

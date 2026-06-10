@@ -8,10 +8,16 @@ const monorepoRoot = path.resolve(
 );
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@zindagi/shared", "@zindagi/database", "@zindagi/validators"],
+  outputFileTracingRoot: monorepoRoot,
+  transpilePackages: [
+    "@zindagi/shared",
+    "@zindagi/database",
+    "@zindagi/validators",
+    "@zoom/meetingsdk",
+  ],
   serverExternalPackages: ["mongoose", "bcryptjs"],
-  turbopack: {
-    root: monorepoRoot,
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
   },
   images: {
     remotePatterns: [

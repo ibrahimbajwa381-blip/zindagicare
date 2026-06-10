@@ -56,6 +56,7 @@ export const ONBOARDING_EXEMPT_PREFIXES = [
   "/doctor/sunday-consult",
   "/doctor/messages",
   "/messages",
+  "/consult",
   "/api/v1/auth/onboarding",
   "/api/v1/doctor/verification",
   "/api/v1/doctor/profile",
@@ -72,6 +73,7 @@ export const DOCTOR_VERIFICATION_EXEMPT_PREFIXES = [
   "/doctor/home-visits",
   "/doctor/sunday-consult",
   "/doctor/messages",
+  "/consult",
   "/api/v1/doctor/verification",
   "/api/v1/doctor/profile",
   AUTH_ROUTES.onboarding,
@@ -100,6 +102,7 @@ export function isPublicPath(pathname: string) {
  * Marketing pages, public APIs, and SSE streams are intentionally omitted.
  */
 export const MIDDLEWARE_PROTECTED_PREFIXES = [
+  "/consult",
   "/dashboard",
   "/doctor",
   "/admin",

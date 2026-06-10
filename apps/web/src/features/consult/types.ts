@@ -18,6 +18,25 @@ export type OnlinePatientBookingDto = {
   };
 };
 
+export type VideoJoinPayload = {
+  appointmentId: string;
+  sessionId: string;
+  role: "patient" | "doctor";
+  userName: string;
+  meetingNumber: string;
+  passcode: string;
+  signature: string;
+  sdkKey: string;
+  joinUrl: string;
+  startUrl?: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  counterpartName: string;
+  canJoin: boolean;
+  joinOpensAt: string;
+  joinClosesAt: string;
+};
+
 export type CheckoutResult = {
   paymentId: string;
   appointmentId: string;

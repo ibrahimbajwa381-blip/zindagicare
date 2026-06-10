@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
@@ -7,18 +10,17 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { AppHeaderUser } from "@/components/layout/app-header-user";
 import { HeaderAuthActions } from "@/components/layout/header-auth-actions";
 import { appHeaderInner, appHeaderShell } from "@/lib/ui/surfaces";
-import { auth } from "@/lib/auth";
 import { buildMarketingMobileNav } from "@/lib/nav/mobile-menu";
-import { getServerTranslations } from "@/i18n/server";
+import { useTranslations } from "@/i18n/locale-provider";
 
 type SiteHeaderProps = {
   /** Load patient city/phone in the account menu (patient dashboard). */
   enrichUserFromProfile?: boolean;
 };
 
-export async function SiteHeader({ enrichUserFromProfile = false }: SiteHeaderProps = {}) {
-  const { t } = await getServerTranslations();
-  const session = await auth();
+export function SiteHeader({ enrichUserFromProfile = false }: SiteHeaderProps) {
+  const t = useTranslations();
+  const { data: session } = useSession();
 
   const { links: mobileLinks, sections: mobileSections } = buildMarketingMobileNav(session, {
     home: t.nav.home,

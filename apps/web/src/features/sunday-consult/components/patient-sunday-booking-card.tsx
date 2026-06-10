@@ -7,6 +7,7 @@ import { AppointmentStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import { videoConsultPath } from "@/features/consult/paths";
 import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime";
 import { useTranslations } from "@/i18n/locale-provider";
 import { CountdownTimer } from "./countdown-timer";
@@ -132,7 +133,7 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
 
         <div className="flex flex-wrap gap-2">
           <Button asChild className="gap-1.5">
-            <Link href={`${siteConfig.links.dashboard}?sunday=${booking.appointmentId}`}>
+            <Link href={videoConsultPath(booking.appointmentId)}>
               <Video className="h-4 w-4" />
               {b.joinSession}
             </Link>

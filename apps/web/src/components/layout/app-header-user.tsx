@@ -1,9 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Roles } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { AppUserMenu, type AccountType } from "@/components/layout/app-user-menu";
-import { auth } from "@/lib/auth";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
-import { getPatientProfile } from "@/server/services/patient-profile.service";
 
 function dashboardHref(roles?: string[]) {
   if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorProfile;
@@ -28,45 +30,67 @@ type AppHeaderUserProps = {
   variant?: "header" | "drawer";
 };
 
-export async function AppHeaderUser({
+export function AppHeaderUser({
   className,
   enrichFromProfile,
   variant = "header",
 }: AppHeaderUserProps) {
-  const session = await auth();
-  if (!session?.user) return null;
+  const { data: session } = useSession();
+  const [profile, setProfile] = useState<{
+    email?: string;
+    phone?: string;
+    city?: string;
+  } | null>(null);
 
-  const name = session.user.name?.trim() || "Account";
-  const href = dashboardHref(session.user.roles);
-
-  let email = session.user.email;
-  let phone: string | undefined;
-  let city: string | undefined;
-
+  const user = session?.user;
   const isPatient =
-    !session.user.roles?.includes(Roles.DOCTOR) &&
-    !session.user.roles?.includes(Roles.ADMIN) &&
-    !session.user.roles?.includes(Roles.SUPER_ADMIN);
+    !!user &&
+    !user.roles?.includes(Roles.DOCTOR) &&
+    !user.roles?.includes(Roles.ADMIN) &&
+    !user.roles?.includes(Roles.SUPER_ADMIN);
 
-  if (enrichFromProfile && isPatient && session.user.id) {
-    try {
-      const profile = await getPatientProfile(session.user.id);
-      email = profile.user.email ?? email;
-      phone = profile.user.phone;
-      city = profile.user.city;
-    } catch {
-      // Fall back to session-only fields.
+  useEffect(() => {
+    if (!enrichFromProfile || !isPatient || !user?.id) {
+      setProfile(null);
+      return;
     }
-  }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/v1/patient/profile");
+        const json = await res.json();
+        if (!cancelled && json.success && json.data?.user) {
+          setProfile({
+            email: json.data.user.email,
+            phone: json.data.user.phone,
+            city: json.data.user.city,
+          });
+        }
+      } catch {
+        if (!cancelled) setProfile(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enrichFromProfile, isPatient, user?.id]);
+
+  if (!user) return null;
+
+  const name = user.name?.trim() || "Account";
+  const href = dashboardHref(user.roles);
 
   return (
     <AppUserMenu
       name={name}
-      email={email}
-      phone={phone}
-      city={city}
+      email={profile?.email ?? user.email ?? undefined}
+      phone={profile?.phone}
+      city={profile?.city}
       dashboardHref={href}
-      accountType={resolveAccountType(session.user.roles)}
+      accountType={resolveAccountType(user.roles)}
       className={className}
       variant={variant}
     />

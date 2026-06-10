@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "node ./scripts/ensure-native-css.cjs && next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,9 +14,12 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-slot": "^1.2.4",
+    "@tailwindcss/oxide": "4.3.0",
+    "@tailwindcss/postcss": "^4",
     "@zindagi/database": "*",
     "@zindagi/shared": "*",
     "@zindagi/validators": "*",
+    "@zoom/meetingsdk": "^6.1.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -31,8 +35,6 @@
     "react-hook-form": "^7.76.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4",
-    "@tailwindcss/postcss": "^4",
-    "@tailwindcss/oxide": "4.3.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
@@ -46,9 +48,9 @@
     "typescript": "^5"
   },
   "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "1.32.0",
-    "lightningcss-linux-x64-musl": "1.32.0",
     "@tailwindcss/oxide-linux-x64-gnu": "4.3.0",
-    "@tailwindcss/oxide-linux-x64-musl": "4.3.0"
+    "@tailwindcss/oxide-linux-x64-musl": "4.3.0",
+    "lightningcss-linux-x64-gnu": "1.32.0",
+    "lightningcss-linux-x64-musl": "1.32.0"
   }
 }

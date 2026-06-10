@@ -6,7 +6,7 @@ import { Schema, type InferSchemaType, type Model } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
- * VideoSession — Agora/Twilio channel metadata (tokens generated at runtime, not stored long-term).
+ * VideoSession — Zoom (or legacy Agora/Twilio) channel metadata. SDK tokens are generated at runtime.
  */
 const videoSessionSchema = new Schema(
   {
@@ -17,7 +17,11 @@ const videoSessionSchema = new Schema(
       unique: true,
     },
     channelName: { type: String, required: true, index: true },
-    provider: { type: String, enum: ["agora", "twilio"], default: "agora" },
+    provider: {
+      type: String,
+      enum: ["zoom", "agora", "twilio"],
+      default: "zoom",
+    },
     status: {
       type: String,
       enum: Object.values(VideoSessionStatuses),

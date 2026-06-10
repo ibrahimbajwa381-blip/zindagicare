@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Calendar, Gift } from "lucide-react";
@@ -8,11 +10,11 @@ import {
   isSundayBookingOpenNow,
 } from "@/lib/sunday/display";
 import { PageSection } from "@/components/layout/page-section";
-import { getServerTranslations } from "@/i18n/server";
+import { useTranslations } from "@/i18n/locale-provider";
 import { SUNDAY_FREE_CONSULT_HERO_IMAGE } from "@/features/marketing/data/hero-services";
 
-export async function SundayBanner() {
-  const { t } = await getServerTranslations();
+export function SundayBanner() {
+  const t = useTranslations();
   const sunday = t.sunday;
   const nextSunday = formatNextSundayLong();
   const bookingOpen = isSundayBookingOpenNow();

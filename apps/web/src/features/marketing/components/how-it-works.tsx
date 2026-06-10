@@ -1,14 +1,16 @@
+"use client";
+
 import { CalendarCheck, Home, Search, Video } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
-import { getServerTranslations } from "@/i18n/server";
+import { useTranslations } from "@/i18n/locale-provider";
 
 const stepIcons = [Search, CalendarCheck, Video, Home] as const;
 const stepNumbers = ["01", "02", "03", "04"] as const;
 
-export async function HowItWorksSection() {
-  const { t } = await getServerTranslations();
+export function HowItWorksSection() {
+  const t = useTranslations();
 
   return (
     <PageSection variant="soft" spacing="lg" flipBlur>

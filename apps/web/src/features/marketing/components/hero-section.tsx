@@ -1,10 +1,13 @@
+"use client";
+
 import { getHeroServices } from "@/i18n/hero";
-import { formatMessage, getServerTranslations } from "@/i18n/server";
+import { formatMessage } from "@/i18n/messages";
+import { useTranslations } from "@/i18n/locale-provider";
 import { siteConfig } from "@/config/site";
 import { HeroSectionClient } from "./hero-section-client";
 
-export async function HeroSection() {
-  const { t } = await getServerTranslations();
+export function HeroSection() {
+  const t = useTranslations();
   const services = getHeroServices(t.hero);
   const servingPatients = formatMessage(t.hero.servingPatients, {
     city: siteConfig.launchCity,

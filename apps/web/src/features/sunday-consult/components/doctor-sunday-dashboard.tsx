@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { Video } from "lucide-react";
+import { videoConsultPath } from "@/features/consult/paths";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
 
 type QueueAppointment = {
@@ -164,7 +167,13 @@ export function DoctorSundayDashboard() {
                   {apt.status}
                 </Badge>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" asChild className="gap-1">
+                  <Link href={videoConsultPath(apt._id)}>
+                    <Video className="h-3.5 w-3.5" />
+                    Join video
+                  </Link>
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"

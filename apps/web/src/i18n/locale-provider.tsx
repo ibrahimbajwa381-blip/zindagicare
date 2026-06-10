@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   useTransition,
@@ -11,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_LOCALE,
+  isLocale,
   LOCALE_COOKIE,
   LOCALE_COOKIE_MAX_AGE,
   type Locale,
@@ -31,10 +33,25 @@ type LocaleProviderProps = {
   children: React.ReactNode;
 };
 
+function readLocaleCookie(): Locale | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]*)`));
+  const value = match?.[1];
+  return isLocale(value) ? value : null;
+}
+
 export function LocaleProvider({ initialLocale, children }: LocaleProviderProps) {
   const router = useRouter();
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const fromCookie = readLocaleCookie();
+    if (!fromCookie || fromCookie === initialLocale) return;
+    setLocaleState(fromCookie);
+    document.documentElement.lang = fromCookie;
+    document.documentElement.dir = fromCookie === "ur" ? "rtl" : "ltr";
+  }, [initialLocale]);
 
   const setLocale = useCallback(
     (next: Locale) => {

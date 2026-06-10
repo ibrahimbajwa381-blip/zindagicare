@@ -1,8 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Roles } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
-import { auth } from "@/lib/auth";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
 
 function dashboardHref(roles?: string[]) {
@@ -20,13 +22,13 @@ type HeaderAuthActionsProps = {
   layout: "desktop" | "mobile";
 };
 
-export async function HeaderAuthActions({
+export function HeaderAuthActions({
   loginLabel,
   getStartedLabel,
   createAccountLabel,
   layout,
 }: HeaderAuthActionsProps) {
-  const session = await auth();
+  const { data: session } = useSession();
 
   if (session?.user) {
     const name = session.user.name?.trim() || "Account";
@@ -87,8 +89,8 @@ export async function HeaderAuthActions({
   );
 }
 
-export async function HeaderUserName({ className }: { className?: string }) {
-  const session = await auth();
+export function HeaderUserName({ className }: { className?: string }) {
+  const { data: session } = useSession();
   if (!session?.user) return null;
 
   const name = session.user.name?.trim() || "Account";

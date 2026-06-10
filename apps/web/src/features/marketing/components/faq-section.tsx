@@ -1,13 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { HelpCircle, MessageCircle } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
-import { getServerTranslations } from "@/i18n/server";
 import { siteConfig } from "@/config/site";
 import { FaqAccordion } from "./faq-accordion";
+import { useTranslations } from "@/i18n/locale-provider";
 
-export async function FaqSection() {
-  const { t } = await getServerTranslations();
+export function FaqSection() {
+  const t = useTranslations();
 
   return (
     <PageSection variant="soft" spacing="lg" flipBlur>

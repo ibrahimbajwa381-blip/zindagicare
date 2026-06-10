@@ -1,14 +1,15 @@
+"use client";
+
 import { conditionBrowse } from "../data/browse-catalog";
 import { BrowseSectionRow } from "./browse-section-row";
 import { PageSection } from "@/components/layout/page-section";
 import { SpecialtiesBrowseSection } from "./specialties-browse-section";
-import { getLocale } from "@/i18n/server";
-import { getServerTranslations } from "@/i18n/server";
+import { useLocale, useTranslations } from "@/i18n/locale-provider";
 import { localizeBrowseItems } from "@/i18n/browse";
 
-export async function DoctorBrowseSection() {
-  const locale = await getLocale();
-  const { t } = await getServerTranslations();
+export function DoctorBrowseSection() {
+  const { locale } = useLocale();
+  const t = useTranslations();
   const conditions = localizeBrowseItems(conditionBrowse, locale);
 
   return (
