@@ -64,7 +64,7 @@ export const heroServices: HeroService[] = [
   {
     id: "in-house-medical",
     image: "/hero/home-care.jpg",
-    imageAlt: "Medical professional providing in-house patient care",
+    imageAlt: "Pakistani nurse providing in-house patient care at home",
     carousel: {
       eyebrow: "In-house medical services",
       title: "Licensed care at",

@@ -7,6 +7,7 @@ import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
 import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-section";
 import { TopDoctorsSectionSkeleton } from "@/features/marketing/components/top-doctors-section-skeleton";
+import { ProviderOnboardingPreview } from "@/features/marketing/components/provider-onboarding-preview";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
 
 export default function HomePage() {
@@ -21,6 +22,7 @@ export default function HomePage() {
       <HomeServicesPreview />
       <SundayBanner />
       <HowItWorksSection />
+      <ProviderOnboardingPreview />
       <FaqSection />
     </>
   );

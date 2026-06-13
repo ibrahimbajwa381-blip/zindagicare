@@ -150,7 +150,7 @@ export const en = {
         },
       },
       {
-        imageAlt: "Medical professional providing in-house patient care",
+        imageAlt: "Pakistani nurse providing in-house patient care at home",
         carousel: {
           eyebrow: "In-house medical services",
           title: "Licensed care at",
@@ -765,6 +765,142 @@ export const en = {
       saveSuccess: "Questions saved. They will apply to future bookings.",
       saveError: "Could not save questions. Please try again.",
       resetToDefaults: "Reset to defaults",
+    },
+  },
+  providerOnboarding: {
+    preview: {
+      eyebrow: "For medical professionals",
+      title: "Doctors & nurses — grow your practice on ZindagiCare",
+      description:
+        "Join Lahore's trusted platform for online consults, Sunday free care, and in-house medical visits. We handle booking, payments, and patient matching so you can focus on care.",
+      doctorCard: {
+        title: "For doctors",
+        description:
+          "Offer video consults, Sunday free slots, home visits, and paid messaging — with PMDC verification and a dedicated workspace.",
+        cta: "Learn more",
+      },
+      nurseCard: {
+        title: "For nurses",
+        description:
+          "Accept in-house visit requests — IV therapy, injections, wound care — matched to your location and schedule.",
+        cta: "Learn more",
+      },
+    },
+    doctor: {
+      eyebrow: "For doctors",
+      title: "Practice medicine on your terms",
+      subheadline: "Online consults, Sunday free care, and home visits — one workspace",
+      body: "ZindagiCare connects PMDC-verified doctors with patients across Lahore. Set your availability, join secure video calls, manage consult requests, and track earnings — all from one dashboard.",
+      benefitsEyebrow: "Why join",
+      benefitsTitle: "Built for how you work",
+      benefitsDescription:
+        "Everything you need to see patients online and at home, without running your own booking system.",
+      benefits: [
+        {
+          title: "Secure video consults",
+          desc: "HD video rooms with in-call chat, intake forms, and e-prescriptions.",
+        },
+        {
+          title: "Sunday free consult queue",
+          desc: "Volunteer slots for free 10-minute Sunday care — reach new patients each week.",
+        },
+        {
+          title: "In-house visit requests",
+          desc: "Accept doctor home visit requests in your city when you're available.",
+        },
+        {
+          title: "Paid patient messaging",
+          desc: "Continue care through secure chat after paid online consultations.",
+        },
+        {
+          title: "PMDC verification",
+          desc: "We verify credentials before your profile goes live — trusted by patients.",
+        },
+        {
+          title: "Earnings & requests",
+          desc: "Track pending consults, completed visits, and payouts in one place.",
+        },
+      ],
+      stepsEyebrow: "Getting started",
+      stepsTitle: "How to join as a doctor",
+      stepsDescription: "Three steps from signup to seeing your first patient.",
+      steps: [
+        {
+          title: "Create your account",
+          desc: "Register with your email, phone, and professional details.",
+        },
+        {
+          title: "Submit verification",
+          desc: "Upload PMDC credentials, availability, and identity documents for admin review.",
+        },
+        {
+          title: "Go live",
+          desc: "Once approved, patients can book you for online consults, Sunday slots, and home visits.",
+        },
+      ],
+      ctaTitle: "Ready to join ZindagiCare?",
+      ctaDescription:
+        "Create your doctor account and complete verification — your workspace unlocks after admin approval.",
+      primaryCta: "Register as doctor",
+      secondaryCta: "Log in",
+    },
+    nurse: {
+      eyebrow: "For nurses",
+      title: "Deliver skilled care at patients' homes",
+      subheadline: "In-house visits matched to your location and schedule",
+      body: "ZindagiCare sends verified in-house visit requests to licensed nurses across Lahore — IV therapy, injections, wound dressing, and post-operative care. Accept visits that fit your route and get paid through the platform.",
+      benefitsEyebrow: "Why join",
+      benefitsTitle: "Your nursing workspace",
+      benefitsDescription:
+        "Focus on clinical care while we handle booking, geo-matching, and visit coordination.",
+      benefits: [
+        {
+          title: "Geo-matched visits",
+          desc: "Get assigned to patients near you — auto-match or admin-assigned within your service area.",
+        },
+        {
+          title: "Clear visit details",
+          desc: "See service type, patient notes, and location before you accept each visit.",
+        },
+        {
+          title: "Licensed care types",
+          desc: "IV drips, injections, wound care, and other skilled nursing services.",
+        },
+        {
+          title: "Visit dashboard",
+          desc: "Track upcoming, in-progress, and completed visits from your nurse workspace.",
+        },
+        {
+          title: "Credential verification",
+          desc: "Submit your license and identity documents — we verify before you receive requests.",
+        },
+        {
+          title: "Flexible schedule",
+          desc: "Accept visits when you're available — no fixed clinic hours required.",
+        },
+      ],
+      stepsEyebrow: "Getting started",
+      stepsTitle: "How to join as a nurse",
+      stepsDescription: "Three steps from signup to your first home visit.",
+      steps: [
+        {
+          title: "Create your account",
+          desc: "Register with your email, phone, and nursing credentials.",
+        },
+        {
+          title: "Submit verification",
+          desc: "Upload your license, service area, and identity documents for admin review.",
+        },
+        {
+          title: "Start accepting visits",
+          desc: "Once approved, receive and manage in-house visit requests in your dashboard.",
+        },
+      ],
+      ctaTitle: "Ready to join ZindagiCare?",
+      ctaDescription:
+        "Create your nurse account and complete verification — visits unlock after admin approval.",
+      primaryCta: "Register as nurse",
+      secondaryCta: "Log in",
     },
   },
 };

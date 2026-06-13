@@ -29,6 +29,8 @@ export const PUBLIC_PATH_PREFIXES = [
   "/doctors/booking",
   "/sunday-consult",
   "/home-services",
+  "/for-doctors",
+  "/for-nurses",
   "/home-care/request",
   AUTH_ROUTES.login,
   AUTH_ROUTES.register,

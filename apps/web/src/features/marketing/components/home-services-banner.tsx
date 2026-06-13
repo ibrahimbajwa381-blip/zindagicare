@@ -26,7 +26,7 @@ export function HomeServicesBanner() {
           <div className="relative h-32 shrink-0 sm:h-36 lg:h-auto lg:w-[36%] xl:w-[34%]">
             <Image
               src={HOME_SERVICES_HERO_IMAGE}
-              alt="Medical professional providing in-house patient care"
+              alt="Pakistani nurse providing in-house patient care at home"
               fill
               sizes="(max-width: 1024px) 100vw, 34vw"
               className="object-cover object-center"

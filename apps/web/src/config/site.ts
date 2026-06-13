@@ -21,6 +21,8 @@ export const siteConfig = {
     register: "/register",
     registerDoctor: "/register/doctor",
     registerNurse: "/register/nurse",
+    forDoctors: "/for-doctors",
+    forNurses: "/for-nurses",
     dashboard: "/dashboard",
     messages: "/messages",
     doctorMessages: "/doctor/messages",

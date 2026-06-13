@@ -613,10 +613,13 @@ export class OnlineConsultService {
     });
 
     if (doctor?.userId) {
+      const rawUserId = doctor.userId as
+        | { _id: { toString(): string } }
+        | { toString(): string };
       const doctorUserId =
-        typeof doctor.userId === "object" && "_id" in doctor.userId
-          ? doctor.userId._id.toString()
-          : doctor.userId.toString();
+        typeof rawUserId === "object" && "_id" in rawUserId
+          ? rawUserId._id.toString()
+          : rawUserId.toString();
 
       await sendDoctorConsultBooked({
         userId: doctorUserId,
