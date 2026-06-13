@@ -6,6 +6,7 @@ import {
   Sun,
   UserCog,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
@@ -69,6 +70,11 @@ export const DOCTOR_WORKSPACE_ACTIONS: DoctorWorkspaceNavItem[] = [
   },
 ];
 
+/** Quick actions on the overview dashboard (excludes messages). */
+export const DOCTOR_OVERVIEW_ACTIONS = DOCTOR_WORKSPACE_ACTIONS.filter(
+  (item) => item.href !== "/doctor/messages",
+);
+
 export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
   {
     title: "Profile",
@@ -85,6 +91,12 @@ export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         label: "Edit profile",
         description: "Bio, fee, schedule & locations",
         icon: UserCog,
+      },
+      {
+        href: "/doctor/earnings",
+        label: "Earnings",
+        description: "Paid consultation revenue",
+        icon: Wallet,
       },
     ],
   },

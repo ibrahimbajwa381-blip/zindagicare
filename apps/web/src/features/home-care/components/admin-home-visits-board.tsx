@@ -11,15 +11,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
+import { googleMapsLink } from "@/lib/geo/parse-google-maps-url";
 import { VisitStatusStepper } from "./visit-status-stepper";
-import type { HomeVisitDto } from "@/server/services/home-visit.service";
+import type {
+  HomeCareStaffOption,
+  HomeVisitDto,
+} from "@/server/services/home-visit.service";
+import { ExternalLink, MapPin } from "lucide-react";
 
-type NurseOption = { id: string; name: string; serviceArea: string };
-type DoctorOption = {
-  id: string;
-  name: string;
-  specialties: string[];
-  serviceArea: string;
+type VisitStaffLists = {
+  nearby: { nurses: HomeCareStaffOption[]; doctors: HomeCareStaffOption[] };
+  all: { nurses: HomeCareStaffOption[]; doctors: HomeCareStaffOption[] };
+  radiusKm: number;
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -34,30 +37,68 @@ function isDoctorVisit(visit: HomeVisitDto) {
   return isDoctorHomeVisitService(visit.serviceType);
 }
 
+function formatStaffOption(
+  person: HomeCareStaffOption,
+  doctorVisit: boolean,
+): string {
+  const distance =
+    person.distanceKm !== undefined
+      ? `${person.distanceKm.toFixed(1)} km · `
+      : "";
+  if (doctorVisit) {
+    const specs = person.specialties?.join(", ") || "General";
+    return `${person.name} · ${distance}${specs} · ${person.serviceArea}`;
+  }
+  return `${person.name} · ${distance}${person.serviceArea}`;
+}
+
 export function AdminHomeVisitsBoard() {
   const [visits, setVisits] = useState<HomeVisitDto[]>([]);
-  const [nurses, setNurses] = useState<NurseOption[]>([]);
-  const [doctors, setDoctors] = useState<DoctorOption[]>([]);
+  const [staffByVisit, setStaffByVisit] = useState<Record<string, VisitStaffLists>>({});
   const [selectedStaff, setSelectedStaff] = useState<Record<string, string>>({});
+  const [manualOverride, setManualOverride] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
   const isDev = process.env.NODE_ENV === "development";
 
-  const load = useCallback(async () => {
-    const [visitsRes, staffRes] = await Promise.all([
-      fetch("/api/v1/home-visits?scope=all"),
-      fetch("/api/v1/home-visits/staff"),
-    ]);
-    const visitsJson = await visitsRes.json();
-    const staffJson = await staffRes.json();
-    if (visitsJson.success) setVisits(visitsJson.data ?? []);
-    if (staffJson.success) {
-      setNurses(staffJson.data?.nurses ?? staffJson.data ?? []);
-      setDoctors(staffJson.data?.doctors ?? []);
+  const loadStaffForVisits = useCallback(async (visitList: HomeVisitDto[]) => {
+    const assignable = visitList.filter(
+      (v) =>
+        v.status === HomeVisitStatuses.REQUESTED ||
+        v.status === HomeVisitStatuses.ASSIGNED,
+    );
+    const results = await Promise.all(
+      assignable.map(async (visit) => {
+        const res = await fetch(`/api/v1/home-visits/staff?visitId=${visit.id}`);
+        const json = await res.json();
+        if (!json.success) return [visit.id, null] as const;
+        return [
+          visit.id,
+          {
+            nearby: json.data.nearby,
+            all: json.data.all,
+            radiusKm: json.data.radiusKm,
+          },
+        ] as const;
+      }),
+    );
+    const next: Record<string, VisitStaffLists> = {};
+    for (const [id, data] of results) {
+      if (data) next[id] = data;
     }
-    setLoading(false);
+    setStaffByVisit(next);
   }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const visitsRes = await fetch("/api/v1/home-visits?scope=all");
+    const visitsJson = await visitsRes.json();
+    const list: HomeVisitDto[] = visitsJson.success ? visitsJson.data ?? [] : [];
+    setVisits(list);
+    await loadStaffForVisits(list);
+    setLoading(false);
+  }, [loadStaffForVisits]);
 
   useEffect(() => {
     load();
@@ -66,7 +107,12 @@ export function AdminHomeVisitsBoard() {
   const assign = async (visitId: string, auto: boolean) => {
     setPending(visitId);
     try {
-      const body = auto ? { auto: true } : { staffId: selectedStaff[visitId] };
+      const body = auto
+        ? { auto: true }
+        : {
+            staffId: selectedStaff[visitId],
+            override: manualOverride[visitId] ?? false,
+          };
       const res = await fetch(`/api/v1/home-visits/${visitId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,54 +180,106 @@ export function AdminHomeVisitsBoard() {
 
   function renderAssignControls(visit: HomeVisitDto) {
     const doctorVisit = isDoctorVisit(visit);
-    const options = doctorVisit ? doctors : nurses;
+    const staffLists = staffByVisit[visit.id];
+    const override = manualOverride[visit.id] ?? false;
+    const nearbyOptions = doctorVisit
+      ? (staffLists?.nearby.doctors ?? [])
+      : (staffLists?.nearby.nurses ?? []);
+    const allOptions = doctorVisit
+      ? (staffLists?.all.doctors ?? [])
+      : (staffLists?.all.nurses ?? []);
+    const options = override ? allOptions : nearbyOptions;
+    const radiusKm = staffLists?.radiusKm ?? 15;
     const autoLabel = doctorVisit
       ? "Auto-assign nearest doctor"
       : "Auto-assign nearest nurse";
     const selectLabel = doctorVisit ? "Select doctor…" : "Select nurse…";
 
     return (
-      <div className="flex flex-wrap gap-3">
-        <Button
-          size="sm"
-          disabled={pending === visit.id}
-          onClick={() => assign(visit.id, true)}
-        >
-          {autoLabel}
-        </Button>
-        <select
-          className="h-9 rounded-lg border border-border bg-white px-2 text-sm"
-          value={selectedStaff[visit.id] ?? ""}
-          onChange={(e) =>
-            setSelectedStaff((s) => ({ ...s, [visit.id]: e.target.value }))
-          }
-        >
-          <option value="">{selectLabel}</option>
-          {options.map((person) => (
-            <option key={person.id} value={person.id}>
-              {doctorVisit
-                ? `${person.name} (${(person as DoctorOption).specialties.join(", ") || "General"}) · ${person.serviceArea}`
-                : `${person.name} (${person.serviceArea})`}
-            </option>
-          ))}
-        </select>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={pending === visit.id || !selectedStaff[visit.id]}
-          onClick={() => assign(visit.id, false)}
-        >
-          Assign selected
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pending === visit.id}
-          onClick={() => cancelVisit(visit.id)}
-        >
-          Cancel request
-        </Button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
+          <Button
+            size="sm"
+            disabled={pending === visit.id || nearbyOptions.length === 0}
+            onClick={() => assign(visit.id, true)}
+          >
+            {autoLabel}
+          </Button>
+          <select
+            className="h-9 min-w-[220px] flex-1 rounded-lg border border-border bg-white px-2 text-sm"
+            value={selectedStaff[visit.id] ?? ""}
+            onChange={(e) =>
+              setSelectedStaff((s) => ({ ...s, [visit.id]: e.target.value }))
+            }
+          >
+            <option value="">{selectLabel}</option>
+            {options.map((person) => (
+              <option key={person.id} value={person.id}>
+                {formatStaffOption(person, doctorVisit)}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={pending === visit.id || !selectedStaff[visit.id]}
+            onClick={() => assign(visit.id, false)}
+          >
+            Assign selected
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending === visit.id}
+            onClick={() => cancelVisit(visit.id)}
+          >
+            Cancel request
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+          <label className="inline-flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={override}
+              onChange={(e) =>
+                setManualOverride((s) => ({
+                  ...s,
+                  [visit.id]: e.target.checked,
+                }))
+              }
+              className="rounded border-slate-300"
+            />
+            Assign outside {radiusKm} km radius (manual override)
+          </label>
+          {!override && (
+            <span>
+              {nearbyOptions.length} provider(s) within {radiusKm} km
+              {nearbyOptions.length === 0 && " — enable override to assign any nurse"}
+            </span>
+          )}
+          {override && (
+            <span>{allOptions.length} total provider(s) available</span>
+          )}
+        </div>
       </div>
+    );
+  }
+
+  function renderPatientLocation(visit: HomeVisitDto) {
+    const { geo } = visit.address;
+    const mapsUrl = googleMapsLink(geo);
+    return (
+      <a
+        href={mapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-sm text-brand hover:underline"
+      >
+        <MapPin className="h-3.5 w-3.5" />
+        View patient on Google Maps
+        <ExternalLink className="h-3 w-3" />
+      </a>
     );
   }
 
@@ -190,14 +288,9 @@ export function AdminHomeVisitsBoard() {
       <div className="rounded-xl border border-brand/15 bg-brand-muted/30 p-4 text-sm text-slate-700">
         <p className="font-medium text-slate-900">Home treatment dispatch</p>
         <p className="mt-1">
-          Nurse visits (IV, injection, wound care) are matched to available nurses by
-          location. Doctor home visits are matched to approved doctors with home visits
-          enabled — nearest available doctor in the patient&apos;s city is assigned
-          first.
-        </p>
-        <p className="mt-2 text-xs text-slate-500">
-          {doctors.length} doctor(s) and {nurses.length} nurse(s) available for manual
-          assignment.
+          Providers within 15 km of the patient&apos;s Google Maps pin are shown
+          first. Use auto-assign for the closest match, pick from the list, or
+          enable manual override to assign any available nurse or doctor.
         </p>
       </div>
 
@@ -239,6 +332,7 @@ export function AdminHomeVisitsBoard() {
                     {visit.patient?.name} · {formatKarachiDateTime(visit.scheduledAt)}
                   </p>
                   <p className="text-sm text-slate-600">{visit.address.line}</p>
+                  {renderPatientLocation(visit)}
                   {visit.patientNotes && (
                     <p className="text-xs text-slate-500">Notes: {visit.patientNotes}</p>
                   )}
@@ -274,6 +368,7 @@ export function AdminHomeVisitsBoard() {
                       ? ` · ${visit.assignedStaff.specialties.join(", ")}`
                       : ""}
                   </p>
+                  {renderPatientLocation(visit)}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <VisitStatusStepper status={visit.status} compact />

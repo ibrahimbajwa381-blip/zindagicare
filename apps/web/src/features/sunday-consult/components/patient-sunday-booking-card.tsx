@@ -1,9 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Calendar, Clock, Star, Video } from "lucide-react";
-import { AppointmentStatuses } from "@zindagi/shared";
+import {
+  BadgeCheck,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  Star,
+  Video,
+} from "lucide-react";
+import { AppointmentStatuses, IntakeStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
@@ -38,10 +47,32 @@ function DoctorAvatar({ name, src }: { name: string; src?: string }) {
   );
 }
 
+function useIntakeStatus(appointmentId: string) {
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/v1/intake/${appointmentId}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && json.success && json.data) {
+          setStatus(json.data.status as string);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [appointmentId]);
+
+  return status;
+}
+
 export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Props) {
   const t = useTranslations();
   const b = t.dashboard.sundayBooking;
   const { doctor } = booking;
+  const intakeStatus = useIntakeStatus(booking.appointmentId);
 
   const statusLabel =
     booking.status === AppointmentStatuses.CONFIRMED
@@ -130,6 +161,22 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
           <p className="text-xs text-slate-500">{b.startsIn}</p>
           <CountdownTimer targetDate={booking.scheduledStart} />
         </div>
+
+        {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && (
+          <Link
+            href={`/intake/${booking.appointmentId}`}
+            className="flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50/80 px-4 py-3 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100/80"
+          >
+            <ClipboardList className="h-4 w-4 shrink-0" aria-hidden />
+            {t.intake.ctaPending}
+          </Link>
+        )}
+        {intakeStatus === IntakeStatuses.COMPLETED && (
+          <p className="flex items-center gap-2 rounded-xl border border-emerald-200/70 bg-emerald-50/60 px-4 py-3 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+            {t.intake.ctaCompleted}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button asChild className="gap-1.5">

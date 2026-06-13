@@ -2,26 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Roles } from "@zindagi/shared";
-import { siteConfig } from "@/config/site";
-import { AppUserMenu, type AccountType } from "@/components/layout/app-user-menu";
-import { AUTH_ROUTES } from "@/lib/auth/routes";
-
-function dashboardHref(roles?: string[]) {
-  if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorProfile;
-  if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
-    return AUTH_ROUTES.adminDashboard;
-  }
-  return siteConfig.links.dashboard;
-}
-
-function resolveAccountType(roles?: string[]): AccountType {
-  if (roles?.includes(Roles.DOCTOR)) return "doctor";
-  if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
-    return "admin";
-  }
-  return "patient";
-}
+import { AppUserMenu } from "@/components/layout/app-user-menu";
+import {
+  dashboardHref,
+  resolveHeaderAccountType,
+} from "@/lib/nav/header-actions";
 
 type AppHeaderUserProps = {
   className?: string;
@@ -43,11 +28,7 @@ export function AppHeaderUser({
   } | null>(null);
 
   const user = session?.user;
-  const isPatient =
-    !!user &&
-    !user.roles?.includes(Roles.DOCTOR) &&
-    !user.roles?.includes(Roles.ADMIN) &&
-    !user.roles?.includes(Roles.SUPER_ADMIN);
+  const isPatient = resolveHeaderAccountType(user?.roles) === "patient";
 
   useEffect(() => {
     if (!enrichFromProfile || !isPatient || !user?.id) {
@@ -90,7 +71,7 @@ export function AppHeaderUser({
       phone={profile?.phone}
       city={profile?.city}
       dashboardHref={href}
-      accountType={resolveAccountType(user.roles)}
+      accountType={resolveHeaderAccountType(user.roles)}
       className={className}
       variant={variant}
     />

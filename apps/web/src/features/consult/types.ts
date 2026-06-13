@@ -32,6 +32,7 @@ export type VideoJoinPayload = {
   scheduledStart: string;
   scheduledEnd: string;
   counterpartName: string;
+  meetingTitle: string;
   canJoin: boolean;
   joinOpensAt: string;
   joinClosesAt: string;

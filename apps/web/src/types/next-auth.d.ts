@@ -6,6 +6,7 @@ declare module "next-auth" {
     roles?: Role[];
     onboardingCompleted?: boolean;
     doctorVerificationStatus?: VerificationStatus | string;
+    nurseVerificationStatus?: VerificationStatus | string;
   }
 
   interface Session {
@@ -17,6 +18,7 @@ declare module "next-auth" {
       roles?: Role[];
       onboardingCompleted?: boolean;
       doctorVerificationStatus?: VerificationStatus | string;
+      nurseVerificationStatus?: VerificationStatus | string;
     };
   }
 }
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
     roles?: Role[];
     onboardingCompleted?: boolean;
     doctorVerificationStatus?: VerificationStatus | string;
+    nurseVerificationStatus?: VerificationStatus | string;
   }
 }

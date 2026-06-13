@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Video } from "lucide-react";
 import { videoConsultPath } from "@/features/consult/paths";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
+import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
 
 type QueueAppointment = {
   _id: string;
@@ -152,43 +153,43 @@ export function DoctorSundayDashboard() {
         </CardHeader>
         <CardContent className="space-y-3">
           {appointments.map((apt) => (
-            <div
-              key={apt._id}
-              className={`flex flex-wrap items-center justify-between gap-2 p-3 ${surfaceInset}`}
-            >
-              <div>
-                <p className="font-medium">{apt.patientId?.name ?? "Patient"}</p>
-                <p className="text-xs text-slate-500">
-                  {new Date(apt.scheduledStart).toLocaleString("en-PK", {
-                    timeZone: "Asia/Karachi",
-                  })}
-                </p>
-                <Badge variant="secondary" className="mt-1">
-                  {apt.status}
-                </Badge>
+            <div key={apt._id} className={`space-y-3 p-3 ${surfaceInset}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">{apt.patientId?.name ?? "Patient"}</p>
+                  <p className="text-xs text-slate-500">
+                    {new Date(apt.scheduledStart).toLocaleString("en-PK", {
+                      timeZone: "Asia/Karachi",
+                    })}
+                  </p>
+                  <Badge variant="secondary" className="mt-1">
+                    {apt.status}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" asChild className="gap-1">
+                    <Link href={videoConsultPath(apt._id)}>
+                      <Video className="h-3.5 w-3.5" />
+                      Join video
+                    </Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => updateStatus(apt._id, "completed")}
+                  >
+                    Completed
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => updateStatus(apt._id, "no_show")}
+                  >
+                    No-show
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" asChild className="gap-1">
-                  <Link href={videoConsultPath(apt._id)}>
-                    <Video className="h-3.5 w-3.5" />
-                    Join video
-                  </Link>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => updateStatus(apt._id, "completed")}
-                >
-                  Completed
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => updateStatus(apt._id, "no_show")}
-                >
-                  No-show
-                </Button>
-              </div>
+              <DoctorIntakeSummary appointmentId={apt._id} />
             </div>
           ))}
           {!appointments.length && (

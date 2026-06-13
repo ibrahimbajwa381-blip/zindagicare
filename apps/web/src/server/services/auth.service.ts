@@ -7,7 +7,17 @@ import {
   StaffProfileModel,
   UserModel,
 } from "@zindagi/database";
-import { AppError, Roles, VerificationStatuses, LAHORE_GEO, type Role } from "@zindagi/shared";
+import {
+  AppError,
+  Roles,
+  STAFF_ROLES,
+  VerificationStatuses,
+  LAHORE_GEO,
+  type Role,
+  emailLookupHash,
+  phoneLookupHash,
+} from "@zindagi/shared";
+import type { AccountType } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
@@ -18,6 +28,42 @@ async function ensurePatientProfile(userId: { toString(): string }) {
   await PatientProfileModel.findOneAndUpdate(
     mongoFilter({ userId: userId.toString() }),
     { $setOnInsert: { userId } },
+    { upsert: true },
+  );
+}
+
+async function ensureDoctorProfile(userId: { toString(): string }, city: string) {
+  await DoctorProfileModel.findOneAndUpdate(
+    mongoFilter({ userId: userId.toString() }),
+    {
+      verificationStatus: VerificationStatuses.PENDING,
+      isListed: false,
+      coverageCities: [city],
+    },
+    { upsert: true },
+  );
+}
+
+async function ensureNurseProfile(userId: { toString(): string }, city: string) {
+  await StaffProfileModel.updateOne(
+    { userId: userId.toString() } as Record<string, unknown>,
+    {
+      $set: {
+        staffType: Roles.NURSE,
+        isAvailable: true,
+        verificationStatus: VerificationStatuses.PENDING,
+        serviceAreas: [
+          {
+            city,
+            geo: {
+              type: "Point",
+              coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat],
+            },
+            radiusKm: 15,
+          },
+        ],
+      },
+    },
     { upsert: true },
   );
 }
@@ -34,8 +80,8 @@ export function cnicLast4(cnic: string): string {
 export async function findUserByEmail(email: string) {
   await connectDatabase();
   const normalized = email.trim().toLowerCase();
-  const doc = await UserModel.findOne({ email: normalized })
-    .select("+passwordHash bannedUntil isActive deletedAt")
+  const doc = await UserModel.findOne({ emailLookup: emailLookupHash(normalized) })
+    .select("+passwordHash +emailLookup bannedUntil isActive deletedAt")
     .exec();
   if (!doc || doc.deletedAt || doc.isActive === false) return null;
   return {
@@ -63,7 +109,7 @@ export async function verifyCredentialsLogin(email: string, password: string) {
 export async function findUserByPhone(phone: string) {
   await connectDatabase();
   const normalized = normalizePakistaniPhone(phone);
-  return UserModel.findOne({ phone: normalized });
+  return UserModel.findOne({ phoneLookup: phoneLookupHash(normalized) });
 }
 
 export async function registerWithCredentials(input: {
@@ -71,19 +117,38 @@ export async function registerWithCredentials(input: {
   email: string;
   password: string;
   phone: string;
+  accountType?: AccountType;
+  city?: string;
 }) {
   await connectDatabase();
+  const accountType = input.accountType ?? "patient";
+  const city = input.city?.trim() || "Lahore";
   const email = input.email.toLowerCase();
   const phone = normalizePakistaniPhone(input.phone);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
 
-  const existing = await UserModel.findOne({
-    $or: [{ email }, { phone }, { phone: phoneLocal }],
+  const existingByEmail = await UserModel.findOne({
+    emailLookup: emailLookupHash(email),
   });
-  if (existing) {
-    const field = existing.email === email ? "email" : "phone";
-    throw new AppError("Account already exists", "CONFLICT", 409, field);
+  if (existingByEmail) {
+    throw new AppError("Account already exists", "CONFLICT", 409, "email");
   }
+
+  const existingByPhone = await UserModel.findOne({
+    $or: [
+      { phoneLookup: phoneLookupHash(phone) },
+      { phoneLookup: phoneLookupHash(phoneLocal) },
+    ],
+  });
+  if (existingByPhone) {
+    throw new AppError("Account already exists", "CONFLICT", 409, "phone");
+  }
+
+  const roleByAccountType: Record<AccountType, Role[]> = {
+    patient: [Roles.PATIENT],
+    doctor: [Roles.DOCTOR],
+    nurse: [Roles.NURSE],
+  };
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
   const user = await UserModel.create({
@@ -91,15 +156,24 @@ export async function registerWithCredentials(input: {
     email,
     phone,
     passwordHash,
-    roles: [Roles.PATIENT],
+    roles: roleByAccountType[accountType],
     authProviders: ["credentials"],
     emailVerified: new Date(),
     onboardingCompleted: false,
     isActive: true,
+    ...(accountType !== "patient"
+      ? { metadata: { city, locale: "en" as const } }
+      : {}),
   });
 
   try {
-    await ensurePatientProfile(user._id);
+    if (accountType === "patient") {
+      await ensurePatientProfile(user._id);
+    } else if (accountType === "doctor") {
+      await ensureDoctorProfile(user._id, city);
+    } else {
+      await ensureNurseProfile(user._id, city);
+    }
   } catch (error) {
     await UserModel.findByIdAndDelete(user._id);
     throw error;
@@ -111,7 +185,7 @@ export async function registerWithCredentials(input: {
 export async function findOrCreatePhoneUser(phone: string, name?: string) {
   await connectDatabase();
   const normalized = normalizePakistaniPhone(phone);
-  let user = await UserModel.findOne({ phone: normalized });
+  let user = await UserModel.findOne({ phoneLookup: phoneLookupHash(normalized) });
 
   if (!user) {
     user = await UserModel.create({
@@ -142,7 +216,7 @@ export async function findOrCreateGoogleUser(input: {
 }) {
   await connectDatabase();
   const email = input.email.toLowerCase();
-  let user = await UserModel.findOne({ email });
+  let user = await UserModel.findOne({ emailLookup: emailLookupHash(email) });
 
   if (!user) {
     user = await UserModel.create({
@@ -190,6 +264,16 @@ export async function loadAuthUserPayload(userId: string) {
     doctorVerificationStatus = profile?.verificationStatus;
   }
 
+  let nurseVerificationStatus: string | undefined;
+  if (user.roles?.includes(Roles.NURSE)) {
+    const staff = await StaffProfileModel.findOne(
+      mongoFilter({ userId: user._id, staffType: Roles.NURSE }),
+    )
+      .select("verificationStatus")
+      .lean();
+    nurseVerificationStatus = staff?.verificationStatus;
+  }
+
   return {
     id: user._id.toString(),
     email: user.email ?? undefined,
@@ -197,13 +281,13 @@ export async function loadAuthUserPayload(userId: string) {
     roles: (user.roles ?? [Roles.PATIENT]) as Role[],
     onboardingCompleted: user.onboardingCompleted ?? false,
     doctorVerificationStatus,
+    nurseVerificationStatus,
   };
 }
 
 export async function completeOnboarding(
   userId: string,
   data: {
-    intent: "patient" | "doctor" | "nurse" | "rider";
     city: string;
     locale: "en" | "ur";
     dateOfBirth?: string;
@@ -214,16 +298,8 @@ export async function completeOnboarding(
   const user = await UserModel.findById(userId);
   if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
 
-  const roleMap = {
-    patient: Roles.PATIENT,
-    doctor: Roles.DOCTOR,
-    nurse: Roles.NURSE,
-    rider: Roles.RIDER,
-  } as const;
-
-  const role = roleMap[data.intent];
-  if (!user.roles.includes(role)) {
-    user.roles.push(role);
+  if (!user.roles.includes(Roles.PATIENT) || STAFF_ROLES.some((role) => user.roles.includes(role))) {
+    throw new AppError("Onboarding is only for patient accounts", "FORBIDDEN", 403);
   }
 
   user.metadata = {
@@ -231,61 +307,19 @@ export async function completeOnboarding(
     city: data.city,
     locale: data.locale,
   };
-  user.onboardingCompleted = data.intent === "patient";
+  user.onboardingCompleted = true;
 
   await user.save();
 
-  if (data.intent === "patient") {
-    await PatientProfileModel.findOneAndUpdate(
-      mongoFilter({ userId: user._id }),
-      {
-        defaultCity: data.city,
-        ...(data.dateOfBirth ? { dateOfBirth: new Date(data.dateOfBirth) } : {}),
-        ...(data.gender ? { gender: data.gender } : {}),
-      },
-      { upsert: true },
-    );
-  }
-
-  if (data.intent === "doctor") {
-    await DoctorProfileModel.findOneAndUpdate(
-      mongoFilter({ userId: user._id }),
-      {
-        verificationStatus: VerificationStatuses.PENDING,
-        isListed: false,
-        coverageCities: [data.city],
-      },
-      { upsert: true },
-    );
-    user.onboardingCompleted = false;
-    await user.save();
-  }
-
-  if (data.intent === "nurse" || data.intent === "rider") {
-    await StaffProfileModel.updateOne(
-      { userId: user._id } as Record<string, unknown>,
-      {
-        $set: {
-          staffType: roleMap[data.intent],
-          isAvailable: true,
-          verificationStatus: VerificationStatuses.APPROVED,
-          serviceAreas: [
-            {
-              city: data.city,
-              geo: {
-                type: "Point",
-                coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat],
-              },
-              radiusKm: 15,
-            },
-          ],
-        },
-      },
-      { upsert: true },
-    );
-    user.onboardingCompleted = true;
-    await user.save();
-  }
+  await PatientProfileModel.findOneAndUpdate(
+    mongoFilter({ userId: user._id }),
+    {
+      defaultCity: data.city,
+      ...(data.dateOfBirth ? { dateOfBirth: new Date(data.dateOfBirth) } : {}),
+      ...(data.gender ? { gender: data.gender } : {}),
+    },
+    { upsert: true },
+  );
 
   return loadAuthUserPayload(userId);
 }

@@ -2,12 +2,19 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Clock, Video } from "lucide-react";
+import { SiteLogo } from "@/components/layout/site-logo";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, Clock, Loader2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
+import {
+  formatConsultParticipantLine,
+  ZOOM_CONSULT_MEETING_SUBTITLE,
+  ZOOM_CONSULT_MEETING_TITLE,
+} from "@/lib/zoom/branding";
 import { CountdownTimer } from "@/features/sunday-consult/components/countdown-timer";
+import { PostConsultReviewPrompt } from "@/features/consult/components/post-consult-review-prompt";
 import type { VideoJoinPayload } from "@/features/consult/types";
 
 const ZoomMeetingRoom = dynamic(
@@ -39,7 +46,13 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [joinPayload, setJoinPayload] = useState<VideoJoinPayload | null>(null);
   const [inCall, setInCall] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPostConsultReview, setShowPostConsultReview] = useState(leftSession ?? false);
+  const joinAttemptedRef = useRef(false);
+
+  const dashboardHref =
+    sessionStatus?.role === "doctor" ? "/doctor/sunday-consult" : siteConfig.links.dashboard;
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -58,18 +71,9 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     }
   }, [appointmentId]);
 
-  useEffect(() => {
-    loadStatus();
-  }, [loadStatus]);
-
-  useEffect(() => {
-    if (!sessionStatus || sessionStatus.canJoin) return;
-    const interval = window.setInterval(loadStatus, 30_000);
-    return () => window.clearInterval(interval);
-  }, [sessionStatus, loadStatus]);
-
-  const startCall = async () => {
-    setLoading(true);
+  const startCall = useCallback(async () => {
+    if (joining || inCall) return;
+    setJoining(true);
     setError(null);
     try {
       const res = await fetch(`/api/v1/video/sessions/${appointmentId}/join`, {
@@ -83,20 +87,51 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
       setInCall(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not join");
+      joinAttemptedRef.current = false;
     } finally {
-      setLoading(false);
+      setJoining(false);
     }
-  };
+  }, [appointmentId, inCall, joining]);
+
+  useEffect(() => {
+    void loadStatus();
+  }, [loadStatus]);
+
+  useEffect(() => {
+    if (!sessionStatus || sessionStatus.canJoin) return;
+    const interval = window.setInterval(loadStatus, 30_000);
+    return () => window.clearInterval(interval);
+  }, [sessionStatus, loadStatus]);
+
+  /** Single-click flow: auto-join as soon as the room window opens. */
+  useEffect(() => {
+    if (!sessionStatus?.canJoin || inCall || joining || joinAttemptedRef.current) return;
+    joinAttemptedRef.current = true;
+    void startCall();
+  }, [sessionStatus?.canJoin, inCall, joining, startCall]);
 
   const handleLeave = async () => {
     await fetch(`/api/v1/video/sessions/${appointmentId}/leave`, { method: "POST" });
     setInCall(false);
     setJoinPayload(null);
+    if (sessionStatus?.role === "patient") {
+      setShowPostConsultReview(true);
+      return;
+    }
     await loadStatus();
   };
 
-  const dashboardHref =
-    sessionStatus?.role === "doctor" ? "/doctor/sunday-consult" : siteConfig.links.dashboard;
+  if (loading && !sessionStatus && (leftSession || showPostConsultReview)) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">
+        Loading video session…
+      </div>
+    );
+  }
+
+  if ((showPostConsultReview || leftSession) && sessionStatus?.role === "patient") {
+    return <PostConsultReviewPrompt appointmentId={appointmentId} />;
+  }
 
   if (leftSession) {
     return (
@@ -114,8 +149,9 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
 
   if (loading && !sessionStatus) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">
-        Loading video session…
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-sm text-slate-500">
+        <Loader2 className="h-6 w-6 animate-spin text-brand" />
+        Loading your consultation…
       </div>
     );
   }
@@ -147,56 +183,82 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
 
   if (inCall && joinPayload) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              {joinPayload.role === "doctor" ? "Doctor" : "Patient"} session
-            </p>
-            <h1 className="font-display text-lg font-semibold text-foreground">
-              With {joinPayload.counterpartName}
-            </h1>
+      <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-brand/30 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 py-3 text-white">
+          <div className="flex min-w-0 items-center gap-4">
+            <SiteLogo size="lg" href={null} priority className="shrink-0" />
+            <div className="min-w-0">
+              <p className="truncate font-display text-sm font-semibold text-white">
+                {joinPayload.meetingTitle || ZOOM_CONSULT_MEETING_TITLE}
+              </p>
+              <p className="truncate text-xs text-slate-400">
+                {formatConsultParticipantLine(joinPayload.role, joinPayload.counterpartName)}
+              </p>
+              <p className="hidden text-[11px] text-slate-500 sm:block">
+                {ZOOM_CONSULT_MEETING_SUBTITLE}
+              </p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLeave}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-white/20 bg-transparent text-white hover:bg-white/10"
+            onClick={() => void handleLeave()}
+          >
             End session
           </Button>
+        </header>
+        <div className="min-h-0 flex-1">
+          <ZoomMeetingRoom
+            appointmentId={appointmentId}
+            payload={joinPayload}
+            onLeave={handleLeave}
+          />
         </div>
-        <ZoomMeetingRoom
-          appointmentId={appointmentId}
-          payload={joinPayload}
-          onLeave={handleLeave}
-        />
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <Link
-        href={dashboardHref}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-dark"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Link>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
-            <Video className="h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="font-display text-xl font-semibold text-foreground">
-              Video consultation
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {sessionStatus.role === "doctor" ? "Patient" : "Doctor"} consult ·{" "}
-              {formatKarachiDateTime(sessionStatus.scheduledStart)}
-            </p>
-          </div>
+  if (joining || (sessionStatus.canJoin && !error)) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
+        <div>
+          <p className="font-display text-lg font-semibold text-foreground">
+            Joining your consultation…
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Allow camera and microphone when your browser asks.
+          </p>
         </div>
+      </div>
+    );
+  }
 
-        {!sessionStatus.canJoin ? (
+  if (!sessionStatus.canJoin) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 px-4 py-8">
+        <Link
+          href={dashboardHref}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-dark"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Link>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <Video className="h-5 w-5" />
+            </span>
+            <div>
+              <h1 className="font-display text-xl font-semibold text-foreground">
+                Video consultation
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                {formatKarachiDateTime(sessionStatus.scheduledStart)}
+              </p>
+            </div>
+          </div>
           <div className="mt-6 rounded-xl border border-brand-light/30 bg-brand-muted/40 px-4 py-4">
             <p className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Clock className="h-4 w-4 text-brand" />
@@ -204,26 +266,24 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
             </p>
             <p className="mt-1 text-xs text-slate-500">
               You can join from {formatKarachiDateTime(sessionStatus.joinOpensAt)} until{" "}
-              {formatKarachiDateTime(sessionStatus.joinClosesAt)} (Pakistan time).
+              {formatKarachiDateTime(sessionStatus.joinClosesAt)} (Pakistan time). We&apos;ll connect
+              you automatically — no extra steps.
             </p>
             <div className="mt-3">
               <CountdownTimer targetDate={sessionStatus.joinOpensAt} />
             </div>
           </div>
-        ) : (
-          <div className="mt-6 space-y-3">
-            <p className="text-sm text-slate-600">
-              Your secure Zoom room is ready. Join with camera and microphone enabled for the best
-              experience.
-            </p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button className="w-full gap-2" onClick={startCall} disabled={loading}>
-              <Video className="h-4 w-4" />
-              {loading ? "Preparing room…" : "Join video consultation"}
-            </Button>
-          </div>
-        )}
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-lg px-4 py-8 text-center">
+      <p className="text-sm text-red-600">{error ?? "Could not start video."}</p>
+      <Button className="mt-4" onClick={() => void startCall()}>
+        Try again
+      </Button>
     </div>
   );
 }

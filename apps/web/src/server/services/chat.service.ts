@@ -11,11 +11,18 @@ import {
   AppError,
   AppointmentStatuses,
   AppointmentTypes,
+  ChatMessageKinds,
   ChatThreadTypes,
+  formatIntakeQuestion,
+  getIntakeCompleteMessage,
+  getIntakeIntroMessage,
+  IntakeSources,
+  resolveIntakeQuestionText,
   PaymentStatuses,
   Roles,
   VerificationStatuses,
 } from "@zindagi/shared";
+import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
   ChatContactDto,
@@ -25,7 +32,8 @@ import type {
 } from "@/features/chat/types";
 import { publishChatEvent } from "@/lib/realtime/chat-emitter";
 import { mongoFilter } from "@/lib/mongo/query";
-import type { Types } from "mongoose";
+import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
+import { Types } from "mongoose";
 
 /** Paid consult types that unlock doctor–patient chat (Sunday free is excluded). */
 const CHAT_ELIGIBLE_APPOINTMENT_TYPES = [
@@ -170,12 +178,13 @@ async function enrichParticipant(
 }
 
 async function countUnread(threadId: string, userId: string) {
+  const userObjectId = new Types.ObjectId(userId);
   return ChatMessageModel.countDocuments(
     mongoFilter({
       threadId,
-      senderId: { $ne: userId },
+      senderId: { $ne: userObjectId },
       deletedAt: null,
-      "readBy.userId": { $ne: userId },
+      readBy: { $not: { $elemMatch: { userId: userObjectId } } },
     }),
   );
 }
@@ -394,10 +403,11 @@ export class ChatService {
       .map((row) => ({
         id: row._id.toString(),
         threadId: row.threadId.toString(),
-        senderId: row.senderId.toString(),
+        senderId: row.senderId?.toString(),
+        kind: (row.kind ?? ChatMessageKinds.USER) as "user" | "system",
         body: row.body ?? "",
         createdAt: row.createdAt.toISOString(),
-        isMine: row.senderId.toString() === userId,
+        isMine: !!row.senderId && row.senderId.toString() === userId,
         readBy: (row.readBy ?? [])
           .map((r) => r.userId?.toString())
           .filter((id): id is string => !!id),
@@ -410,6 +420,7 @@ export class ChatService {
     threadId: string,
     senderId: string,
     body: string,
+    locale?: string,
   ): Promise<ChatMessageDto> {
     await ChatService.ensureConnected();
 
@@ -426,6 +437,7 @@ export class ChatService {
     const message = await ChatMessageModel.create({
       threadId,
       senderId,
+      kind: ChatMessageKinds.USER,
       body: trimmed,
       readBy: [{ userId: senderId, readAt: new Date() }],
     });
@@ -445,6 +457,7 @@ export class ChatService {
       id: message._id.toString(),
       threadId,
       senderId,
+      kind: ChatMessageKinds.USER,
       body: trimmed,
       createdAt: message.createdAt.toISOString(),
       isMine: true,
@@ -457,6 +470,77 @@ export class ChatService {
       threadId,
       messageId: dto.id,
       senderId,
+      kind: ChatMessageKinds.USER,
+      body: trimmed,
+      createdAt: dto.createdAt,
+      lastMessagePreview: previewText(trimmed),
+      lastMessageAt: now.toISOString(),
+    });
+
+    // If a pre-consult intake is in progress, treat the patient's message as
+    // the answer to the current question and post the next one.
+    if (thread.appointmentId) {
+      await ChatService.advanceIntake(
+        threadId,
+        thread.appointmentId.toString(),
+        senderId,
+        trimmed,
+        locale,
+      );
+    }
+
+    return dto;
+  }
+
+  /** Posts a system (assistant) message into a thread and publishes it live. */
+  static async sendSystemMessage(
+    threadId: string,
+    body: string,
+  ): Promise<ChatMessageDto> {
+    await ChatService.ensureConnected();
+
+    const thread = await ChatThreadModel.findOne(
+      mongoFilter({ _id: threadId, deletedAt: null }),
+    ).lean();
+    if (!thread) {
+      throw new AppError("Chat not found", "NOT_FOUND", 404);
+    }
+
+    const trimmed = body.trim();
+    const message = await ChatMessageModel.create({
+      threadId,
+      kind: ChatMessageKinds.SYSTEM,
+      body: trimmed,
+      readBy: [],
+    });
+
+    const now = new Date();
+    await ChatThreadModel.updateOne(
+      mongoFilter({ _id: threadId }),
+      {
+        $set: {
+          lastMessageAt: now,
+          lastMessagePreview: previewText(trimmed),
+        },
+      },
+    );
+
+    const dto: ChatMessageDto = {
+      id: message._id.toString(),
+      threadId,
+      kind: ChatMessageKinds.SYSTEM,
+      body: trimmed,
+      createdAt: message.createdAt.toISOString(),
+      isMine: false,
+      readBy: [],
+    };
+
+    const participantIds = thread.participantIds.map((p) => p.toString());
+    publishChatEvent(participantIds, {
+      type: "message",
+      threadId,
+      messageId: dto.id,
+      kind: ChatMessageKinds.SYSTEM,
       body: trimmed,
       createdAt: dto.createdAt,
       lastMessagePreview: previewText(trimmed),
@@ -466,19 +550,98 @@ export class ChatService {
     return dto;
   }
 
+  /**
+   * Starts the pre-consult medical history conversation for a paid online
+   * appointment: creates the intake and posts the intro + first question.
+   * Idempotent — does nothing if the intake already exists.
+   */
+  static async startIntakeConversation(appointmentId: string) {
+    await ChatService.ensureConnected();
+
+    const existing = await MedicalIntakeService.getForAppointment(appointmentId);
+    if (existing) return;
+
+    const threadId = await ChatService.ensureAppointmentThread(appointmentId);
+
+    const payment = await PaymentModel.findOne(
+      mongoFilter({ appointmentId }),
+    ).lean();
+    const paymentLocale = (payment?.metadata as { locale?: string } | undefined)
+      ?.locale;
+
+    const intake = await MedicalIntakeService.createForAppointment(
+      appointmentId,
+      IntakeSources.CHAT,
+      paymentLocale,
+    );
+
+    await ChatService.sendSystemMessage(
+      threadId,
+      getIntakeIntroMessage(intake.locale),
+    );
+
+    const first = intake.questions[0];
+    if (first) {
+      await ChatService.sendSystemMessage(
+        threadId,
+        formatIntakeQuestion(
+          resolveIntakeQuestionText(first, intake.locale),
+          1,
+          intake.questions.length,
+          intake.locale,
+        ),
+      );
+    }
+  }
+
+  private static async advanceIntake(
+    threadId: string,
+    appointmentId: string,
+    senderId: string,
+    answer: string,
+    preferredLocale?: string,
+  ) {
+    const result = await MedicalIntakeService.recordChatAnswer(
+      appointmentId,
+      senderId,
+      answer,
+      preferredLocale,
+    );
+
+    if (!result.recorded) return;
+
+    if (result.completed) {
+      await ChatService.sendSystemMessage(
+        threadId,
+        getIntakeCompleteMessage(result.locale),
+      );
+    } else if (result.nextQuestion) {
+      await ChatService.sendSystemMessage(
+        threadId,
+        formatIntakeQuestion(
+          result.nextQuestion,
+          result.questionNumber ?? 0,
+          result.totalQuestions ?? 0,
+          result.locale,
+        ),
+      );
+    }
+  }
+
   static async markThreadRead(threadId: string, userId: string) {
     await ChatService.ensureConnected();
     const thread = await assertThreadParticipant(threadId, userId);
 
+    const userObjectId = new Types.ObjectId(userId);
     const now = new Date();
     await ChatMessageModel.updateMany(
       mongoFilter({
         threadId,
-        senderId: { $ne: userId },
+        senderId: { $ne: userObjectId },
         deletedAt: null,
-        "readBy.userId": { $ne: userId },
+        readBy: { $not: { $elemMatch: { userId: userObjectId } } },
       }),
-      { $push: { readBy: { userId, readAt: now } } },
+      { $push: { readBy: { userId: userObjectId, readAt: now } } },
     );
 
     const participantIds = thread.participantIds.map((p) => p.toString());
@@ -606,19 +769,24 @@ export class ChatService {
 
       if (query?.trim()) {
         const q = query.trim().toLowerCase();
+        const patientName = safeDisplayText(patient.name) ?? "";
+        const patientPhone = formatPhoneForDisplay(patient.phone) ?? "";
         if (
-          !patient.name.toLowerCase().includes(q) &&
-          !(patient.phone?.toLowerCase().includes(q) ?? false)
+          !patientName.toLowerCase().includes(q) &&
+          !patientPhone.toLowerCase().includes(q)
         ) {
           continue;
         }
       }
 
+      const displayName = safeDisplayText(patient.name) ?? "Patient";
+      const displayPhone = formatPhoneForDisplay(patient.phone);
+
       contacts.push({
         id: patientId,
-        name: patient.name,
+        name: displayName,
         avatarUrl: patient.avatarUrl ?? undefined,
-        subtitle: patient.phone ?? "Patient",
+        subtitle: displayPhone ?? "Patient",
         threadId: threadByAppointment.get(appointment._id.toString()),
       });
     }

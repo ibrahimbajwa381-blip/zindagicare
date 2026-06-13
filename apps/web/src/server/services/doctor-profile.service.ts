@@ -10,6 +10,7 @@ import {
   Roles,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
+  phoneLookupHash,
 } from "@zindagi/shared";
 import type { UpdateDoctorProfileInput } from "@zindagi/validators";
 
@@ -24,6 +25,7 @@ import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { mongoFilter } from "@/lib/mongo/query";
 import { SundayConsultService } from "./sunday-consult.service";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { mapUserPii } from "@/server/lib/decrypt-pii";
 import { isDoctorAvatarUrlForUser } from "@/server/services/doctor-avatar.storage";
 
 export type { DoctorProfileDto, SundayConsultDto, WeeklyAvailabilityDto };
@@ -68,13 +70,15 @@ function mapProfileToDto(
   },
   sundayConsult: SundayConsultDto,
 ): DoctorProfileDto {
+  const pii = mapUserPii(user);
+
   return {
     id: profile._id.toString(),
     user: {
       id: user._id.toString(),
-      name: user.name,
-      email: user.email ?? undefined,
-      phone: user.phone ?? undefined,
+      name: pii.name,
+      email: pii.email,
+      phone: pii.phone,
       avatarUrl: user.avatarUrl ?? undefined,
       memberSince: user.createdAt?.toISOString() ?? new Date().toISOString(),
     },
@@ -239,7 +243,10 @@ export async function updateDoctorProfile(
     if (normalized !== user.phone && phoneLocal !== user.phone) {
       const existing = await UserModel.findOne({
         _id: { $ne: user._id },
-        $or: [{ phone: normalized }, { phone: phoneLocal }],
+        $or: [
+          { phoneLookup: phoneLookupHash(normalized) },
+          { phoneLookup: phoneLookupHash(phoneLocal) },
+        ],
       });
       if (existing) {
         throw new AppError("Phone number already in use", "CONFLICT", 409, "phone");

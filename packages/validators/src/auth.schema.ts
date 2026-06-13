@@ -5,6 +5,7 @@ import {
   PAKISTANI_PHONE_ERROR,
   toPakistaniLocalPhone,
 } from "./pakistan-phone";
+import { geoPointInputSchema } from "./geo.schema";
 
 /** Accepts 03001234567, spaces, dashes, +92, 0092, etc. Outputs 03XXXXXXXXX. */
 export const pakistaniPhoneSchema = z
@@ -26,18 +27,33 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export const registerSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .email("Invalid email address"),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters"),
-  phone: pakistaniPhone,
-});
+export const accountTypes = ["patient", "doctor", "nurse"] as const;
+export type AccountType = (typeof accountTypes)[number];
+
+export const registerSchema = z
+  .object({
+    name: z.string().min(2, "Name is required"),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email("Invalid email address"),
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters"),
+    phone: pakistaniPhone,
+    accountType: z.enum(accountTypes).default("patient"),
+    city: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.accountType !== "patient" && (!data.city || data.city.length < 2)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "City is required",
+        path: ["city"],
+      });
+    }
+  });
 
 export const otpRequestSchema = z.object({
   phone: pakistaniPhone,
@@ -47,8 +63,8 @@ export const otpVerifySchema = otpRequestSchema.extend({
   code: z.string().length(6, "Enter the 6-digit code"),
 });
 
+/** Patient-only profile completion after signup. */
 export const onboardingSchema = z.object({
-  intent: z.enum(["patient", "doctor", "nurse", "rider"]),
   city: z.string().min(2, "City is required"),
   locale: z.enum(["en", "ur"]).default("en"),
   dateOfBirth: z.string().optional(),
@@ -99,9 +115,33 @@ export const doctorVerificationSchema = z.object({
         name: z.string().min(2),
         city: z.string().min(2),
         address: z.string().optional(),
+        geo: geoPointInputSchema.optional(),
       }),
     )
     .min(1, "Add at least one practice location"),
+  homeVisit: z
+    .object({
+      enabled: z.boolean(),
+      area: z.string().min(2).optional(),
+      geo: geoPointInputSchema.optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (!data.enabled) return;
+      if (!data.area?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Service area is required for in-house visits",
+          path: ["area"],
+        });
+      }
+      if (!data.geo) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Google Maps location is required for in-house visits",
+          path: ["geo"],
+        });
+      }
+    }),
   documentUrls: z.object({
     pmdcCertificate: z.string().min(1, "PMDC certificate required"),
     cnicFront: z.string().min(1, "CNIC front image required"),

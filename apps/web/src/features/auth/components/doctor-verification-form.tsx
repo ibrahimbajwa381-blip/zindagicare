@@ -1,14 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
-import { SPECIALTIES } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
+import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatTime12h, TimePicker } from "@/components/ui/time-picker";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
+import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
+import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 const DAYS = [
   { value: 1, label: "Monday" },
@@ -60,7 +63,7 @@ function previewSundaySlots(
 }
 
 export function DoctorVerificationForm() {
-  const router = useRouter();
+  const { push } = useSafeRouter();
   const { update, data: session } = useSession();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -74,6 +77,9 @@ export function DoctorVerificationForm() {
   const [sundayEnd, setSundayEnd] = useState("18:00");
   const [slotDurationMins, setSlotDurationMins] = useState(10);
   const [documents, setDocuments] = useState<Record<string, string>>({});
+  const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
+  const [homeVisitGeo, setHomeVisitGeo] = useState<GeoCoordinates | null>(null);
 
   function updateAvailability(
     day: number,
@@ -130,6 +136,19 @@ export function DoctorVerificationForm() {
       }
     }
 
+    if (homeVisitEnabled && !homeVisitGeo) {
+      setError("Please add your Google Maps location for in-house visit matching.");
+      setPending(false);
+      return;
+    }
+
+    const homeVisitArea = String(form.get("homeVisitArea") ?? "").trim();
+    if (homeVisitEnabled && homeVisitArea.length < 2) {
+      setError("Please enter your service area for in-house visits.");
+      setPending(false);
+      return;
+    }
+
     const body = {
       pmdcNumber: form.get("pmdcNumber"),
       cnic: form.get("cnic"),
@@ -146,8 +165,14 @@ export function DoctorVerificationForm() {
           name: form.get("hospitalName"),
           city: form.get("hospitalCity"),
           address: form.get("hospitalAddress") || undefined,
+          geo: homeVisitEnabled && homeVisitGeo ? homeVisitGeo : undefined,
         },
       ],
+      homeVisit: {
+        enabled: homeVisitEnabled,
+        area: homeVisitArea || undefined,
+        geo: homeVisitGeo ?? undefined,
+      },
       documentUrls: {
         pmdcCertificate: documents.pmdcCertificate,
         cnicFront: documents.cnicFront,
@@ -180,8 +205,7 @@ export function DoctorVerificationForm() {
       doctorVerificationStatus: "pending",
     });
 
-    router.push("/doctor/profile?submitted=1");
-    router.refresh();
+    push("/doctor/profile?submitted=1");
   }
 
   return (
@@ -281,6 +305,47 @@ export function DoctorVerificationForm() {
           <Label htmlFor="consultationFee">Consultation fee (PKR)</Label>
           <Input id="consultationFee" name="consultationFee" type="number" min={0} />
         </div>
+      </section>
+
+      <section className="space-y-4 rounded-lg border border-emerald-200/60 bg-emerald-50/40 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">In-house visit availability</h2>
+        <div>
+          <Label htmlFor="homeVisitArea">Service area / neighborhood</Label>
+          <Input
+            id="homeVisitArea"
+            name="homeVisitArea"
+            placeholder="e.g. DHA Phase 5, Gulberg — where you can travel for home visits"
+            minLength={2}
+          />
+        </div>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={homeVisitEnabled}
+            onChange={(e) => setHomeVisitEnabled(e.target.checked)}
+            className="mt-1"
+          />
+          <div>
+            <p className="text-sm font-semibold text-slate-900">
+              I am available for in-house doctor visits within {HOME_CARE_MATCH_RADIUS_KM} km
+              of my area
+            </p>
+            <p className="text-xs text-slate-600">
+              Admin will auto-assign you to nearby patient home visits when you are the
+              nearest available doctor.
+            </p>
+          </div>
+        </label>
+
+        {homeVisitEnabled && (
+          <GeoLocationPicker
+            id="doctor-verification-geo"
+            value={homeVisitGeo}
+            onChange={setHomeVisitGeo}
+            required
+          />
+        )}
       </section>
 
       <section className="space-y-3">
@@ -407,38 +472,105 @@ export function DoctorVerificationForm() {
         )}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-900">Verification documents</h2>
-        <p className="text-xs text-slate-500">
-          Upload JPG, PNG, WebP, or PDF files (max 5 MB each).
-        </p>
-        <DocumentUploadField
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Verification documents</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Tap each box to choose a file, or drag and drop. JPG, PNG, WebP, or PDF (max 5 MB
+            each).
+          </p>
+        </div>
+        <VerificationDocumentUpload
           label="PMDC certificate"
           docKey="pmdcCertificate"
           value={documents.pmdcCertificate}
-          onUploaded={(url) =>
-            setDocuments((prev) => ({ ...prev, pmdcCertificate: url }))
-          }
+          fileName={documentNames.pmdcCertificate}
+          uploadUrl="/api/v1/doctor/verification/upload"
+          onUploaded={(url, name) => {
+            setDocuments((prev) => ({ ...prev, pmdcCertificate: url }));
+            setDocumentNames((prev) => ({ ...prev, pmdcCertificate: name }));
+          }}
+          onClear={() => {
+            setDocuments((prev) => {
+              const next = { ...prev };
+              delete next.pmdcCertificate;
+              return next;
+            });
+            setDocumentNames((prev) => {
+              const next = { ...prev };
+              delete next.pmdcCertificate;
+              return next;
+            });
+          }}
         />
-        <DocumentUploadField
+        <VerificationDocumentUpload
           label="CNIC front"
           docKey="cnicFront"
           value={documents.cnicFront}
-          onUploaded={(url) => setDocuments((prev) => ({ ...prev, cnicFront: url }))}
+          fileName={documentNames.cnicFront}
+          uploadUrl="/api/v1/doctor/verification/upload"
+          onUploaded={(url, name) => {
+            setDocuments((prev) => ({ ...prev, cnicFront: url }));
+            setDocumentNames((prev) => ({ ...prev, cnicFront: name }));
+          }}
+          onClear={() => {
+            setDocuments((prev) => {
+              const next = { ...prev };
+              delete next.cnicFront;
+              return next;
+            });
+            setDocumentNames((prev) => {
+              const next = { ...prev };
+              delete next.cnicFront;
+              return next;
+            });
+          }}
         />
-        <DocumentUploadField
+        <VerificationDocumentUpload
           label="CNIC back"
           docKey="cnicBack"
           value={documents.cnicBack}
-          onUploaded={(url) => setDocuments((prev) => ({ ...prev, cnicBack: url }))}
+          fileName={documentNames.cnicBack}
+          uploadUrl="/api/v1/doctor/verification/upload"
+          onUploaded={(url, name) => {
+            setDocuments((prev) => ({ ...prev, cnicBack: url }));
+            setDocumentNames((prev) => ({ ...prev, cnicBack: name }));
+          }}
+          onClear={() => {
+            setDocuments((prev) => {
+              const next = { ...prev };
+              delete next.cnicBack;
+              return next;
+            });
+            setDocumentNames((prev) => {
+              const next = { ...prev };
+              delete next.cnicBack;
+              return next;
+            });
+          }}
         />
-        <DocumentUploadField
+        <VerificationDocumentUpload
           label="Degree certificate"
           docKey="degreeCertificate"
           value={documents.degreeCertificate}
-          onUploaded={(url) =>
-            setDocuments((prev) => ({ ...prev, degreeCertificate: url }))
-          }
+          fileName={documentNames.degreeCertificate}
+          uploadUrl="/api/v1/doctor/verification/upload"
+          onUploaded={(url, name) => {
+            setDocuments((prev) => ({ ...prev, degreeCertificate: url }));
+            setDocumentNames((prev) => ({ ...prev, degreeCertificate: name }));
+          }}
+          onClear={() => {
+            setDocuments((prev) => {
+              const next = { ...prev };
+              delete next.degreeCertificate;
+              return next;
+            });
+            setDocumentNames((prev) => {
+              const next = { ...prev };
+              delete next.degreeCertificate;
+              return next;
+            });
+          }}
         />
       </section>
 
@@ -447,69 +579,5 @@ export function DoctorVerificationForm() {
         {pending ? "Submitting…" : "Submit for admin review"}
       </Button>
     </form>
-  );
-}
-
-function DocumentUploadField({
-  label,
-  docKey,
-  value,
-  onUploaded,
-}: {
-  label: string;
-  docKey: string;
-  value?: string;
-  onUploaded: (url: string) => void;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string>();
-
-  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setUploadError(undefined);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/v1/doctor/verification/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    setUploading(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setUploadError(data?.error?.message ?? "Upload failed");
-      return;
-    }
-
-    const data = await res.json();
-    onUploaded(data.data.url);
-  }
-
-  return (
-    <div>
-      <Label htmlFor={docKey}>{label}</Label>
-      <div className="mt-1 flex flex-wrap items-center gap-2">
-        <input
-          id={docKey}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-          onChange={onFileChange}
-          disabled={uploading}
-          className="text-sm"
-        />
-        {uploading && <span className="text-xs text-slate-500">Uploading…</span>}
-        {value && !uploading && (
-          <Badge variant="secondary" className="text-xs">
-            Uploaded
-          </Badge>
-        )}
-      </div>
-      {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
-    </div>
   );
 }

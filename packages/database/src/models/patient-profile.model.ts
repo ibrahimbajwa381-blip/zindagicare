@@ -1,9 +1,11 @@
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
 /**
  * PatientProfile — 1:1 with User (patient role).
  * Clinical attributes separated from User for HIPAA-style field isolation & smaller auth docs.
+ * Sensitive clinical fields are encrypted at rest.
  */
 const patientProfileSchema = new Schema(
   {
@@ -13,7 +15,7 @@ const patientProfileSchema = new Schema(
       required: true,
       unique: true,
     },
-    dateOfBirth: { type: Date },
+    dateOfBirth: { type: Schema.Types.Mixed },
     gender: { type: String, enum: ["male", "female", "other"] },
     bloodGroup: {
       type: String,
@@ -32,9 +34,21 @@ const patientProfileSchema = new Schema(
   { timestamps: true },
 );
 
+applyFieldEncryption(patientProfileSchema, {
+  fields: [
+    { path: "dateOfBirth", kind: "date" },
+    { path: "allergies", kind: "strings" },
+    { path: "chronicConditions", kind: "strings" },
+    { path: "emergencyContact", kind: "object" },
+  ],
+});
+
 export type PatientProfileDocument = InferSchemaType<
   typeof patientProfileSchema
 > & { _id: Schema.Types.ObjectId };
 
 export const PatientProfileModel: Model<PatientProfileDocument> =
-  registerModel<PatientProfileDocument>("PatientProfile", patientProfileSchema);
+  registerModel<PatientProfileDocument>(
+    "PatientProfile",
+    patientProfileSchema,
+  );

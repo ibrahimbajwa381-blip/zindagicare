@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const sendChatMessageSchema = z.object({
   body: z.string().trim().min(1).max(5000),
+  locale: z.enum(["en", "ur"]).optional(),
 });
 
 export const createDirectThreadSchema = z.object({

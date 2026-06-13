@@ -8,6 +8,7 @@ export function dashboardHref(roles?: string[]) {
   if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
     return AUTH_ROUTES.adminDoctors;
   }
+  if (roles?.includes(Roles.NURSE)) return AUTH_ROUTES.nurseDashboard;
   return siteConfig.links.dashboard;
 }
 

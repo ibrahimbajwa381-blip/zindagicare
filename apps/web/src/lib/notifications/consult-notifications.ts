@@ -47,3 +47,36 @@ export async function sendOnlineConsultConfirmation(params: {
     payload: { type: "online_consult_confirmed" },
   });
 }
+
+export async function sendDoctorConsultBooked(params: {
+  userId: string;
+  phone?: string;
+  patientName: string;
+  slotStart: Date;
+  appointmentId: string;
+  type: "online" | "clinic" | "sunday_free";
+}) {
+  const time = params.slotStart.toLocaleString("en-PK", {
+    timeZone: "Asia/Karachi",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const label =
+    params.type === "sunday_free"
+      ? "Sunday Free Consult"
+      : params.type === "clinic"
+        ? "clinic appointment"
+        : "online consult";
+
+  await sendConsultNotification({
+    userId: params.userId,
+    phone: params.phone,
+    title: "New consult booked",
+    body: `${params.patientName} booked a ${label} for ${time}.`,
+    payload: {
+      type: "doctor_consult_booked",
+      appointmentId: params.appointmentId,
+    },
+  });
+}

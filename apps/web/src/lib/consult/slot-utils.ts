@@ -22,9 +22,18 @@ export function getZonedDayOfWeek(date: Date): number {
   return toZonedTime(date, TZ).getDay();
 }
 
+/** Karachi calendar date (yyyy-MM-dd) encoded in a consult slot id. */
+export function getConsultSlotDateKey(slotId: string): string {
+  return slotId.slice(0, 10);
+}
+
 export function parseConsultSlotId(slotId: string): { dateKey: string; startAt: Date } {
-  const [dateKey, timeLocal] = slotId.split(":");
-  if (!dateKey || !timeLocal) {
+  if (slotId.length < 12 || slotId[10] !== ":") {
+    throw new Error("Invalid slot id");
+  }
+  const dateKey = getConsultSlotDateKey(slotId);
+  const timeLocal = slotId.slice(11);
+  if (!/^\d{2}:\d{2}$/.test(timeLocal)) {
     throw new Error("Invalid slot id");
   }
   return { dateKey, startAt: localTimeToUtc(dateKey, timeLocal) };
@@ -38,9 +47,11 @@ export function generateConsultSlots(
   now = new Date(),
 ): { slotId: string; startAt: Date; endAt: Date }[] {
   const slots: { slotId: string; startAt: Date; endAt: Date }[] = [];
+  const startDateKey = formatConsultDateKey(from);
+  const startAnchor = fromZonedTime(new Date(`${startDateKey}T12:00:00`), TZ);
 
   for (let i = 0; i < days; i++) {
-    const day = addDays(from, i);
+    const day = addDays(startAnchor, i);
     const dateKey = formatConsultDateKey(day);
     const dayOfWeek = getZonedDayOfWeek(day);
     const windows = weeklyAvailability.filter((w) => w.dayOfWeek === dayOfWeek);

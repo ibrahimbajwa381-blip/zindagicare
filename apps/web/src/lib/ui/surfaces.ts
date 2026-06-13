@@ -31,6 +31,9 @@ export const appHeaderInner = cn(
   "flex h-16 items-center gap-3 text-sm font-medium text-slate-600 sm:h-[4.75rem] sm:gap-6",
 );
 
+/** Offset fixed sidebars below the sticky app header. */
+export const workspaceSidebarTop = "top-16 sm:top-[4.75rem]";
+
 export function surfaceCardClass(className?: string) {
   return cn(surfaceCardInteractive, className);
 }

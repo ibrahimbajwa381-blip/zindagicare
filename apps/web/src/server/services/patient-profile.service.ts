@@ -3,7 +3,7 @@ import {
   PatientProfileModel,
   UserModel,
 } from "@zindagi/database";
-import { AppError } from "@zindagi/shared";
+import { AppError, emailLookupHash, phoneLookupHash } from "@zindagi/shared";
 import {
   normalizePhoneDigits,
   toPakistaniLocalPhone,
@@ -11,6 +11,11 @@ import {
 } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
+import {
+  formatPhoneForDisplay,
+  mapUserPii,
+  safeDisplayText,
+} from "@/server/lib/decrypt-pii";
 
 export type PatientProfileDto = {
   user: {
@@ -38,13 +43,6 @@ export type PatientProfileDto = {
   };
 };
 
-function formatPhoneForDisplay(phone?: string | null): string | undefined {
-  if (!phone) return undefined;
-  const digits = normalizePhoneDigits(phone);
-  if (!digits) return undefined;
-  return toPakistaniLocalPhone(digits);
-}
-
 function formatDateForInput(date?: Date | null): string | undefined {
   if (!date) return undefined;
   return date.toISOString().slice(0, 10);
@@ -62,12 +60,14 @@ export async function getPatientProfile(userId: string): Promise<PatientProfileD
     mongoFilter({ userId: user._id }),
   ).lean();
 
+  const pii = mapUserPii(user);
+
   return {
     user: {
       id: user._id.toString(),
-      name: user.name,
-      email: user.email ?? undefined,
-      phone: formatPhoneForDisplay(user.phone),
+      name: pii.name,
+      email: pii.email,
+      phone: pii.phone,
       emailVerified: Boolean(user.emailVerified),
       phoneVerified: Boolean(user.phoneVerified),
       locale: (user.metadata?.locale as "en" | "ur") ?? "en",
@@ -82,9 +82,9 @@ export async function getPatientProfile(userId: string): Promise<PatientProfileD
       chronicConditions: profile?.chronicConditions ?? [],
       emergencyContact: profile?.emergencyContact
         ? {
-            name: profile.emergencyContact.name ?? undefined,
-            phone: profile.emergencyContact.phone ?? undefined,
-            relation: profile.emergencyContact.relation ?? undefined,
+            name: safeDisplayText(profile.emergencyContact.name),
+            phone: formatPhoneForDisplay(profile.emergencyContact.phone),
+            relation: safeDisplayText(profile.emergencyContact.relation),
           }
         : undefined,
     },
@@ -105,7 +105,10 @@ export async function updatePatientProfile(
   if (data.email !== undefined) {
     const email = data.email.toLowerCase();
     if (email !== user.email) {
-      const existing = await UserModel.findOne({ email, _id: { $ne: user._id } });
+      const existing = await UserModel.findOne({
+        emailLookup: emailLookupHash(email),
+        _id: { $ne: user._id },
+      });
       if (existing) {
         throw new AppError("Email already in use", "CONFLICT", 409, "email");
       }
@@ -119,7 +122,10 @@ export async function updatePatientProfile(
     if (normalized !== user.phone && phoneLocal !== user.phone) {
       const existing = await UserModel.findOne({
         _id: { $ne: user._id },
-        $or: [{ phone: normalized }, { phone: phoneLocal }],
+        $or: [
+          { phoneLookup: phoneLookupHash(normalized) },
+          { phoneLookup: phoneLookupHash(phoneLocal) },
+        ],
       });
       if (existing) {
         throw new AppError("Phone number already in use", "CONFLICT", 409, "phone");

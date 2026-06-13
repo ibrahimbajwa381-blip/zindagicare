@@ -5,6 +5,7 @@ import {
   type HomeVisitStatus,
 } from "@zindagi/shared";
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
 
@@ -68,6 +69,16 @@ const homeVisitSchema = new Schema(
   },
   { timestamps: true },
 );
+
+applyFieldEncryption(homeVisitSchema, {
+  fields: [
+    { path: "address.line", kind: "string" },
+    { path: "patientNotes", kind: "string" },
+    { path: "staffNotes", kind: "string" },
+    { path: "cancellationReason", kind: "string" },
+    { path: "visitReport.originalName", kind: "string" },
+  ],
+});
 
 homeVisitSchema.index({ "address.geo": "2dsphere" });
 homeVisitSchema.index({ status: 1, scheduledAt: 1 });

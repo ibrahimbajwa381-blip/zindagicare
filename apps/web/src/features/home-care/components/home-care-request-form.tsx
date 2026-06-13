@@ -8,14 +8,15 @@ import {
   HOME_CARE_MVP_SERVICES,
   HOME_CARE_PRICING,
   HomeVisitServiceTypes,
-  LAHORE_GEO,
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError, Input, Label } from "@/components/ui/input";
+import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { useTranslations } from "@/i18n/locale-provider";
+import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { surfaceCard } from "@/lib/ui/surfaces";
-import { MapPin, Syringe, Droplets, Bandage, Stethoscope, UserRound } from "lucide-react";
+import { Syringe, Droplets, Bandage, Stethoscope, UserRound } from "lucide-react";
 
 const SERVICE_META: Record<
   string,
@@ -81,8 +82,7 @@ export function HomeCareRequestForm() {
   const [addressLine, setAddressLine] = useState("");
   const [scheduledAt, setScheduledAt] = useState(defaultScheduledAt);
   const [patientNotes, setPatientNotes] = useState("");
-  const [geo, setGeo] = useState<{ lng: number; lat: number } | null>(null);
-  const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "ok" | "fallback">("idle");
+  const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -90,26 +90,6 @@ export function HomeCareRequestForm() {
     HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ?? 2000;
   const isAuthenticated = status === "authenticated";
   const isLoadingSession = status === "loading";
-
-  const detectLocation = () => {
-    setGeoStatus("loading");
-    if (!navigator.geolocation) {
-      setGeo({ lng: LAHORE_GEO.lng, lat: LAHORE_GEO.lat });
-      setGeoStatus("fallback");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGeo({ lng: pos.coords.longitude, lat: pos.coords.latitude });
-        setGeoStatus("ok");
-      },
-      () => {
-        setGeo({ lng: LAHORE_GEO.lng, lat: LAHORE_GEO.lat });
-        setGeoStatus("fallback");
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +105,11 @@ export function HomeCareRequestForm() {
     const trimmedAddress = addressLine.trim();
     if (trimmedAddress.length < 5) {
       setError(h.addressRequired);
+      return;
+    }
+
+    if (!geo) {
+      setError(h.locationRequired);
       return;
     }
 
@@ -145,9 +130,9 @@ export function HomeCareRequestForm() {
           addressLine: trimmedAddress,
           scheduledAt: scheduled.toISOString(),
           city: "Lahore",
-          geo: geo ?? undefined,
+          geo,
           patientNotes: patientNotes.trim() || undefined,
-          autoAssign: true,
+          autoAssign: false,
         }),
       });
       const json = await res.json();
@@ -215,21 +200,12 @@ export function HomeCareRequestForm() {
             />
           </div>
 
-          <div>
-            <Label>{h.location}</Label>
-            <div className="mt-1.5 flex flex-wrap items-center gap-3">
-              <Button type="button" variant="outline" size="sm" onClick={detectLocation}>
-                <MapPin className="h-4 w-4" />
-                {geoStatus === "loading" ? h.locating : h.useMyLocation}
-              </Button>
-              {geoStatus === "ok" && (
-                <span className="text-xs text-green-700">{h.locationOk}</span>
-              )}
-              {geoStatus === "fallback" && (
-                <span className="text-xs text-amber-700">{h.locationFallback}</span>
-              )}
-            </div>
-          </div>
+          <GeoLocationPicker
+            id="patient-home-location"
+            value={geo}
+            onChange={setGeo}
+            required
+          />
 
           <div>
             <Label htmlFor="scheduled">{h.scheduledAt}</Label>

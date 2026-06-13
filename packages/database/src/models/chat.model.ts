@@ -1,5 +1,11 @@
-import { ChatThreadTypes, type ChatThreadType } from "@zindagi/shared";
+import {
+  ChatMessageKinds,
+  ChatThreadTypes,
+  type ChatMessageKind,
+  type ChatThreadType,
+} from "@zindagi/shared";
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -37,6 +43,10 @@ const chatThreadSchema = new Schema(
   { timestamps: true },
 );
 
+applyFieldEncryption(chatThreadSchema, {
+  fields: [{ path: "lastMessagePreview", kind: "string" }],
+});
+
 chatThreadSchema.index({ participantIds: 1, lastMessageAt: -1 });
 
 export type ChatThreadDocument = InferSchemaType<typeof chatThreadSchema> & {
@@ -58,10 +68,15 @@ const chatMessageSchema = new Schema(
       required: true,
       index: true,
     },
+    /** Absent for system (bot) messages. */
     senderId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+    },
+    kind: {
+      type: String,
+      enum: Object.values(ChatMessageKinds),
+      default: ChatMessageKinds.USER,
     },
     body: { type: String, maxlength: 5000 },
     attachmentUrl: { type: String },
@@ -72,10 +87,17 @@ const chatMessageSchema = new Schema(
   { timestamps: true },
 );
 
+applyFieldEncryption(chatMessageSchema, {
+  fields: [
+    { path: "body", kind: "string" },
+  ],
+});
+
 chatMessageSchema.index({ threadId: 1, createdAt: -1 });
 
 export type ChatMessageDocument = InferSchemaType<typeof chatMessageSchema> & {
   _id: Schema.Types.ObjectId;
+  kind: ChatMessageKind;
 };
 
 export const ChatMessageModel: Model<ChatMessageDocument> =

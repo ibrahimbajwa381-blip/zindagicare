@@ -17,6 +17,16 @@ export const en = {
     homeCareVisits: "My home care visits",
     freeBadge: "Free",
   },
+  header: {
+    actions: {
+      messages: "Messages",
+      notifications: "Notifications",
+      notificationsHint: "Updates about appointments and account activity",
+      noNotifications: "You're all caught up.",
+      loadingNotifications: "Loading notifications…",
+      markAllRead: "Mark all read",
+    },
+  },
   auth: {
     login: "Log in",
     register: "Register",
@@ -36,7 +46,17 @@ export const en = {
     language: "Language",
     english: "English",
     urdu: "اردو",
-    registerDescription: "Join {name} — free for patients",
+    registerDescription: "Join {name} as a patient — book consults and home care",
+    registerPatient: "Register as patient",
+    registerDoctor: "Register as doctor",
+    registerDoctorDescription:
+      "Create a doctor account. After signup you will complete verification with PMDC credentials and documents.",
+    registerNurse: "Register as nurse",
+    registerNurseDescription:
+      "Create a nurse account. After signup you will submit your license, service area, and identity documents.",
+    staffSignupTitle: "Joining as medical staff?",
+    staffSignupDescription: "Doctors and nurses use separate secure signup pages.",
+    patientInstead: "Need a patient account instead?",
     fullName: "Full name",
     fullNameHint: "As on your CNIC or WhatsApp",
     mobileNumber: "Mobile number",
@@ -63,6 +83,7 @@ export const en = {
       password: "Password must be at least 6 characters",
       email: "Enter a valid email address",
       name: "Name is required",
+      city: "City is required",
       otp: "Invalid or expired OTP",
       phoneTaken: "This mobile number is already registered",
       emailTaken: "This email is already registered",
@@ -71,6 +92,9 @@ export const en = {
   footer: {
     services: "Services",
     account: "Account",
+    productOfBefore: "A product of",
+    productOfAfter: "",
+    productOfCompany: "TechCognify.com",
   },
   common: {
     menu: "Menu",
@@ -466,6 +490,8 @@ export const en = {
     requestError: "Could not submit request. Please try again.",
     scheduledInPast: "Please choose a visit time at least 1 hour from now.",
     addressRequired: "Please enter your home address.",
+    locationRequired:
+      "Please add your Google Maps location so we can match the nearest provider.",
     loginHint: "You'll be asked to sign in before confirming.",
     signInToContinue: "Sign in to request",
     checkingSession: "Checking session…",
@@ -522,14 +548,20 @@ export const en = {
     videoConsult: "Video consultation",
     perConsultation: "per consultation",
   },
+  consult: {
+    videoLeft: {
+      title: "Consultation ended",
+      description:
+        "You have left the video session. Your doctor may still wrap up briefly on their side.",
+      backToDashboard: "Back to dashboard",
+      reviewTitle: "How was your consultation?",
+      reviewDescription:
+        "Your feedback helps other patients choose the right doctor and helps us improve care.",
+      loadingReview: "Checking if you can leave a review…",
+      reviewLoadError: "Could not load review options.",
+    },
+  },
   onboarding: {
-    joiningAs: "I am joining as",
-    patient: "Patient",
-    patientDesc: "Online consults, Sunday Free Consult & in-house care",
-    doctor: "Doctor",
-    doctorDesc: "Online & Sunday consultations (requires verification)",
-    nurse: "Nurse",
-    nurseDesc: "In-house medical & nursing services",
     city: "City",
     language: "Language",
     submit: "Continue",
@@ -557,6 +589,7 @@ export const en = {
     header: {
       patientAccount: "Patient account",
       doctorAccount: "Doctor account",
+      nurseAccount: "Nurse account",
       adminAccount: "Admin account",
       myDashboard: "My dashboard",
       signOut: "Sign out",
@@ -565,6 +598,32 @@ export const en = {
     },
     upcomingAppointments: "Upcoming appointments",
     noAppointments: "None scheduled yet.",
+    appointmentHistory: {
+      title: "Appointment history",
+      empty: "No past appointments yet. Completed and earlier consults will appear here.",
+      missed: "Missed appointment",
+      status: {
+        confirmed: "Confirmed",
+        in_progress: "In progress",
+        completed: "Completed",
+        no_show: "No show",
+        cancelled: "Cancelled",
+        pending: "Pending payment",
+      },
+      review: {
+        rateVisit: "Rate your visit",
+        yourRating: "Your rating",
+        ratingLabel: "How was your consultation?",
+        commentLabel: "Share your experience",
+        commentPlaceholder: "What went well? Anything we should improve?",
+        submit: "Submit review",
+        submitting: "Submitting…",
+        submitError: "Could not submit your review. Please try again.",
+        thankYou: "Thank you for your feedback!",
+        optional: "optional",
+        cancel: "Cancel",
+      },
+    },
     sundayConsult: "Sunday Free Consult",
     sundayConsultDesc:
       "Free 10-minute video call with a verified doctor on {date} — Rs. 0, from home.",
@@ -662,6 +721,51 @@ export const en = {
     doctorNewChatEmpty: "No paid-consult patients found.",
     doctorSelectChatDescription:
       "Select a patient from your paid consultations. Sunday free consults do not include chat.",
+    assistantName: "ZindagiCare Assistant",
+  },
+  intake: {
+    pageTitle: "Medical history",
+    pageDescription:
+      "Answer these questions before your consultation so your doctor can prepare and your visit stays focused.",
+    formTitle: "Pre-consult medical history",
+    formSubtitle: "Your answers are shared only with your doctor.",
+    loading: "Loading your medical history form…",
+    notFound: "No medical history form was found for this appointment.",
+    optionalHint:
+      "Answer as many questions as you can. You may leave a question blank if it does not apply.",
+    answerPlaceholder: "Type your answer…",
+    submit: "Submit medical history",
+    submitting: "Submitting…",
+    submitError: "Could not submit your answers. Please try again.",
+    completedTitle: "Medical history submitted",
+    completedDescription:
+      "Thank you! Your doctor will review your answers before the consultation.",
+    backToDashboard: "Back to dashboard",
+    ctaPending: "Complete your medical history",
+    ctaCompleted: "Medical history completed",
+    statusCompleted: "Completed",
+    statusPending: "Pending",
+    doctorSummaryTitle: "Pre-consult medical history",
+    doctorSummaryPending: "The patient has not completed their medical history yet.",
+    doctorSummaryEmpty: "No answer provided",
+    viewHistory: "View medical history",
+    hideHistory: "Hide medical history",
+    editor: {
+      title: "Intake questions",
+      subtitle:
+        "Customize the medical history questions patients answer after booking an appointment with you.",
+      defaultNote: "Currently using the standard question set.",
+      customNote: "Using your customized question set.",
+      questionPlaceholder: "Type the question…",
+      addQuestion: "Add question",
+      removeQuestion: "Remove",
+      activeLabel: "Active",
+      save: "Save questions",
+      saving: "Saving…",
+      saveSuccess: "Questions saved. They will apply to future bookings.",
+      saveError: "Could not save questions. Please try again.",
+      resetToDefaults: "Reset to defaults",
+    },
   },
 };
 

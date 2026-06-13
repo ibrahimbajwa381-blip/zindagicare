@@ -1,4 +1,5 @@
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -14,19 +15,26 @@ const familyMemberSchema = new Schema(
       index: true,
     },
     memberUserId: { type: Schema.Types.ObjectId, ref: "User", sparse: true },
-    name: { type: String, required: true, trim: true },
+    name: { type: String, required: true },
     relation: {
       type: String,
       enum: ["spouse", "child", "parent", "sibling", "other"],
       required: true,
     },
-    dateOfBirth: { type: Date },
+    dateOfBirth: { type: Schema.Types.Mixed },
     gender: { type: String, enum: ["male", "female", "other"] },
     canBookOnBehalf: { type: Boolean, default: true },
     deletedAt: { type: Date },
   },
   { timestamps: true },
 );
+
+applyFieldEncryption(familyMemberSchema, {
+  fields: [
+    { path: "name", kind: "string" },
+    { path: "dateOfBirth", kind: "date" },
+  ],
+});
 
 familyMemberSchema.index({ headUserId: 1, name: 1 });
 

@@ -14,8 +14,10 @@ import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-ima
 import { SlotPicker } from "@/features/sunday-consult/components/slot-picker";
 import { siteConfig } from "@/config/site";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import { getConsultSlotDateKey } from "@/lib/consult/slot-utils";
 import { formatKarachiDate } from "@/lib/format/datetime";
 import { useMounted } from "@/hooks/use-mounted";
+import { useLocale } from "@/i18n/locale-provider";
 
 type Step = "choose" | "review" | "pay";
 
@@ -46,6 +48,7 @@ function DoctorAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string })
 
 export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   const mounted = useMounted();
+  const { locale } = useLocale();
   const { status } = useSession();
   const [slots, setSlots] = useState<
     { slotId: string; startAt: string; endAt: string; status: string }[]
@@ -75,7 +78,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   const dateKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const slot of slots) {
-      keys.add(slot.startAt.slice(0, 10));
+      keys.add(getConsultSlotDateKey(slot.slotId));
     }
     return [...keys].sort();
   }, [slots]);
@@ -87,7 +90,10 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   }, [dateKeys, selectedDateKey]);
 
   const slotsForSelectedDate = useMemo(
-    () => slots.filter((s) => s.startAt.startsWith(selectedDateKey ?? "")),
+    () =>
+      slots.filter(
+        (s) => getConsultSlotDateKey(s.slotId) === (selectedDateKey ?? ""),
+      ),
     [slots, selectedDateKey],
   );
 
@@ -117,6 +123,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
           doctorId: doctor.doctorId,
           slotId: selectedSlotId,
           patientNotes: patientNotes.trim() || undefined,
+          locale,
         }),
       });
       const json = await res.json();

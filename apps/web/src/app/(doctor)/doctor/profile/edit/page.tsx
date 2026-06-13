@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
 import { DoctorProfileEditForm } from "@/features/doctor/components/doctor-profile-edit-form";
+import { DoctorIntakeQuestionsEditor } from "@/features/intake/components/doctor-intake-questions-editor";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +36,9 @@ export default async function DoctorProfileEditPage() {
       />
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <DoctorProfileEditForm profile={profile} />
+      </div>
+      <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+        <DoctorIntakeQuestionsEditor />
       </div>
     </>
   );

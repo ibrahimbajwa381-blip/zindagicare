@@ -1,7 +1,5 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { PageShell } from "@/components/layout/page-shell";
-import { PageTitle } from "@/components/layout/page-title";
 import { ChatApp } from "@/features/chat/components/chat-app";
 import { getLocale } from "@/i18n/server";
 import { getDictionary } from "@/i18n";
@@ -23,14 +21,18 @@ export default async function PatientMessagesPage({ searchParams }: PageProps) {
   const t = getDictionary(locale);
 
   return (
-    <PageShell variant="brand" spacing="default" flipBlur>
-      <PageTitle
-        eyebrow={t.dashboard.nav.messages}
-        title={t.chat.pageTitle}
-        description={t.chat.pageDescription}
-      />
-      <div className="mt-6">
+    <div className="fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col overflow-hidden bg-gradient-to-br from-brand-muted/40 via-white to-accent-muted/30 sm:top-[4.75rem]">
+      <div className="shrink-0 border-b border-brand-light/25 bg-white/80 px-4 py-3 backdrop-blur-sm sm:px-8">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand-dark/80">
+          {t.dashboard.nav.messages}
+        </p>
+        <h1 className="font-display text-lg font-semibold text-foreground sm:text-xl">
+          {t.chat.pageTitle}
+        </h1>
+      </div>
+      <div className="min-h-0 flex-1">
         <ChatApp
+          fillViewport
           currentUserId={session.user.id}
           initialParticipantId={doctorId}
           copy={{
@@ -49,6 +51,6 @@ export default async function PatientMessagesPage({ searchParams }: PageProps) {
           }}
         />
       </div>
-    </PageShell>
+    </div>
   );
 }

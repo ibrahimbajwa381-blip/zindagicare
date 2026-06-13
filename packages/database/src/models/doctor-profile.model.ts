@@ -1,5 +1,6 @@
 import { VerificationStatuses, type VerificationStatus } from "@zindagi/shared";
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
 
@@ -59,8 +60,22 @@ const doctorProfileSchema = new Schema(
         endTimeLocal: { type: String, required: true },
       },
     ],
+    /** Pre-consult intake questions; empty/absent means use DEFAULT_INTAKE_QUESTIONS. */
+    intakeQuestions: [
+      {
+        _id: false,
+        id: { type: String, required: true },
+        text: { type: String, required: true, maxlength: 300 },
+        order: { type: Number, required: true, min: 0 },
+        isActive: { type: Boolean, default: true },
+      },
+    ],
     coverageCities: { type: [String], default: ["Lahore"] },
     homeVisitEnabled: { type: Boolean, default: false },
+    homeVisitLocation: {
+      area: String,
+      geo: geoPointSchema,
+    },
     homeVisitFee: { type: Number, default: 0, min: 0 },
     verificationStatus: {
       type: String,
@@ -77,6 +92,27 @@ const doctorProfileSchema = new Schema(
   },
   { timestamps: true },
 );
+
+applyFieldEncryption(doctorProfileSchema, {
+  fields: [
+    { path: "pmdcNumber", kind: "string" },
+    { path: "medicalDegree", kind: "string" },
+    { path: "medicalCollege", kind: "string" },
+    { path: "bio", kind: "string" },
+    {
+      path: "hospitals",
+      kind: "nestedArray",
+      subFields: ["name", "address"],
+    },
+    {
+      path: "intakeQuestions",
+      kind: "nestedArray",
+      subFields: ["text"],
+    },
+    { path: "rejectionReason", kind: "string" },
+    { path: "homeVisitLocation.area", kind: "string" },
+  ],
+});
 
 // MongoDB cannot compound-index two array fields (specialties + hospitals).
 doctorProfileSchema.index({ specialties: 1, isListed: 1 });

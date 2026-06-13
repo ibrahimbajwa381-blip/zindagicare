@@ -1,7 +1,8 @@
 import { connectDatabase, NotificationModel, UserModel } from "@zindagi/database";
-import { AppError, NotificationChannels, Roles } from "@zindagi/shared";
+import { AppError, NotificationChannels, Roles, emailLookupHash } from "@zindagi/shared";
 import type { z } from "zod";
 import type { adminSendNotificationSchema } from "@zindagi/validators";
+import { mongoFilter } from "@/lib/mongo/query";
 
 type SendInput = z.infer<typeof adminSendNotificationSchema>;
 
@@ -94,6 +95,72 @@ export async function adminSendNotification(input: SendInput) {
   return results;
 }
 
+export type UserNotificationDto = {
+  id: string;
+  title: string;
+  body: string;
+  readAt?: string;
+  createdAt: string;
+  payload?: Record<string, unknown>;
+};
+
+export async function getNotificationSummary(userId: string) {
+  await connectDatabase();
+  const unreadCount = await NotificationModel.countDocuments({
+    userId,
+    channel: NotificationChannels.IN_APP,
+    readAt: null,
+  });
+  return { unreadCount };
+}
+
+export async function listUserNotifications(
+  userId: string,
+  limit = 8,
+): Promise<UserNotificationDto[]> {
+  await connectDatabase();
+  const docs = await NotificationModel.find({
+    userId,
+    channel: NotificationChannels.IN_APP,
+  })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  return docs.map((doc) => ({
+    id: doc._id.toString(),
+    title: doc.title,
+    body: doc.body,
+    readAt: doc.readAt ? doc.readAt.toISOString() : undefined,
+    createdAt: (doc.createdAt ?? doc.sentAt ?? new Date()).toISOString(),
+    payload: (doc.payload as Record<string, unknown> | undefined) ?? {},
+  }));
+}
+
+export async function markNotificationRead(userId: string, notificationId: string) {
+  await connectDatabase();
+  const updated = await NotificationModel.findOneAndUpdate(
+    mongoFilter({ _id: notificationId, userId }),
+    { readAt: new Date() },
+    { new: true },
+  ).lean();
+
+  if (!updated) {
+    throw new AppError("Notification not found", "NOT_FOUND", 404);
+  }
+
+  return { id: updated._id.toString() };
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  await connectDatabase();
+  await NotificationModel.updateMany(
+    { userId, channel: NotificationChannels.IN_APP, readAt: null },
+    { readAt: new Date() },
+  );
+  return { success: true };
+}
+
 export async function bootstrapAdminUser(input: {
   email: string;
   password: string;
@@ -102,7 +169,7 @@ export async function bootstrapAdminUser(input: {
   await connectDatabase();
   const email = input.email.toLowerCase();
 
-  let user = await UserModel.findOne({ email }).select("+passwordHash");
+  let user = await UserModel.findOne({ emailLookup: emailLookupHash(email) }).select("+passwordHash");
 
   if (user) {
     if (!user.roles.includes(Roles.ADMIN)) {
@@ -124,7 +191,7 @@ export async function bootstrapAdminUser(input: {
     name: input.name,
     email,
     passwordHash,
-    roles: [Roles.ADMIN, Roles.PATIENT],
+    roles: [Roles.ADMIN],
     authProviders: ["credentials"],
     emailVerified: new Date(),
     onboardingCompleted: true,

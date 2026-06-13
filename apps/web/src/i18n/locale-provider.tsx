@@ -28,6 +28,15 @@ type LocaleContextValue = {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
+function fallbackLocaleValue(): LocaleContextValue {
+  return {
+    locale: DEFAULT_LOCALE,
+    dictionary: getDictionary(DEFAULT_LOCALE),
+    setLocale: () => {},
+    isPending: false,
+  };
+}
+
 type LocaleProviderProps = {
   initialLocale: Locale;
   children: React.ReactNode;
@@ -82,10 +91,7 @@ export function LocaleProvider({ initialLocale, children }: LocaleProviderProps)
 
 export function useLocale() {
   const ctx = useContext(LocaleContext);
-  if (!ctx) {
-    throw new Error("useLocale must be used within LocaleProvider");
-  }
-  return ctx;
+  return ctx ?? fallbackLocaleValue();
 }
 
 export function useTranslations() {

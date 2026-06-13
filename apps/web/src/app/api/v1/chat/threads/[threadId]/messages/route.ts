@@ -31,7 +31,12 @@ export async function POST(req: Request, { params }: Params) {
 
   const handler = withApiHandler<SendChatMessageInput>(
     async ({ session, body }) => {
-      return ChatService.sendMessage(threadId, session!.user!.id, body.body);
+      return ChatService.sendMessage(
+        threadId,
+        session!.user!.id,
+        body.body,
+        body.locale,
+      );
     },
     { auth: true, bodySchema: sendChatMessageSchema },
   );

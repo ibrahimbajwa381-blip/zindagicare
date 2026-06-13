@@ -13,9 +13,11 @@ import {
   ErrorCodes,
   AppointmentStatuses,
   AppointmentTypes,
+  IntakeSources,
   SlotStatuses,
   SUNDAY_CONSULT_CONFIG,
 } from "@zindagi/shared";
+import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import {
   canBookNow,
   formatSundayDateKey,
@@ -25,6 +27,7 @@ import {
 } from "@/lib/sunday/date-utils";
 import { publishSundayEvent } from "@/lib/realtime/sunday-emitter";
 import { sendBookingConfirmation } from "@/lib/notifications/sunday-reminders";
+import { sendDoctorConsultBooked } from "@/lib/notifications/consult-notifications";
 import { isSundayConsultGloballyEnabled } from "./system-settings.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
@@ -375,6 +378,7 @@ export class SundayConsultService {
     slotId: string,
     holdToken: string,
     patientNotes?: string,
+    locale?: "en" | "ur",
   ): Promise<SundayConfirmBookingResult> {
     await SundayConsultService.ensureConnected();
 
@@ -442,6 +446,14 @@ export class SundayConsultService {
       },
     );
 
+    // Sunday consults have no chat, so the medical history is collected
+    // through the intake form instead.
+    await MedicalIntakeService.createForAppointment(
+      result.appointmentId,
+      IntakeSources.FORM,
+      locale,
+    );
+
     const patient = await UserModel.findById(patientId).lean();
     await sendBookingConfirmation({
       userId: patientId,
@@ -449,6 +461,22 @@ export class SundayConsultService {
       doctorName: doctorUser?.name ?? "Doctor",
       slotStart: slot.startAt,
     });
+
+    if (doctor?.userId) {
+      const doctorUserId =
+        typeof doctor.userId === "object" && "_id" in doctor.userId
+          ? doctor.userId._id.toString()
+          : doctor.userId.toString();
+
+      await sendDoctorConsultBooked({
+        userId: doctorUserId,
+        phone: doctorUser?.phone ?? undefined,
+        patientName: patient?.name ?? "Patient",
+        slotStart: slot.startAt,
+        appointmentId: result.appointmentId,
+        type: "sunday_free",
+      });
+    }
 
     const key = formatSundayDateKey(instance.sundayDate);
     publishSundayEvent({
@@ -672,19 +700,26 @@ export class SundayConsultService {
     dateKey?: string,
   ): Promise<SundayPatientBookingDto | null> {
     await SundayConsultService.ensureConnected();
-    const sundayDate = dateKey
-      ? parseSundayDateKey(dateKey)
-      : getNextSundayDate();
-    const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const graceAfterEndMs = 2 * 60 * 60 * 1000;
 
     const appointment = await AppointmentModel.findOne(
       mongoFilter({
         patientId,
         type: AppointmentTypes.SUNDAY_FREE,
-        scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
         status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+        scheduledEnd: { $gte: new Date(now.getTime() - graceAfterEndMs) },
+        ...(dateKey
+          ? {
+              scheduledStart: {
+                $gte: parseSundayDateKey(dateKey),
+                $lt: new Date(parseSundayDateKey(dateKey).getTime() + 24 * 60 * 60 * 1000),
+              },
+            }
+          : {}),
       }),
     )
+      .sort({ scheduledStart: -1 })
       .populate({
         path: "doctorId",
         select: "specialties pmdcVerified ratingAvg ratingCount",

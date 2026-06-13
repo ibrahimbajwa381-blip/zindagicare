@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight, Pencil } from "lucide-react";
 import { VerificationStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DoctorAvatar } from "@/features/doctor/components/doctor-avatar";
-import { DOCTOR_WORKSPACE_ACTIONS } from "@/features/doctor/data/doctor-workspace-nav";
+import { DoctorEarningsSummaryCard } from "@/features/doctor/components/doctor-earnings-panel";
+import { DOCTOR_OVERVIEW_ACTIONS } from "@/features/doctor/data/doctor-workspace-nav";
 import { formatDayOfWeek, type DoctorProfileDto } from "@/features/doctor/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
@@ -13,7 +13,6 @@ import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.
 type Props = {
   profile: DoctorProfileDto;
   summary: DoctorDashboardSummary;
-  messagesPanel?: ReactNode;
 };
 
 const accentByHref: Record<string, string> = {
@@ -31,7 +30,7 @@ function formatTime12h(time: string): string {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-export function DoctorProfileOverview({ profile, summary, messagesPanel }: Props) {
+export function DoctorProfileOverview({ profile, summary }: Props) {
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
   const isPending = profile.verificationStatus === VerificationStatuses.PENDING;
   const specialty = profile.specialties.join(", ") || "General physician";
@@ -78,7 +77,7 @@ export function DoctorProfileOverview({ profile, summary, messagesPanel }: Props
               )}
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
                 {isApproved
-                  ? "Manage consultations, message patients from paid bookings, and track home visits from your workspace."
+                  ? "Manage consultations, track earnings, and handle home visits from your workspace."
                   : "Your full workspace unlocks once an admin reviews and approves your application."}
               </p>
             </div>
@@ -106,52 +105,58 @@ export function DoctorProfileOverview({ profile, summary, messagesPanel }: Props
       </div>
 
       {isApproved && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {DOCTOR_WORKSPACE_ACTIONS.map((action) => {
-            const Icon = action.icon;
-            const summaryKey =
-              action.badgeKey === "homeVisits"
-                ? "homeVisitRequests"
-                : action.badgeKey === "messages"
-                  ? null
-                  : action.badgeKey;
-            const count =
-              summaryKey && summaryKey in summary
-                ? summary[summaryKey as keyof DoctorDashboardSummary]
-                : null;
-            const accent = accentByHref[action.href] ?? "text-brand bg-brand/10 border-brand/20";
-            return (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl border ${accent}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  {typeof count === "number" && count > 0 && (
-                    <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">
-                      {count}
+        <>
+          <DoctorEarningsSummaryCard
+            totalEarnings={summary.totalEarnings}
+            earningsThisMonth={summary.earningsThisMonth}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {DOCTOR_OVERVIEW_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              const summaryKey =
+                action.badgeKey === "homeVisits"
+                  ? "homeVisitRequests"
+                  : action.badgeKey === "messages"
+                    ? null
+                    : action.badgeKey;
+              const count =
+                summaryKey && summaryKey in summary
+                  ? summary[summaryKey as keyof DoctorDashboardSummary]
+                  : null;
+              const accent = accentByHref[action.href] ?? "text-brand bg-brand/10 border-brand/20";
+              return (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl border ${accent}`}
+                    >
+                      <Icon className="h-5 w-5" />
                     </span>
-                  )}
-                </div>
-                <p className="mt-3 font-semibold text-slate-900">{action.label}</p>
-                <p className="mt-1 text-xs text-slate-500">{action.description}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand opacity-0 transition group-hover:opacity-100">
-                  Open
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+                    {typeof count === "number" && count > 0 && (
+                      <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">
+                        {count}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-3 font-semibold text-slate-900">{action.label}</p>
+                  <p className="mt-1 text-xs text-slate-500">{action.description}</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand opacity-0 transition group-hover:opacity-100">
+                    Open
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="space-y-6">
           {profile.bio && (
             <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -213,20 +218,6 @@ export function DoctorProfileOverview({ profile, summary, messagesPanel }: Props
               </ul>
             </section>
           )}
-        </div>
-
-        {isApproved && messagesPanel && (
-          <section className="lg:col-span-3">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">Patient messages</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Secure chat with patients from completed paid consultations. Sunday free
-                consult patients cannot be messaged here.
-              </p>
-            </div>
-            {messagesPanel}
-          </section>
-        )}
       </div>
     </div>
   );

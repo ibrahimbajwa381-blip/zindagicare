@@ -16,6 +16,8 @@ export type AppointmentConfirmationDetails = {
   scheduledEnd: string;
   consultationFee?: number;
   type?: "sunday" | "online";
+  /** Enables the "complete your medical history" CTA for Sunday bookings. */
+  appointmentId?: string;
 };
 
 type Props = {
@@ -137,13 +139,25 @@ export function AppointmentConfirmationModal({ open, onOpenChange, details }: Pr
           </div>
 
           <div className="flex flex-col gap-2 border-t border-slate-100 px-6 py-4 sm:flex-row">
-            <Button
-              asChild
-              className="flex-1 bg-brand text-white hover:bg-brand-dark"
-              onClick={() => onOpenChange(false)}
-            >
-              <Link href={siteConfig.links.dashboard}>{copy.viewDashboard}</Link>
-            </Button>
+            {isSunday && details.appointmentId ? (
+              <Button
+                asChild
+                className="flex-1 bg-brand text-white hover:bg-brand-dark"
+                onClick={() => onOpenChange(false)}
+              >
+                <Link href={`/intake/${details.appointmentId}`}>
+                  {t.intake.ctaPending}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                className="flex-1 bg-brand text-white hover:bg-brand-dark"
+                onClick={() => onOpenChange(false)}
+              >
+                <Link href={siteConfig.links.dashboard}>{copy.viewDashboard}</Link>
+              </Button>
+            )}
             <Button
               variant="outline"
               className="flex-1"

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { ChatMessageDto, ChatThreadDto } from "@/features/chat/types";
+import { useLocale } from "@/i18n/locale-provider";
 import { ChatAvatar } from "./chat-avatar";
 import { ChatComposer } from "./chat-composer";
 import { ChatMessageBubble } from "./chat-message-bubble";
@@ -11,6 +12,7 @@ import {
   markThreadRead,
   sendMessage,
 } from "@/features/chat/lib/chat-api";
+import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
 
 type ChatConversationProps = {
   thread: ChatThreadDto;
@@ -19,9 +21,11 @@ type ChatConversationProps = {
   loadingMessages: boolean;
   onBack?: () => void;
   onMessageSent: (message: ChatMessageDto) => void;
+  onThreadRead?: (threadId: string) => void;
   onMessagesLoaded: (messages: ChatMessageDto[], hasMore: boolean, prepend?: boolean) => void;
   placeholder: string;
   backLabel: string;
+  isDoctorView?: boolean;
 };
 
 export function ChatConversation({
@@ -31,22 +35,30 @@ export function ChatConversation({
   loadingMessages,
   onBack,
   onMessageSent,
+  onThreadRead,
   onMessagesLoaded,
   placeholder,
   backLabel,
+  isDoctorView = false,
 }: ChatConversationProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const { locale } = useLocale();
   const listRef = useRef<HTMLDivElement>(null);
   const loadingOlderRef = useRef(false);
   const { otherParticipant } = thread;
 
+  // Scroll only the message list, never the page: scrollIntoView would also
+  // scroll the window down to the footer whenever a message is added.
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    bottomRef.current?.scrollIntoView({ behavior });
+    const list = listRef.current;
+    if (!list) return;
+    list.scrollTo({ top: list.scrollHeight, behavior });
   }, []);
 
   useEffect(() => {
-    void markThreadRead(thread.id);
-  }, [thread.id, messages.length]);
+    void markThreadRead(thread.id).then(() => {
+      onThreadRead?.(thread.id);
+    });
+  }, [thread.id, messages.length, onThreadRead]);
 
   useEffect(() => {
     scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
@@ -65,14 +77,14 @@ export function ChatConversation({
   }
 
   async function handleSend(body: string) {
-    const message = await sendMessage(thread.id, body);
+    const message = await sendMessage(thread.id, body, locale);
     onMessageSent(message);
     scrollToBottom();
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#e5ddd5]">
-      <header className="flex items-center gap-3 border-b border-slate-200 bg-[#f0f2f5] px-3 py-3 sm:px-4">
+    <div className="flex h-full min-h-0 flex-col bg-[#e5ddd5]">
+      <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-[#f0f2f5] px-3 py-3 sm:px-4">
         {onBack && (
           <button
             type="button"
@@ -97,9 +109,15 @@ export function ChatConversation({
         </div>
       </header>
 
+      {isDoctorView && thread.appointmentId && (
+        <div className="shrink-0 border-b border-slate-200 bg-[#f0f2f5] px-3 pb-2 sm:px-4">
+          <DoctorIntakeSummary appointmentId={thread.appointmentId} />
+        </div>
+      )}
+
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto px-3 py-4 sm:px-6"
+        className="chat-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6"
         style={{
           backgroundImage:
             "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.35) 0, transparent 45%), radial-gradient(circle at 80% 0%, rgba(15,167,155,0.08) 0, transparent 40%)",
@@ -122,7 +140,6 @@ export function ChatConversation({
             {messages.map((message) => (
               <ChatMessageBubble key={message.id} message={message} />
             ))}
-            <div ref={bottomRef} />
           </div>
         )}
       </div>

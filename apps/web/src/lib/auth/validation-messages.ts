@@ -20,6 +20,8 @@ export function authValidationMessage(
       return v.email;
     case "name":
       return v.name;
+    case "city":
+      return v.city;
     case "code":
       return v.otp;
     default:

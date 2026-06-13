@@ -12,6 +12,7 @@ export const confirmBookingSchema = z.object({
   slotId: z.string().min(1),
   holdToken: z.string().min(1),
   patientNotes: z.string().max(500).optional(),
+  locale: z.enum(["en", "ur"]).optional(),
 });
 
 export const releaseHoldSchema = z.object({

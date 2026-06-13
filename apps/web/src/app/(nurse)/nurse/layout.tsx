@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
-import { Roles } from "@zindagi/shared";
+import { Roles, VerificationStatuses } from "@zindagi/shared";
 import { redirect } from "next/navigation";
-import { AppHeader } from "@/components/layout/app-header";
+import { connectDatabase, StaffProfileModel } from "@zindagi/database";
+import { NurseShell } from "@/features/nurse/components/nurse-shell";
+import { mongoFilter } from "@/lib/mongo/query";
 
 export default async function NurseLayout({
   children,
@@ -9,19 +11,26 @@ export default async function NurseLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/nurse/visits");
+  if (!session?.user) redirect("/login?callbackUrl=/nurse");
 
   const roles = session.user.roles ?? [];
   if (!roles.includes(Roles.NURSE)) {
     redirect("/dashboard");
   }
 
+  await connectDatabase();
+  const staffProfile = await StaffProfileModel.findOne(
+    mongoFilter({ userId: session.user.id, staffType: Roles.NURSE }),
+  )
+    .select("verificationStatus")
+    .lean();
+
+  const showFullNav =
+    staffProfile?.verificationStatus === VerificationStatuses.APPROVED;
+
   return (
-    <>
-      <AppHeader
-        links={[{ href: "/nurse/visits", label: "My visits" }]}
-      />
-      <main className="flex-1">{children}</main>
-    </>
+    <NurseShell showFullNav={showFullNav}>
+      {children}
+    </NurseShell>
   );
 }

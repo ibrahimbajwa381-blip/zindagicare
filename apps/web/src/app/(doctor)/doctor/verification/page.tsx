@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { AUTH_ROUTES } from "@/lib/auth/routes";
 import { VerificationStatuses } from "@zindagi/shared";
 import { redirect } from "next/navigation";
 import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
@@ -11,7 +12,7 @@ export default async function DoctorVerificationPage() {
   const session = await auth();
 
   if (!session?.user) redirect("/login?callbackUrl=/doctor/verification");
-  if (!session.user.roles?.includes("doctor")) redirect("/onboarding");
+  if (!session.user.roles?.includes("doctor")) redirect(AUTH_ROUTES.registerDoctor);
 
   const status = session.user.doctorVerificationStatus;
   const isApproved = status === VerificationStatuses.APPROVED;

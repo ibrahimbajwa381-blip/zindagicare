@@ -20,7 +20,9 @@ export type ChatThreadDto = {
 export type ChatMessageDto = {
   id: string;
   threadId: string;
-  senderId: string;
+  /** Absent for system (assistant) messages. */
+  senderId?: string;
+  kind?: "user" | "system";
   body: string;
   createdAt: string;
   isMine: boolean;

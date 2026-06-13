@@ -5,6 +5,7 @@ export type ChatRealtimeEvent = {
   threadId: string;
   messageId?: string;
   senderId?: string;
+  kind?: "user" | "system";
   body?: string;
   createdAt?: string;
   lastMessagePreview?: string;

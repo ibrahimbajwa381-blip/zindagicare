@@ -1,9 +1,10 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { DoctorProfileModel, UserModel, connectDatabase } from "@zindagi/database";
+import { DoctorProfileModel, connectDatabase } from "@zindagi/database";
 import { VerificationStatuses } from "@zindagi/shared";
 import { DoctorShell } from "@/features/doctor/components/doctor-shell";
 import { mongoFilter } from "@/lib/mongo/query";
+import { AppointmentReminderService } from "@/server/services/appointment-reminder.service";
 
 export default async function DoctorLayout({
   children,
@@ -17,28 +18,26 @@ export default async function DoctorLayout({
   }
 
   await connectDatabase();
-  const [user, doctorProfile] = await Promise.all([
-    UserModel.findById(session.user.id).select("name email avatarUrl").lean(),
-    DoctorProfileModel.findOne(mongoFilter({ userId: session.user.id }))
-      .select("slug verificationStatus")
-      .lean(),
-  ]);
+  const doctorProfile = await DoctorProfileModel.findOne(
+    mongoFilter({ userId: session.user.id }),
+  )
+    .select("slug verificationStatus")
+    .lean();
 
   const verificationStatus =
     doctorProfile?.verificationStatus ?? session.user.doctorVerificationStatus;
 
   const showFullNav = verificationStatus === VerificationStatuses.APPROVED;
 
+  if (showFullNav) {
+    void AppointmentReminderService.processDueReminders().catch(() => null);
+  }
+
   return (
     <DoctorShell
       showFullNav={showFullNav}
       verificationStatus={verificationStatus}
       doctorSlug={doctorProfile?.slug}
-      user={{
-        name: user?.name ?? session.user.name,
-        email: user?.email ?? session.user.email,
-        avatarUrl: user?.avatarUrl,
-      }}
     >
       {children}
     </DoctorShell>

@@ -12,14 +12,5 @@ export default async function AdminLayout({
   if (!session?.user) redirect("/login?callbackUrl=/admin");
   if (!isAdmin(session.user.roles)) redirect("/dashboard");
 
-  return (
-    <AdminShell
-      user={{
-        name: session.user.name,
-        email: session.user.email,
-      }}
-    >
-      {children}
-    </AdminShell>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

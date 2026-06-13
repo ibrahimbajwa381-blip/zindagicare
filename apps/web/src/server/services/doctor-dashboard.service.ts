@@ -3,6 +3,7 @@ import {
   connectDatabase,
   DoctorProfileModel,
   HomeVisitModel,
+  PaymentModel,
   UserModel,
 } from "@zindagi/database";
 import {
@@ -11,10 +12,13 @@ import {
   AppointmentTypes,
   HomeVisitServiceTypes,
   HomeVisitStatuses,
+  PaymentStatuses,
   Roles,
+  VIDEO_CONSULT_CONFIG,
 } from "@zindagi/shared";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
-import { mongoFilter } from "@/lib/mongo/query";
+import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
+import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -29,11 +33,45 @@ const ACTIVE_HOME_VISIT_STATUSES = [
   HomeVisitStatuses.ARRIVED,
 ];
 
+/** Appointments still within the join / visit window (not only future starts). */
+function activeConsultRequestFilter(now = new Date()) {
+  const windowEnd = new Date(
+    now.getTime() - VIDEO_CONSULT_CONFIG.joinLateMinutes * 60_000,
+  );
+
+  return {
+    type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
+    status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+    $or: [
+      { scheduledEnd: { $gte: windowEnd } },
+      { status: AppointmentStatuses.IN_PROGRESS },
+    ],
+  };
+}
+
 export type DoctorDashboardSummary = {
   patients: number;
   pendingRequests: number;
   sundayQueue: number;
   homeVisitRequests: number;
+  totalEarnings: number;
+  earningsThisMonth: number;
+};
+
+export type DoctorEarningRow = {
+  id: string;
+  type: string;
+  completedAt: string;
+  amount: number;
+  currency: string;
+  patient: { id: string; name: string };
+};
+
+export type DoctorEarningsDetail = {
+  totalEarnings: number;
+  earningsThisMonth: number;
+  completedPaidConsults: number;
+  transactions: DoctorEarningRow[];
 };
 
 export type DoctorPatientRow = {
@@ -77,6 +115,60 @@ async function getDoctorProfileForUser(userId: string) {
   return { user, profile };
 }
 
+async function loadDoctorEarningsTotals(profileId: string) {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const completedAppts = await AppointmentModel.find(
+    mongoFilter({
+      doctorId: profileId,
+      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      status: AppointmentStatuses.COMPLETED,
+      paymentId: { $exists: true, $ne: null },
+    }),
+  )
+    .select("paymentId completedAt")
+    .lean();
+
+  const paymentIds = [
+    ...new Set(
+      completedAppts
+        .map((a) => a.paymentId?.toString())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  if (!paymentIds.length) {
+    return { totalEarnings: 0, earningsThisMonth: 0 };
+  }
+
+  const payments = await PaymentModel.find(
+    mongoFilter({ _id: { $in: mongoObjectIds(paymentIds) }, status: PaymentStatuses.PAID }),
+  )
+    .select("_id amount")
+    .lean();
+  const paymentAmounts = new Map(
+    payments.map((p) => [p._id.toString(), p.amount ?? 0]),
+  );
+
+  let totalEarnings = 0;
+  let earningsThisMonth = 0;
+
+  for (const appt of completedAppts) {
+    const paymentId = appt.paymentId?.toString();
+    if (!paymentId) continue;
+    const amount = paymentAmounts.get(paymentId) ?? 0;
+    if (!amount) continue;
+
+    totalEarnings += amount;
+    if (appt.completedAt && appt.completedAt >= startOfMonth) {
+      earningsThisMonth += amount;
+    }
+  }
+
+  return { totalEarnings, earningsThisMonth };
+}
+
 export async function getDoctorDashboardSummary(
   userId: string,
 ): Promise<DoctorDashboardSummary> {
@@ -84,19 +176,14 @@ export async function getDoctorDashboardSummary(
   const now = new Date();
   const sundayDate = getNextSundayDate();
   const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
-  const cities = profile.coverageCities?.length
-    ? profile.coverageCities
-    : ["Lahore"];
 
-  const [patientIds, pendingRequests, sundayQueue, homeVisitRequests] =
+  const [patientIds, pendingRequests, sundayQueue, homeVisitRequests, earnings] =
     await Promise.all([
       AppointmentModel.distinct("patientId", mongoFilter({ doctorId: profile._id })),
       AppointmentModel.countDocuments(
         mongoFilter({
           doctorId: profile._id,
-          type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
-          status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-          scheduledStart: { $gte: now },
+          ...activeConsultRequestFilter(now),
         }),
       ),
       AppointmentModel.countDocuments(
@@ -110,10 +197,11 @@ export async function getDoctorDashboardSummary(
       HomeVisitModel.countDocuments(
         mongoFilter({
           serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+          assignedStaffId: userId,
           status: { $in: ACTIVE_HOME_VISIT_STATUSES },
-          "address.city": { $in: cities },
         }),
       ),
+      loadDoctorEarningsTotals(profile._id.toString()),
     ]);
 
   return {
@@ -121,6 +209,89 @@ export async function getDoctorDashboardSummary(
     pendingRequests,
     sundayQueue,
     homeVisitRequests,
+    totalEarnings: earnings.totalEarnings,
+    earningsThisMonth: earnings.earningsThisMonth,
+  };
+}
+
+export async function getDoctorEarnings(userId: string): Promise<DoctorEarningsDetail> {
+  const { profile } = await getDoctorProfileForUser(userId);
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const completedAppts = await AppointmentModel.find(
+    mongoFilter({
+      doctorId: profile._id,
+      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      status: AppointmentStatuses.COMPLETED,
+      paymentId: { $exists: true, $ne: null },
+    }),
+  )
+    .populate("patientId", "name")
+    .sort({ completedAt: -1 })
+    .limit(100)
+    .lean();
+
+  const paymentIds = [
+    ...new Set(
+      completedAppts
+        .map((a) => a.paymentId?.toString())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const payments = paymentIds.length
+    ? await PaymentModel.find(
+        mongoFilter({ _id: { $in: mongoObjectIds(paymentIds) }, status: PaymentStatuses.PAID }),
+      )
+        .select("_id amount currency")
+        .lean()
+    : [];
+
+  const paymentMap = new Map(
+    payments.map((p) => [
+      p._id.toString(),
+      { amount: p.amount ?? 0, currency: p.currency ?? "PKR" },
+    ]),
+  );
+
+  let totalEarnings = 0;
+  let earningsThisMonth = 0;
+  const transactions: DoctorEarningRow[] = [];
+
+  for (const appt of completedAppts) {
+    const paymentId = appt.paymentId?.toString();
+    if (!paymentId) continue;
+    const payment = paymentMap.get(paymentId);
+    if (!payment?.amount) continue;
+
+    totalEarnings += payment.amount;
+    if (appt.completedAt && appt.completedAt >= startOfMonth) {
+      earningsThisMonth += payment.amount;
+    }
+
+    const patient = appt.patientId as
+      | { _id?: { toString(): string }; name?: string }
+      | null;
+
+    transactions.push({
+      id: appt._id.toString(),
+      type: appt.type,
+      completedAt: appt.completedAt?.toISOString() ?? appt.scheduledStart.toISOString(),
+      amount: payment.amount,
+      currency: payment.currency,
+      patient: {
+        id: patient?._id?.toString() ?? "",
+        name: safeDisplayText(patient?.name) ?? "Patient",
+      },
+    });
+  }
+
+  return {
+    totalEarnings,
+    earningsThisMonth,
+    completedPaidConsults: transactions.length,
+    transactions,
   };
 }
 
@@ -161,8 +332,8 @@ export async function listDoctorPatients(userId: string): Promise<DoctorPatientR
     const patient = patientMap.get(id);
     return {
       id,
-      name: patient?.name ?? "Patient",
-      phone: patient?.phone ?? undefined,
+      name: safeDisplayText(patient?.name) ?? "Patient",
+      phone: formatPhoneForDisplay(patient?.phone),
       lastVisitAt: row.lastVisitAt?.toISOString(),
       appointmentCount: row.appointmentCount,
     };
@@ -178,9 +349,7 @@ export async function listDoctorConsultRequests(
   const appointments = await AppointmentModel.find(
     mongoFilter({
       doctorId: profile._id,
-      type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
-      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-      scheduledStart: { $gte: now },
+      ...activeConsultRequestFilter(now),
     }),
   )
     .populate("patientId", "name phone")
@@ -200,8 +369,8 @@ export async function listDoctorConsultRequests(
       scheduledEnd: apt.scheduledEnd.toISOString(),
       patient: {
         id: patient?._id?.toString() ?? "",
-        name: patient?.name ?? "Patient",
-        phone: patient?.phone,
+        name: safeDisplayText(patient?.name) ?? "Patient",
+        phone: formatPhoneForDisplay(patient?.phone),
       },
       patientNotes: apt.patientNotes ?? undefined,
     };
@@ -234,14 +403,14 @@ export async function listDoctorHomeVisitRequests(
       status: visit.status,
       scheduledAt: visit.scheduledAt.toISOString(),
       address: {
-        line: visit.address?.line ?? "",
-        city: visit.address?.city ?? "",
+        line: safeDisplayText(visit.address?.line) ?? "",
+        city: safeDisplayText(visit.address?.city) ?? "",
       },
       patient: patient?._id
         ? {
             id: patient._id.toString(),
-            name: patient.name ?? "Patient",
-            phone: patient.phone,
+            name: safeDisplayText(patient.name) ?? "Patient",
+            phone: formatPhoneForDisplay(patient.phone),
           }
         : undefined,
       patientNotes: visit.patientNotes ?? undefined,

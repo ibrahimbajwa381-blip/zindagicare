@@ -23,6 +23,9 @@ export const authConfig = {
         token.doctorVerificationStatus = (
           user as { doctorVerificationStatus?: string }
         ).doctorVerificationStatus;
+        token.nurseVerificationStatus = (
+          user as { nurseVerificationStatus?: string }
+        ).nurseVerificationStatus;
       }
 
       if (trigger === "update" && session) {
@@ -30,6 +33,7 @@ export const authConfig = {
           roles?: string[];
           onboardingCompleted?: boolean;
           doctorVerificationStatus?: string;
+          nurseVerificationStatus?: string;
         };
         if (patch.roles) token.roles = patch.roles;
         if (typeof patch.onboardingCompleted === "boolean") {
@@ -37,6 +41,9 @@ export const authConfig = {
         }
         if (patch.doctorVerificationStatus) {
           token.doctorVerificationStatus = patch.doctorVerificationStatus;
+        }
+        if (patch.nurseVerificationStatus) {
+          token.nurseVerificationStatus = patch.nurseVerificationStatus;
         }
       }
 
@@ -49,6 +56,9 @@ export const authConfig = {
         session.user.onboardingCompleted =
           (token.onboardingCompleted as boolean) ?? false;
         session.user.doctorVerificationStatus = token.doctorVerificationStatus as
+          | string
+          | undefined;
+        session.user.nurseVerificationStatus = token.nurseVerificationStatus as
           | string
           | undefined;
       }

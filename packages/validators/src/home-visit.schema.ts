@@ -17,14 +17,16 @@ export const createHomeVisitSchema = z.object({
   scheduledAt: z.string().datetime({ offset: true }).or(z.string().min(1)),
   addressLine: z.string().min(5).max(300),
   city: z.string().default("Lahore"),
-  geo: geoSchema.optional(),
+  geo: geoSchema,
   patientNotes: z.string().max(1000).optional(),
-  autoAssign: z.boolean().default(true),
+  autoAssign: z.boolean().default(false),
 });
 
 export const assignHomeVisitSchema = z.object({
   staffId: z.string().min(1).optional(),
   auto: z.boolean().optional(),
+  /** Allow assigning staff outside the home-care match radius (admin only). */
+  override: z.boolean().optional(),
 });
 
 export const updateHomeVisitStatusSchema = z.object({

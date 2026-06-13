@@ -1,7 +1,9 @@
 "use client";
 
-import { cn } from "@zindagi/shared";
+import { Sparkles } from "lucide-react";
+import { cn, localizeIntakeSystemMessage, type IntakeLocale } from "@zindagi/shared";
 import type { ChatMessageDto } from "@/features/chat/types";
+import { useLocale, useTranslations } from "@/i18n/locale-provider";
 
 type ChatMessageBubbleProps = {
   message: ChatMessageDto;
@@ -13,8 +15,39 @@ function formatTime(iso: string) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function SystemMessageBubble({
+  message,
+  locale,
+}: {
+  message: ChatMessageDto;
+  locale: IntakeLocale;
+}) {
+  const t = useTranslations();
+  const displayBody = localizeIntakeSystemMessage(message.body, locale);
+
+  return (
+    <div className="flex w-full justify-center">
+      <div className="max-w-[88%] rounded-2xl border border-brand-light/40 bg-brand-muted/70 px-4 py-2.5 text-[14px] leading-snug text-slate-800 shadow-sm sm:max-w-[72%]">
+        <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-dark">
+          <Sparkles className="h-3 w-3" aria-hidden />
+          {t.chat.assistantName}
+        </p>
+        <p className="whitespace-pre-wrap break-words">{displayBody}</p>
+        <p className="mt-1 text-right text-[11px] text-slate-400">
+          {formatTime(message.createdAt)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbleProps) {
+  const { locale } = useLocale();
   const isMine = message.isMine;
+
+  if (message.kind === "system") {
+    return <SystemMessageBubble message={message} locale={locale} />;
+  }
 
   return (
     <div

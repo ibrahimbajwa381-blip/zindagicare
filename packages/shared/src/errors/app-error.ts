@@ -1,4 +1,4 @@
-export type AppErrorField = "email" | "phone" | "name" | "password";
+export type AppErrorField = "email" | "phone" | "name" | "password" | "city";
 
 export class AppError extends Error {
   constructor(

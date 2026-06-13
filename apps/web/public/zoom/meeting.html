@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>ZindagiCare — Patient &amp; Doctor consultation</title>
+    <link rel="stylesheet" href="https://source.zoom.us/3.12.0/css/bootstrap.css" />
+    <link rel="stylesheet" href="https://source.zoom.us/3.12.0/css/react-select.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0f172a;
+      }
+      #zmmtg-root {
+        width: 100%;
+        height: 100vh;
+      }
+      #loading {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #e2e8f0;
+        font-family: system-ui, sans-serif;
+        background: #0f172a;
+      }
+      #loading-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #f8fafc;
+        text-align: center;
+        max-width: 90%;
+      }
+      #loading-subtitle {
+        font-size: 14px;
+        color: #94a3b8;
+        text-align: center;
+      }
+      /* Hide Zoom Workplace branding inside embedded client */
+      .wr-brand,
+      .wr-logo,
+      .meeting-info-container .wr-brand,
+      .meeting-info-container .wr-logo,
+      [class*="workplace"],
+      [class*="Workplace"],
+      .zmicon-workplace,
+      .footer-brand,
+      .sdk-footer-brand {
+        display: none !important;
+        visibility: hidden !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">
+      <div id="loading-title">ZindagiCare — Patient &amp; Doctor consultation</div>
+      <div id="loading-subtitle">Connecting to your secure video room…</div>
+    </div>
+    <div id="zmmtg-root"></div>
+
+    <script src="https://source.zoom.us/3.12.0/lib/vendor/react.min.js"></script>
+    <script src="https://source.zoom.us/3.12.0/lib/vendor/react-dom.min.js"></script>
+    <script src="https://source.zoom.us/3.12.0/lib/vendor/redux.min.js"></script>
+    <script src="https://source.zoom.us/3.12.0/lib/vendor/redux-thunk.min.js"></script>
+    <script src="https://source.zoom.us/3.12.0/lib/vendor/lodash.min.js"></script>
+    <script src="https://source.zoom.us/zoom-meeting-3.12.0.min.js"></script>
+    <script>
+      (function () {
+        var ZOOM_VERSION = "3.12.0";
+        var DEFAULT_TITLE = "ZindagiCare — Patient & Doctor consultation";
+        var started = false;
+        var brandingObserver = null;
+
+        function hideLoading() {
+          var el = document.getElementById("loading");
+          if (el) el.style.display = "none";
+        }
+
+        function showError(message) {
+          hideLoading();
+          var el = document.getElementById("loading");
+          if (el) {
+            el.style.display = "flex";
+            document.getElementById("loading-title").textContent = "Could not join consultation";
+            document.getElementById("loading-subtitle").textContent =
+              message || "Please try again.";
+          }
+        }
+
+        function applyBranding() {
+          var selectors = [
+            ".wr-brand",
+            ".wr-logo",
+            "[class*='workplace']",
+            "[class*='Workplace']",
+            ".zmicon-workplace",
+            ".footer-brand",
+            ".sdk-footer-brand",
+          ];
+          selectors.forEach(function (sel) {
+            document.querySelectorAll(sel).forEach(function (node) {
+              node.style.display = "none";
+            });
+          });
+
+          document.querySelectorAll("*").forEach(function (node) {
+            if (node.children.length === 0 && node.textContent) {
+              var text = node.textContent.trim();
+              if (text === "Zoom Workplace" || text === "Zoom workspace") {
+                node.textContent = DEFAULT_TITLE;
+              }
+            }
+          });
+        }
+
+        function watchBranding() {
+          applyBranding();
+          if (brandingObserver) return;
+          brandingObserver = new MutationObserver(function () {
+            applyBranding();
+          });
+          brandingObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+          });
+        }
+
+        function joinMeeting(payload) {
+          if (started || !payload) return;
+          started = true;
+
+          var title = payload.meetingTitle || DEFAULT_TITLE;
+          document.getElementById("loading-title").textContent = title;
+          document.getElementById("loading-subtitle").textContent =
+            "Connecting to your secure video room…";
+          document.title = title;
+
+          if (typeof ZoomMtg === "undefined") {
+            showError("Video SDK failed to load.");
+            return;
+          }
+
+          ZoomMtg.setZoomJSLib("https://source.zoom.us/" + ZOOM_VERSION + "/lib", "/av");
+          ZoomMtg.preLoadWasm();
+          ZoomMtg.prepareWebSDK();
+
+          ZoomMtg.init({
+            leaveUrl: payload.leaveUrl,
+            patchJsMedia: true,
+            disableInvite: true,
+            disableZoomLogo: true,
+            showMeetingHeader: true,
+            meetingInfo: ["topic"],
+            success: function () {
+              ZoomMtg.join({
+                signature: payload.signature,
+                meetingNumber: payload.meetingNumber,
+                userName: payload.userName,
+                sdkKey: payload.sdkKey,
+                passWord: payload.passcode || "",
+                success: function () {
+                  hideLoading();
+                  watchBranding();
+                  window.parent.postMessage({ type: "zindagi-zoom-joined" }, window.location.origin);
+                },
+                error: function (err) {
+                  showError(err.reason || err.message || "Could not join meeting.");
+                  window.parent.postMessage(
+                    {
+                      type: "zindagi-zoom-error",
+                      message: err.reason || err.message || "Could not join meeting.",
+                    },
+                    window.location.origin,
+                  );
+                },
+              });
+            },
+            error: function (err) {
+              showError(err.reason || err.message || "Could not start video.");
+              window.parent.postMessage(
+                {
+                  type: "zindagi-zoom-error",
+                  message: err.reason || err.message || "Could not start video.",
+                },
+                window.location.origin,
+              );
+            },
+          });
+        }
+
+        window.addEventListener("message", function (event) {
+          if (event.origin !== window.location.origin) return;
+          if (event.data && event.data.type === "zindagi-zoom-join") {
+            joinMeeting(event.data.payload);
+          }
+        });
+
+        window.parent.postMessage({ type: "zindagi-zoom-ready" }, window.location.origin);
+      })();
+    </script>
+  </body>
+</html>

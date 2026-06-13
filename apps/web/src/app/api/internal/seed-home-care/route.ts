@@ -4,7 +4,7 @@ import {
   UserModel,
   StaffProfileModel,
 } from "@zindagi/database";
-import { Roles, VerificationStatuses, LAHORE_GEO } from "@zindagi/shared";
+import { Roles, VerificationStatuses, LAHORE_GEO, emailLookupHash } from "@zindagi/shared";
 
 /** Dev-only seed: demo nurses across Lahore for home care matching */
 export async function POST() {
@@ -26,7 +26,7 @@ export async function POST() {
     for (const demo of demos) {
       const email =
         demo.name.toLowerCase().replace(/\s+/g, ".") + "@nurse.zindagicare.pk";
-      let user = await UserModel.findOne({ email });
+      let user = await UserModel.findOne({ emailLookup: emailLookupHash(email) });
 
       if (!user) {
         user = await UserModel.create({

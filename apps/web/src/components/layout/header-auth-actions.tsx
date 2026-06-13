@@ -2,18 +2,9 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Roles } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
-import { AUTH_ROUTES } from "@/lib/auth/routes";
-
-function dashboardHref(roles?: string[]) {
-  if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorProfile;
-  if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
-    return AUTH_ROUTES.adminDoctors;
-  }
-  return siteConfig.links.dashboard;
-}
+import { dashboardHref } from "@/lib/nav/header-actions";
 
 type HeaderAuthActionsProps = {
   loginLabel: string;

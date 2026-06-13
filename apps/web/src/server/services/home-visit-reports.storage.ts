@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 
 const UPLOAD_ROOT = path.join(process.cwd(), ".uploads", "home-visit-reports");
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -34,7 +35,7 @@ export async function saveHomeVisitReport(
   const absolutePath = path.join(UPLOAD_ROOT, storageKey);
 
   await mkdir(path.dirname(absolutePath), { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const buffer = wrapEncryptedFile(Buffer.from(await file.arrayBuffer()));
   await writeFile(absolutePath, buffer);
 
   return {

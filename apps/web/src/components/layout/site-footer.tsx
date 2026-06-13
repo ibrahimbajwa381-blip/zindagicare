@@ -81,10 +81,25 @@ export function SiteFooter() {
             </ul>
           </div>
         </div>
-        <p className="mt-14 border-t border-white/10 pt-8 text-center text-xs text-white/45">
-          © <span suppressHydrationWarning>{new Date().getFullYear()}</span>{" "}
-          {t.site.name}. {t.site.rights}
-        </p>
+        <div className="mt-14 space-y-3 border-t border-white/10 pt-8 text-center text-xs text-white/45">
+          <p className="text-sm text-white/70">
+            {t.footer.productOfBefore}
+            {t.footer.productOfBefore ? " " : null}
+            <Link
+              href="https://techcognify.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white underline decoration-white/30 underline-offset-2 transition-colors hover:text-brand-lighter hover:decoration-brand-lighter"
+            >
+              {t.footer.productOfCompany}
+            </Link>
+            {t.footer.productOfAfter ? ` ${t.footer.productOfAfter}` : null}
+          </p>
+          <p>
+            © <span suppressHydrationWarning>{new Date().getFullYear()}</span>{" "}
+            {t.site.name}. {t.site.rights}
+          </p>
+        </div>
       </div>
     </footer>
   );

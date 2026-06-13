@@ -1,14 +1,17 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import { Roles, VerificationStatuses } from "@zindagi/shared";
+import { isStaff, Roles, VerificationStatuses } from "@zindagi/shared";
 import { authConfig } from "@/lib/auth/auth.config";
 import {
   AUTH_ROUTES,
   DOCTOR_VERIFICATION_EXEMPT_PREFIXES,
+  NURSE_VERIFICATION_EXEMPT_PREFIXES,
   isPublicPath,
   matchesPrefix,
+  isPatientDashboardPath,
   ONBOARDING_EXEMPT_PREFIXES,
   ROLE_ROUTE_RULES,
+  resolvePostAuthPath,
 } from "@/lib/auth/routes";
 
 const { auth } = NextAuth(authConfig);
@@ -35,25 +38,52 @@ export default auth((req) => {
     !user.onboardingCompleted &&
     !matchesPrefix(pathname, ONBOARDING_EXEMPT_PREFIXES)
   ) {
-    const onboarding = new URL(AUTH_ROUTES.onboarding, req.nextUrl.origin);
-    if (pathname !== onboarding.pathname) {
-      return NextResponse.redirect(onboarding);
+    const destination = resolvePostAuthPath(user);
+    const target = new URL(destination, req.nextUrl.origin);
+    if (pathname !== target.pathname) {
+      return NextResponse.redirect(target);
+    }
+  }
+
+  if (isPatientDashboardPath(pathname) && isStaff(roles)) {
+    const destination = resolvePostAuthPath(user);
+    if (pathname !== destination) {
+      return NextResponse.redirect(
+        new URL(destination, req.nextUrl.origin),
+      );
     }
   }
 
   const isDoctor = roles.includes(Roles.DOCTOR);
-  const doctorPending =
+  const doctorNeedsVerification =
     isDoctor &&
     user.doctorVerificationStatus &&
-    user.doctorVerificationStatus !== VerificationStatuses.APPROVED;
+    (user.doctorVerificationStatus === VerificationStatuses.PENDING ||
+      user.doctorVerificationStatus === VerificationStatuses.REJECTED);
 
   if (
-    doctorPending &&
+    doctorNeedsVerification &&
     pathname.startsWith("/doctor") &&
     !matchesPrefix(pathname, DOCTOR_VERIFICATION_EXEMPT_PREFIXES)
   ) {
     return NextResponse.redirect(
-      new URL(AUTH_ROUTES.doctorProfile, req.nextUrl.origin),
+      new URL(AUTH_ROUTES.doctorVerification, req.nextUrl.origin),
+    );
+  }
+
+  const isNurse = roles.includes(Roles.NURSE);
+  const nursePending =
+    isNurse &&
+    user.nurseVerificationStatus &&
+    user.nurseVerificationStatus !== VerificationStatuses.APPROVED;
+
+  if (
+    nursePending &&
+    pathname.startsWith("/nurse") &&
+    !matchesPrefix(pathname, NURSE_VERIFICATION_EXEMPT_PREFIXES)
+  ) {
+    return NextResponse.redirect(
+      new URL(AUTH_ROUTES.nurseVerification, req.nextUrl.origin),
     );
   }
 
@@ -62,7 +92,7 @@ export default auth((req) => {
       const allowed = rule.roles.some((r) => roles.includes(r));
       if (!allowed) {
         return NextResponse.redirect(
-          new URL(AUTH_ROUTES.patientDashboard, req.nextUrl.origin),
+          new URL(resolvePostAuthPath(user), req.nextUrl.origin),
         );
       }
     }
@@ -74,12 +104,14 @@ export default auth((req) => {
 export const config = {
   matcher: [
     "/consult/:path*",
+    "/dashboard",
     "/dashboard/:path*",
     "/doctor/:path*",
     "/admin/:path*",
     "/nurse/:path*",
     "/rider/:path*",
     "/messages/:path*",
+    "/intake/:path*",
     "/onboarding/:path*",
     "/home-care/visits/:path*",
     "/logout",

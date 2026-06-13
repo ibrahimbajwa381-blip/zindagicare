@@ -1,18 +1,29 @@
-import { Roles, type Role } from "@zindagi/shared";
+import {
+  normalizeEmailForLookup,
+  normalizePhoneForLookup,
+  Roles,
+  type Role,
+} from "@zindagi/shared";
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
 /**
  * User — identity & auth hub only (multi-role).
  * Role-specific clinical/commerce data lives in DoctorProfile, PatientProfile, StaffProfile.
- * Query: login by email/phone; middleware loads roles from JWT (denormalized at sign-in).
+ * PII fields (name, email, phone) are AES-256-GCM encrypted at rest.
+ * emailLookup / phoneLookup store HMAC hashes for login queries without plaintext.
  */
 const userSchema = new Schema(
   {
-    email: { type: String, lowercase: true, trim: true },
-    phone: { type: String, trim: true },
+    email: { type: String },
+    phone: { type: String },
+    /** HMAC-SHA256 of normalized email — used for login / uniqueness checks */
+    emailLookup: { type: String, select: false },
+    /** HMAC-SHA256 of normalized phone — used for login / uniqueness checks */
+    phoneLookup: { type: String, select: false },
     passwordHash: { type: String, select: false },
-    name: { type: String, required: true, trim: true },
+    name: { type: String, required: true },
     avatarUrl: { type: String },
     roles: {
       type: [String],
@@ -45,8 +56,24 @@ const userSchema = new Schema(
   { timestamps: true },
 );
 
-userSchema.index({ email: 1 }, { unique: true, sparse: true });
-userSchema.index({ phone: 1 }, { unique: true, sparse: true });
+applyFieldEncryption(userSchema, {
+  fields: [{ path: "name", kind: "string" }],
+  lookups: [
+    {
+      field: "email",
+      lookupField: "emailLookup",
+      normalize: normalizeEmailForLookup,
+    },
+    {
+      field: "phone",
+      lookupField: "phoneLookup",
+      normalize: normalizePhoneForLookup,
+    },
+  ],
+});
+
+userSchema.index({ emailLookup: 1 }, { unique: true, sparse: true });
+userSchema.index({ phoneLookup: 1 }, { unique: true, sparse: true });
 userSchema.index({ roles: 1, isActive: 1 });
 userSchema.index({ bannedUntil: 1 }, { sparse: true });
 

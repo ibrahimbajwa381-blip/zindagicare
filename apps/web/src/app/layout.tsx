@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Noto_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
-import { AuthSessionProvider } from "@/components/providers/session-provider";
+import { AppProviders } from "@/components/providers/app-providers";
 import { DEFAULT_LOCALE } from "@/i18n/config";
-import { LocaleProvider } from "@/i18n/locale-provider";
+import { auth } from "@/lib/auth";
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
@@ -35,11 +35,15 @@ export const viewport = {
   viewportFit: "cover" as const,
 };
 
-export default function RootLayout({
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html
       lang={DEFAULT_LOCALE}
@@ -50,9 +54,7 @@ export default function RootLayout({
         className="flex min-h-full flex-col font-sans text-foreground antialiased"
         suppressHydrationWarning
       >
-        <LocaleProvider initialLocale={DEFAULT_LOCALE}>
-          <AuthSessionProvider>{children}</AuthSessionProvider>
-        </LocaleProvider>
+        <AppProviders session={session}>{children}</AppProviders>
       </body>
     </html>
   );

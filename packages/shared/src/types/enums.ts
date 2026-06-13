@@ -35,6 +35,8 @@ export const VerificationStatuses = {
   PENDING: "pending",
   APPROVED: "approved",
   REJECTED: "rejected",
+  /** Approved previously but admin-suspended from new bookings and listings */
+  RESTRICTED: "restricted",
 } as const;
 
 export type VerificationStatus =
@@ -140,3 +142,26 @@ export const ChatThreadTypes = {
 
 export type ChatThreadType =
   (typeof ChatThreadTypes)[keyof typeof ChatThreadTypes];
+
+export const ChatMessageKinds = {
+  USER: "user",
+  SYSTEM: "system",
+} as const;
+
+export type ChatMessageKind =
+  (typeof ChatMessageKinds)[keyof typeof ChatMessageKinds];
+
+export const IntakeStatuses = {
+  PENDING: "pending",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+} as const;
+
+export type IntakeStatus = (typeof IntakeStatuses)[keyof typeof IntakeStatuses];
+
+export const IntakeSources = {
+  CHAT: "chat",
+  FORM: "form",
+} as const;
+
+export type IntakeSource = (typeof IntakeSources)[keyof typeof IntakeSources];

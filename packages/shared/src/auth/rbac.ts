@@ -35,14 +35,22 @@ export function isAdmin(userRoles: Role[] | undefined): boolean {
   return hasAnyRole(userRoles, [Roles.ADMIN, Roles.SUPER_ADMIN]);
 }
 
+export const STAFF_ROLES: Role[] = [
+  Roles.NURSE,
+  Roles.RIDER,
+  Roles.DOCTOR,
+  Roles.ADMIN,
+  Roles.SUPER_ADMIN,
+];
+
 export function isStaff(userRoles: Role[] | undefined): boolean {
-  return hasAnyRole(userRoles, [
-    Roles.NURSE,
-    Roles.RIDER,
-    Roles.DOCTOR,
-    Roles.ADMIN,
-    Roles.SUPER_ADMIN,
-  ]);
+  return hasAnyRole(userRoles, STAFF_ROLES);
+}
+
+/** True when the user is a patient account, not staff (doctor, nurse, admin, etc.). */
+export function isPatientOnly(userRoles: Role[] | undefined): boolean {
+  const roles = userRoles ?? [];
+  return roles.includes(Roles.PATIENT) && !isStaff(roles);
 }
 
 export function highestRole(userRoles: Role[] | undefined): Role {

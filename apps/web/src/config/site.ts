@@ -19,6 +19,8 @@ export const siteConfig = {
     homeCareVisits: "/home-care/visits",
     login: "/login",
     register: "/register",
+    registerDoctor: "/register/doctor",
+    registerNurse: "/register/nurse",
     dashboard: "/dashboard",
     messages: "/messages",
     doctorMessages: "/doctor/messages",

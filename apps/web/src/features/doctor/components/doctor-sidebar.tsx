@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
+import { workspaceSidebarTop } from "@/lib/ui/surfaces";
 import { VerificationStatuses } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { ChevronRight, ExternalLink, ShieldCheck, X } from "lucide-react";
@@ -12,10 +13,13 @@ import {
   DOCTOR_APPROVED_NAV_SECTIONS,
   DOCTOR_ONBOARDING_NAV_SECTIONS,
   doctorNavBadgeCount,
+  summaryToNavStats,
   type DoctorNavStats,
   type DoctorWorkspaceNavItem,
 } from "@/features/doctor/data/doctor-workspace-nav";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
+import { CHAT_UNREAD_EVENT } from "@/lib/chat/unread-events";
+import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 
 type DoctorSidebarProps = {
   mobileOpen: boolean;
@@ -44,24 +48,54 @@ export function DoctorSidebar({
   useEffect(() => {
     if (!showFullNav) return;
 
-    Promise.all([
-      fetchThreads()
-        .then((threads) =>
-          threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0),
-        )
-        .catch(() => 0),
-      fetch("/api/v1/doctor/summary")
-        .then((res) => (res.ok ? res.json() : null))
-        .catch(() => null),
-    ]).then(([unreadMessages, summary]) => {
-      setNavStats({
-        unreadMessages,
-        patients: summary?.patients ?? 0,
-        pendingRequests: summary?.pendingRequests ?? 0,
-        sundayQueue: summary?.sundayQueue ?? 0,
-        homeVisits: summary?.homeVisitRequests ?? 0,
-      });
-    });
+    let cancelled = false;
+
+    const refresh = async () => {
+      const [unreadMessages, summaryRes] = await Promise.all([
+        fetchThreads()
+          .then((threads) =>
+            threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0),
+          )
+          .catch(() => 0),
+        fetch("/api/v1/doctor/summary")
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null),
+      ]);
+
+      if (cancelled) return;
+
+      const summary = summaryRes?.success
+        ? (summaryRes.data as DoctorDashboardSummary)
+        : null;
+
+      if (summary) {
+        setNavStats(summaryToNavStats(summary, unreadMessages));
+      } else {
+        setNavStats((prev) => ({ ...prev, unreadMessages }));
+      }
+    };
+
+    void refresh();
+
+    const onFocus = () => {
+      void refresh();
+    };
+
+    const onChatUnread = (event: Event) => {
+      const total = (event as CustomEvent<{ total: number }>).detail?.total;
+      if (typeof total === "number") {
+        setNavStats((prev) => ({ ...prev, unreadMessages: total }));
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener(CHAT_UNREAD_EVENT, onChatUnread);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(CHAT_UNREAD_EVENT, onChatUnread);
+    };
   }, [showFullNav, pathname]);
 
   function isActive(item: DoctorWorkspaceNavItem) {
@@ -220,7 +254,8 @@ export function DoctorSidebar({
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[17.5rem] flex-col bg-slate-900 transition-transform duration-200 lg:translate-x-0",
+          "fixed bottom-0 left-0 z-50 flex w-[17.5rem] flex-col bg-slate-900 transition-transform duration-200 lg:translate-x-0",
+          workspaceSidebarTop,
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >

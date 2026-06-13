@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@zindagi/shared";
+import { workspaceSidebarTop } from "@/lib/ui/surfaces";
 import { siteConfig } from "@/config/site";
 import {
   Activity,
   Bell,
   CalendarDays,
+  HeartPulse,
   Home,
   LayoutDashboard,
   Stethoscope,
+  Star,
   Sun,
   UserCheck,
   Users,
@@ -29,7 +32,13 @@ const NAV = [
     label: "Doctor management",
     icon: Stethoscope,
   },
+  {
+    href: "/admin/nurses",
+    label: "Nurse verifications",
+    icon: HeartPulse,
+  },
   { href: "/admin/patients", label: "Patients", icon: Users },
+  { href: "/admin/reviews", label: "Patient reviews", icon: Star },
   { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/admin/sunday-consult", label: "Sunday consult", icon: Sun },
   { href: "/admin/home-visits", label: "Home care", icon: Home },
@@ -47,7 +56,16 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   function isActive(item: (typeof NAV)[number]) {
     if (item.exact) return pathname === item.href;
     if (item.href === "/admin/doctors") {
-      return pathname === "/admin/doctors" || pathname.startsWith("/admin/doctors/review");
+      return (
+        pathname === "/admin/doctors" ||
+        pathname.startsWith("/admin/doctors/review")
+      );
+    }
+    if (item.href === "/admin/doctors/manage") {
+      return pathname === item.href || pathname.startsWith(`${item.href}/`);
+    }
+    if (item.href === "/admin/patients") {
+      return pathname === item.href || pathname.startsWith(`${item.href}/`);
     }
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
   }
@@ -125,7 +143,8 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[17.5rem] flex-col bg-slate-900 transition-transform duration-200 lg:translate-x-0",
+          "fixed bottom-0 left-0 z-50 flex w-[17.5rem] flex-col bg-slate-900 transition-transform duration-200 lg:translate-x-0",
+          workspaceSidebarTop,
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >

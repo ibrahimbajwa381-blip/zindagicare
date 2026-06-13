@@ -139,7 +139,44 @@ export async function submitDoctorVerification(
   profile.specialties = input.specialties;
   profile.bio = input.bio;
   profile.consultationFee = input.consultationFee ?? 0;
-  profile.set("hospitals", input.hospitals);
+
+  const hospitals = input.hospitals.map((hospital, index) => {
+    const geo =
+      index === 0 && input.homeVisit?.enabled && input.homeVisit.geo
+        ? {
+            type: "Point" as const,
+            coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat] as [
+              number,
+              number,
+            ],
+          }
+        : hospital.geo
+          ? {
+              type: "Point" as const,
+              coordinates: [hospital.geo.lng, hospital.geo.lat] as [number, number],
+            }
+          : undefined;
+
+    return {
+      ...hospital,
+      geo,
+    };
+  });
+
+  profile.set("hospitals", hospitals);
+  profile.homeVisitEnabled = input.homeVisit?.enabled ?? false;
+  if (input.homeVisit?.enabled && input.homeVisit.geo) {
+    profile.homeVisitLocation = {
+      area: input.homeVisit.area,
+      geo: {
+        type: "Point",
+        coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat],
+      },
+    };
+  } else {
+    profile.homeVisitLocation = undefined;
+  }
+
   profile.set("weeklyAvailability", input.weeklyAvailability);
   profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
   profile.verificationDocuments = input.documentUrls;
@@ -174,12 +211,28 @@ export async function submitDoctorVerification(
 
 export async function listPendingDoctorVerifications() {
   await connectDatabase();
-  return DoctorProfileModel.find({
+  const profiles = await DoctorProfileModel.find({
     verificationStatus: VerificationStatuses.PENDING,
   })
-    .populate("userId", "name email phone avatarUrl")
     .sort({ verificationSubmittedAt: 1, createdAt: 1 })
     .lean();
+
+  const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];
+  const users = userIds.length
+    ? await UserModel.find(mongoFilter({ _id: { $in: userIds } }))
+        .select("name email phone avatarUrl")
+        .lean()
+    : [];
+  const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+  return profiles.map((profile) => {
+    const userId = profile.userId?.toString() ?? "";
+    return {
+      ...profile,
+      pmdcNumber: profile.pmdcNumber,
+      userId: userMap.get(userId) ?? null,
+    };
+  });
 }
 
 export async function decideDoctorVerification(
@@ -202,7 +255,8 @@ export async function decideDoctorVerification(
     profile.pmdcVerified = true;
     profile.isListed = true;
     profile.videoConsultEnabled = true;
-    profile.homeVisitEnabled = true;
+    // Respect the doctor's in-house visit opt-in from verification
+    profile.homeVisitEnabled = profile.homeVisitEnabled ?? false;
     profile.verifiedBy = adminUserId as unknown as DoctorProfileDocument["verifiedBy"];
     profile.verifiedAt = new Date();
     profile.rejectionReason = undefined;

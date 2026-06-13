@@ -1,8 +1,10 @@
-import { Roles, type Role } from "@zindagi/shared";
+import { isAdmin, Roles, VerificationStatuses, type Role } from "@zindagi/shared";
 
 export const AUTH_ROUTES = {
   login: "/login",
   register: "/register",
+  registerDoctor: "/register/doctor",
+  registerNurse: "/register/nurse",
   phoneLogin: "/login/phone",
   onboarding: "/onboarding",
   doctorVerification: "/doctor/verification",
@@ -13,6 +15,8 @@ export const AUTH_ROUTES = {
   adminHomeVisits: "/admin/home-visits",
   homeCareRequest: "/home-care/request",
   homeCareVisits: "/home-care/visits",
+  nurseDashboard: "/nurse",
+  nurseVerification: "/nurse/verification",
   nurseVisits: "/nurse/visits",
   messages: "/messages",
   doctorMessages: "/doctor/messages",
@@ -28,6 +32,8 @@ export const PUBLIC_PATH_PREFIXES = [
   "/home-care/request",
   AUTH_ROUTES.login,
   AUTH_ROUTES.register,
+  AUTH_ROUTES.registerDoctor,
+  AUTH_ROUTES.registerNurse,
   AUTH_ROUTES.phoneLogin,
   "/api/auth",
   "/api/v1/sunday/doctors",
@@ -45,21 +51,27 @@ export const PUBLIC_PATH_PREFIXES = [
   "/api/health",
 ] as const;
 
-/** Allowed while onboarding is incomplete. */
+/** Allowed while patient onboarding is incomplete. */
 export const ONBOARDING_EXEMPT_PREFIXES = [
   AUTH_ROUTES.onboarding,
   AUTH_ROUTES.doctorVerification,
   AUTH_ROUTES.doctorProfile,
+  AUTH_ROUTES.nurseVerification,
+  "/nurse/profile",
   "/doctor/patients",
   "/doctor/requests",
   "/doctor/home-visits",
   "/doctor/sunday-consult",
   "/doctor/messages",
+  "/doctor/earnings",
+  "/nurse",
   "/messages",
   "/consult",
   "/api/v1/auth/onboarding",
   "/api/v1/doctor/verification",
   "/api/v1/doctor/profile",
+  "/api/v1/nurse/verification",
+  "/api/v1/nurse/profile",
   "/api/auth",
   "/logout",
 ] as const;
@@ -73,11 +85,74 @@ export const DOCTOR_VERIFICATION_EXEMPT_PREFIXES = [
   "/doctor/home-visits",
   "/doctor/sunday-consult",
   "/doctor/messages",
+  "/doctor/earnings",
   "/consult",
   "/api/v1/doctor/verification",
   "/api/v1/doctor/profile",
-  AUTH_ROUTES.onboarding,
 ] as const;
+
+/** Nurse verification pending — can access these paths. */
+export const NURSE_VERIFICATION_EXEMPT_PREFIXES = [
+  AUTH_ROUTES.nurseVerification,
+  "/nurse/profile",
+  AUTH_ROUTES.nurseDashboard,
+  "/api/v1/nurse/verification",
+  "/api/v1/nurse/profile",
+] as const;
+
+export type PostAuthUser = {
+  roles?: Role[];
+  onboardingCompleted?: boolean;
+  doctorVerificationStatus?: string;
+  nurseVerificationStatus?: string;
+};
+
+export function isPatientDashboardPath(pathname: string) {
+  return (
+    pathname === AUTH_ROUTES.patientDashboard ||
+    pathname.startsWith(`${AUTH_ROUTES.patientDashboard}/`)
+  );
+}
+
+/** Default landing path after sign-in (replaces generic /dashboard for staff). */
+export function resolveLoginRedirectPath(
+  user: PostAuthUser,
+  callbackUrl?: string,
+): string {
+  const requested = callbackUrl?.trim();
+  if (requested && requested !== AUTH_ROUTES.patientDashboard) {
+    return requested;
+  }
+  return resolvePostAuthPath(user);
+}
+
+export function resolvePostAuthPath(user: PostAuthUser): string {
+  const roles = user.roles ?? [];
+
+  if (isAdmin(roles)) {
+    return AUTH_ROUTES.adminDashboard;
+  }
+
+  if (roles.includes(Roles.DOCTOR)) {
+    if (user.doctorVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.doctorProfile;
+    }
+    return AUTH_ROUTES.doctorVerification;
+  }
+
+  if (roles.includes(Roles.NURSE)) {
+    if (user.nurseVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.nurseDashboard;
+    }
+    return AUTH_ROUTES.nurseVerification;
+  }
+
+  if (!user.onboardingCompleted) {
+    return AUTH_ROUTES.onboarding;
+  }
+
+  return AUTH_ROUTES.patientDashboard;
+}
 
 export const ROLE_ROUTE_RULES: { prefix: string; roles: Role[] }[] = [
   { prefix: "/doctor", roles: [Roles.DOCTOR] },
@@ -109,6 +184,7 @@ export const MIDDLEWARE_PROTECTED_PREFIXES = [
   "/nurse",
   "/rider",
   "/messages",
+  "/intake",
   "/onboarding",
   "/home-care/visits",
   "/logout",

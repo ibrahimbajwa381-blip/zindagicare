@@ -35,8 +35,14 @@ function formatPreviewTime(iso?: string) {
   return date.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
+function formatUnreadCount(count: number) {
+  if (count > 99) return "99+";
+  return String(count);
+}
+
 export function ChatThreadItem({ thread, active, onClick }: ChatThreadItemProps) {
   const { otherParticipant } = thread;
+  const hasUnread = thread.unreadCount > 0;
 
   return (
     <button
@@ -54,24 +60,44 @@ export function ChatThreadItem({ thread, active, onClick }: ChatThreadItemProps)
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate font-semibold text-slate-900">
+          <p
+            className={cn(
+              "truncate text-slate-900",
+              hasUnread ? "font-bold" : "font-semibold",
+            )}
+          >
             {otherParticipant.name}
           </p>
-          {thread.lastMessageAt && (
-            <span className="shrink-0 text-xs text-slate-500">
-              {formatPreviewTime(thread.lastMessageAt)}
-            </span>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {thread.lastMessageAt && (
+              <span
+                className={cn(
+                  "text-xs",
+                  hasUnread ? "font-semibold text-brand" : "text-slate-500",
+                )}
+              >
+                {formatPreviewTime(thread.lastMessageAt)}
+              </span>
+            )}
+            {hasUnread && (
+              <span
+                className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white"
+                aria-label={`${thread.unreadCount} unread messages`}
+              >
+                {formatUnreadCount(thread.unreadCount)}
+              </span>
+            )}
+          </div>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-sm text-slate-500">
+          <p
+            className={cn(
+              "truncate text-sm",
+              hasUnread ? "font-medium text-slate-800" : "text-slate-500",
+            )}
+          >
             {thread.lastMessagePreview || otherParticipant.subtitle || "Start a conversation"}
           </p>
-          {thread.unreadCount > 0 && (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">
-              {thread.unreadCount > 99 ? "99+" : thread.unreadCount}
-            </span>
-          )}
         </div>
       </div>
     </button>

@@ -32,7 +32,7 @@ export function ChatComposer({ onSend, placeholder, disabled }: ChatComposerProp
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-end gap-2 border-t border-slate-200/80 bg-[#f0f2f5] px-3 py-3 sm:px-4"
+      className="flex shrink-0 items-end gap-2 border-t border-slate-200/80 bg-[#f0f2f5] px-3 py-3 sm:px-4"
     >
       <textarea
         value={text}

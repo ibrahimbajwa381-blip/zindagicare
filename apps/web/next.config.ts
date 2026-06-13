@@ -13,7 +13,6 @@ const nextConfig: NextConfig = {
     "@zindagi/shared",
     "@zindagi/database",
     "@zindagi/validators",
-    "@zoom/meetingsdk",
   ],
   serverExternalPackages: ["mongoose", "bcryptjs"],
   experimental: {

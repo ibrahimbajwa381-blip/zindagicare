@@ -1,4 +1,5 @@
 import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -34,6 +35,17 @@ const prescriptionSchema = new Schema(
   },
   { timestamps: true },
 );
+
+applyFieldEncryption(prescriptionSchema, {
+  fields: [
+    {
+      path: "medications",
+      kind: "nestedArray",
+      subFields: ["name", "dosage", "frequency", "duration"],
+    },
+    { path: "notes", kind: "string" },
+  ],
+});
 
 prescriptionSchema.index({ patientId: 1, createdAt: -1 });
 prescriptionSchema.index({ appointmentId: 1 }, { sparse: true });

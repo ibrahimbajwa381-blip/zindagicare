@@ -8,7 +8,7 @@ import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 
-export type AccountType = "patient" | "doctor" | "admin";
+export type AccountType = "patient" | "doctor" | "nurse" | "admin";
 
 export type AppUserMenuProps = {
   name: string;
@@ -41,11 +41,13 @@ function accountLabel(
   labels: {
     patientAccount: string;
     doctorAccount: string;
+    nurseAccount: string;
     adminAccount: string;
   },
   accountType: AccountType,
 ) {
   if (accountType === "doctor") return labels.doctorAccount;
+  if (accountType === "nurse") return labels.nurseAccount;
   if (accountType === "admin") return labels.adminAccount;
   return labels.patientAccount;
 }
@@ -105,33 +107,48 @@ export function AppUserMenu({
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "flex h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 pl-1.5 pr-2.5 text-left shadow-sm transition-colors",
-          "hover:border-brand-light/50 hover:bg-brand-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light/40",
-          open && "border-brand-light/50 bg-brand-muted/50",
-          isDrawer ? "w-full max-w-none" : "max-w-[min(100%,16rem)]",
+          isDrawer
+            ? "flex h-10 w-full max-w-none items-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 pl-1.5 pr-2.5 text-left shadow-sm transition-colors hover:border-brand-light/50 hover:bg-brand-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light/40"
+            : "group relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light/50",
+          className,
         )}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
       >
         <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white",
+            isDrawer
+              ? "size-8 rounded-lg"
+              : "size-9 shadow-sm transition-[transform,box-shadow,filter] group-hover:scale-[1.04] group-hover:brightness-110 group-hover:shadow-md group-active:scale-[0.98]",
+            !isDrawer && open && "ring-2 ring-brand-light/70 ring-offset-2",
+          )}
           aria-hidden
         >
           {initials}
         </span>
-        <span className={cn("min-w-0 flex-1 flex-col", isDrawer ? "flex" : "hidden sm:flex")}>
-          <span className="truncate text-sm font-semibold text-slate-800">{name}</span>
-          {secondary ? (
-            <span className="truncate text-xs text-slate-500">{secondary}</span>
-          ) : (
-            <span className="text-xs text-slate-500">{accountTypeLabel}</span>
-          )}
-        </span>
-        <ChevronDown
-          className={cn("size-4 shrink-0 text-slate-500 transition-transform", open && "rotate-180")}
-          aria-hidden
-        />
+        {isDrawer ? (
+          <>
+            <span className="min-w-0 flex-1 flex-col flex">
+              <span className="truncate text-sm font-semibold text-slate-800">{name}</span>
+              {secondary ? (
+                <span className="truncate text-xs text-slate-500">{secondary}</span>
+              ) : (
+                <span className="text-xs text-slate-500">{accountTypeLabel}</span>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-slate-500 transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </>
+        ) : (
+          <span className="sr-only">{name}</span>
+        )}
       </button>
 
       {open ? (

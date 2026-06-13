@@ -232,6 +232,66 @@ function nearestGeoDistanceKm(
   return Math.min(...points.map((p) => haversineKm(lng, lat, p.lng, p.lat)));
 }
 
+export type HomeCareStaffOption = {
+  id: string;
+  name: string;
+  phone?: string;
+  serviceArea: string;
+  distanceKm?: number;
+  specialties?: string[];
+  homeVisitFee?: number;
+};
+
+function nurseGeoPoints(nurse: unknown): { lng: number; lat: number }[] {
+  const profile = nurse as {
+    serviceAreas?: { geo?: { coordinates?: number[] } | null }[];
+  };
+  return (profile.serviceAreas ?? [])
+    .filter((a) => a.geo?.coordinates?.length === 2)
+    .map((a) => ({
+      lng: a.geo!.coordinates![0],
+      lat: a.geo!.coordinates![1],
+    }));
+}
+
+function doctorGeoPoints(doctor: unknown): { lng: number; lat: number }[] {
+  const profile = doctor as {
+    homeVisitLocation?: { geo?: { coordinates?: number[] } | null } | null;
+    hospitals?: { geo?: { coordinates?: number[] } | null }[];
+  };
+  return [
+    ...(profile.homeVisitLocation?.geo?.coordinates?.length === 2
+      ? [
+          {
+            lng: profile.homeVisitLocation.geo.coordinates[0],
+            lat: profile.homeVisitLocation.geo.coordinates[1],
+          },
+        ]
+      : []),
+    ...(profile.hospitals ?? [])
+      .filter((h) => h.geo?.coordinates?.length === 2)
+      .map((h) => ({
+        lng: h.geo!.coordinates![0],
+        lat: h.geo!.coordinates![1],
+      })),
+  ];
+}
+
+function visitPatientCoords(visit: unknown): [number, number] {
+  const doc = visit as {
+    address?: { geo?: { coordinates?: number[] } | null } | null;
+  };
+  const coords = doc.address?.geo?.coordinates;
+  if (!coords || coords.length < 2) {
+    throw new AppError(
+      "Visit address is missing location",
+      ErrorCodes.VALIDATION,
+      400,
+    );
+  }
+  return [coords[0], coords[1]];
+}
+
 export class HomeVisitService {
   static async ensureConnected() {
     await connectDatabase();
@@ -249,8 +309,16 @@ export class HomeVisitService {
       );
     }
 
-    const lng = input.geo?.lng ?? LAHORE_GEO.lng;
-    const lat = input.geo?.lat ?? LAHORE_GEO.lat;
+    if (!input.geo) {
+      throw new AppError(
+        "Google Maps location is required for home care visits",
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    const lng = input.geo.lng;
+    const lat = input.geo.lat;
     const base = getBasePrice(input.serviceType);
 
     const visit = await HomeVisitModel.create({
@@ -383,6 +451,7 @@ export class HomeVisitService {
     const nurses = await StaffProfileModel.find({
       staffType: Roles.NURSE,
       isAvailable: true,
+      homeVisitEnabled: true,
       verificationStatus: "approved",
       deletedAt: { $exists: false },
     })
@@ -449,12 +518,22 @@ export class HomeVisitService {
       const userId = user._id.toString();
       if (busyIds.includes(userId)) continue;
 
-      const geoPoints = (doctor.hospitals ?? [])
-        .filter((h) => h.geo?.coordinates?.length === 2)
-        .map((h) => ({
-          lng: h.geo!.coordinates[0],
-          lat: h.geo!.coordinates[1],
-        }));
+      const geoPoints = [
+        ...(doctor.homeVisitLocation?.geo?.coordinates?.length === 2
+          ? [
+              {
+                lng: doctor.homeVisitLocation.geo.coordinates[0],
+                lat: doctor.homeVisitLocation.geo.coordinates[1],
+              },
+            ]
+          : []),
+        ...(doctor.hospitals ?? [])
+          .filter((h) => h.geo?.coordinates?.length === 2)
+          .map((h) => ({
+            lng: h.geo!.coordinates[0],
+            lat: h.geo!.coordinates[1],
+          })),
+      ];
 
       const dist = nearestGeoDistanceKm(lng, lat, geoPoints);
       if (dist <= HOME_CARE_MATCH_RADIUS_KM && (!best || dist < best.distanceKm)) {
@@ -593,14 +672,37 @@ export class HomeVisitService {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
     }
 
+    const [lng, lat] = visitPatientCoords(visit);
+    const distanceKm = await HomeVisitService.getStaffDistanceKm(
+      input.staffId,
+      isDoctorHomeVisitService(visit.serviceType),
+      lng,
+      lat,
+    );
+
+    if (
+      !input.override &&
+      (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM)
+    ) {
+      throw new AppError(
+        `Selected provider is outside the ${HOME_CARE_MATCH_RADIUS_KM} km service radius. Enable manual override to assign anyway.`,
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
     visit.assignedStaffId = input.staffId as never;
     visit.status = HomeVisitStatuses.ASSIGNED;
+    if (visit.pricing && distanceKm !== null) {
+      visit.pricing.distance = Math.round(distanceKm * 100) / 100;
+    }
     await visit.save();
 
     return {
       staffId: input.staffId,
       staffName: staff.name ?? (isDoctorHomeVisitService(visit.serviceType) ? "Doctor" : "Nurse"),
       role: isDoctorHomeVisitService(visit.serviceType) ? "doctor" : "nurse",
+      distanceKm: distanceKm ?? undefined,
     };
   }
 
@@ -704,12 +806,165 @@ export class HomeVisitService {
     return HomeVisitService.getById(visitId, userId, roles);
   }
 
+  static async getStaffDistanceKm(
+    staffUserId: string,
+    isDoctor: boolean,
+    patientLng: number,
+    patientLat: number,
+  ): Promise<number | null> {
+    await HomeVisitService.ensureConnected();
+
+    if (isDoctor) {
+      const profile = await DoctorProfileModel.findOne(
+        mongoFilter({ userId: staffUserId }),
+      ).lean();
+      if (!profile) return null;
+      const points = doctorGeoPoints(profile);
+      if (!points.length) return null;
+      return nearestGeoDistanceKm(patientLng, patientLat, points);
+    }
+
+    const profile = await StaffProfileModel.findOne(
+      mongoFilter({ userId: staffUserId, staffType: Roles.NURSE }),
+    ).lean();
+    if (!profile) return null;
+    const points = nurseGeoPoints(profile);
+    if (!points.length) return null;
+    return nearestGeoDistanceKm(patientLng, patientLat, points);
+  }
+
+  static async listStaffForVisit(visitId: string) {
+    await HomeVisitService.ensureConnected();
+
+    const visit = await HomeVisitModel.findById(visitId).lean();
+    if (!visit) {
+      throw new AppError("Visit not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const [lng, lat] = visitPatientCoords(visit);
+    const city = visit.address?.city ?? LAUNCH_CITY;
+    const doctorVisit = isDoctorHomeVisitService(
+      visit.serviceType as HomeVisitServiceType,
+    );
+    const busyIds = doctorVisit
+      ? await getBusyStaffIds(
+          visit.scheduledAt as Date,
+          HomeVisitServiceTypes.DOCTOR_VISIT,
+        )
+      : [];
+
+    const nurseProfiles = await StaffProfileModel.find({
+      staffType: Roles.NURSE,
+      isAvailable: true,
+      homeVisitEnabled: true,
+      verificationStatus: "approved",
+      deletedAt: { $exists: false },
+    })
+      .populate("userId", "name phone")
+      .lean();
+
+    const nursesWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
+      nurseProfiles
+        .map((p) => {
+          const user = p.userId as {
+            _id?: { toString(): string };
+            name?: string;
+            phone?: string;
+          };
+          const area = p.serviceAreas?.[0];
+          const points = nurseGeoPoints(p);
+          const distanceKm = points.length
+            ? nearestGeoDistanceKm(lng, lat, points)
+            : undefined;
+          return {
+            id: user?._id?.toString() ?? "",
+            name: user?.name ?? "Nurse",
+            phone: user?.phone,
+            serviceArea: [area?.area, area?.city ?? LAUNCH_CITY]
+              .filter(Boolean)
+              .join(", "),
+            distanceKm,
+          };
+        })
+        .filter((n) => n.id)
+        .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+
+    const doctorProfiles = await DoctorProfileModel.find({
+      verificationStatus: VerificationStatuses.APPROVED,
+      homeVisitEnabled: true,
+      isListed: true,
+      coverageCities: city,
+      deletedAt: { $exists: false },
+    })
+      .populate("userId", "name phone isActive")
+      .lean();
+
+    const doctorsWithDistance: (HomeCareStaffOption & {
+      unavailable?: boolean;
+    })[] = doctorProfiles
+      .filter((p) => {
+        const user = p.userId as { isActive?: boolean; _id?: { toString(): string } };
+        return user?.isActive !== false && user?._id;
+      })
+      .map((p) => {
+        const user = p.userId as {
+          _id?: { toString(): string };
+          name?: string;
+          phone?: string;
+        };
+        const userId = user?._id?.toString() ?? "";
+        const points = doctorGeoPoints(p);
+        const distanceKm = points.length
+          ? nearestGeoDistanceKm(lng, lat, points)
+          : undefined;
+        return {
+          id: userId,
+          name: user?.name ?? "Doctor",
+          phone: user?.phone,
+          specialties: p.specialties ?? [],
+          serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
+          homeVisitFee:
+            p.homeVisitFee ??
+            HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
+          distanceKm,
+          unavailable: doctorVisit ? busyIds.includes(userId) : undefined,
+        };
+      })
+      .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+
+    const nearbyNurses = nursesWithDistance.filter(
+      (n) =>
+        n.distanceKm !== undefined &&
+        n.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+    );
+    const nearbyDoctors = doctorsWithDistance.filter(
+      (d) =>
+        !d.unavailable &&
+        d.distanceKm !== undefined &&
+        d.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+    );
+
+    return {
+      patientLocation: { lng, lat },
+      radiusKm: HOME_CARE_MATCH_RADIUS_KM,
+      nearby: {
+        nurses: nearbyNurses,
+        doctors: nearbyDoctors,
+      },
+      all: {
+        nurses: nursesWithDistance,
+        doctors: doctorsWithDistance,
+      },
+    };
+  }
+
   static async listAvailableStaff() {
     await HomeVisitService.ensureConnected();
 
     const profiles = await StaffProfileModel.find({
       staffType: Roles.NURSE,
       isAvailable: true,
+      homeVisitEnabled: true,
       verificationStatus: "approved",
       deletedAt: { $exists: false },
     })
@@ -723,7 +978,7 @@ export class HomeVisitService {
         id: user?._id?.toString() ?? "",
         name: user?.name ?? "Nurse",
         phone: user?.phone,
-        serviceArea: area?.city ?? LAUNCH_CITY,
+        serviceArea: [area?.area, area?.city ?? LAUNCH_CITY].filter(Boolean).join(", "),
         radiusKm: area?.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM,
       };
     });

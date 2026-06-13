@@ -22,7 +22,7 @@ export default async function VideoConsultPage({ params, searchParams }: PagePro
   const { left } = await searchParams;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-brand-muted/30 to-white px-4 py-8 sm:px-6">
+    <main className="min-h-screen">
       <VideoConsultClient appointmentId={appointmentId} leftSession={left === "1"} />
     </main>
   );

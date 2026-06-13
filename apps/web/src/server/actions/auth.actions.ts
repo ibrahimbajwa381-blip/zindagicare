@@ -3,7 +3,7 @@
 import { AuthError, CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { signIn } from "@/lib/auth";
+import { auth, signIn } from "@/lib/auth";
 import { authActionErrorMessage } from "@/lib/auth/errors";
 import { getLocale } from "@/i18n/server";
 import {
@@ -21,21 +21,31 @@ export type RegisterFormState = {
 import { registerWithCredentials } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
 import { loginSchema, otpVerifySchema, registerSchema } from "@zindagi/validators";
+import { AUTH_ROUTES, resolveLoginRedirectPath } from "@/lib/auth/routes";
 
 async function signInWithProvider(
   provider: "credentials" | "phone-otp",
   fields: Record<string, string>,
-  redirectTo: string,
+  options: { redirectTo: string } | { callbackUrl?: string },
 ) {
   const result = await signIn(provider, {
     ...fields,
-    redirectTo,
     redirect: false,
   });
 
   if (typeof result === "string" && result.includes("error=")) {
     throw new CredentialsSignin();
   }
+
+  const session = await auth();
+  if (!session?.user) {
+    throw new CredentialsSignin();
+  }
+
+  const redirectTo =
+    "redirectTo" in options
+      ? options.redirectTo
+      : resolveLoginRedirectPath(session.user, options.callbackUrl);
 
   redirect(redirectTo);
 }
@@ -64,7 +74,7 @@ export async function loginWithCredentialsAction(
         email: parsed.data.email,
         password: parsed.data.password,
       },
-      callbackUrl,
+      { callbackUrl },
     );
   } catch (e) {
     if (isRedirectError(e)) throw e;
@@ -83,6 +93,8 @@ export async function registerAction(
     email: formData.get("email"),
     password: formData.get("password"),
     phone: formData.get("phone"),
+    accountType: formData.get("accountType") ?? "patient",
+    city: formData.get("city") || undefined,
   });
 
   const locale = await getLocale();
@@ -93,13 +105,20 @@ export async function registerAction(
 
   try {
     await registerWithCredentials(parsed.data);
+    const redirectTo =
+      parsed.data.accountType === "patient"
+        ? AUTH_ROUTES.onboarding
+        : parsed.data.accountType === "doctor"
+          ? AUTH_ROUTES.doctorVerification
+          : AUTH_ROUTES.nurseVerification;
+
     await signInWithProvider(
       "credentials",
       {
         email: parsed.data.email,
         password: parsed.data.password,
       },
-      "/onboarding",
+      { redirectTo },
     );
   } catch (e) {
     if (isRedirectError(e)) throw e;
@@ -124,7 +143,7 @@ export async function loginWithGoogleAction(callbackUrl?: string) {
   }
 
   await signIn("google", {
-    redirectTo: callbackUrl ?? "/onboarding",
+    redirectTo: callbackUrl ?? AUTH_ROUTES.onboarding,
   });
 }
 
@@ -153,7 +172,7 @@ export async function loginWithPhoneOtpAction(
         phone: parsed.data.phone,
         code: parsed.data.code,
       },
-      callbackUrl,
+      { callbackUrl },
     );
   } catch (e) {
     if (isRedirectError(e)) throw e;

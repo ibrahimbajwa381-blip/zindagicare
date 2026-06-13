@@ -156,7 +156,9 @@ export function PatientDashboardMessagesSection() {
           </div>
         ) : (
           <ul>
-            {contacts.map((contact) => (
+            {contacts.map((contact) => {
+              const hasUnread = contact.unreadCount > 0;
+              return (
               <li key={contact.id}>
                 <button
                   type="button"
@@ -170,27 +172,47 @@ export function PatientDashboardMessagesSection() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-semibold text-slate-900">{contact.name}</p>
-                      {contact.lastMessageAt && (
-                        <span className="shrink-0 text-xs text-slate-500">
-                          {formatPreviewTime(contact.lastMessageAt)}
-                        </span>
-                      )}
+                      <p
+                        className={cn(
+                          "truncate text-slate-900",
+                          hasUnread ? "font-bold" : "font-semibold",
+                        )}
+                      >
+                        {contact.name}
+                      </p>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {contact.lastMessageAt && (
+                          <span
+                            className={cn(
+                              "text-xs",
+                              hasUnread ? "font-semibold text-brand" : "text-slate-500",
+                            )}
+                          >
+                            {formatPreviewTime(contact.lastMessageAt)}
+                          </span>
+                        )}
+                        {hasUnread && (
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white">
+                            {contact.unreadCount > 99 ? "99+" : contact.unreadCount}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-0.5 flex items-center justify-between gap-2">
-                      <p className="truncate text-sm text-slate-500">
+                      <p
+                        className={cn(
+                          "truncate text-sm",
+                          hasUnread ? "font-medium text-slate-800" : "text-slate-500",
+                        )}
+                      >
                         {contact.lastMessagePreview || contact.subtitle || m.tapToChat}
                       </p>
-                      {contact.unreadCount > 0 && (
-                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">
-                          {contact.unreadCount > 99 ? "99+" : contact.unreadCount}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </button>
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
       </CardContent>

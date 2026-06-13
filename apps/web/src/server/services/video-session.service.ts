@@ -14,6 +14,7 @@ import {
   VideoSessionStatuses,
 } from "@zindagi/shared";
 import { createZoomMeeting } from "@/lib/zoom/api";
+import { ZOOM_CONSULT_MEETING_TITLE } from "@/lib/zoom/branding";
 import { getPublicZoomSdkKey, getZoomConfig, isZoomConfigured } from "@/lib/zoom/config";
 import { generateZoomMeetingSdkSignature } from "@/lib/zoom/signature";
 import type { VideoJoinPayload } from "@/features/consult/types";
@@ -130,13 +131,7 @@ export class VideoSessionService {
       );
     }
 
-    const doctor = await DoctorProfileModel.findById(appointment.doctorId)
-      .populate("userId", "name")
-      .lean();
-    const doctorUser = doctor?.userId as { name?: string } | null;
-    const patient = await UserModel.findById(appointment.patientId).lean();
-
-    const topic = `ZindagiCare — ${doctorUser?.name ?? "Doctor"} & ${patient?.name ?? "Patient"}`;
+    const topic = ZOOM_CONSULT_MEETING_TITLE;
     const meeting = await createZoomMeeting({
       topic,
       startTime: appointment.scheduledStart,
@@ -160,6 +155,7 @@ export class VideoSessionService {
                 passcode: meeting.password,
                 joinUrl: meeting.join_url,
                 startUrl: meeting.start_url,
+                meetingTitle: topic,
               },
             },
           },
@@ -175,6 +171,7 @@ export class VideoSessionService {
             passcode: meeting.password,
             joinUrl: meeting.join_url,
             startUrl: meeting.start_url,
+            meetingTitle: topic,
           },
         });
 
@@ -218,6 +215,7 @@ export class VideoSessionService {
       passcode: string;
       joinUrl: string;
       startUrl?: string;
+      meetingTitle?: string;
     };
 
     const user = await UserModel.findById(userId).lean();
@@ -255,6 +253,7 @@ export class VideoSessionService {
         role === "doctor"
           ? (patient?.name ?? "Patient")
           : (doctorUser?.name ?? "Doctor"),
+      meetingTitle: metadata.meetingTitle ?? ZOOM_CONSULT_MEETING_TITLE,
       canJoin,
       joinOpensAt: joinOpensAt.toISOString(),
       joinClosesAt: joinClosesAt.toISOString(),

@@ -12,6 +12,7 @@ import {
   AppointmentTypes,
   HomeVisitStatuses,
   Roles,
+  STAFF_ROLES,
   VerificationStatuses,
 } from "@zindagi/shared";
 import { getSystemSettings } from "./system-settings.service";
@@ -61,7 +62,10 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       verificationStatus: VerificationStatuses.APPROVED,
       isListed: true,
     }),
-    UserModel.countDocuments({ roles: Roles.PATIENT, isActive: { $ne: false } }),
+    UserModel.countDocuments({
+      roles: { $all: [Roles.PATIENT], $nin: STAFF_ROLES },
+      isActive: { $ne: false },
+    }),
     AppointmentModel.countDocuments({
       scheduledStart: { $gte: todayStart, $lt: todayEnd },
       status: {

@@ -14,6 +14,7 @@ export const POST = withApiHandler<ConfirmBookingInput>(
       body.slotId,
       body.holdToken,
       body.patientNotes,
+      body.locale,
     ),
   { auth: true, bodySchema: confirmBookingSchema },
 );

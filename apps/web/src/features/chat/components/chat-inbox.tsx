@@ -47,8 +47,8 @@ export function ChatInbox({
   });
 
   return (
-    <div className="flex h-full flex-col bg-white">
-      <div className="border-b border-slate-200 bg-[#f0f2f5] px-4 py-4">
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      <div className="shrink-0 border-b border-slate-200 bg-[#f0f2f5] px-4 py-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-lg font-semibold text-slate-900">{title}</h2>
           {showNewChat && (
@@ -76,7 +76,7 @@ export function ChatInbox({
         </label>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
         {loading ? (
           <div className="px-4 py-8 text-center text-sm text-slate-500">Loading chats…</div>
         ) : filtered.length === 0 ? (

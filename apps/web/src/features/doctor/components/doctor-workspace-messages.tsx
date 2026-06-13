@@ -8,6 +8,7 @@ type Props = {
   initialParticipantId?: string;
   copy: Dictionary["chat"];
   embedded?: boolean;
+  fillViewport?: boolean;
 };
 
 export function DoctorWorkspaceMessages({
@@ -15,10 +16,12 @@ export function DoctorWorkspaceMessages({
   initialParticipantId,
   copy,
   embedded = false,
+  fillViewport = false,
 }: Props) {
   return (
     <ChatApp
       embedded={embedded}
+      fillViewport={fillViewport}
       currentUserId={currentUserId}
       isDoctorView
       initialParticipantId={initialParticipantId}

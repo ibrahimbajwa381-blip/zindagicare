@@ -3,19 +3,16 @@ import { VerificationStatuses } from "@zindagi/shared";
 import { redirect } from "next/navigation";
 import { DoctorProfileOverview } from "@/features/doctor/components/doctor-profile-overview";
 import { DoctorProfileSection } from "@/features/doctor/components/doctor-profile-section";
-import { DoctorWorkspaceMessages } from "@/features/doctor/components/doctor-workspace-messages";
 import { getDoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
-import { getDictionary } from "@/i18n";
-import { getLocale } from "@/i18n/server";
 
 export const metadata = { title: "Doctor workspace" };
 
-type Props = { searchParams: Promise<{ submitted?: string; patient?: string }> };
+type Props = { searchParams: Promise<{ submitted?: string }> };
 
 export default async function DoctorProfilePage({ searchParams }: Props) {
   const session = await auth();
-  const { submitted, patient: patientId } = await searchParams;
+  const { submitted } = await searchParams;
 
   if (!session?.user) redirect("/login?callbackUrl=/doctor/profile");
   if (!session.user.roles?.includes("doctor")) redirect("/onboarding");
@@ -36,10 +33,9 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
         pendingRequests: 0,
         sundayQueue: 0,
         homeVisitRequests: 0,
+        totalEarnings: 0,
+        earningsThisMonth: 0,
       };
-
-  const locale = await getLocale();
-  const t = getDictionary(locale);
 
   return (
     <div className="space-y-6">
@@ -54,18 +50,7 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
       )}
 
       {isApproved ? (
-        <DoctorProfileOverview
-          profile={profile}
-          summary={summary}
-          messagesPanel={
-            <DoctorWorkspaceMessages
-              embedded
-              currentUserId={session.user.id}
-              initialParticipantId={patientId}
-              copy={t.chat}
-            />
-          }
-        />
+        <DoctorProfileOverview profile={profile} summary={summary} />
       ) : (
         <>
           <DoctorProfileOverview profile={profile} summary={summary} />

@@ -13,5 +13,6 @@ export * from "./chat.model";
 export * from "./video-session.model";
 export * from "./home-visit.model";
 export * from "./payment.model";
+export * from "./medical-intake.model";
 export * from "./audit-log.model";
 export * from "./system-settings.model";

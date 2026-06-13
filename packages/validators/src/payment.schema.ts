@@ -4,6 +4,7 @@ export const consultCheckoutSchema = z.object({
   doctorId: z.string().min(1),
   slotId: z.string().min(1),
   patientNotes: z.string().max(500).optional(),
+  locale: z.enum(["en", "ur"]).optional(),
 });
 
 export const jazzcashIpnSchema = z

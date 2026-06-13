@@ -15,7 +15,7 @@ export const adminUpdateDoctorSchema = z.object({
   isActive: z.boolean().optional(),
   homeVisitEnabled: z.boolean().optional(),
   homeVisitFee: z.number().min(0).max(50000).optional(),
-  verificationStatus: z.enum(["approved", "rejected"]).optional(),
+  verificationStatus: z.enum(["approved", "rejected", "restricted"]).optional(),
   rejectionReason: z.string().min(3).max(500).optional(),
   sundayConsultEnabled: z.boolean().optional(),
   weeklyAvailability: z
@@ -52,4 +52,21 @@ export const adminSendNotificationSchema = z.object({
   audience: z.enum(["all", "patients", "doctors", "user"]),
   userId: z.string().optional(),
   userEmail: z.string().email().optional(),
+});
+
+export const adminReviewModerationSchema = z.object({
+  reviewId: z.string().min(1),
+  action: z.enum(["hide", "show", "delete"]),
+});
+
+export const adminUpdatePatientSchema = z.object({
+  isActive: z.boolean().optional(),
+  /** Ban patient for N days from now */
+  banDays: z.number().min(1).max(365).optional(),
+  /** Clear platform ban */
+  unban: z.boolean().optional(),
+  /** Clear Sunday consult ban */
+  clearSundayBan: z.boolean().optional(),
+  /** Reset no-show counter */
+  resetNoShowCount: z.boolean().optional(),
 });

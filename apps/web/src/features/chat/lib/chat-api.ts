@@ -49,11 +49,12 @@ export async function fetchMessages(
 export async function sendMessage(
   threadId: string,
   body: string,
+  locale?: "en" | "ur",
 ): Promise<ChatMessageDto> {
   const res = await fetch(`/api/v1/chat/threads/${threadId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, locale }),
   });
   return parse<ChatMessageDto>(res);
 }

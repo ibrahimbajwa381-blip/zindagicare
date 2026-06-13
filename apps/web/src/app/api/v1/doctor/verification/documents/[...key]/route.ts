@@ -1,3 +1,4 @@
+import { unwrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import { readFile } from "fs/promises";
 import { auth } from "@/lib/auth";
 import { apiError } from "@/server/api/response";
@@ -29,7 +30,8 @@ export async function GET(_req: Request, { params }: Params) {
     }
 
     const absolutePath = resolveDoctorDocumentPath(storageKey);
-    const buffer = await readFile(absolutePath);
+    const raw = await readFile(absolutePath);
+    const buffer = unwrapEncryptedFile(raw);
     const ext = storageKey.split(".").pop()?.toLowerCase();
     const contentType =
       ext === "pdf"
@@ -40,7 +42,7 @@ export async function GET(_req: Request, { params }: Params) {
             ? "image/webp"
             : "image/jpeg";
 
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "private, max-age=3600",

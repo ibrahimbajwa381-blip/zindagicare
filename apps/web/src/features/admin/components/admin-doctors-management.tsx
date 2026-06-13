@@ -3,56 +3,69 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import {
+  ChevronDown,
   Eye,
-  MoreHorizontal,
   Plus,
   Search,
+  Settings2,
   Stethoscope,
 } from "lucide-react";
+import { VerificationStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
 import { formatDayOfWeek } from "@/features/doctor/types";
+import type { AdminDoctorRow } from "@/server/services/admin-doctor.service";
 import { cn } from "@zindagi/shared";
-
-type Doctor = {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  avatarUrl?: string;
-  slug?: string;
-  pmdcNumber?: string;
-  specialties: string[];
-  verificationStatus: string;
-  isListed: boolean;
-  isActive: boolean;
-  sundayConsultEnabled: boolean;
-  homeVisitEnabled: boolean;
-  homeVisitFee: number;
-  weeklyAvailability: { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string }[];
-};
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0];
 
+function formatCurrency(amount: number) {
+  return `PKR ${amount.toLocaleString("en-PK")}`;
+}
+
 function StatusBadge({ status }: { status: string }) {
-  const styles =
-    status === "approved"
-      ? "bg-emerald-100 text-emerald-800"
-      : status === "rejected"
-        ? "bg-red-100 text-red-800"
-        : "bg-amber-100 text-amber-800";
+  const styles: Record<string, string> = {
+    approved: "bg-emerald-100 text-emerald-800",
+    restricted: "bg-orange-100 text-orange-800",
+    rejected: "bg-red-100 text-red-800",
+    pending: "bg-amber-100 text-amber-800",
+  };
   return (
-    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize", styles)}>
+    <span
+      className={cn(
+        "rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize",
+        styles[status] ?? "bg-slate-100 text-slate-700",
+      )}
+    >
       {status}
     </span>
   );
 }
 
+function WorkloadBadge({ doctor }: { doctor: AdminDoctorRow }) {
+  const { stats } = doctor;
+  if (stats.isWorkingNow) {
+    return (
+      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+        In consult
+      </Badge>
+    );
+  }
+  if (stats.upcomingToday > 0) {
+    return (
+      <Badge variant="secondary">
+        {stats.upcomingToday} today
+      </Badge>
+    );
+  }
+  return <span className="text-xs text-slate-500">Idle</span>;
+}
+
 export function AdminDoctorsManagement() {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
@@ -84,8 +97,11 @@ export function AdminDoctorsManagement() {
   const stats = useMemo(
     () => ({
       total: doctors.length,
-      approved: doctors.filter((d) => d.verificationStatus === "approved").length,
-      pending: doctors.filter((d) => d.verificationStatus === "pending").length,
+      approved: doctors.filter((d) => d.verificationStatus === VerificationStatuses.APPROVED)
+        .length,
+      restricted: doctors.filter((d) => d.verificationStatus === VerificationStatuses.RESTRICTED)
+        .length,
+      pending: doctors.filter((d) => d.verificationStatus === VerificationStatuses.PENDING).length,
       listed: doctors.filter((d) => d.isListed).length,
     }),
     [doctors],
@@ -100,7 +116,10 @@ export function AdminDoctorsManagement() {
     });
     setPending(null);
     if (res.ok) await load();
-    else alert("Update failed");
+    else {
+      const json = await res.json();
+      alert(json?.error?.message ?? "Update failed");
+    }
   };
 
   const createDoctor = async (e: React.FormEvent) => {
@@ -138,12 +157,38 @@ export function AdminDoctorsManagement() {
     }
   };
 
+  const handleStatusChange = (doc: AdminDoctorRow, next: string) => {
+    if (next === doc.verificationStatus) return;
+    if (next === VerificationStatuses.RESTRICTED) {
+      if (
+        !window.confirm(
+          `Restrict ${doc.name}? They will be unlisted and blocked from new bookings.`,
+        )
+      ) {
+        return;
+      }
+      void updateDoctor(doc.id, { verificationStatus: VerificationStatuses.RESTRICTED });
+      return;
+    }
+    if (next === VerificationStatuses.REJECTED) {
+      const reason = window.prompt("Rejection reason:");
+      if (!reason?.trim()) return;
+      void updateDoctor(doc.id, {
+        verificationStatus: VerificationStatuses.REJECTED,
+        rejectionReason: reason.trim(),
+      });
+      return;
+    }
+    void updateDoctor(doc.id, { verificationStatus: next });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
           { label: "Total doctors", value: stats.total },
           { label: "Approved", value: stats.approved },
+          { label: "Restricted", value: stats.restricted },
           { label: "Pending review", value: stats.pending },
           { label: "Publicly listed", value: stats.listed },
         ].map((s) => (
@@ -248,15 +293,15 @@ export function AdminDoctorsManagement() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-left text-sm">
+            <table className="w-full min-w-[1100px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-5 py-4">Doctor</th>
                   <th className="px-5 py-4">Specialty</th>
                   <th className="px-5 py-4">PMDC</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Listing</th>
-                  <th className="px-5 py-4">Services</th>
+                  <th className="px-5 py-4">Working</th>
+                  <th className="px-5 py-4">Earnings</th>
                   <th className="px-5 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -274,8 +319,13 @@ export function AdminDoctorsManagement() {
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900">{doc.name}</p>
                             <p className="truncate text-xs text-slate-500">
-                              {doc.email ?? doc.phone ?? "—"}
+                              {[doc.email, doc.phone].filter(Boolean).join(" · ") || "—"}
                             </p>
+                            {!doc.isActive && (
+                              <Badge variant="outline" className="mt-1 text-[10px]">
+                                Inactive
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -297,40 +347,49 @@ export function AdminDoctorsManagement() {
                         {doc.pmdcNumber ?? "—"}
                       </td>
                       <td className="px-5 py-4">
-                        <StatusBadge status={doc.verificationStatus} />
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-1">
-                          <Badge variant={doc.isListed ? "default" : "outline"}>
-                            {doc.isListed ? "Listed" : "Unlisted"}
-                          </Badge>
-                          {!doc.isActive && (
-                            <Badge variant="outline" className="w-fit text-xs">
-                              Inactive
-                            </Badge>
-                          )}
+                        <div className="relative inline-flex items-center">
+                          <select
+                            value={doc.verificationStatus}
+                            disabled={pending === doc.id}
+                            onChange={(e) => handleStatusChange(doc, e.target.value)}
+                            className="appearance-none rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-xs font-medium text-slate-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
+                          >
+                            <option value={VerificationStatuses.APPROVED}>Approved</option>
+                            <option value={VerificationStatuses.RESTRICTED}>Restricted</option>
+                            <option value={VerificationStatuses.PENDING}>Pending</option>
+                            <option value={VerificationStatuses.REJECTED}>Rejected</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+                        </div>
+                        <div className="mt-1.5">
+                          <StatusBadge status={doc.verificationStatus} />
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {doc.sundayConsultEnabled && (
-                            <Badge variant="secondary" className="text-xs">
-                              Sunday
-                            </Badge>
-                          )}
-                          {doc.homeVisitEnabled && (
-                            <Badge variant="secondary" className="text-xs">
-                              Home visit
-                            </Badge>
-                          )}
-                        </div>
+                        <WorkloadBadge doctor={doc} />
+                        <p className="mt-1 text-xs text-slate-500">
+                          {doc.stats.completedThisMonth} completed this month
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-slate-900">
+                          {formatCurrency(doc.stats.totalEarnings)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatCurrency(doc.stats.earningsThisMonth)} this month
+                        </p>
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <Button size="sm" variant="outline" asChild>
+                            <Link href={`/admin/doctors/manage/${doc.id}`}>
+                              <Settings2 className="h-4 w-4" />
+                              Manage
+                            </Link>
+                          </Button>
+                          <Button size="sm" variant="ghost" asChild>
                             <Link href={`/admin/doctors/review/${doc.id}`}>
                               <Eye className="h-4 w-4" />
-                              Profile
                             </Link>
                           </Button>
                           <Button
@@ -340,7 +399,7 @@ export function AdminDoctorsManagement() {
                               setExpandedId(expandedId === doc.id ? null : doc.id)
                             }
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            Quick actions
                           </Button>
                         </div>
                       </td>
@@ -363,12 +422,15 @@ export function AdminDoctorsManagement() {
                               disabled={pending === doc.id}
                               onClick={() => updateDoctor(doc.id, { isActive: !doc.isActive })}
                             >
-                              {doc.isActive ? "Deactivate" : "Activate"}
+                              {doc.isActive ? "Deactivate account" : "Activate account"}
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={pending === doc.id}
+                              disabled={
+                                pending === doc.id ||
+                                doc.verificationStatus === VerificationStatuses.RESTRICTED
+                              }
                               onClick={() =>
                                 updateDoctor(doc.id, {
                                   sundayConsultEnabled: !doc.sundayConsultEnabled,
@@ -381,7 +443,8 @@ export function AdminDoctorsManagement() {
                               size="sm"
                               variant="outline"
                               disabled={
-                                pending === doc.id || doc.verificationStatus !== "approved"
+                                pending === doc.id ||
+                                doc.verificationStatus !== VerificationStatuses.APPROVED
                               }
                               onClick={() =>
                                 updateDoctor(doc.id, {
@@ -406,6 +469,23 @@ export function AdminDoctorsManagement() {
                             >
                               Set 9–5 schedule
                             </Button>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {doc.sundayConsultEnabled && (
+                              <Badge variant="secondary" className="text-xs">
+                                Sunday consult
+                              </Badge>
+                            )}
+                            {doc.homeVisitEnabled && (
+                              <Badge variant="secondary" className="text-xs">
+                                Home visits
+                              </Badge>
+                            )}
+                            {doc.isListed && (
+                              <Badge variant="secondary" className="text-xs">
+                                Listed online
+                              </Badge>
+                            )}
                           </div>
                           {doc.weeklyAvailability.length > 0 && (
                             <p className="mt-3 text-xs text-slate-500">

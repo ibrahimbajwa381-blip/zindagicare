@@ -1,44 +1,27 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
+import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { useLocale, useTranslations } from "@/i18n/locale-provider";
 
 type OnboardingUser = {
   onboardingCompleted?: boolean;
   roles?: string[];
   doctorVerificationStatus?: string;
+  nurseVerificationStatus?: string;
 };
 
 export function OnboardingForm() {
-  const router = useRouter();
+  const { push } = useSafeRouter();
   const { update } = useSession();
   const { locale } = useLocale();
   const t = useTranslations();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
-
-  const intents = [
-    {
-      value: "patient",
-      label: t.onboarding.patient,
-      description: t.onboarding.patientDesc,
-    },
-    {
-      value: "doctor",
-      label: t.onboarding.doctor,
-      description: t.onboarding.doctorDesc,
-    },
-    {
-      value: "nurse",
-      label: t.onboarding.nurse,
-      description: t.onboarding.nurseDesc,
-    },
-  ] as const;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,7 +29,6 @@ export function OnboardingForm() {
     setError(undefined);
     const form = new FormData(e.currentTarget);
     const body = {
-      intent: form.get("intent"),
       city: form.get("city"),
       locale: form.get("locale") ?? locale,
       dateOfBirth: form.get("dateOfBirth") || undefined,
@@ -78,47 +60,16 @@ export function OnboardingForm() {
         onboardingCompleted: user.onboardingCompleted,
         roles: user.roles,
         doctorVerificationStatus: user.doctorVerificationStatus,
+        nurseVerificationStatus: user.nurseVerificationStatus,
       });
     }
 
     setPending(false);
-
-    const intent = String(body.intent);
-    if (intent === "doctor") {
-      router.push(AUTH_ROUTES.doctorVerification);
-      router.refresh();
-      return;
-    }
-    router.push(AUTH_ROUTES.patientDashboard);
-    router.refresh();
+    push(AUTH_ROUTES.patientDashboard);
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-slate-700">
-          {t.onboarding.joiningAs}
-        </legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {intents.map((item) => (
-            <label
-              key={item.value}
-              className="flex cursor-pointer flex-col rounded-lg border border-slate-200 p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-muted"
-            >
-              <input
-                type="radio"
-                name="intent"
-                value={item.value}
-                defaultChecked={item.value === "patient"}
-                className="sr-only"
-              />
-              <span className="font-medium text-slate-900">{item.label}</span>
-              <span className="text-xs text-slate-500">{item.description}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
       <div>
         <Label htmlFor="city">{t.onboarding.city}</Label>
         <Input id="city" name="city" defaultValue="Lahore" required />

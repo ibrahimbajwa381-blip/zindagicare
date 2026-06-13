@@ -10,6 +10,10 @@ import {
   fetchThreads,
 } from "@/features/chat/lib/chat-api";
 import { useChatRealtime } from "@/features/chat/hooks/use-chat-realtime";
+import {
+  dispatchChatUnreadTotal,
+  totalUnreadCount,
+} from "@/lib/chat/unread-events";
 import { ChatInbox } from "./chat-inbox";
 import { ChatConversation } from "./chat-conversation";
 import { ChatNewContactPanel } from "./chat-new-contact-panel";
@@ -37,15 +41,30 @@ type ChatAppProps = {
   initialParticipantId?: string;
   /** Shorter height when embedded in doctor workspace overview */
   embedded?: boolean;
+  /** Fill the parent container (used on full-screen messages pages). */
+  fillViewport?: boolean;
 };
 
 type ViewMode = "inbox" | "conversation" | "new";
+
+/**
+ * Keeps the list ordered by server creation time: when a patient answers an
+ * intake question, the bot's next question can arrive over SSE before the
+ * send request resolves, so plain appending would show them out of order.
+ */
+function sortByCreatedAt(messages: ChatMessageDto[]) {
+  return [...messages].sort((a, b) => {
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    if (diff !== 0) return diff;
+    return a.id.localeCompare(b.id);
+  });
+}
 
 function appendUniqueMessage(messages: ChatMessageDto[], incoming: ChatMessageDto) {
   if (messages.some((message) => message.id === incoming.id)) {
     return messages;
   }
-  return [...messages, incoming];
+  return sortByCreatedAt([...messages, incoming]);
 }
 
 export function ChatApp({
@@ -55,6 +74,7 @@ export function ChatApp({
   initialThreadId,
   initialParticipantId,
   embedded = false,
+  fillViewport = false,
 }: ChatAppProps) {
   const [threads, setThreads] = useState<ChatThreadDto[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | undefined>(initialThreadId);
@@ -75,6 +95,9 @@ export function ChatApp({
     try {
       const rows = await fetchThreads();
       setThreads(rows);
+    } catch {
+      // Keep the inbox usable when the API is temporarily unavailable.
+      setThreads([]);
     } finally {
       setLoadingThreads(false);
     }
@@ -83,6 +106,10 @@ export function ChatApp({
   useEffect(() => {
     void loadThreads();
   }, [loadThreads]);
+
+  useEffect(() => {
+    dispatchChatUnreadTotal(totalUnreadCount(threads));
+  }, [threads]);
 
   useEffect(() => {
     if (!initialParticipantId) return;
@@ -126,6 +153,17 @@ export function ChatApp({
   }, [activeThreadId, loadMessages, messagesByThread]);
 
   useChatRealtime((event) => {
+    if (event.type === "read") {
+      if (event.readByUserId === currentUserId) {
+        setThreads((prev) =>
+          prev.map((thread) =>
+            thread.id === event.threadId ? { ...thread, unreadCount: 0 } : thread,
+          ),
+        );
+      }
+      return;
+    }
+
     if (event.type === "message") {
       setThreads((prev) => {
         const updated = prev.map((thread) => {
@@ -135,7 +173,9 @@ export function ChatApp({
             lastMessageAt: event.lastMessageAt ?? event.createdAt,
             lastMessagePreview: event.lastMessagePreview ?? event.body,
             unreadCount:
-              activeThreadId === thread.id ? 0 : thread.unreadCount + 1,
+              activeThreadId === thread.id || event.senderId === currentUserId
+                ? 0
+                : thread.unreadCount + 1,
           };
         });
         return updated.sort((a, b) => {
@@ -145,8 +185,10 @@ export function ChatApp({
         });
       });
 
-      const { messageId, senderId, body, createdAt, threadId } = event;
-      if (!messageId || !senderId || !body || !createdAt) return;
+      const { messageId, senderId, kind, body, createdAt, threadId } = event;
+      const isSystem = kind === "system";
+      if (!messageId || !body || !createdAt) return;
+      if (!senderId && !isSystem) return;
 
       // Own sends are already appended from the send API response.
       if (senderId === currentUserId) return;
@@ -159,6 +201,7 @@ export function ChatApp({
           id: messageId,
           threadId,
           senderId,
+          kind: kind ?? "user",
           body,
           createdAt,
           isMine: false,
@@ -188,6 +231,19 @@ export function ChatApp({
   function handleSelectThread(threadId: string) {
     setActiveThreadId(threadId);
     setView("conversation");
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === threadId ? { ...thread, unreadCount: 0 } : thread,
+      ),
+    );
+  }
+
+  function handleThreadRead(threadId: string) {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === threadId ? { ...thread, unreadCount: 0 } : thread,
+      ),
+    );
   }
 
   function handleThreadCreated(threadId: string) {
@@ -248,7 +304,7 @@ export function ChatApp({
         [threadId]: {
           loaded: true,
           hasMore,
-          messages: deduped,
+          messages: sortByCreatedAt(deduped),
         },
       };
     });
@@ -256,19 +312,33 @@ export function ChatApp({
 
   const messageState = activeThreadId ? messagesByThread[activeThreadId] : undefined;
 
+  const shellHeight = embedded
+    ? "h-[28rem] md:h-[32rem]"
+    : fillViewport
+      ? "h-full min-h-0"
+      : "h-[calc(100dvh-13rem)] min-h-[24rem]";
+
   return (
-    <div className={cn("mx-auto w-full", embedded ? "max-w-none" : "max-w-6xl")}>
+    <div
+      className={cn(
+        "w-full",
+        embedded || fillViewport ? "h-full max-w-none" : "mx-auto max-w-6xl",
+      )}
+    >
       <div
         className={cn(
-          "grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm",
-          embedded ? "min-h-[28rem] md:min-h-[32rem]" : "min-h-[calc(100dvh-8rem)]",
+          "grid overflow-hidden bg-white",
+          fillViewport
+            ? "h-full border-y border-slate-200"
+            : "rounded-2xl border border-slate-200 shadow-sm",
+          shellHeight,
           "md:grid-cols-[360px_1fr]",
         )}
       >
         <div
           className={cn(
-            "border-r border-slate-200",
-            view !== "inbox" && view !== "new" ? "hidden md:block" : "block",
+            "flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-200",
+            view !== "inbox" && view !== "new" ? "hidden md:flex" : "flex",
           )}
         >
           {view === "new" ? (
@@ -301,8 +371,8 @@ export function ChatApp({
 
         <div
           className={cn(
-            embedded ? "min-h-[28rem] md:min-h-[32rem]" : "min-h-[calc(100dvh-8rem)]",
-            view === "conversation" ? "block" : "hidden md:block",
+            "flex h-full min-h-0 flex-col overflow-hidden",
+            view === "conversation" ? "flex" : "hidden md:flex",
           )}
         >
           {activeThread && activeThreadId ? (
@@ -313,11 +383,13 @@ export function ChatApp({
               loadingMessages={!messageState?.loaded}
               onBack={() => setView("inbox")}
               onMessageSent={handleMessageSent}
+              onThreadRead={handleThreadRead}
               onMessagesLoaded={(messages, hasMore, prepend) =>
                 handleMessagesLoaded(activeThreadId, messages, hasMore, prepend)
               }
               placeholder={copy.messagePlaceholder}
               backLabel={copy.backLabel}
+              isDoctorView={isDoctorView}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center bg-[#f8faf9] px-6 text-center">

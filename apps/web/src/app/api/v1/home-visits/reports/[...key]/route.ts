@@ -1,3 +1,4 @@
+import { unwrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import { readFile } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/auth";
@@ -38,12 +39,13 @@ export async function GET(_req: Request, { params }: Params) {
     }
 
     const absolutePath = resolveHomeVisitReportPath(storageKey);
-    const buffer = await readFile(absolutePath);
+    const raw = await readFile(absolutePath);
+    const buffer = unwrapEncryptedFile(raw);
     const mimeType =
       visit.visitReport?.mimeType ?? "application/octet-stream";
     const filename = visit.visitReport?.originalName ?? path.basename(storageKey);
 
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": mimeType,
         "Content-Disposition": `inline; filename="${filename}"`,

@@ -37,7 +37,7 @@ import {
   isDummyPaymentMode,
   type TestPaymentCheckout,
 } from "@/lib/payments/dummy-payment";
-import { sendOnlineConsultConfirmation } from "@/lib/notifications/consult-notifications";
+import { sendOnlineConsultConfirmation, sendDoctorConsultBooked } from "@/lib/notifications/consult-notifications";
 import { mongoFilter } from "@/lib/mongo/query";
 import { ChatService } from "@/server/services/chat.service";
 import { randomUUID } from "crypto";
@@ -484,6 +484,7 @@ export class OnlineConsultService {
         doctorName: validated.doctorName,
         integration: useDummy ? "dummy_mvp" : "jazzcash_live",
         gatewayPreview: useDummy ? dummyPreview : undefined,
+        ...(input.locale ? { locale: input.locale } : {}),
       },
     } as Record<string, unknown>)) as { _id: { toString(): string } };
 
@@ -595,6 +596,7 @@ export class OnlineConsultService {
     );
 
     await ChatService.ensureAppointmentThread(appointment._id.toString());
+    await ChatService.startIntakeConversation(appointment._id.toString());
 
     const doctor = await DoctorProfileModel.findById(appointment.doctorId)
       .populate("userId", "name phone")
@@ -609,6 +611,22 @@ export class OnlineConsultService {
       slotStart: appointment.scheduledStart,
       amount: payment.amount,
     });
+
+    if (doctor?.userId) {
+      const doctorUserId =
+        typeof doctor.userId === "object" && "_id" in doctor.userId
+          ? doctor.userId._id.toString()
+          : doctor.userId.toString();
+
+      await sendDoctorConsultBooked({
+        userId: doctorUserId,
+        phone: doctorUser?.phone ?? undefined,
+        patientName: patient?.name ?? "Patient",
+        slotStart: appointment.scheduledStart,
+        appointmentId: appointment._id.toString(),
+        type: "online",
+      });
+    }
 
     return OnlineConsultService.getBookingByAppointmentId(appointment._id.toString());
   }
@@ -690,12 +708,15 @@ export class OnlineConsultService {
   static async getPatientBooking(patientId: string): Promise<OnlinePatientBookingDto | null> {
     await OnlineConsultService.ensureConnected();
 
+    const now = new Date();
+    const graceAfterEndMs = 2 * 60 * 60 * 1000;
+
     const appointment = await AppointmentModel.findOne(
       mongoFilter({
         patientId,
         type: AppointmentTypes.ONLINE,
         status: { $in: [AppointmentStatuses.CONFIRMED, AppointmentStatuses.IN_PROGRESS] },
-        scheduledEnd: { $gte: new Date() },
+        scheduledEnd: { $gte: new Date(now.getTime() - graceAfterEndMs) },
       }),
     )
       .sort({ scheduledStart: 1 })

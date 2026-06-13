@@ -1,24 +1,32 @@
 import bcrypt from "bcryptjs";
 import {
   connectDatabase,
+  AppointmentModel,
   DoctorProfileModel,
+  PaymentModel,
   SundaySlotTemplateModel,
   UserModel,
   type DoctorProfileDocument,
 } from "@zindagi/database";
 import {
   AppError,
+  AppointmentStatuses,
+  PaymentStatuses,
   Roles,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
+  emailLookupHash,
 } from "@zindagi/shared";
 import type { z } from "zod";
 import type {
   adminCreateDoctorSchema,
   adminUpdateDoctorSchema,
 } from "@zindagi/validators";
+import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import { mapUserPii, revealPii } from "@/server/lib/decrypt-pii";
+import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { SundayConsultService } from "./sunday-consult.service";
 import { decideDoctorVerification } from "./doctor-verification.service";
 
@@ -35,6 +43,18 @@ const DEFAULT_WEEKLY_AVAILABILITY = [
 ];
 
 const BCRYPT_ROUNDS = 12;
+
+const ACTIVE_APPOINTMENT_STATUSES = [
+  AppointmentStatuses.CONFIRMED,
+  AppointmentStatuses.IN_PROGRESS,
+];
+
+function formatPhoneForDisplay(phone?: string | null): string | undefined {
+  if (!phone) return undefined;
+  const digits = normalizePhoneDigits(phone);
+  if (!digits) return undefined;
+  return toPakistaniLocalPhone(digits);
+}
 
 async function generateUniqueSlug(name: string, profileId: string): Promise<string> {
   const base =
@@ -58,6 +78,16 @@ async function generateUniqueSlug(name: string, profileId: string): Promise<stri
   return slug;
 }
 
+export type AdminDoctorStats = {
+  upcomingToday: number;
+  activeConsults: number;
+  completedTotal: number;
+  completedThisMonth: number;
+  totalEarnings: number;
+  earningsThisMonth: number;
+  isWorkingNow: boolean;
+};
+
 export type AdminDoctorRow = {
   id: string;
   userId: string;
@@ -74,7 +104,21 @@ export type AdminDoctorRow = {
   sundayConsultEnabled: boolean;
   homeVisitEnabled: boolean;
   homeVisitFee: number;
+  consultationFee: number;
+  ratingAvg: number;
+  ratingCount: number;
   weeklyAvailability: { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string }[];
+  stats: AdminDoctorStats;
+};
+
+const EMPTY_STATS: AdminDoctorStats = {
+  upcomingToday: 0,
+  activeConsults: 0,
+  completedTotal: 0,
+  completedThisMonth: 0,
+  totalEarnings: 0,
+  earningsThisMonth: 0,
+  isWorkingNow: false,
 };
 
 function mapDoctorRow(
@@ -96,29 +140,174 @@ function mapDoctorRow(
     sundayConsultEnabled?: boolean;
     homeVisitEnabled?: boolean;
     homeVisitFee?: number;
+    consultationFee?: number;
+    ratingAvg?: number;
+    ratingCount?: number;
     weeklyAvailability?: AdminDoctorRow["weeklyAvailability"];
   },
+  stats: AdminDoctorStats = EMPTY_STATS,
 ): AdminDoctorRow {
-  const user = profile.userId;
-  const name = user?.name ?? "Doctor";
+  const user = profile.userId ?? {};
+  const pii = mapUserPii(user);
+  const name = pii.name;
   return {
     id: profile._id.toString(),
-    userId: user?._id?.toString() ?? "",
+    userId: user._id?.toString() ?? "",
     name,
-    email: user?.email ?? undefined,
-    phone: user?.phone ?? undefined,
-    avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+    email: pii.email,
+    phone: formatPhoneForDisplay(pii.phone),
+    avatarUrl: resolveDoctorPortrait(name, user.avatarUrl),
     slug: profile.slug ?? undefined,
-    pmdcNumber: profile.pmdcNumber ?? undefined,
+    pmdcNumber: revealPii(profile.pmdcNumber),
     specialties: profile.specialties ?? [],
     verificationStatus: profile.verificationStatus ?? VerificationStatuses.PENDING,
     isListed: profile.isListed ?? false,
-    isActive: user?.isActive !== false,
+    isActive: user.isActive !== false,
     sundayConsultEnabled: profile.sundayConsultEnabled ?? false,
     homeVisitEnabled: profile.homeVisitEnabled ?? false,
     homeVisitFee: profile.homeVisitFee ?? 0,
+    consultationFee: profile.consultationFee ?? 0,
+    ratingAvg: profile.ratingAvg ?? 0,
+    ratingCount: profile.ratingCount ?? 0,
     weeklyAvailability: profile.weeklyAvailability ?? [],
+    stats,
   };
+}
+
+async function loadUsersById(userIds: string[]) {
+  if (!userIds.length) return new Map<string, Record<string, unknown>>();
+  const users = await UserModel.find(mongoFilter({ _id: { $in: mongoObjectIds(userIds) } }))
+    .select("name email phone isActive avatarUrl")
+    .lean();
+  return new Map(users.map((u) => [u._id.toString(), u as Record<string, unknown>]));
+}
+
+async function loadDoctorStatsBatch(
+  doctorProfileIds: string[],
+): Promise<Map<string, AdminDoctorStats>> {
+  const statsMap = new Map<string, AdminDoctorStats>();
+  for (const id of doctorProfileIds) {
+    statsMap.set(id, { ...EMPTY_STATS });
+  }
+  if (!doctorProfileIds.length) return statsMap;
+
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const doctorObjectIds = mongoObjectIds(doctorProfileIds);
+
+  const baseFilter = mongoFilter({
+    doctorId: { $in: doctorObjectIds },
+    $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+  });
+
+  const [appointments, completedAppts] = await Promise.all([
+    AppointmentModel.find(baseFilter)
+      .select("doctorId status scheduledStart completedAt")
+      .lean(),
+    AppointmentModel.find(
+      mongoFilter({
+        doctorId: { $in: doctorObjectIds },
+        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+        status: AppointmentStatuses.COMPLETED,
+        paymentId: { $exists: true, $ne: null },
+      }),
+    )
+      .select("doctorId paymentId completedAt")
+      .lean(),
+  ]);
+
+  for (const appt of appointments) {
+    const id = appt.doctorId?.toString();
+    if (!id) continue;
+    const current = statsMap.get(id) ?? { ...EMPTY_STATS };
+
+    if (
+      ACTIVE_APPOINTMENT_STATUSES.includes(
+        appt.status as (typeof ACTIVE_APPOINTMENT_STATUSES)[number],
+      ) &&
+      appt.scheduledStart >= startOfDay &&
+      appt.scheduledStart < endOfDay
+    ) {
+      current.upcomingToday += 1;
+    }
+    if (appt.status === AppointmentStatuses.IN_PROGRESS) {
+      current.activeConsults += 1;
+      current.isWorkingNow = true;
+    }
+    if (appt.status === AppointmentStatuses.COMPLETED) {
+      current.completedTotal += 1;
+      if (appt.completedAt && appt.completedAt >= startOfMonth) {
+        current.completedThisMonth += 1;
+      }
+    }
+    statsMap.set(id, current);
+  }
+
+  const paymentIds = [
+    ...new Set(
+      completedAppts
+        .map((a) => a.paymentId?.toString())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  if (paymentIds.length) {
+    const payments = await PaymentModel.find(
+      mongoFilter({ _id: { $in: mongoObjectIds(paymentIds) }, status: PaymentStatuses.PAID }),
+    )
+      .select("_id amount")
+      .lean();
+    const paymentAmounts = new Map(
+      payments.map((p) => [p._id.toString(), p.amount ?? 0]),
+    );
+
+    for (const appt of completedAppts) {
+      const doctorId = appt.doctorId?.toString();
+      const paymentId = appt.paymentId?.toString();
+      if (!doctorId || !paymentId) continue;
+      const amount = paymentAmounts.get(paymentId) ?? 0;
+      if (!amount) continue;
+
+      const current = statsMap.get(doctorId) ?? { ...EMPTY_STATS };
+      current.totalEarnings += amount;
+      if (appt.completedAt && appt.completedAt >= startOfMonth) {
+        current.earningsThisMonth += amount;
+      }
+      statsMap.set(doctorId, current);
+    }
+  }
+
+  return statsMap;
+}
+
+async function buildAdminDoctorRow(profileId: string): Promise<AdminDoctorRow> {
+  const profile = await DoctorProfileModel.findById(profileId).lean();
+  if (!profile) throw new AppError("Doctor not found", "NOT_FOUND", 404);
+
+  const userId = profile.userId?.toString();
+  const users = userId ? await loadUsersById([userId]) : new Map();
+  const statsMap = await loadDoctorStatsBatch([profileId]);
+
+  return mapDoctorRow(
+    {
+      ...profile,
+      userId: users.get(userId ?? "") ?? {},
+    } as Parameters<typeof mapDoctorRow>[0],
+    statsMap.get(profileId) ?? EMPTY_STATS,
+  );
+}
+
+function applyRestrictedStatus(profile: DoctorProfileDocument) {
+  profile.verificationStatus = VerificationStatuses.RESTRICTED;
+  profile.isListed = false;
+  profile.videoConsultEnabled = false;
+  profile.sundayConsultEnabled = false;
+  profile.homeVisitEnabled = false;
 }
 
 export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]> {
@@ -141,11 +330,28 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
   }
 
   const profiles = await DoctorProfileModel.find(userFilter ?? {})
-    .populate("userId", "name email phone isActive avatarUrl")
     .sort({ createdAt: -1 })
     .lean();
 
-  return profiles.map((p) => mapDoctorRow(p as Parameters<typeof mapDoctorRow>[0]));
+  const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];
+  const profileIds = profiles.map((p) => p._id.toString());
+
+  const [userMap, statsMap] = await Promise.all([
+    loadUsersById(userIds),
+    loadDoctorStatsBatch(profileIds),
+  ]);
+
+  return profiles.map((profile) => {
+    const id = profile._id.toString();
+    const userId = profile.userId?.toString() ?? "";
+    return mapDoctorRow(
+      {
+        ...profile,
+        userId: userMap.get(userId) ?? {},
+      } as Parameters<typeof mapDoctorRow>[0],
+      statsMap.get(id) ?? EMPTY_STATS,
+    );
+  });
 }
 
 export async function adminCreateDoctor(
@@ -155,7 +361,7 @@ export async function adminCreateDoctor(
   await connectDatabase();
   const email = input.email.toLowerCase();
 
-  const existing = await UserModel.findOne({ email });
+  const existing = await UserModel.findOne({ emailLookup: emailLookupHash(email) });
   if (existing) {
     throw new AppError("Email already in use", "CONFLICT", 409);
   }
@@ -170,7 +376,7 @@ export async function adminCreateDoctor(
     email,
     phone: input.phone,
     passwordHash,
-    roles: [Roles.DOCTOR, Roles.PATIENT],
+    roles: [Roles.DOCTOR],
     authProviders: ["credentials"],
     emailVerified: new Date(),
     onboardingCompleted: true,
@@ -219,11 +425,7 @@ export async function adminCreateDoctor(
     );
   }
 
-  const populated = await DoctorProfileModel.findById(profile._id)
-    .populate("userId", "name email phone isActive")
-    .lean();
-
-  return mapDoctorRow(populated as Parameters<typeof mapDoctorRow>[0]);
+  return buildAdminDoctorRow(profile._id.toString());
 }
 
 export async function adminUpdateDoctor(
@@ -244,19 +446,43 @@ export async function adminUpdateDoctor(
       "reject",
       input.rejectionReason,
     );
+  } else if (input.verificationStatus === VerificationStatuses.RESTRICTED) {
+    applyRestrictedStatus(profile);
+    await profile.save();
   }
 
   const refreshed = await DoctorProfileModel.findById(doctorProfileId);
   if (!refreshed) throw new AppError("Doctor not found", "NOT_FOUND", 404);
 
   if (input.isListed !== undefined) {
+    if (refreshed.verificationStatus === VerificationStatuses.RESTRICTED) {
+      throw new AppError(
+        "Cannot list a restricted doctor — restore approved status first",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
     refreshed.isListed = input.isListed;
     refreshed.videoConsultEnabled = input.isListed;
   }
   if (input.sundayConsultEnabled !== undefined) {
+    if (input.sundayConsultEnabled && refreshed.verificationStatus === VerificationStatuses.RESTRICTED) {
+      throw new AppError(
+        "Cannot enable services for a restricted doctor",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
     refreshed.sundayConsultEnabled = input.sundayConsultEnabled;
   }
   if (input.homeVisitEnabled !== undefined) {
+    if (input.homeVisitEnabled && refreshed.verificationStatus === VerificationStatuses.RESTRICTED) {
+      throw new AppError(
+        "Cannot enable services for a restricted doctor",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
     refreshed.homeVisitEnabled = input.homeVisitEnabled;
   }
   if (input.homeVisitFee !== undefined) {
@@ -298,11 +524,14 @@ export async function adminUpdateDoctor(
     }
   }
 
-  const populated = await DoctorProfileModel.findById(refreshed._id)
-    .populate("userId", "name email phone isActive")
-    .lean();
+  return buildAdminDoctorRow(refreshed._id.toString());
+}
 
-  return mapDoctorRow(populated as Parameters<typeof mapDoctorRow>[0]);
+export async function getDoctorDetailForAdmin(
+  doctorProfileId: string,
+): Promise<AdminDoctorRow> {
+  await connectDatabase();
+  return buildAdminDoctorRow(doctorProfileId);
 }
 
 export async function listDoctorsForReassign() {
@@ -310,13 +539,18 @@ export async function listDoctorsForReassign() {
   const profiles = await DoctorProfileModel.find({
     verificationStatus: VerificationStatuses.APPROVED,
     isListed: true,
-  })
-    .populate("userId", "name")
-    .lean();
+  }).lean();
 
-  return profiles.map((p) => ({
-    id: p._id.toString(),
-    name: (p.userId as { name?: string })?.name ?? "Doctor",
-    specialties: p.specialties ?? [],
-  }));
+  const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];
+  const userMap = await loadUsersById(userIds);
+
+  return profiles.map((p) => {
+    const userId = p.userId?.toString() ?? "";
+    const pii = mapUserPii(userMap.get(userId) ?? {});
+    return {
+      id: p._id.toString(),
+      name: pii.name,
+      specialties: p.specialties ?? [],
+    };
+  });
 }

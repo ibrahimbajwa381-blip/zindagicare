@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { resolvePostAuthPath } from "@/lib/auth/routes";
 import { redirect } from "next/navigation";
+import { isStaff } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
@@ -9,7 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientDashboardMessagesSection } from "@/features/patient/components/patient-dashboard-messages-section";
 import { PatientSundayBookingSection } from "@/features/sunday-consult/components/patient-sunday-booking-section";
 import { PatientVisitsSection } from "@/features/home-care/components/patient-visits-section";
+import { PatientAppointmentHistorySection } from "@/features/patient/components/patient-appointment-history-section";
 import { PatientProfileSection } from "@/features/patient/components/patient-profile-section";
+import { AppointmentReminderService } from "@/server/services/appointment-reminder.service";
+import { PatientAppointmentsService } from "@/server/services/patient-appointments.service";
 import { getDictionary } from "@/i18n";
 import { formatMessage } from "@/i18n/messages";
 import { getLocale } from "@/i18n/server";
@@ -28,13 +33,20 @@ export default async function PatientDashboardPage() {
     redirect("/login");
   }
 
+  if (isStaff(session.user.roles)) {
+    redirect(resolvePostAuthPath(session.user));
+  }
+
   const locale = await getLocale();
   const t = getDictionary(locale);
-  const [profile, sundayBooking, onlineBooking] = await Promise.all([
-    getPatientProfile(session.user.id),
-    SundayConsultService.getPatientBooking(session.user.id),
-    loadPatientOnlineBooking(session.user.id),
-  ]);
+  const [profile, sundayBooking, onlineBooking, appointmentHistory, _reminders] =
+    await Promise.all([
+      getPatientProfile(session.user.id),
+      SundayConsultService.getPatientBooking(session.user.id),
+      loadPatientOnlineBooking(session.user.id),
+      PatientAppointmentsService.listHistory(session.user.id),
+      AppointmentReminderService.processDueReminders().catch(() => null),
+    ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
 
   return (
@@ -75,6 +87,15 @@ export default async function PatientDashboardPage() {
             initialBooking={sundayBooking}
           />
         ) : null}
+
+        <PatientAppointmentHistorySection
+          items={appointmentHistory}
+          title={t.dashboard.appointmentHistory.title}
+          empty={t.dashboard.appointmentHistory.empty}
+          missedLabel={t.dashboard.appointmentHistory.missed}
+          statusLabels={t.dashboard.appointmentHistory.status}
+          reviewCopy={t.dashboard.appointmentHistory.review}
+        />
 
         <div>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

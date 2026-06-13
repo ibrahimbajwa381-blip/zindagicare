@@ -8,7 +8,7 @@ import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive, surfaceInset, surfaceMuted } from "@/lib/ui/surfaces";
 import { SundayExplainer } from "./sunday-explainer";
 import { formatNextSundayLong } from "@/lib/sunday/display";
-import { useTranslations } from "@/i18n/locale-provider";
+import { useLocale, useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,7 @@ type DoctorRow = {
 export function SundayConsultClient() {
   const mounted = useMounted();
   const { sunday: sundayCopy, dashboard: dashboardCopy } = useTranslations();
+  const { locale } = useLocale();
   const { data: session, status } = useSession();
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorRow | null>(null);
@@ -191,6 +192,7 @@ export function SundayConsultClient() {
           instanceId,
           slotId: selectedSlotId,
           holdToken: token,
+          locale,
         }),
       });
       const confirmJson = await confirmRes.json();
@@ -199,6 +201,7 @@ export function SundayConsultClient() {
       }
 
       const confirmed = confirmJson.data as {
+        appointmentId: string;
         scheduledStart: string;
         scheduledEnd: string;
       };
@@ -209,6 +212,7 @@ export function SundayConsultClient() {
         scheduledStart: confirmed.scheduledStart,
         scheduledEnd: confirmed.scheduledEnd,
         type: "sunday",
+        appointmentId: confirmed.appointmentId,
       });
       setConfirmationOpen(true);
 

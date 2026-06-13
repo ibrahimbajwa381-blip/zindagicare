@@ -1,5 +1,5 @@
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
-import { AdminPatientViewer } from "@/features/admin/components/admin-patient-viewer";
+import { AdminPatientsManagement } from "@/features/admin/components/admin-patients-management";
 
 export const metadata = { title: "Patients" };
 
@@ -9,9 +9,9 @@ export default function AdminPatientsPage() {
       <AdminPageHeader
         eyebrow="Patient records"
         title="Patient directory"
-        description="Search patients by name or phone and review their booking and care history."
+        description="Search patients, review care activity and spending, and manage account access — bans, no-shows, and deactivation."
       />
-      <AdminPatientViewer />
+      <AdminPatientsManagement />
     </>
   );
 }

@@ -1,19 +1,24 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { pakistaniPhoneSchema } from "@zindagi/validators";
+import { pakistaniPhoneSchema, type AccountType } from "@zindagi/validators";
 import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { registerAction } from "@/server/actions/auth.actions";
 
-export function RegisterForm() {
+type RegisterFormProps = {
+  accountType?: AccountType;
+};
+
+export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(registerAction, undefined);
   const [clientPhoneError, setClientPhoneError] = useState<string>();
 
   const phoneError = state?.fieldErrors?.phone ?? clientPhoneError;
+  const showCity = accountType !== "patient";
 
   function validatePhoneValue(value: string) {
     const result = pakistaniPhoneSchema.safeParse(value);
@@ -38,6 +43,7 @@ export function RegisterForm() {
         }
       }}
     >
+      <input type="hidden" name="accountType" value={accountType} />
       <FormField
         label={t.auth.fullName}
         hint={t.auth.fullNameHint}
@@ -76,6 +82,15 @@ export function RegisterForm() {
         }}
         required
       />
+      {showCity ? (
+        <FormField
+          label={t.onboarding.city}
+          name="city"
+          defaultValue="Lahore"
+          error={state?.fieldErrors?.city}
+          required
+        />
+      ) : null}
       <div>
         <Label htmlFor="password" className="text-base font-semibold text-slate-800">
           {t.auth.password}
