@@ -1,7 +1,7 @@
 import { siteConfig } from "@/config/site";
 
 export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.png";
-export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care.jpg";
+export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.jpg";
 
 export type HeroService = {
   id: string;
@@ -63,7 +63,7 @@ export const heroServices: HeroService[] = [
   },
   {
     id: "in-house-medical",
-    image: "/hero/home-care.jpg",
+    image: HOME_SERVICES_HERO_IMAGE,
     imageAlt: "Pakistani nurse providing in-house patient care at home",
     carousel: {
       eyebrow: "In-house medical services",

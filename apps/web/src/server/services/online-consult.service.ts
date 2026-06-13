@@ -39,6 +39,7 @@ import {
 } from "@/lib/payments/dummy-payment";
 import { sendOnlineConsultConfirmation, sendDoctorConsultBooked } from "@/lib/notifications/consult-notifications";
 import { mongoFilter } from "@/lib/mongo/query";
+import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { ChatService } from "@/server/services/chat.service";
 import { randomUUID } from "crypto";
 
@@ -613,16 +614,8 @@ export class OnlineConsultService {
     });
 
     if (doctor?.userId) {
-      const rawUserId = doctor.userId as
-        | { _id: { toString(): string } }
-        | { toString(): string };
-      const doctorUserId =
-        typeof rawUserId === "object" && "_id" in rawUserId
-          ? rawUserId._id.toString()
-          : rawUserId.toString();
-
       await sendDoctorConsultBooked({
-        userId: doctorUserId,
+        userId: resolveMongoRefId(doctor.userId),
         phone: doctorUser?.phone ?? undefined,
         patientName: patient?.name ?? "Patient",
         slotStart: appointment.scheduledStart,

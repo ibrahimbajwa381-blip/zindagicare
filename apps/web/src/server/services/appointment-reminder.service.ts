@@ -17,6 +17,7 @@ import {
 } from "@/lib/notifications/appointment-reminders";
 import { formatSundayDateKey } from "@/lib/sunday/date-utils";
 import { mongoFilter } from "@/lib/mongo/query";
+import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 
 const MS_HOUR = 60 * 60 * 1000;
@@ -47,17 +48,6 @@ function isSundayMorningKarachi(now = new Date()) {
   const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
   return weekday === "Sun" && hour >= 7 && hour < 11;
-}
-
-function resolveDoctorUserId(doctor: {
-  userId?: { _id?: { toString(): string } } | { toString(): string } | null;
-} | null) {
-  const userId = doctor?.userId;
-  if (!userId) return null;
-  if (typeof userId === "object" && "_id" in userId && userId._id) {
-    return userId._id.toString();
-  }
-  return userId.toString();
 }
 
 export class AppointmentReminderService {
@@ -110,7 +100,9 @@ export class AppointmentReminderService {
       const doctor = appointment.doctorId as {
         userId?: { _id?: { toString(): string }; name?: string; phone?: string };
       } | null;
-      const doctorUserId = resolveDoctorUserId(doctor);
+      const doctorUserId = doctor?.userId
+        ? resolveMongoRefId(doctor.userId)
+        : null;
       const doctorUser = doctor?.userId;
       const doctorName = safeDisplayText(doctorUser?.name) ?? "Doctor";
       const appointmentId = appointment._id.toString();

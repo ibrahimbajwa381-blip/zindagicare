@@ -35,6 +35,7 @@ import type {
   SundayPatientBookingDto,
 } from "@/features/sunday-consult/types";
 import { mongoFilter } from "@/lib/mongo/query";
+import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import type { HydratedDocument } from "mongoose";
 import type { AppointmentDocument } from "@zindagi/database";
 
@@ -463,16 +464,8 @@ export class SundayConsultService {
     });
 
     if (doctor?.userId) {
-      const rawUserId = doctor.userId as
-        | { _id: { toString(): string } }
-        | { toString(): string };
-      const doctorUserId =
-        typeof rawUserId === "object" && "_id" in rawUserId
-          ? rawUserId._id.toString()
-          : rawUserId.toString();
-
       await sendDoctorConsultBooked({
-        userId: doctorUserId,
+        userId: resolveMongoRefId(doctor.userId),
         phone: doctorUser?.phone ?? undefined,
         patientName: patient?.name ?? "Patient",
         slotStart: slot.startAt,
