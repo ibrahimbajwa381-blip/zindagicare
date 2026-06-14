@@ -38,12 +38,18 @@ export async function connectDatabase(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
+    const options: mongoose.ConnectOptions = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 15_000,
+    };
+
+    // Force IPv4 only when needed (local Windows DNS). Vercel resolves SRV/IPv6 fine.
+    if (process.env.MONGODB_FORCE_IPV4 === "true") {
+      options.family = 4;
+    }
+
     cached.promise = mongoose
-      .connect(uri, {
-        bufferCommands: false,
-        serverSelectionTimeoutMS: 15_000,
-        family: 4,
-      })
+      .connect(uri, options)
       .then((conn) => {
         cached.conn = conn;
         return conn;
