@@ -1,6 +1,9 @@
-import { readFile } from "fs/promises";
 import { apiError } from "@/server/api/response";
-import { resolveDoctorAvatarPath } from "@/server/services/doctor-avatar.storage";
+import {
+  contentTypeFromKey,
+  validateStorageKey,
+} from "@/server/lib/object-storage";
+import { readDoctorAvatar } from "@/server/services/doctor-avatar.storage";
 import { AppError } from "@zindagi/shared";
 
 type Params = { params: Promise<{ key: string[] }> };
@@ -13,15 +16,12 @@ export async function GET(_req: Request, { params }: Params) {
     }
 
     const storageKey = key.map((segment) => decodeURIComponent(segment)).join("/");
-    const absolutePath = resolveDoctorAvatarPath(storageKey);
-    const buffer = await readFile(absolutePath);
-    const ext = storageKey.split(".").pop()?.toLowerCase();
-    const contentType =
-      ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+    validateStorageKey(storageKey);
+    const buffer = await readDoctorAvatar(storageKey);
 
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": contentTypeFromKey(storageKey),
         "Cache-Control": "public, max-age=86400",
       },
     });

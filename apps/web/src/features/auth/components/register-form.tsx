@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { pakistaniPhoneSchema, type AccountType } from "@zindagi/validators";
+import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { registerAction } from "@/server/actions/auth.actions";
+import { registerAction, type RegisterFormState } from "@/server/actions/auth.actions";
 
 type RegisterFormProps = {
   accountType?: AccountType;
@@ -14,10 +16,15 @@ type RegisterFormProps = {
 
 export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
   const t = useTranslations();
-  const [state, action, pending] = useActionState(registerAction, undefined);
+  const [state, action, pending] = useActionState<RegisterFormState | undefined, FormData>(
+    registerAction,
+    undefined,
+  );
   const [clientPhoneError, setClientPhoneError] = useState<string>();
+  const [termsError, setTermsError] = useState<string>();
 
   const phoneError = state?.fieldErrors?.phone ?? clientPhoneError;
+  const termsFieldError = state?.fieldErrors?.termsAccepted ?? termsError;
   const showCity = accountType !== "patient";
 
   function validatePhoneValue(value: string) {
@@ -38,7 +45,19 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
       onSubmit={(e) => {
         const form = e.currentTarget;
         const phone = (form.elements.namedItem("phone") as HTMLInputElement)?.value ?? "";
+        const termsAccepted = (form.elements.namedItem("termsAccepted") as HTMLInputElement)
+          ?.checked;
+        let blocked = false;
         if (!validatePhoneValue(phone)) {
+          blocked = true;
+        }
+        if (!termsAccepted) {
+          setTermsError(t.legal.registerTermsRequired);
+          blocked = true;
+        } else {
+          setTermsError(undefined);
+        }
+        if (blocked) {
           e.preventDefault();
         }
       }}
@@ -104,6 +123,43 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
           required
         />
         <FieldError message={state?.fieldErrors?.password} />
+      </div>
+      <div>
+        <label className="flex items-start gap-3 text-sm leading-relaxed text-slate-700">
+          <input
+            type="checkbox"
+            name="termsAccepted"
+            value="true"
+            className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand focus:ring-brand"
+            aria-invalid={!!termsFieldError}
+            onChange={() => {
+              if (termsError) setTermsError(undefined);
+            }}
+            required
+          />
+          <span>
+            {t.legal.registerAcceptanceBefore}{" "}
+            <Link
+              href={siteConfig.links.terms}
+              className="font-semibold text-brand hover:text-brand-dark hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.legal.pages.terms}
+            </Link>{" "}
+            {t.legal.registerAcceptanceAnd}{" "}
+            <Link
+              href={siteConfig.links.privacy}
+              className="font-semibold text-brand hover:text-brand-dark hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t.legal.pages.privacy}
+            </Link>
+            {t.legal.registerAcceptanceAfter ? ` ${t.legal.registerAcceptanceAfter}` : null}
+          </span>
+        </label>
+        <FieldError message={termsFieldError} />
       </div>
       <FieldError message={state?.error} />
       <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={pending}>

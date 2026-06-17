@@ -1,8 +1,12 @@
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import {
+  getObject,
+  putObject,
+  type StorageNamespace,
+} from "@/server/lib/object-storage";
 
-const UPLOAD_ROOT = path.join(process.cwd(), ".uploads", "doctor-avatars");
+const NAMESPACE: StorageNamespace = "doctor-avatars";
 const MAX_BYTES = 3 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -41,11 +45,9 @@ export async function saveDoctorAvatar(
 
   const ext = path.extname(file.name) || mimeToExt(file.type);
   const storageKey = `${userId}/${randomUUID()}${ext}`;
-  const absolutePath = path.join(UPLOAD_ROOT, storageKey);
-
-  await mkdir(path.dirname(absolutePath), { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(absolutePath, buffer);
+
+  await putObject(NAMESPACE, storageKey, buffer, file.type);
 
   return {
     storageKey,
@@ -55,13 +57,8 @@ export async function saveDoctorAvatar(
   };
 }
 
-export function resolveDoctorAvatarPath(storageKey: string): string {
-  const normalized = path.normalize(storageKey).replace(/^(\.\.(\/|\\|$))+/, "");
-  const absolutePath = path.join(UPLOAD_ROOT, normalized);
-  if (!absolutePath.startsWith(UPLOAD_ROOT)) {
-    throw new Error("Invalid avatar path");
-  }
-  return absolutePath;
+export async function readDoctorAvatar(storageKey: string): Promise<Buffer> {
+  return getObject(NAMESPACE, storageKey);
 }
 
 function mimeToExt(mime: string): string {

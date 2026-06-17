@@ -15,11 +15,11 @@ export default function HomePage() {
     <>
       <HeroSection />
       <TrustBar />
+      <HomeServicesPreview />
       <DoctorBrowseSection />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
         <TopDoctorsSection />
       </Suspense>
-      <HomeServicesPreview />
       <SundayBanner />
       <HowItWorksSection />
       <ProviderOnboardingPreview />

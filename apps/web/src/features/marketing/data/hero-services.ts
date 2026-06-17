@@ -24,6 +24,25 @@ export type HeroService = {
 
 export const heroServices: HeroService[] = [
   {
+    id: "in-house-medical",
+    image: HOME_SERVICES_HERO_IMAGE,
+    imageAlt: "Pakistani doctor and nurse providing in-house patient care at home",
+    carousel: {
+      eyebrow: "In-house medical services",
+      title: "A doctor at",
+      titleHighlight: "your home",
+      description:
+        "Verified doctors and nurses come to you for check-ups, IV drips, injections, wound dressing, and post-op care — geo-tracked, transparent-priced, and safe across Lahore.",
+      badge: "Doctor visits · Nursing · IV & injections",
+      ctaLabel: "Book in-house care",
+      href: siteConfig.links.homeServices,
+    },
+    card: {
+      title: "In-house Medical Services",
+      description: "Professional medical care delivered at your doorstep.",
+    },
+  },
+  {
     id: "online-consult",
     image: "/hero/dr-usama-riyaz.png",
     imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
@@ -59,25 +78,6 @@ export const heroServices: HeroService[] = [
     card: {
       title: "Sunday Free Consult",
       description: "Complimentary weekly video consults with verified doctors.",
-    },
-  },
-  {
-    id: "in-house-medical",
-    image: HOME_SERVICES_HERO_IMAGE,
-    imageAlt: "Pakistani nurse providing in-house patient care at home",
-    carousel: {
-      eyebrow: "In-house medical services",
-      title: "Licensed care at",
-      titleHighlight: "your home",
-      description:
-        "Doctors and nurses visit you for check-ups, IV drips, injections, wound dressing, and post-operative care — with transparent pricing and verified staff across Lahore.",
-      badge: "Doctor visits · Nursing · IV & injections",
-      ctaLabel: "Book in-house care",
-      href: siteConfig.links.homeServices,
-    },
-    card: {
-      title: "In-house Medical Services",
-      description: "Professional medical care delivered at your doorstep.",
     },
   },
 ];

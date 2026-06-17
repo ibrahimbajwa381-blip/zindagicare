@@ -58,13 +58,13 @@ export function buildMarketingMobileNav(
   },
 ): { links: MobileNavLink[]; sections: MobileNavSection[] } {
   const links: MobileNavLink[] = [
+    { href: siteConfig.links.homeServices, label: labels.homeServices },
     { href: siteConfig.links.doctors, label: labels.onlineConsult },
     {
       href: siteConfig.links.sundayConsult,
       label: labels.sundayConsult,
       badge: labels.freeBadge,
     },
-    { href: siteConfig.links.homeServices, label: labels.homeServices },
   ];
 
   const accountSection = buildAccountMobileSection(session, {

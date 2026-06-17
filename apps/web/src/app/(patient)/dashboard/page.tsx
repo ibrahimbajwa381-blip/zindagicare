@@ -13,6 +13,7 @@ import { PatientSundayBookingSection } from "@/features/sunday-consult/component
 import { PatientVisitsSection } from "@/features/home-care/components/patient-visits-section";
 import { PatientAppointmentHistorySection } from "@/features/patient/components/patient-appointment-history-section";
 import { PatientProfileSection } from "@/features/patient/components/patient-profile-section";
+import { WelcomeTour } from "@/features/patient/components/welcome-tour";
 import { AppointmentReminderService } from "@/server/services/appointment-reminder.service";
 import { PatientAppointmentsService } from "@/server/services/patient-appointments.service";
 import { getDictionary } from "@/i18n";
@@ -51,6 +52,7 @@ export default async function PatientDashboardPage() {
 
   return (
     <PageShell variant="brand" spacing="default" flipBlur>
+      <WelcomeTour userId={session.user.id} />
       <PageTitle
         eyebrow={t.dashboard.eyebrow}
         title={t.dashboard.pageTitle}

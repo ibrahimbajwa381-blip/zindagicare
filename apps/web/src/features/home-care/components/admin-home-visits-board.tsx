@@ -255,7 +255,7 @@ export function AdminHomeVisitsBoard() {
           {!override && (
             <span>
               {nearbyOptions.length} provider(s) within {radiusKm} km
-              {nearbyOptions.length === 0 && " — enable override to assign any nurse"}
+              {nearbyOptions.length === 0 && " — enable override to assign any provider"}
             </span>
           )}
           {override && (

@@ -69,13 +69,13 @@ export function UnifiedHeader({
   });
 
   const defaultNavLinks: readonly UnifiedNavLink[] = [
+    { label: t.nav.homeServices, href: siteConfig.links.homeServices },
     { label: t.nav.onlineConsult, href: siteConfig.links.doctors },
     {
       label: t.nav.sundayConsult,
       href: siteConfig.links.sundayConsult,
       badge: t.nav.freeBadge,
     },
-    { label: t.nav.homeServices, href: siteConfig.links.homeServices },
   ];
 
   const resolvedNavLinks = navLinks ?? defaultNavLinks;

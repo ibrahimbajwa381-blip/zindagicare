@@ -1,10 +1,10 @@
 import { unwrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
-import { readFile } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/auth";
 import { connectDatabase, HomeVisitModel } from "@zindagi/database";
 import { AppError, isAdmin } from "@zindagi/shared";
-import { resolveHomeVisitReportPath } from "@/server/services/home-visit-reports.storage";
+import { validateStorageKey } from "@/server/lib/object-storage";
+import { readHomeVisitReport } from "@/server/services/home-visit-reports.storage";
 
 type Params = { params: Promise<{ key: string[] }> };
 
@@ -17,6 +17,7 @@ export async function GET(_req: Request, { params }: Params) {
 
     const { key: keyParts } = await params;
     const storageKey = decodeURIComponent(keyParts.join("/"));
+    validateStorageKey(storageKey);
 
     await connectDatabase();
     const visit = await HomeVisitModel.findOne({
@@ -38,8 +39,7 @@ export async function GET(_req: Request, { params }: Params) {
       return new Response("Forbidden", { status: 403 });
     }
 
-    const absolutePath = resolveHomeVisitReportPath(storageKey);
-    const raw = await readFile(absolutePath);
+    const raw = await readHomeVisitReport(storageKey);
     const buffer = unwrapEncryptedFile(raw);
     const mimeType =
       visit.visitReport?.mimeType ?? "application/octet-stream";

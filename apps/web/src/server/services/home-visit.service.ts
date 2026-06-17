@@ -602,7 +602,7 @@ export class HomeVisitService {
 
     if (!match) {
       throw new AppError(
-        "No available nurse found in your area",
+        "No available provider found in your area",
         ErrorCodes.NOT_FOUND,
         404,
       );

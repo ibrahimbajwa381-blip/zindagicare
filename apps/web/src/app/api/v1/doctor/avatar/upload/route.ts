@@ -1,4 +1,3 @@
-import { readFile } from "fs/promises";
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { saveDoctorAvatar } from "@/server/services/doctor-avatar.storage";

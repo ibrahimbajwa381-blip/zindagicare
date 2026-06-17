@@ -1,9 +1,13 @@
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
+import {
+  getObject,
+  putObject,
+  type StorageNamespace,
+} from "@/server/lib/object-storage";
 
-const UPLOAD_ROOT = path.join(process.cwd(), ".uploads", "home-visit-reports");
+const NAMESPACE: StorageNamespace = "home-visit-reports";
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -32,11 +36,9 @@ export async function saveHomeVisitReport(
 
   const ext = path.extname(file.name) || mimeToExt(file.type);
   const storageKey = `${visitId}/${randomUUID()}${ext}`;
-  const absolutePath = path.join(UPLOAD_ROOT, storageKey);
-
-  await mkdir(path.dirname(absolutePath), { recursive: true });
   const buffer = wrapEncryptedFile(Buffer.from(await file.arrayBuffer()));
-  await writeFile(absolutePath, buffer);
+
+  await putObject(NAMESPACE, storageKey, buffer, file.type);
 
   return {
     storageKey,
@@ -46,13 +48,8 @@ export async function saveHomeVisitReport(
   };
 }
 
-export function resolveHomeVisitReportPath(storageKey: string): string {
-  const normalized = path.normalize(storageKey).replace(/^(\.\.(\/|\\|$))+/, "");
-  const absolutePath = path.join(UPLOAD_ROOT, normalized);
-  if (!absolutePath.startsWith(UPLOAD_ROOT)) {
-    throw new Error("Invalid report path");
-  }
-  return absolutePath;
+export async function readHomeVisitReport(storageKey: string): Promise<Buffer> {
+  return getObject(NAMESPACE, storageKey);
 }
 
 function mimeToExt(mime: string): string {

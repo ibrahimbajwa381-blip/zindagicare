@@ -3,9 +3,9 @@ import { SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
 export const en = {
   site: {
     name: "ZindagiCare",
-    tagline: "Online consults, free Sunday care, and in-house medical services",
+    tagline: "At-home medical care, online consults & free Sunday care",
     description:
-      "PMDC-verified doctors in Lahore — book secure online video consultations, free 10-minute Sunday consults (Rs. 0), and licensed in-house medical care at your home.",
+      "Lahore's at-home medical care — verified doctors and nurses visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations and free 10-minute Sunday consults (Rs. 0).",
     launchNote: "Launching in {city}. PMDC-verified doctors only.",
     rights: "All rights reserved.",
   },
@@ -91,10 +91,35 @@ export const en = {
   },
   footer: {
     services: "Services",
+    providers: "For providers",
     account: "Account",
+    legal: "Legal",
+    ctaTitle: "Healthcare at your doorstep",
+    ctaDescription: "Book a doctor online, claim a free Sunday consult, or request care at home.",
+    ctaPrimary: "Get started free",
+    ctaSecondary: "Book Sunday consult",
+    emergencyTitle: "Not for emergencies",
+    emergencyDescription:
+      "For chest pain, severe breathing difficulty, or any life-threatening condition, call 1122 or go to the nearest hospital immediately.",
+    contactSupport: "Need help?",
+    pmdcBadge: "PMDC-verified doctors",
     productOfBefore: "A product of",
     productOfAfter: "",
     productOfCompany: "TechCognify.com",
+  },
+  legal: {
+    backToHome: "Back to home",
+    related: "Related",
+    pages: {
+      privacy: "Privacy Policy",
+      terms: "Terms of Service",
+      refundPolicy: "Refund & Cancellation",
+      telemedicineConsent: "Telemedicine Consent",
+    },
+    registerAcceptanceBefore: "I agree to the",
+    registerAcceptanceAnd: "and",
+    registerAcceptanceAfter: "",
+    registerTermsRequired: "You must accept the Terms and Privacy Policy to register.",
   },
   common: {
     menu: "Menu",
@@ -117,6 +142,22 @@ export const en = {
     prevService: "Previous service",
     nextService: "Next service",
     services: [
+      {
+        imageAlt: "Pakistani doctor and nurse providing in-house patient care at home",
+        carousel: {
+          eyebrow: "In-house medical services",
+          title: "A doctor at",
+          titleHighlight: "your home",
+          description:
+            "Verified doctors and nurses come to you for check-ups, IV drips, injections, wound dressing, and post-op care — geo-tracked, transparent-priced, and safe across Lahore.",
+          badge: "Doctor visits · Nursing · IV & injections",
+          ctaLabel: "Book in-house care",
+        },
+        card: {
+          title: "In-house Medical Services",
+          description: "Professional medical care delivered at your doorstep.",
+        },
+      },
       {
         imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
         carousel: {
@@ -147,22 +188,6 @@ export const en = {
         card: {
           title: "Sunday Free Consult",
           description: "Complimentary weekly video consults with verified doctors.",
-        },
-      },
-      {
-        imageAlt: "Pakistani nurse providing in-house patient care at home",
-        carousel: {
-          eyebrow: "In-house medical services",
-          title: "Licensed care at",
-          titleHighlight: "your home",
-          description:
-            "Doctors and nurses visit you for check-ups, IV drips, injections, wound dressing, and post-operative care — with transparent pricing and verified staff across Lahore.",
-          badge: "Doctor visits · Nursing · IV & injections",
-          ctaLabel: "Book in-house care",
-        },
-        card: {
-          title: "In-house Medical Services",
-          description: "Professional medical care delivered at your doorstep.",
         },
       },
     ],
@@ -298,6 +323,8 @@ export const en = {
     bannerBadge: "Doctor visits · Nursing · IV & injections",
     description:
       "Geo-tracked scheduling, transparent pricing, and PMDC-verified staff across Lahore.",
+    differentiator:
+      "What sets us apart — verified doctors and nurses come to your home, geo-tracked and transparently priced. Safe, convenient care that comes to you.",
     items: [
       { title: "Doctor home visit", desc: "In-person check-up at your doorstep" },
       { title: "Nursing & IV therapy", desc: "Injections, drips, and skilled nursing" },
@@ -311,15 +338,15 @@ export const en = {
       headline: "Medical care at your doorstep",
       subheadline: "IV drips, injections, wound care & more — without leaving home",
       body:
-        "Request a verified nurse or doctor visit anywhere in Lahore. See the price upfront, track your nurse in real time, and get a visit report when care is complete.",
+        "Request a verified doctor or nurse visit anywhere in Lahore. See the price upfront, track your provider in real time, and get a visit report when care is complete.",
       highlights: [
         {
           title: "Verified staff",
-          desc: "Background-checked nurses with approved credentials",
+          desc: "Background-checked doctors and nurses with approved credentials",
         },
         {
           title: "Geo-matched dispatch",
-          desc: "Nearest available nurse assigned to your location",
+          desc: "Nearest available doctor or nurse assigned to your location",
         },
         {
           title: "Transparent pricing",
@@ -339,7 +366,7 @@ export const en = {
       eyebrow: "Book now",
       title: "Services you can request today",
       description:
-        "These services are live in Lahore. Choose one, pick a time, and we match a nurse to your address.",
+        "These services are live in Lahore. Choose one, pick a time, and we match a verified doctor or nurse to your address.",
       fromLabel: "From",
       bookCta: "Book this service",
       durationLabel: "Typical visit",
@@ -378,12 +405,12 @@ export const en = {
           desc: "Choose IV, injection, or wound care. Enter your address and preferred time.",
         },
         {
-          title: "Nurse assigned",
-          desc: "We match the nearest verified nurse to your location — usually within minutes.",
+          title: "Provider assigned",
+          desc: "We match the nearest verified doctor or nurse to your location — usually within minutes.",
         },
         {
           title: "Care at home",
-          desc: "Track status from assigned → en route → arrived. The nurse brings required supplies.",
+          desc: "Track status from assigned → en route → arrived. Your doctor or nurse brings the required supplies.",
         },
         {
           title: "Visit report",
@@ -395,7 +422,7 @@ export const en = {
       eyebrow: "Lahore coverage",
       title: "Serving all major areas",
       description:
-        "Home care is available across Lahore. GPS helps us dispatch the closest nurse to you faster.",
+        "Home care is available across Lahore. GPS helps us dispatch the closest doctor or nurse to you faster.",
       areasLabel: "Lahore neighborhoods",
       areas: [
         "DHA",
@@ -424,7 +451,7 @@ export const en = {
         },
         {
           title: "Live status updates",
-          desc: "See when your nurse is assigned, en route, and has arrived.",
+          desc: "See when your doctor or nurse is assigned, en route, and has arrived.",
         },
       ],
     },
@@ -434,11 +461,11 @@ export const en = {
       items: [
         {
           q: "Which services can I book right now?",
-          a: "IV drip therapy, injections, and wound care are live in Lahore. Doctor home visits and urgent care are listed for reference and will expand soon.",
+          a: "Doctor home visits, IV drip therapy, injections, and wound care are live in Lahore. Urgent in-house care is listed for reference and will expand soon.",
         },
         {
-          q: "How quickly can a nurse reach me?",
-          a: "After you submit a request, we auto-match the nearest available nurse within a 15 km radius. Same-day slots depend on nurse availability and your chosen time.",
+          q: "How quickly can someone reach me?",
+          a: "After you submit a request, we auto-match the nearest available doctor or nurse within a 15 km radius. Same-day slots depend on provider availability and your chosen time.",
         },
         {
           q: "Do I need a prescription?",
@@ -457,7 +484,7 @@ export const en = {
     cta: {
       title: "Ready for care at home?",
       description:
-        "Request a visit in under two minutes. Sign in to track your nurse and download your visit report.",
+        "Request a visit in under two minutes. Sign in to track your visit and download your visit report.",
       primary: "Request home care",
       secondary: "View my visits",
     },
@@ -695,6 +722,47 @@ export const en = {
         other: "Other",
       },
     },
+  },
+  welcomeTour: {
+    skip: "Skip tour",
+    back: "Back",
+    next: "Next",
+    finish: "Start exploring",
+    stepLabel: "{current} of {total}",
+    steps: [
+      {
+        title: "Welcome to ZindagiCare",
+        body: "ZindagiCare brings the doctor to your phone. In a few taps you can talk to a verified doctor, get a free Sunday check-up, or have a doctor or nurse visit your home — all from one place. Let's take a quick look around.",
+      },
+      {
+        title: "Talk to a doctor by video",
+        body: "Pick a PMDC-verified doctor, choose a time, and pay securely. At your slot, join a private video call from home — no waiting rooms and no travel. Perfect for everyday illnesses, advice, and follow-ups.",
+      },
+      {
+        title: "A free check-up every Sunday",
+        body: "Every Sunday you can book a free 10-minute video consultation with a real doctor — Rs. 0. Ideal when you have a small worry and want quick, trusted advice without paying.",
+      },
+      {
+        title: "Medical care at your home",
+        body: "Need a doctor home visit, an injection, a drip (IV), or wound dressing? Request an in-house visit and a verified doctor or nurse comes to you. You can track each visit from start to finish.",
+      },
+      {
+        title: "Stay in touch with your doctor",
+        body: "After a paid consultation you can message your doctor right here. Ask a quick follow-up question or share an update — your conversations stay private and saved for you.",
+      },
+      {
+        title: "Everything in one dashboard",
+        body: "Your upcoming appointments, past visits, and reminders all live on your dashboard. We'll remind you before each appointment so you never miss your turn.",
+      },
+      {
+        title: "Keep your health profile ready",
+        body: "Add your basics, allergies, ongoing conditions, and an emergency contact. When you see a doctor they instantly understand your health — leading to safer, faster care.",
+      },
+      {
+        title: "Use it in your language",
+        body: "Prefer Urdu? Switch the language any time from the menu — the whole app, including this guide, speaks your language. You're all set. Tap below to start exploring ZindagiCare.",
+      },
+    ],
   },
   chat: {
     pageTitle: "Messages",

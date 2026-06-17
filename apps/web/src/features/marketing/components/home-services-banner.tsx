@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Home, MapPin } from "lucide-react";
+import { ArrowRight, Home, MapPin, ShieldCheck } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/layout/page-section";
@@ -26,7 +26,7 @@ export function HomeServicesBanner() {
           <div className="relative h-32 shrink-0 sm:h-36 lg:h-auto lg:w-[36%] xl:w-[34%]">
             <Image
               src={HOME_SERVICES_HERO_IMAGE}
-              alt="Pakistani nurse providing in-house patient care at home"
+              alt="Pakistani doctor and nurse providing in-house patient care at home"
               fill
               sizes="(max-width: 1024px) 100vw, 34vw"
               className="object-cover object-center"
@@ -49,6 +49,11 @@ export function HomeServicesBanner() {
 
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base">
               {copy.description}
+            </p>
+
+            <p className="mt-3 flex max-w-xl items-start gap-2 rounded-xl border border-brand-light/40 bg-brand-muted/50 px-3 py-2.5 text-sm font-medium text-brand-dark">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} />
+              {copy.differentiator}
             </p>
 
             <ul className="mt-4 space-y-2 text-sm text-slate-600">

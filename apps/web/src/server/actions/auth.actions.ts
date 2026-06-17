@@ -6,6 +6,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { auth, signIn } from "@/lib/auth";
 import { authActionErrorMessage } from "@/lib/auth/errors";
 import { getLocale } from "@/i18n/server";
+import { getDictionary } from "@/i18n";
 import {
   authMessage,
   authValidationMessage,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/auth/validation-messages";
 
 export type RegisterFormState = {
-  fieldErrors?: Partial<Record<AuthFormField, string>>;
+  fieldErrors?: Partial<Record<AuthFormField | "termsAccepted", string>>;
   error?: string;
 };
 import { registerWithCredentials } from "@/server/services/auth.service";
@@ -88,6 +89,16 @@ export async function registerAction(
   _prev: RegisterFormState | undefined,
   formData: FormData,
 ) {
+  const locale = await getLocale();
+
+  if (formData.get("termsAccepted") !== "true") {
+    return {
+      fieldErrors: {
+        termsAccepted: getDictionary(locale).legal.registerTermsRequired,
+      },
+    };
+  }
+
   const parsed = registerSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -96,8 +107,6 @@ export async function registerAction(
     accountType: formData.get("accountType") ?? "patient",
     city: formData.get("city") || undefined,
   });
-
-  const locale = await getLocale();
 
   if (!parsed.success) {
     return { fieldErrors: fieldErrorsFromZodIssues(locale, parsed.error.issues) };
