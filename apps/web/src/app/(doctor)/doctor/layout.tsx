@@ -1,10 +1,69 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DoctorProfileModel, connectDatabase } from "@zindagi/database";
-import { VerificationStatuses } from "@zindagi/shared";
-import { DoctorShell } from "@/features/doctor/components/doctor-shell";
+import { DOCTOR_ACCOUNTABILITY_CONFIG, VerificationStatuses } from "@zindagi/shared";
+import {
+  DoctorShell,
+  type DoctorAccountabilityBanner,
+} from "@/features/doctor/components/doctor-shell";
 import { mongoFilter } from "@/lib/mongo/query";
 import { AppointmentReminderService } from "@/server/services/appointment-reminder.service";
+
+/** YYYY-MM bucket in Asia/Karachi — must match DoctorAccountabilityService. */
+function currentMonthKeyKarachi(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DOCTOR_ACCOUNTABILITY_CONFIG.timezone,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const month = parts.find((p) => p.type === "month")?.value ?? "00";
+  return `${year}-${month}`;
+}
+
+type AccountabilityCache = {
+  currentMonthKey?: string;
+  currentMonthMisses?: number;
+  autoRestrictedAt?: Date | string;
+  autoRestrictedMonthKey?: string;
+};
+
+function buildAccountabilityBanner(
+  accountability: AccountabilityCache | undefined,
+  verificationStatus?: string | null,
+): DoctorAccountabilityBanner | null {
+  const { warningThreshold, removalThreshold } = DOCTOR_ACCOUNTABILITY_CONFIG;
+  const thisMonth = currentMonthKeyKarachi();
+
+  // Doctor was auto-removed this month for missed consults.
+  if (
+    verificationStatus === VerificationStatuses.RESTRICTED &&
+    accountability?.autoRestrictedAt &&
+    accountability.autoRestrictedMonthKey === thisMonth
+  ) {
+    return {
+      level: "danger",
+      monthMisses: accountability.currentMonthMisses ?? removalThreshold,
+      warningThreshold,
+      removalThreshold,
+    };
+  }
+
+  // Misses only count toward the banner if they happened in the current month.
+  const monthMisses =
+    accountability?.currentMonthKey === thisMonth
+      ? (accountability.currentMonthMisses ?? 0)
+      : 0;
+
+  if (monthMisses <= 0) return null;
+
+  return {
+    level: monthMisses >= warningThreshold ? "warning" : "info",
+    monthMisses,
+    warningThreshold,
+    removalThreshold,
+  };
+}
 
 export default async function DoctorLayout({
   children,
@@ -21,7 +80,7 @@ export default async function DoctorLayout({
   const doctorProfile = await DoctorProfileModel.findOne(
     mongoFilter({ userId: session.user.id }),
   )
-    .select("slug verificationStatus")
+    .select("slug verificationStatus accountability")
     .lean();
 
   const verificationStatus =
@@ -33,11 +92,17 @@ export default async function DoctorLayout({
     void AppointmentReminderService.processDueReminders().catch(() => null);
   }
 
+  const accountabilityBanner = buildAccountabilityBanner(
+    doctorProfile?.accountability as AccountabilityCache | undefined,
+    verificationStatus,
+  );
+
   return (
     <DoctorShell
       showFullNav={showFullNav}
       verificationStatus={verificationStatus}
       doctorSlug={doctorProfile?.slug}
+      accountabilityBanner={accountabilityBanner}
     >
       {children}
     </DoctorShell>

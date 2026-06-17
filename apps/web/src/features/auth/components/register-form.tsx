@@ -162,7 +162,7 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
         <FieldError message={termsFieldError} />
       </div>
       <FieldError message={state?.error} />
-      <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={pending}>
+      <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={pending} loading={pending}>
         {pending ? t.auth.creatingAccount : t.auth.createAccount}
       </Button>
     </form>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 
@@ -99,7 +100,7 @@ export function AdminAppointmentsBoard() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading appointments…</p>
+        <LoadingScreen message="Loading appointments…" />
       ) : (
         <div className="space-y-3">
           {appointments.map((a) => (

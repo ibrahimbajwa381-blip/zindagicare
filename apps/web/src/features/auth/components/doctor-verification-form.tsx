@@ -5,9 +5,9 @@ import { useMemo, useState } from "react";
 import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
+import { CalendarHeart, Clock } from "lucide-react";
 import { Input, Label } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { TimePicker } from "@/components/ui/time-picker";
+import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
 import { previewSundaySlots } from "@/lib/sunday/display";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
@@ -376,80 +376,117 @@ export function DoctorVerificationForm() {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-lg border border-brand-light/30 bg-brand-light/5 p-4">
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={sundayEnabled}
-            onChange={(e) => setSundayEnabled(e.target.checked)}
-            className="mt-1"
-          />
-          <div>
+      <section className="overflow-hidden rounded-2xl border border-brand-light/40 bg-gradient-to-br from-brand-light/10 via-white to-white shadow-sm">
+        <label className="flex cursor-pointer items-start gap-4 p-5">
+          <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <CalendarHeart className="size-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-900">
-              Offer free Sunday online consultation (optional)
+              Free Sunday online consultation{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
             </p>
-            <p className="text-xs text-slate-600">
+            <p className="mt-0.5 text-xs text-slate-600">
               Patients will see bookable slots under your specialty on the Sunday
               consult page after admin approval.
             </p>
           </div>
+          <span className="relative mt-0.5 inline-flex shrink-0">
+            <input
+              type="checkbox"
+              checked={sundayEnabled}
+              onChange={(e) => setSundayEnabled(e.target.checked)}
+              className="peer sr-only"
+            />
+            <span className="h-6 w-11 rounded-full bg-slate-300 transition-colors peer-checked:bg-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand-light/50 peer-focus-visible:ring-offset-2" />
+            <span className="absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+          </span>
         </label>
 
         {sundayEnabled && (
-          <div className="space-y-3 pl-7">
+          <div className="space-y-4 border-t border-brand-light/30 bg-white/60 p-5">
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <Label htmlFor="sunday-start">From</Label>
+                <Label htmlFor="sunday-start">Start time</Label>
                 <TimePicker
                   id="sunday-start"
                   value={sundayStart}
                   onChange={setSundayStart}
-                  className="mt-1"
+                  className="mt-1.5"
                 />
               </div>
               <div>
-                <Label htmlFor="sunday-end">To</Label>
+                <Label htmlFor="sunday-end">End time</Label>
                 <TimePicker
                   id="sunday-end"
                   value={sundayEnd}
                   onChange={setSundayEnd}
-                  className="mt-1"
+                  className="mt-1.5"
                 />
               </div>
               <div>
-                <Label>Slot duration (mins)</Label>
-                <Input
-                  type="number"
-                  min={5}
-                  max={60}
-                  value={slotDurationMins}
-                  onChange={(e) => {
-                    const next = Number(e.target.value);
-                    setSlotDurationMins(
-                      Number.isFinite(next) ? Math.min(60, Math.max(5, next)) : 5,
-                    );
-                  }}
-                  className="mt-1"
-                />
+                <Label htmlFor="sunday-duration">Slot length</Label>
+                <div className="relative mt-1.5">
+                  <Input
+                    id="sunday-duration"
+                    type="number"
+                    min={5}
+                    max={60}
+                    value={slotDurationMins}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setSlotDurationMins(
+                        Number.isFinite(next) ? Math.min(60, Math.max(5, next)) : 5,
+                      );
+                    }}
+                    className="pr-12"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-slate-400">
+                    min
+                  </span>
+                </div>
               </div>
             </div>
+
             {sundaySlotPreview.length > 0 ? (
-              <div>
-                <p className="mb-2 text-xs font-medium text-slate-700">
-                  Slots patients will see ({sundaySlotPreview.length} total):
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                    <Clock className="size-4 text-brand" aria-hidden />
+                    Booking slots preview
+                  </p>
+                  <span className="inline-flex items-center rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand-dark">
+                    {sundaySlotPreview.length} slots · {slotDurationMins} min each
+                  </span>
+                </div>
+                <p className="mb-3 text-xs text-slate-500">
+                  Patients will see these {formatTime12h(sundayStart)}–{formatTime12h(sundayEnd)} time
+                  slots on the Sunday consult page.
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {sundaySlotPreview.map((slot) => (
-                    <Badge key={slot.id} variant="secondary">
-                      {slot.label}
-                    </Badge>
-                  ))}
+                <div className="max-h-48 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {sundaySlotPreview.map((slot) => (
+                      <div
+                        key={slot.id}
+                        className="rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-center"
+                      >
+                        <p className="text-sm font-semibold tabular-nums text-slate-800">
+                          {slot.startLabel}
+                        </p>
+                        <p className="text-[11px] tabular-nums text-slate-400">
+                          to {slot.endLabel}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-amber-700">
-                Adjust your time window — end time must be after start time.
-              </p>
+              <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-medium text-amber-800">
+                  Adjust your time window — the end time must be after the start time.
+                </p>
+              </div>
             )}
           </div>
         )}
@@ -558,7 +595,7 @@ export function DoctorVerificationForm() {
       </section>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending} loading={pending}>
         {pending ? "Submitting…" : "Submit for admin review"}
       </Button>
     </form>

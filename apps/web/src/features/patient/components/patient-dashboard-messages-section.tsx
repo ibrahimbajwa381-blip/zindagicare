@@ -8,6 +8,7 @@ import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { ChatAvatar } from "@/features/chat/components/chat-avatar";
 import { fetchContacts, fetchThreads } from "@/features/chat/lib/chat-api";
 import type { ChatContactDto, ChatThreadDto } from "@/features/chat/types";
@@ -148,7 +149,7 @@ export function PatientDashboardMessagesSection() {
 
       <CardContent className="min-h-0 flex-1 overflow-y-auto p-0">
         {loading ? (
-          <div className="px-4 py-8 text-center text-sm text-slate-500">{m.loading}</div>
+          <LoadingScreen message={m.loading} size="md" />
         ) : contacts.length === 0 ? (
           <div className="px-6 py-10 text-center">
             <p className="font-medium text-slate-700">{c.emptyTitle}</p>

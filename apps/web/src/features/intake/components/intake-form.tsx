@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 import type { MedicalIntakeDto } from "../types";
@@ -74,7 +75,7 @@ export function IntakeForm({ appointmentId }: Props) {
   };
 
   if (loading) {
-    return <p className="text-sm text-slate-500">{copy.loading}</p>;
+    return <LoadingScreen message={copy.loading} />;
   }
 
   if (notFound || !intake) {
@@ -141,7 +142,7 @@ export function IntakeForm({ appointmentId }: Props) {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
+        <Button onClick={handleSubmit} disabled={submitting} loading={submitting} className="w-full sm:w-auto">
           {submitting ? copy.submitting : copy.submit}
         </Button>
       </CardContent>

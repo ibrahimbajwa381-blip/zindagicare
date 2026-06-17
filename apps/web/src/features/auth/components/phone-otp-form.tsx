@@ -93,7 +93,7 @@ export function PhoneOtpForm({ callbackUrl }: { callbackUrl?: string }) {
         </p>
       </div>
       <FieldError message={state?.error} />
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending} loading={pending}>
         {pending ? t.auth.verifying : t.auth.verifySignIn}
       </Button>
       <Button type="button" variant="ghost" className="w-full" onClick={() => setStep("phone")}>

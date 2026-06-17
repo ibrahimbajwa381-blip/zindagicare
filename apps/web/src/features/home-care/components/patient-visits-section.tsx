@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useTranslations } from "@/i18n/locale-provider";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
@@ -37,7 +38,7 @@ export function PatientVisitsSection() {
   }, [load]);
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading…</p>;
+    return <LoadingScreen message={`${h.visitsTitle}…`} />;
   }
 
   if (visits.length === 0) {

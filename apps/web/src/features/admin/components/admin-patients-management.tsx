@@ -6,6 +6,7 @@ import { Search, Settings2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import type { AdminPatientRow } from "@/server/services/admin-patient.service";
 import { cn } from "@zindagi/shared";
 
@@ -143,7 +144,7 @@ export function AdminPatientsManagement() {
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         {loading ? (
-          <div className="p-12 text-center text-sm text-slate-500">Loading patients…</div>
+          <LoadingScreen message="Loading patients…" size="md" />
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 p-16 text-center">
             <Users className="h-10 w-10 text-slate-300" />

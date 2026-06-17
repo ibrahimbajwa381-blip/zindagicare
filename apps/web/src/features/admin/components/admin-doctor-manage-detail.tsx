@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { VerificationStatuses } from "@zindagi/shared";
+import { DOCTOR_ACCOUNTABILITY_CONFIG, VerificationStatuses } from "@zindagi/shared";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
 import { formatDayOfWeek } from "@/features/doctor/types";
 import type { AdminDoctorRow } from "@/server/services/admin-doctor.service";
@@ -260,6 +260,8 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
         />
       </div>
 
+      <AccountabilityCard doctor={doctor} />
+
       <Card className="rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Service toggles</CardTitle>
@@ -298,6 +300,71 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
         )}
       </Card>
     </div>
+  );
+}
+
+function formatDateTime(iso?: string) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleString("en-PK", {
+    timeZone: "Asia/Karachi",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function AccountabilityCard({ doctor }: { doctor: AdminDoctorRow }) {
+  const a = doctor.accountability;
+  const monthMisses = a.currentMonthMisses;
+  const warnThreshold = DOCTOR_ACCOUNTABILITY_CONFIG.warningThreshold;
+  const removeThreshold = DOCTOR_ACCOUNTABILITY_CONFIG.removalThreshold;
+  const removed = Boolean(a.autoRestrictedAt);
+  const warned = !removed && monthMisses >= warnThreshold;
+
+  const tone = removed
+    ? "border-red-200 bg-red-50/60"
+    : warned
+      ? "border-orange-200 bg-orange-50/60"
+      : "border-slate-200/80 bg-white";
+
+  return (
+    <Card className={cn("rounded-2xl shadow-sm", tone)}>
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0">
+        <ShieldAlert
+          className={cn(
+            "h-5 w-5",
+            removed ? "text-red-600" : warned ? "text-orange-600" : "text-slate-400",
+          )}
+        />
+        <CardTitle className="text-base">Attendance accountability</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-600">
+          Doctors are warned after{" "}
+          <span className="font-semibold">{warnThreshold}</span> missed consultations
+          in a calendar month and automatically removed (restricted) after{" "}
+          <span className="font-semibold">{removeThreshold}</span>.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <InfoBlock label="Missed this month" value={`${monthMisses} / ${removeThreshold}`} />
+          <InfoBlock label="Missed (all time)" value={String(a.totalMisses)} />
+          <InfoBlock
+            label="Status"
+            value={removed ? "Auto-removed" : warned ? "Warned" : "Good standing"}
+          />
+        </div>
+        {a.lastWarningAt && (
+          <p className="text-xs text-slate-500">
+            Last warning issued: {formatDateTime(a.lastWarningAt)}
+          </p>
+        )}
+        {a.autoRestrictedAt && (
+          <p className="text-xs font-medium text-red-600">
+            Auto-restricted for missed consults on {formatDateTime(a.autoRestrictedAt)}.
+            Use “Restore approved” above to reinstate.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

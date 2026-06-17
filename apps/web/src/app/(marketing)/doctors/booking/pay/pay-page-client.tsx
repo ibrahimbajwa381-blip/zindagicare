@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
+import { LoadingInline } from "@/components/ui/loading-screen";
 import { siteConfig } from "@/config/site";
 import type { TestPaymentCheckout } from "@/lib/payments/dummy-payment";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
@@ -87,7 +88,7 @@ export default function ConsultTestPaymentPage() {
       </PageSection>
       <PageSection variant="brand" spacing="lg">
         <div className={`mx-auto max-w-lg space-y-5 p-6 ${surfaceCardInteractive}`}>
-          {loading && <p className="text-sm text-slate-500">Loading payment details…</p>}
+          {loading && <LoadingInline message="Loading payment details…" />}
 
           {testPayment && (
             <>
@@ -133,6 +134,7 @@ export default function ConsultTestPaymentPage() {
                 <Button
                   className="flex-1 bg-brand text-white hover:bg-brand-dark"
                   disabled={submitting}
+                  loading={submitting}
                   onClick={completeTestPayment}
                 >
                   {submitting ? "Confirming…" : "Complete test payment"}

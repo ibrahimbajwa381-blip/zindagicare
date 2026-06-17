@@ -5,6 +5,7 @@ import { Eye, EyeOff, Star, Trash2 } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { surfaceCard, surfaceInset } from "@/lib/ui/surfaces";
 
@@ -135,7 +136,7 @@ export function AdminReviewModeration() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading reviews…</p>
+        <LoadingScreen message="Loading reviews…" />
       ) : error ? (
         <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}

@@ -88,6 +88,20 @@ const doctorProfileSchema = new Schema(
     rejectionReason: { type: String },
     slug: { type: String, unique: true, sparse: true, lowercase: true },
     isListed: { type: Boolean, default: false },
+    /**
+     * Missed-consult accountability. `currentMonth*` is a denormalized cache for fast
+     * display/decisions; the source of truth is the DoctorMiss strike log.
+     */
+    accountability: {
+      totalMisses: { type: Number, default: 0 },
+      currentMonthKey: { type: String },
+      currentMonthMisses: { type: Number, default: 0 },
+      lastMissAt: { type: Date },
+      lastWarningAt: { type: Date },
+      lastWarningMonthKey: { type: String },
+      autoRestrictedAt: { type: Date },
+      autoRestrictedMonthKey: { type: String },
+    },
     deletedAt: { type: Date },
   },
   { timestamps: true },

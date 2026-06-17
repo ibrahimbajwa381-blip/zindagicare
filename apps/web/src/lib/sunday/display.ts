@@ -14,6 +14,8 @@ const TZ = SUNDAY_CONSULT_CONFIG.timezone;
 export type SundaySlotPreview = {
   id: string;
   label: string;
+  startLabel: string;
+  endLabel: string;
 };
 
 /** Preview Sunday slot labels for doctor profile / verification forms. */
@@ -42,6 +44,8 @@ export function previewSundaySlots(
     slots.push({
       id: slotStart,
       label: `${formatTime12h(slotStart)} – ${formatTime12h(slotEnd)}`,
+      startLabel: formatTime12h(slotStart),
+      endLabel: formatTime12h(slotEnd),
     });
   }
   return slots;

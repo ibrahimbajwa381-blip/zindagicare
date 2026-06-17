@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { HomeCareRequestForm } from "@/features/home-care/components/home-care-request-form";
 import { getServerTranslations } from "@/i18n/server";
 
@@ -20,7 +21,7 @@ export default async function HomeCareRequestPage() {
         description={t.homeCare.requestDesc}
       />
       <div className="mt-8">
-        <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+        <Suspense fallback={<LoadingScreen message="Loading…" />}>
           <HomeCareRequestForm />
         </Suspense>
       </div>

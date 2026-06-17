@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 
@@ -89,7 +90,7 @@ export function AdminSundayControl() {
   };
 
   if (loading || !data) {
-    return <p className="text-sm text-slate-500">Loading Sunday consult control…</p>;
+    return <LoadingScreen message="Loading Sunday consult control…" />;
   }
 
   return (

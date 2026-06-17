@@ -310,7 +310,7 @@ export function PatientProfileSection({ initialProfile }: Props) {
             )}
 
             <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-premium backdrop-blur-md sm:bottom-4 sm:flex-row sm:flex-wrap sm:gap-3 sm:p-4">
-              <Button type="submit" disabled={pending} className="w-full shadow-sm shadow-brand/20 sm:min-w-[9rem] sm:w-auto">
+              <Button type="submit" disabled={pending} loading={pending} className="w-full shadow-sm shadow-brand/20 sm:min-w-[9rem] sm:w-auto">
                 {pending ? p.saving : p.save}
               </Button>
               <Button type="button" variant="outline" disabled={pending} onClick={cancelEdit} className="w-full gap-1.5 sm:w-auto">

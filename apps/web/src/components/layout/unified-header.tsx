@@ -13,6 +13,7 @@ import { HeaderAuthActions } from "@/components/layout/header-auth-actions";
 import { HeaderChatButton } from "@/components/layout/header-chat-button";
 import { HeaderNotificationsMenu } from "@/components/layout/header-notifications-menu";
 import { useHeaderBadges } from "@/components/layout/use-header-badges";
+import { useHideOnScroll } from "@/components/layout/use-hide-on-scroll";
 import { appHeaderInner, appHeaderShell } from "@/lib/ui/surfaces";
 import { buildMarketingMobileNav } from "@/lib/nav/mobile-menu";
 import { useTranslations } from "@/i18n/locale-provider";
@@ -55,6 +56,7 @@ export function UnifiedHeader({
   const { data: session } = useSession();
   const isLoggedIn = !!session?.user;
   const { chatUnread, notificationUnread, refresh } = useHeaderBadges(isLoggedIn);
+  const hidden = useHideOnScroll();
 
   const marketingMobile = buildMarketingMobileNav(session, {
     home: t.nav.home,
@@ -83,7 +85,13 @@ export function UnifiedHeader({
   const resolvedMobileSections = mobileSections ?? marketingMobile.sections;
 
   return (
-    <header className={appHeaderShell}>
+    <header
+      className={cn(
+        appHeaderShell,
+        "transition-transform duration-300 ease-in-out will-change-transform motion-reduce:transition-none",
+        hidden && "-translate-y-full",
+      )}
+    >
       <div className={cn(appHeaderInner, "justify-between gap-2 text-slate-600")}>
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {leadingSlot}

@@ -143,7 +143,7 @@ export function AdminNotificationsPanel() {
               />
             )}
 
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending} loading={pending}>
               {pending ? "Sending…" : "Send notification"}
             </Button>
 

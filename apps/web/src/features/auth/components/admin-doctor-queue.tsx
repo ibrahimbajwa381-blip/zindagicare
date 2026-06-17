@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 
@@ -45,8 +46,8 @@ export function AdminDoctorQueue() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center text-sm text-slate-500 shadow-sm">
-        Loading pending applications…
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <LoadingScreen message="Loading pending applications…" size="md" />
       </div>
     );
   }

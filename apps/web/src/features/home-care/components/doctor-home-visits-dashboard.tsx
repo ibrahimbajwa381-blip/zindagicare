@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HomeVisitStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { VisitStatusStepper } from "@/features/home-care/components/visit-status-stepper";
@@ -55,7 +56,7 @@ export function DoctorHomeVisitsDashboard() {
     }
   };
 
-  if (loading) return <p className="text-sm text-slate-500">Loading assigned visits…</p>;
+  if (loading) return <LoadingScreen message="Loading assigned visits…" />;
 
   if (visits.length === 0) {
     return (

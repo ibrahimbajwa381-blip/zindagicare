@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 import { PatientAppointmentReviewAction } from "@/features/patient/components/patient-appointment-review-action";
@@ -68,7 +69,7 @@ export function PostConsultReviewPrompt({ appointmentId }: Props) {
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-slate-500">{videoCopy.loadingReview}</p>
+        <LoadingScreen message={videoCopy.loadingReview} size="md" />
       ) : null}
 
       {error ? (

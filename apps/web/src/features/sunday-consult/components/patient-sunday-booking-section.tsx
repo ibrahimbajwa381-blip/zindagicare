@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useTranslations } from "@/i18n/locale-provider";
 import type { SundayPatientBookingDto } from "../types";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
@@ -42,7 +43,7 @@ export function PatientSundayBookingSection({
 
   if (variant === "profile") {
     if (loading) {
-      return <p className="text-sm text-slate-500">{d.sundayBooking.loading}</p>;
+      return <LoadingScreen message={d.sundayBooking.loading} />;
     }
     if (!booking) return null;
     return <PatientSundayBookingCard booking={booking} variant="profile" />;

@@ -191,7 +191,7 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
               <p className="text-sm text-emerald-700">Profile saved.</p>
             )}
 
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending} loading={pending}>
               {pending ? "Saving…" : "Save changes"}
             </Button>
           </form>

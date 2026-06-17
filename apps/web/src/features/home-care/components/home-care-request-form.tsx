@@ -252,6 +252,7 @@ export function HomeCareRequestForm() {
               type="submit"
               className="w-full"
               disabled={pending || isLoadingSession}
+              loading={pending || isLoadingSession}
             >
               {isLoadingSession
                 ? h.checkingSession

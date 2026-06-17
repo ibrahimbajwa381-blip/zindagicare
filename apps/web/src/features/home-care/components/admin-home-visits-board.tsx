@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { googleMapsLink } from "@/lib/geo/parse-google-maps-url";
@@ -163,7 +164,7 @@ export function AdminHomeVisitsBoard() {
     }
   };
 
-  if (loading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (loading) return <LoadingScreen message="Loading home visits…" />;
 
   const pendingVisits = visits.filter((v) => v.status === HomeVisitStatuses.REQUESTED);
   const activeVisits = visits.filter(

@@ -109,6 +109,20 @@ export type AdminDoctorRow = {
   ratingCount: number;
   weeklyAvailability: { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string }[];
   stats: AdminDoctorStats;
+  accountability: AdminDoctorAccountability;
+};
+
+export type AdminDoctorAccountability = {
+  totalMisses: number;
+  currentMonthKey?: string;
+  currentMonthMisses: number;
+  lastWarningAt?: string;
+  autoRestrictedAt?: string;
+};
+
+const EMPTY_ACCOUNTABILITY: AdminDoctorAccountability = {
+  totalMisses: 0,
+  currentMonthMisses: 0,
 };
 
 const EMPTY_STATS: AdminDoctorStats = {
@@ -144,6 +158,13 @@ function mapDoctorRow(
     ratingAvg?: number;
     ratingCount?: number;
     weeklyAvailability?: AdminDoctorRow["weeklyAvailability"];
+    accountability?: {
+      totalMisses?: number;
+      currentMonthKey?: string;
+      currentMonthMisses?: number;
+      lastWarningAt?: Date | string;
+      autoRestrictedAt?: Date | string;
+    };
   },
   stats: AdminDoctorStats = EMPTY_STATS,
 ): AdminDoctorRow {
@@ -171,6 +192,19 @@ function mapDoctorRow(
     ratingCount: profile.ratingCount ?? 0,
     weeklyAvailability: profile.weeklyAvailability ?? [],
     stats,
+    accountability: profile.accountability
+      ? {
+          totalMisses: profile.accountability.totalMisses ?? 0,
+          currentMonthKey: profile.accountability.currentMonthKey,
+          currentMonthMisses: profile.accountability.currentMonthMisses ?? 0,
+          lastWarningAt: profile.accountability.lastWarningAt
+            ? new Date(profile.accountability.lastWarningAt).toISOString()
+            : undefined,
+          autoRestrictedAt: profile.accountability.autoRestrictedAt
+            ? new Date(profile.accountability.autoRestrictedAt).toISOString()
+            : undefined,
+        }
+      : { ...EMPTY_ACCOUNTABILITY },
   };
 }
 

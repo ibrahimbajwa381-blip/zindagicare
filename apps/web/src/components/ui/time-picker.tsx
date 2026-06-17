@@ -83,7 +83,11 @@ export function TimePicker({
 }
 
 export function formatTime12h(time: string): string {
-  const { hour, minute } = parseTime(time);
+  const [hourPart, minutePart] = time.split(":");
+  const rawHour = Number(hourPart);
+  const rawMinute = Number(minutePart);
+  const hour = Number.isFinite(rawHour) ? Math.min(23, Math.max(0, rawHour)) : 9;
+  const minute = Number.isFinite(rawMinute) ? Math.min(59, Math.max(0, rawMinute)) : 0;
   const period = hour >= 12 ? "PM" : "AM";
   const hour12 = hour % 12 || 12;
   return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;

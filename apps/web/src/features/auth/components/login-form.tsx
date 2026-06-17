@@ -47,7 +47,7 @@ export function LoginForm({
           />
         </div>
         <FieldError message={errorMessage} />
-        <Button type="submit" size="lg" className="w-full" disabled={pending}>
+        <Button type="submit" size="lg" className="w-full" disabled={pending} loading={pending}>
           {pending ? t.auth.signingIn : t.auth.signIn}
         </Button>
       </form>

@@ -7,6 +7,7 @@ import {
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useTranslations } from "@/i18n/locale-provider";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
@@ -90,7 +91,7 @@ export function NurseVisitsDashboard() {
     }
   };
 
-  if (loading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (loading) return <LoadingScreen message="Loading visits…" />;
 
   if (visits.length === 0) {
     return (

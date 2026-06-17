@@ -651,6 +651,7 @@ export class SundayConsultService {
     } else if (status === "no_show") {
       appointment.status = AppointmentStatuses.NO_SHOW;
       appointment.noShowMarkedAt = new Date();
+      appointment.set("missedBy", "patient");
 
       const patient = await UserModel.findById(appointment.patientId);
       if (patient) {

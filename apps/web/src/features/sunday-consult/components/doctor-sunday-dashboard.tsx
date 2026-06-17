@@ -141,7 +141,7 @@ export function DoctorSundayDashboard() {
               }
             />
           </label>
-          <Button onClick={saveTemplate} disabled={loading} className="sm:col-span-2">
+          <Button onClick={saveTemplate} disabled={loading} loading={loading} className="sm:col-span-2">
             Save & materialize next Sunday
           </Button>
         </CardContent>

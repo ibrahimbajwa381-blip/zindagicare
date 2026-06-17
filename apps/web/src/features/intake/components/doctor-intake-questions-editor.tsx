@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useTranslations } from "@/i18n/locale-provider";
 import type { DoctorIntakeQuestionDto } from "../types";
 
@@ -101,7 +102,7 @@ export function DoctorIntakeQuestionsEditor() {
   };
 
   if (loading) {
-    return <p className="text-sm text-slate-500">…</p>;
+    return <LoadingScreen size="md" />;
   }
 
   return (

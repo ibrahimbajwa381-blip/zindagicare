@@ -2,6 +2,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@zindagi/shared";
+import { Spinner } from "./spinner";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100",
@@ -33,17 +34,45 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Show an inline spinner and disable the button while an action is pending. */
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<React.ElementRef<"button">, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, loading = false, children, disabled, ...props },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
+
+    // `asChild` renders a single child (e.g. a Link); spinner injection would
+    // break Slot's single-child contract, so we leave that case untouched.
+    if (asChild) {
+      return (
+        <Comp
+          className={cn(buttonVariants({ variant, size }), className)}
+          ref={ref as never}
+          {...(disabled ? { disabled } : {})}
+          {...(props as Record<string, unknown>)}
+        >
+          {children}
+        </Comp>
+      );
+    }
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size }), className)}
         ref={ref as never}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
         {...(props as Record<string, unknown>)}
-      />
+      >
+        {loading ? (
+          <Spinner size="sm" className="text-current" aria-hidden />
+        ) : null}
+        {children}
+      </Comp>
     );
   },
 );

@@ -15,4 +15,5 @@ export * from "./home-visit.model";
 export * from "./payment.model";
 export * from "./medical-intake.model";
 export * from "./audit-log.model";
+export * from "./doctor-miss.model";
 export * from "./system-settings.model";

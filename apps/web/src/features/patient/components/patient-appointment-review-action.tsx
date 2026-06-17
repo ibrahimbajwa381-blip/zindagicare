@@ -223,6 +223,7 @@ export function PatientAppointmentReviewAction({
             size="sm"
             onClick={handleSubmit}
             disabled={submitting || rating < 1}
+            loading={submitting}
           >
             {submitting ? copy.submitting : copy.submit}
           </Button>

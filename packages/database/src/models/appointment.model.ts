@@ -65,6 +65,10 @@ const appointmentSchema = new Schema(
     patientNotes: { type: String, maxlength: 1000 },
     doctorNotes: { type: String, maxlength: 5000, select: false },
     noShowMarkedAt: { type: Date },
+    /** Who failed to attend when status is no_show: "patient" or "doctor". */
+    missedBy: { type: String, enum: ["patient", "doctor"] },
+    /** Set by the accountability sweep when a doctor never joined an accepted consult. */
+    doctorMissedAt: { type: Date },
     remindersSent: {
       h24: { type: Boolean, default: false },
       h1: { type: Boolean, default: false },

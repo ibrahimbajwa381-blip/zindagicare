@@ -242,7 +242,7 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
       </section>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending} loading={pending}>
         {pending ? "Submitting…" : "Submit for admin review"}
       </Button>
     </form>
