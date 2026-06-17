@@ -23,6 +23,7 @@ export type PatientProfileDto = {
     name: string;
     email?: string;
     phone?: string;
+    avatarUrl?: string;
     emailVerified: boolean;
     phoneVerified: boolean;
     locale: "en" | "ur";
@@ -68,6 +69,7 @@ export async function getPatientProfile(userId: string): Promise<PatientProfileD
       name: pii.name,
       email: pii.email,
       phone: pii.phone,
+      avatarUrl: user.avatarUrl ?? undefined,
       emailVerified: Boolean(user.emailVerified),
       phoneVerified: Boolean(user.phoneVerified),
       locale: (user.metadata?.locale as "en" | "ur") ?? "en",

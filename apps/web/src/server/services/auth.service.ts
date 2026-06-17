@@ -278,6 +278,7 @@ export async function loadAuthUserPayload(userId: string) {
     id: user._id.toString(),
     email: user.email ?? undefined,
     name: user.name,
+    image: user.avatarUrl ?? undefined,
     roles: (user.roles ?? [Roles.PATIENT]) as Role[],
     onboardingCompleted: user.onboardingCompleted ?? false,
     doctorVerificationStatus,

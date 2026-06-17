@@ -301,6 +301,12 @@ export function applyFieldEncryption(
 ) {
   const fields = options.fields;
   const lookups = options.lookups ?? [];
+  // Lookup fields (email/phone) are stored encrypted alongside their hash, so
+  // they must be decrypted on read just like regular encrypted fields.
+  const decryptFields: EncryptedFieldConfig[] = [
+    ...fields,
+    ...lookups.map((lookup) => ({ path: lookup.field, kind: "string" as const })),
+  ];
 
   schema.pre("save", function () {
     applyToDocument(
@@ -339,14 +345,14 @@ export function applyFieldEncryption(
   const readHooks = ["find", "findOne", "findOneAndUpdate"] as const;
   for (const hook of readHooks) {
     schema.post(hook, function (result) {
-      decryptResult(result, fields);
+      decryptResult(result, decryptFields);
     });
   }
 
   schema.post("init", function () {
     applyToDocument(
       this as PlainObject & { set: (p: string, v: unknown) => void },
-      fields,
+      decryptFields,
       [],
       "decrypt",
     );

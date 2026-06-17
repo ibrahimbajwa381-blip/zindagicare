@@ -25,6 +25,7 @@ export function AppHeaderUser({
     email?: string;
     phone?: string;
     city?: string;
+    avatarUrl?: string;
   } | null>(null);
 
   const user = session?.user;
@@ -47,6 +48,7 @@ export function AppHeaderUser({
             email: json.data.user.email,
             phone: json.data.user.phone,
             city: json.data.user.city,
+            avatarUrl: json.data.user.avatarUrl,
           });
         }
       } catch {
@@ -70,6 +72,7 @@ export function AppHeaderUser({
       email={profile?.email ?? user.email ?? undefined}
       phone={profile?.phone}
       city={profile?.city}
+      image={profile?.avatarUrl ?? user.image ?? undefined}
       dashboardHref={href}
       accountType={resolveHeaderAccountType(user.roles)}
       className={className}

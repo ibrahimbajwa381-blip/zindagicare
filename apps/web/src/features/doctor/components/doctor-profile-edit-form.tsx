@@ -7,7 +7,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { formatTime12h, TimePicker } from "@/components/ui/time-picker";
+import { TimePicker } from "@/components/ui/time-picker";
+import { previewSundaySlots } from "@/lib/sunday/display";
 import type { DoctorProfileDto } from "@/features/doctor/types";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
 
@@ -55,25 +56,6 @@ function buildAvailabilityFromProfile(
   }
 
   return base;
-}
-
-function previewSundaySlots(start: string, end: string, durationMins: number): string[] {
-  const [startH, startM] = start.split(":").map(Number);
-  const [endH, endM] = end.split(":").map(Number);
-  const startTotal = startH * 60 + startM;
-  const endTotal = endH * 60 + endM;
-  const slots: string[] = [];
-  for (let t = startTotal; t + durationMins <= endTotal; t += durationMins) {
-    const h = Math.floor(t / 60);
-    const m = t % 60;
-    const slotStart = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    const endSlot = t + durationMins;
-    const eh = Math.floor(endSlot / 60);
-    const em = endSlot % 60;
-    const slotEnd = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-    slots.push(`${formatTime12h(slotStart)} – ${formatTime12h(slotEnd)}`);
-  }
-  return slots;
 }
 
 type Props = {
@@ -469,7 +451,12 @@ export function DoctorProfileEditForm({ profile }: Props) {
                   min={5}
                   max={60}
                   value={slotDurationMins}
-                  onChange={(e) => setSlotDurationMins(Number(e.target.value))}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setSlotDurationMins(
+                      Number.isFinite(next) ? Math.min(60, Math.max(5, next)) : 5,
+                    );
+                  }}
                   className="mt-1"
                 />
               </div>
@@ -481,8 +468,8 @@ export function DoctorProfileEditForm({ profile }: Props) {
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {sundaySlotPreview.map((slot) => (
-                    <Badge key={slot} variant="secondary">
-                      {slot}
+                    <Badge key={slot.id} variant="secondary">
+                      {slot.label}
                     </Badge>
                   ))}
                 </div>

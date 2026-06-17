@@ -15,6 +15,7 @@ export type AppUserMenuProps = {
   email?: string | null;
   phone?: string | null;
   city?: string | null;
+  image?: string | null;
   dashboardHref?: string;
   accountType?: AccountType;
   className?: string;
@@ -29,12 +30,15 @@ function profileInitials(name: string) {
     .join("");
 }
 
+/** Hide values that are still encrypted ciphertext (e.g. from a stale session token). */
+function plainText(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed.startsWith("enc:v1:")) return null;
+  return trimmed;
+}
+
 function contactLine(email?: string | null, phone?: string | null) {
-  const trimmedEmail = email?.trim();
-  if (trimmedEmail) return trimmedEmail;
-  const trimmedPhone = phone?.trim();
-  if (trimmedPhone) return trimmedPhone;
-  return null;
+  return plainText(email) ?? plainText(phone) ?? null;
 }
 
 function accountLabel(
@@ -57,6 +61,7 @@ export function AppUserMenu({
   email,
   phone,
   city,
+  image,
   dashboardHref = siteConfig.links.dashboard,
   accountType = "patient",
   className,
@@ -67,10 +72,15 @@ export function AppUserMenu({
   const accountTypeLabel = accountLabel(labels, accountType);
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const initials = profileInitials(name) || "?";
+  const displayEmail = plainText(email);
+  const displayPhone = plainText(phone);
   const secondary = contactLine(email, phone);
+  const avatarUrl = image?.trim() || null;
+  const showImage = Boolean(avatarUrl) && !imageFailed;
 
   useEffect(() => {
     if (!open) return;
@@ -118,7 +128,7 @@ export function AppUserMenu({
       >
         <span
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white",
+            "flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white",
             isDrawer
               ? "size-8 rounded-lg"
               : "size-9 shadow-sm transition-[transform,box-shadow,filter] group-hover:scale-[1.04] group-hover:brightness-110 group-hover:shadow-md group-active:scale-[0.98]",
@@ -126,7 +136,17 @@ export function AppUserMenu({
           )}
           aria-hidden
         >
-          {initials}
+          {showImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl as string}
+              alt=""
+              className="size-full object-cover"
+              onError={() => setImageFailed(true)}
+            />
+          ) : (
+            initials
+          )}
         </span>
         {isDrawer ? (
           <>
@@ -165,18 +185,28 @@ export function AppUserMenu({
           <div className="border-b border-slate-100 bg-gradient-to-br from-brand-muted/80 via-white to-white px-4 py-4">
             <div className="flex items-start gap-3">
               <span
-                className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white"
+                className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand to-brand-dark text-sm font-bold text-white"
                 aria-hidden
               >
-                {initials}
+                {showImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl as string}
+                    alt=""
+                    className="size-full object-cover"
+                    onError={() => setImageFailed(true)}
+                  />
+                ) : (
+                  initials
+                )}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-slate-900">{name}</p>
-                {email?.trim() ? (
-                  <p className="mt-0.5 truncate text-xs text-slate-600">{email.trim()}</p>
+                {displayEmail ? (
+                  <p className="mt-0.5 truncate text-xs text-slate-600">{displayEmail}</p>
                 ) : null}
-                {phone?.trim() ? (
-                  <p className="mt-0.5 truncate text-xs text-slate-600">{phone.trim()}</p>
+                {displayPhone ? (
+                  <p className="mt-0.5 truncate text-xs text-slate-600">{displayPhone}</p>
                 ) : null}
                 <span className="mt-2 inline-flex rounded-full border border-brand-light/40 bg-brand-muted/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark">
                   {accountTypeLabel}
