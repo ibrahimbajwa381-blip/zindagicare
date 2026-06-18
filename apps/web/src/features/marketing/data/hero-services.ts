@@ -12,7 +12,7 @@ export type HeroService = {
     title: string;
     titleHighlight: string;
     description: string;
-    highlights: [string, string];
+    highlights: string[];
     badge: string;
     ctaLabel: string;
     href: string;
