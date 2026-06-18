@@ -5,14 +5,21 @@ import { cn } from "@zindagi/shared";
 import type { BrowseItem } from "../data/browse-catalog";
 import { BrowseIconTile } from "./browse-icon-tile";
 
+const desktopColumnClasses: Record<number, string> = {
+  4: "lg:grid-cols-4",
+  5: "lg:grid-cols-5",
+  6: "lg:grid-cols-6",
+  7: "lg:grid-cols-7",
+  8: "lg:grid-cols-8",
+};
+
 type BrowseSectionRowProps = {
   title: string;
   viewAllHref?: string;
   viewAllLabel?: string;
+  onViewAllClick?: () => void;
   items: BrowseItem[];
   queryParam: "specialty" | "condition";
-  /** Wider tiles in a single scroll row (conditions) vs wrapped grid (specialties) */
-  variant?: "grid" | "scroll";
   className?: string;
 };
 
@@ -20,50 +27,55 @@ export function BrowseSectionRow({
   title,
   viewAllHref = siteConfig.links.doctors,
   viewAllLabel = "View all",
+  onViewAllClick,
   items,
   queryParam,
-  variant = "grid",
   className,
 }: BrowseSectionRowProps) {
+  const desktopCols =
+    desktopColumnClasses[items.length] ?? "lg:grid-cols-4";
+
+  const viewAllClass =
+    "inline-flex min-h-10 shrink-0 items-center gap-1 rounded-xl border border-brand/15 bg-white/70 px-3 py-1.5 text-sm font-medium text-brand shadow-sm transition-colors hover:border-brand/30 hover:bg-white hover:text-brand-dark active:bg-brand-muted/40";
+
   return (
-    <div className={cn(className)}>
-      <div className="flex items-end justify-between gap-3">
-        <h3 className="min-w-0 font-display text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
+    <div
+      className={cn(
+        "rounded-2xl border border-white/70 bg-white/45 p-4 shadow-premium backdrop-blur-md sm:rounded-3xl sm:p-6",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3 sm:items-end">
+        <h3 className="min-w-0 font-display text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-2xl">
           {title}
         </h3>
-        <Link
-          href={viewAllHref}
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-medium text-brand underline-offset-4 transition-colors hover:text-brand-dark hover:underline active:bg-brand-muted/50"
-        >
-          {viewAllLabel}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        {onViewAllClick ? (
+          <button type="button" onClick={onViewAllClick} className={viewAllClass}>
+            {viewAllLabel}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <Link href={viewAllHref} className={viewAllClass}>
+            {viewAllLabel}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
 
-      {variant === "grid" ? (
-        <div className="mt-6 grid grid-cols-3 gap-x-1 gap-y-5 min-[400px]:grid-cols-4 sm:mt-8 sm:grid-cols-5 sm:gap-x-2 sm:gap-y-6 md:grid-cols-7 md:gap-x-3">
-          {items.map((item) => (
-            <BrowseIconTile
-              key={item.slug}
-              item={item}
-              href={`${siteConfig.links.doctors}?${queryParam}=${item.slug}`}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="browse-scroll -mx-4 mt-8 px-4 sm:mx-0 sm:overflow-visible sm:px-0">
-          <div className="flex gap-3 pb-2 sm:grid sm:grid-cols-4 sm:gap-6 sm:pb-0 md:grid-cols-7">
-            {items.map((item) => (
-              <BrowseIconTile
-                key={item.slug}
-                item={item}
-                href={`${siteConfig.links.doctors}?${queryParam}=${item.slug}`}
-                className="shrink-0 sm:min-w-0"
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <div
+        className={cn(
+          "mt-5 grid grid-cols-4 gap-3 sm:mt-6 sm:gap-4",
+          desktopCols,
+        )}
+      >
+        {items.map((item) => (
+          <BrowseIconTile
+            key={item.slug}
+            item={item}
+            href={`${siteConfig.links.doctors}?${queryParam}=${item.slug}`}
+          />
+        ))}
+      </div>
     </div>
   );
 }

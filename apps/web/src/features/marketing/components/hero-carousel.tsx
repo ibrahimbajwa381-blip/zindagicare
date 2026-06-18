@@ -8,6 +8,7 @@ import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import {
   HERO_CAROUSEL_HEIGHT,
+  HERO_USAMA_CAROUSEL_IMAGE_CLASS,
   type HeroService,
 } from "@/features/marketing/data/hero-services";
 
@@ -159,7 +160,7 @@ export function HeroCarousel({
                   className={cn(
                     "object-cover",
                     service.id === "online-consult"
-                      ? "object-top lg:object-[center_15%]"
+                      ? HERO_USAMA_CAROUSEL_IMAGE_CLASS
                       : service.id === "sunday-consult"
                         ? "object-center lg:object-[center_35%]"
                         : "object-center lg:object-[center_20%]",

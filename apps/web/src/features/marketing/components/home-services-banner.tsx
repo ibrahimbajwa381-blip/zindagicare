@@ -23,13 +23,13 @@ export function HomeServicesBanner() {
     >
       <div className="overflow-hidden rounded-2xl border border-brand-light/35 bg-white shadow-premium-lg sm:rounded-3xl">
         <div className="flex flex-col lg:flex-row">
-          <div className="relative h-32 shrink-0 sm:h-36 lg:h-auto lg:w-[36%] xl:w-[34%]">
+          <div className="relative h-44 shrink-0 sm:h-52 lg:min-h-[18rem] lg:h-auto lg:w-[36%] xl:w-[34%]">
             <Image
               src={HOME_SERVICES_HERO_IMAGE}
               alt="Pakistani doctor and nurse providing in-house patient care at home"
               fill
               sizes="(max-width: 1024px) 100vw, 34vw"
-              className="object-cover object-center"
+              className="object-cover object-[center_20%]"
             />
             <div
               aria-hidden

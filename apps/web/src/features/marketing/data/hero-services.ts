@@ -85,3 +85,10 @@ export const heroServices: HeroService[] = [
 /** Fixed carousel height — all slides share this size */
 export const HERO_CAROUSEL_HEIGHT =
   "h-[min(30rem,88dvh)] min-h-[24rem] sm:h-[28rem] sm:min-h-0 lg:h-[30rem]" as const;
+
+/** Full-body portrait — anchor above center so the face stays in short mobile crops. */
+export const HERO_USAMA_CAROUSEL_IMAGE_CLASS =
+  "object-[center_30%] sm:object-[center_26%] lg:object-[center_18%]" as const;
+
+export const HERO_USAMA_CARD_IMAGE_CLASS =
+  "object-[center_26%] sm:object-[center_22%]" as const;

@@ -196,9 +196,13 @@ export const ur: Dictionary = {
   },
   trustBar: {
     pmdcVerified: "پی ایم ڈی سی تصدیق شدہ ڈاکٹرز",
+    pmdcVerifiedDesc: "صرف لائسنس یافتہ ماہرین",
     freeSunday: "مفت اتوار ویڈیو مشاورت",
+    freeSundayDesc: "ہر اتوار روپے 0",
     secureVideo: "محفوظ آن لائن ویڈیو",
+    secureVideoDesc: "محفوظ HD مشاورت کے کمرے",
     homeCare: "لاہور میں گھر پر دیکھ بھال",
+    homeCareDesc: "گھر پر ڈاکٹر اور نرس",
   },
   sunday: {
     shortName: "اتوار مفت مشاورت",
@@ -564,6 +568,23 @@ export const ur: Dictionary = {
     modalTitle: "تمام خصوصیات",
     modalPlaceholder: "خصوصیت تلاش کریں…",
     modalEmpty: "آپ کی تلاش سے کوئی خصوصیت نہیں ملی۔",
+    page: {
+      metaTitle: "ویڈیو مشاورت بک کریں",
+      metaDescription:
+        "زندگی کیئر پر لاہور کے پی ایم ڈی سی تصدیق شدہ ڈاکٹروں سے محفوظ ویڈیو مشاورت بک کریں۔",
+      title: "ویڈیو مشاورت بک کریں",
+      description:
+        "لاہور کے پی ایم ڈی سی تصدیق شدہ ماہرین دیکھیں۔ پروفائلز، فیس اور محفوظ ویڈیو سلاٹ بک کریں۔",
+      listTitle: "ڈاکٹرز دیکھیں",
+      loading: "ڈاکٹرز لوڈ ہو رہے ہیں…",
+      slotsOpen: "{count} سلاٹ دستیاب",
+      noSlots: "مکمل بک",
+      emptyTitle: "ابھی کوئی ڈاکٹر دستیاب نہیں",
+      emptyBeforeLink:
+        "ویڈیو سلاٹ والے ڈاکٹر جلد یہاں ظاہر ہوں گے۔ اس دوران آپ",
+      emptyLink: "مفت اتوار مشاورت",
+      emptyAfterLink: "بک کر سکتے ہیں۔",
+    },
   },
   doctorProfile: {
     backToDoctors: "تمام ڈاکٹروں پر واپس",

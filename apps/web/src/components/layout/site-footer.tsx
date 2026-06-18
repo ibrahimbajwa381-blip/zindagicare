@@ -58,8 +58,9 @@ function FooterColumn({
 
 function FooterLink({ href, label, icon: Icon, badge, external }: FooterLinkItem) {
   const className = cn(
-    "group flex min-h-10 items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-white/75 transition-all duration-200",
-    "hover:bg-white/8 hover:pl-3.5 hover:text-white",
+    "group flex min-h-10 items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-white/75 transition-colors duration-200",
+    "hover:bg-white/8 hover:text-white",
+    "motion-safe:hover:pl-3.5",
   );
 
   const content = (
@@ -138,24 +139,17 @@ export function SiteFooter() {
   ];
 
   return (
-    <footer className="relative overflow-hidden border-t border-accent-dark/40 bg-gradient-to-br from-[#061f4a] via-accent-dark to-[#041530] text-white/80">
+    <footer className="relative border-t border-accent-dark/40 bg-gradient-to-br from-[#061f4a] via-accent-dark to-[#041530] text-white/80">
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-mesh-footer" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 top-0 h-72 w-72 rounded-full bg-brand/15 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-accent-light/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="h-1 w-full bg-gradient-to-r from-brand via-brand-light to-brand-lighter"
+        className="relative h-1 w-full bg-gradient-to-r from-brand via-brand-light to-brand-lighter"
       />
 
-      <div className="relative mx-auto w-full max-w-[100rem] px-4 sm:px-8 lg:px-14">
+      <div className="relative isolate z-10 mx-auto w-full max-w-[100rem] px-4 sm:px-8 lg:px-14">
         {/* CTA band */}
         <div className="border-b border-white/10 py-8 sm:py-10">
-          <div className="flex flex-col items-start justify-between gap-6 rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-sm sm:flex-row sm:items-center sm:p-8">
+          <div className="flex flex-col items-start justify-between gap-6 rounded-2xl border border-white/10 bg-[#0a2559]/90 p-6 sm:flex-row sm:items-center sm:p-8">
             <div className="max-w-xl">
               <p className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
                 {t.footer.ctaTitle}
@@ -189,13 +183,13 @@ export function SiteFooter() {
               {t.site.description}
             </p>
 
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/15 px-3 py-1 text-xs font-semibold text-brand-lighter">
-                <Shield className="h-3.5 w-3.5" />
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <span className="inline-flex w-fit max-w-full items-center gap-1.5 rounded-full border border-brand/35 bg-[#0d365f] px-3 py-1.5 text-xs font-semibold leading-snug text-brand-lighter antialiased">
+                <Shield className="h-3.5 w-3.5 shrink-0" />
                 {t.footer.pmdcBadge}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
-                <MapPin className="h-3.5 w-3.5 text-brand-lighter" />
+              <span className="inline-flex w-fit max-w-full items-center gap-1.5 rounded-full border border-white/20 bg-[#0a2559] px-3 py-1.5 text-xs font-medium leading-snug text-white/90 antialiased">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-lighter" />
                 {formatMessage(t.site.launchNote, { city: siteConfig.launchCity })}
               </span>
             </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "@zindagi/shared";
 import type { BrowseItem } from "../data/browse-catalog";
+import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 type BrowseIconTileProps = {
   item: BrowseItem;
@@ -20,22 +21,19 @@ export function BrowseIconTile({
       href={href}
       onClick={onNavigate}
       className={cn(
-        "group flex min-w-[4.75rem] flex-col items-center gap-2 rounded-2xl px-1.5 py-2.5 text-center transition-all duration-200 sm:min-w-[5.5rem] sm:gap-3 sm:px-2 sm:py-3",
-        "hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light/40 focus-visible:ring-offset-2",
+        surfaceCardInteractive,
+        "group flex flex-col items-center gap-3 p-3 text-center sm:p-4",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light/40 focus-visible:ring-offset-2",
         className,
       )}
     >
       <span
         className={cn(
-          "relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br p-2.5 shadow-sm ring-1 transition-all duration-200",
-          "group-hover:shadow-premium sm:h-20 sm:w-20 sm:p-3.5",
+          "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br p-2.5 shadow-sm ring-1 ring-white/60 transition-transform duration-300 group-hover:scale-105",
           item.ring,
         )}
       >
-        <span
-          aria-hidden
-          className="absolute inset-0 rounded-full bg-white/50"
-        />
+        <span aria-hidden className="absolute inset-0 rounded-2xl bg-white/45" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={item.image}
@@ -44,10 +42,10 @@ export function BrowseIconTile({
           height={40}
           loading="lazy"
           decoding="async"
-          className="relative h-9 w-9 object-contain transition-transform duration-200 group-hover:scale-105 sm:h-10 sm:w-10"
+          className="relative h-8 w-8 object-contain"
         />
       </span>
-      <span className="max-w-[6.5rem] text-xs font-medium leading-snug text-slate-600 transition-colors group-hover:text-foreground sm:text-sm">
+      <span className="font-display text-xs font-semibold leading-snug text-slate-700 transition-colors group-hover:text-foreground sm:text-sm">
         {item.label}
       </span>
     </Link>

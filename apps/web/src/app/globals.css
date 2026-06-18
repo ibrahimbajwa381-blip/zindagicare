@@ -131,6 +131,13 @@ html[lang="ur"] body {
       radial-gradient(ellipse 50% 30% at 0% 50%, rgb(15 167 155 / 0.05), transparent);
   }
 
+  /** Footer glow without CSS blur filters — avoids mobile GPU compositor artifacts. */
+  .bg-mesh-footer {
+    background-image:
+      radial-gradient(ellipse 70% 55% at 0% 0%, rgb(15 167 155 / 0.14), transparent),
+      radial-gradient(ellipse 60% 50% at 100% 100%, rgb(74 159 212 / 0.12), transparent);
+  }
+
   .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);

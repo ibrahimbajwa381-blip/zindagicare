@@ -14,16 +14,16 @@ export function DoctorBrowseSection() {
 
   return (
     <PageSection variant="neutral" spacing="lg">
-      <SpecialtiesBrowseSection />
+      <div className="space-y-6 sm:space-y-8">
+        <SpecialtiesBrowseSection />
 
-      <div className="my-10 h-px bg-gradient-to-r from-transparent via-brand-light/50 to-transparent sm:my-16" />
-
-      <BrowseSectionRow
-        title={t.doctors.searchByCondition}
-        items={conditions}
-        queryParam="condition"
-        variant="scroll"
-      />
+        <BrowseSectionRow
+          title={t.doctors.searchByCondition}
+          items={conditions}
+          queryParam="condition"
+          viewAllLabel={t.common.viewAll}
+        />
+      </div>
     </PageSection>
   );
 }

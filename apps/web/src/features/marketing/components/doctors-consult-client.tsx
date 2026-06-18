@@ -8,11 +8,14 @@ import { Star } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceInset, surfaceMuted } from "@/lib/ui/surfaces";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/config/site";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
+import { useTranslations } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/messages";
 
 type DoctorRow = {
   doctorId: string;
@@ -57,16 +60,53 @@ function DoctorAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string })
   );
 }
 
+function DoctorsListSkeleton({ label }: { label: string }) {
+  return (
+    <div
+      className="grid gap-3 sm:grid-cols-2"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label={label}
+    >
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className={`rounded-xl border p-4 ${surfaceInset}`}>
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-36 max-w-full" />
+              <Skeleton className="h-3 w-28 max-w-full" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <Skeleton className="h-5 w-12 rounded-full" />
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function DoctorsConsultClient() {
   const { data: session, status } = useSession();
+  const t = useTranslations();
+  const copy = t.doctors.page;
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
 
   const loadDoctors = useCallback(async () => {
-    const res = await fetch("/api/v1/consult/doctors");
-    const json = await res.json();
-    if (json.success) {
-      setDoctors(json.data ?? []);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/v1/consult/doctors");
+      const json = await res.json();
+      if (json.success) {
+        setDoctors(json.data ?? []);
+      }
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -96,25 +136,16 @@ export function DoctorsConsultClient() {
         </div>
       )}
 
-      <div className="mb-6 rounded-xl border border-amber-200/70 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
-        <strong className="text-foreground">Paid online consult.</strong> Open a doctor&apos;s
-        profile to see details, reviews, and book a video slot. For a{" "}
-        <Link href={siteConfig.links.sundayConsult} className="font-medium text-brand hover:underline">
-          free Sunday consult
-        </Link>
-        , visit our Sunday page instead.
-      </div>
-
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h2 className="font-display text-lg font-semibold text-foreground sm:text-xl">
-          Choose a doctor
+          {copy.listTitle}
         </h2>
-        <p className="text-sm text-slate-500">
-          Tap a doctor to view their full profile, patient reviews, and book a paid video
-          consultation.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {doctors.map((doc) => (
+        {loading ? (
+          <DoctorsListSkeleton label={copy.loading} />
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {doctors.map((doc) => (
             <Link
               key={doc.doctorId}
               href={doctorProfilePath(doc.slug, doc.doctorId)}
@@ -139,25 +170,30 @@ export function DoctorsConsultClient() {
                     Rs. {doc.consultationFee.toLocaleString()}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {doc.isFull ? "No slots" : `${doc.availableSlots} slots open`}
+                    {doc.isFull
+                      ? copy.noSlots
+                      : formatMessage(copy.slotsOpen, {
+                          count: String(doc.availableSlots),
+                        })}
                   </p>
                 </div>
               </div>
             </Link>
-          ))}
-        </div>
-        {!doctors.length && (
-          <div className={`border-dashed p-6 text-sm text-slate-600 ${surfaceMuted}`}>
-            <p className="font-medium text-slate-800">No doctors available yet</p>
-            <p className="mt-2">
-              Verified doctors with online availability will appear here. Check back soon or explore
-              our{" "}
-              <Link href={siteConfig.links.sundayConsult} className="text-brand hover:underline">
-                free Sunday consults
-              </Link>
-              .
-            </p>
-          </div>
+              ))}
+            </div>
+            {!doctors.length && (
+              <div className={`border-dashed p-6 text-sm text-slate-600 ${surfaceMuted}`}>
+                <p className="font-medium text-slate-800">{copy.emptyTitle}</p>
+                <p className="mt-2 leading-relaxed">
+                  {copy.emptyBeforeLink}{" "}
+                  <Link href={siteConfig.links.sundayConsult} className="font-medium text-brand hover:underline">
+                    {copy.emptyLink}
+                  </Link>{" "}
+                  {copy.emptyAfterLink}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </PageSection>

@@ -194,9 +194,13 @@ export const en = {
   },
   trustBar: {
     pmdcVerified: "PMDC verified doctors",
+    pmdcVerifiedDesc: "Licensed specialists only",
     freeSunday: "Free Sunday video consult",
+    freeSundayDesc: "Rs. 0 every Sunday",
     secureVideo: "Secure online video",
+    secureVideoDesc: "Private HD consult rooms",
     homeCare: "In-house care in Lahore",
+    homeCareDesc: "Doctors & nurses at home",
   },
   sunday: {
     shortName: "Sunday Free Consult",
@@ -561,6 +565,23 @@ export const en = {
     modalTitle: "All specialties",
     modalPlaceholder: "Search specialty…",
     modalEmpty: "No specialties match your search.",
+    page: {
+      metaTitle: "Book a video consultation",
+      metaDescription:
+        "Book secure video consultations with PMDC-verified doctors in Lahore on ZindagiCare.",
+      title: "Book a video consultation",
+      description:
+        "Browse PMDC-verified specialists in Lahore. View profiles, compare fees, and book a secure video slot.",
+      listTitle: "Browse doctors",
+      loading: "Loading doctors…",
+      slotsOpen: "{count} slots available",
+      noSlots: "Fully booked",
+      emptyTitle: "No doctors available yet",
+      emptyBeforeLink:
+        "Doctors with open video slots will appear here soon. You can still book a",
+      emptyLink: "free Sunday consult",
+      emptyAfterLink: "in the meantime.",
+    },
   },
   doctorProfile: {
     backToDoctors: "Back to all doctors",

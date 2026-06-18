@@ -4,7 +4,10 @@ import type { MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@zindagi/shared";
-import type { HeroService } from "@/features/marketing/data/hero-services";
+import {
+  HERO_USAMA_CARD_IMAGE_CLASS,
+  type HeroService,
+} from "@/features/marketing/data/hero-services";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 type HeroServiceCardsProps = {
@@ -43,7 +46,7 @@ export function HeroServiceCards({
                   : "",
               )}
             >
-              <div className="relative h-20 w-full shrink-0 overflow-hidden sm:h-28">
+              <div className="relative h-32 w-full shrink-0 overflow-hidden sm:h-40">
                 <Image
                   src={service.image}
                   alt={service.imageAlt}
@@ -52,8 +55,10 @@ export function HeroServiceCards({
                   className={cn(
                     "object-cover transition-transform duration-300 group-hover:scale-105",
                     service.id === "online-consult"
-                      ? "object-top"
-                      : "object-center",
+                      ? HERO_USAMA_CARD_IMAGE_CLASS
+                      : service.id === "in-house-medical"
+                        ? "object-[center_20%]"
+                        : "object-center",
                   )}
                 />
                 {service.id === "sunday-consult" && (

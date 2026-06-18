@@ -13,7 +13,7 @@ export async function TopDoctorsSection() {
   const { t } = await getServerTranslations();
   const featured = await PublicDoctorService.getFeaturedDoctors(6);
 
-  const doctors =
+  const doctors = (
     featured.length > 0
       ? featured.map((doctor) => ({
           key: doctor.doctorId,
@@ -38,24 +38,16 @@ export async function TopDoctorsSection() {
           fee: doctor.fee,
           pmdcVerified: doctor.pmdcVerified,
           imageUrl: doctor.imageUrl,
-        }));
+        }))
+  ).slice(0, 6);
 
   return (
     <PageSection variant="brand" spacing="lg" flipBlur>
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
-        <SectionHeader
-          eyebrow={t.doctors.eyebrow}
-          title={t.doctors.title}
-          description={t.doctors.description}
-        />
-        <Button
-          variant="outline"
-          className="w-full shrink-0 rounded-xl border-accent/30 bg-white/90 text-accent-dark backdrop-blur-sm hover:border-accent hover:bg-accent-muted sm:w-auto"
-          asChild
-        >
-          <Link href={siteConfig.links.doctors}>{t.common.browseAll}</Link>
-        </Button>
-      </div>
+      <SectionHeader
+        eyebrow={t.doctors.eyebrow}
+        title={t.doctors.title}
+        description={t.doctors.description}
+      />
       <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {doctors.map((doctor) => (
           <DoctorCard
@@ -73,6 +65,13 @@ export async function TopDoctorsSection() {
           />
         ))}
       </div>
+      <Button
+        variant="outline"
+        className="mx-auto mt-8 flex h-12 w-full rounded-xl border-accent/30 bg-white/90 text-accent-dark backdrop-blur-sm hover:border-accent hover:bg-accent-muted sm:mt-10 sm:w-auto sm:px-8"
+        asChild
+      >
+        <Link href={siteConfig.links.doctors}>{t.common.browseAll}</Link>
+      </Button>
     </PageSection>
   );
 }
