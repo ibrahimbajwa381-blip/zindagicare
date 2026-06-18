@@ -15,6 +15,11 @@ export const authConfig = {
     error: "/login",
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.roles = (user as { roles?: string[] }).roles ?? [Roles.PATIENT];

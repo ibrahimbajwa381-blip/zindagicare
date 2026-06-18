@@ -12,6 +12,7 @@ export type HeroService = {
     title: string;
     titleHighlight: string;
     description: string;
+    highlights: [string, string];
     badge: string;
     ctaLabel: string;
     href: string;
@@ -32,8 +33,9 @@ export const heroServices: HeroService[] = [
       title: "A doctor at",
       titleHighlight: "your home",
       description:
-        "Verified doctors and nurses come to you for check-ups, IV drips, injections, wound dressing, and post-op care — geo-tracked, transparent-priced, and safe across Lahore.",
-      badge: "Doctor visits · Nursing · IV & injections",
+        "Verified doctors and nurses visit you at home in Lahore.",
+      highlights: ["Verified doctors & nurses", "Transparent pricing"],
+      badge: "Doctor & nurse home visits",
       ctaLabel: "Book in-house care",
       href: siteConfig.links.homeServices,
     },
@@ -51,8 +53,9 @@ export const heroServices: HeroService[] = [
       title: "Talk to PMDC doctors via",
       titleHighlight: "secure video",
       description:
-        "Book a slot, join a private HD video room, share symptoms and reports in chat, and receive digital prescriptions from verified specialists across Lahore.",
-      badge: "HD video · E-prescription · Verified doctors",
+        "Book a video slot with PMDC-verified doctors in Lahore.",
+      highlights: ["PMDC verified specialists", "E-prescriptions included"],
+      badge: "PMDC verified · Secure video call",
       ctaLabel: "Book online consultation",
       href: siteConfig.links.doctors,
     },
@@ -70,8 +73,9 @@ export const heroServices: HeroService[] = [
       title: "Free doctor video call",
       titleHighlight: "every Sunday",
       description:
-        "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one free slot per week (first come, first served), join online at your chosen time — no clinic visit required.",
-      badge: "Rs. 0 · 10 minutes · Online only",
+        "Free 10-minute video consult with a PMDC-verified doctor.",
+      highlights: ["Completely free · Rs. 0", "Every Sunday online"],
+      badge: "Free · Rs. 0 · Every Sunday",
       ctaLabel: "Book free Sunday slot",
       href: siteConfig.links.sundayConsult,
     },
@@ -84,7 +88,7 @@ export const heroServices: HeroService[] = [
 
 /** Fixed carousel height — all slides share this size */
 export const HERO_CAROUSEL_HEIGHT =
-  "h-[min(30rem,88dvh)] min-h-[24rem] sm:h-[28rem] sm:min-h-0 lg:h-[30rem]" as const;
+  "h-[min(32rem,90dvh)] min-h-[26rem] sm:h-[30rem] sm:min-h-0 lg:h-[32rem]" as const;
 
 /** Full-body portrait — anchor above center so the face stays in short mobile crops. */
 export const HERO_USAMA_CAROUSEL_IMAGE_CLASS =

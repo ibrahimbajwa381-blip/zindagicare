@@ -20,9 +20,6 @@ type Props = {
 export default async function LoginPage({ searchParams }: Props) {
   const { callbackUrl, error } = await searchParams;
   const { t } = await getServerTranslations();
-  const googleEnabled = !!(
-    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-  );
 
   const registerHref = callbackUrl
     ? `${siteConfig.links.register}?callbackUrl=${encodeURIComponent(callbackUrl)}`
@@ -40,7 +37,6 @@ export default async function LoginPage({ searchParams }: Props) {
         <LoginForm
           callbackUrl={callbackUrl}
           initialError={resolveAuthErrorMessage(error)}
-          googleEnabled={googleEnabled}
         />
         <p className="mt-4 text-center text-sm text-slate-600">
           {t.auth.noAccount}{" "}

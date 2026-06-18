@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { AuthDivider } from "@/features/auth/components/auth-divider";
+import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { RegisterForm } from "@/features/auth/components/register-form";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
 import { formatMessage, getServerTranslations } from "@/i18n/server";
@@ -19,6 +21,10 @@ export default async function RegisterPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="rounded-2xl border border-brand/15 bg-gradient-to-br from-brand/[0.06] via-white to-white p-4">
+          <GoogleAuthButton mode="signUp" />
+        </div>
+        <AuthDivider />
         <RegisterForm accountType="patient" />
         <p className="mt-4 text-center text-sm text-slate-600">
           {t.auth.alreadyHaveAccount}{" "}

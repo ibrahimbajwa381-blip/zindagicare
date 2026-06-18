@@ -11,6 +11,7 @@ import {
   LogIn,
   Mail,
   MapPin,
+  MessageCircle,
   RotateCcw,
   Scale,
   Shield,
@@ -22,6 +23,7 @@ import {
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
+import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { formatMessage } from "@/i18n/messages";
 import { useTranslations } from "@/i18n/locale-provider";
 
@@ -194,18 +196,35 @@ export function SiteFooter() {
               </span>
             </div>
 
-            <a
-              href={`mailto:${siteConfig.supportEmail}`}
-              className="mt-6 inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75 transition-colors hover:border-brand/30 hover:bg-white/8 hover:text-white"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/20 text-brand-lighter">
-                <Mail className="h-4 w-4" />
-              </span>
-              <span>
-                <span className="block text-xs text-white/45">{t.footer.contactSupport}</span>
-                <span className="font-medium text-white/90">{siteConfig.supportEmail}</span>
-              </span>
-            </a>
+            <div className="mt-6 flex flex-col gap-3">
+              <a
+                href={getWhatsAppSupportUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-white/75 transition-colors hover:border-emerald-400/40 hover:bg-emerald-500/15 hover:text-white"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-200">
+                  <MessageCircle className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block text-xs text-white/45">{t.footer.contactWhatsApp}</span>
+                  <span className="font-medium text-white/90">{siteConfig.supportWhatsAppDisplay}</span>
+                </span>
+              </a>
+              <p className="text-xs leading-relaxed text-white/50">{t.footer.contactWhatsAppHint}</p>
+              <a
+                href={`mailto:${siteConfig.supportEmail}`}
+                className="inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75 transition-colors hover:border-brand/30 hover:bg-white/8 hover:text-white"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/20 text-brand-lighter">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block text-xs text-white/45">{t.footer.contactSupport}</span>
+                  <span className="font-medium text-white/90">{siteConfig.supportEmail}</span>
+                </span>
+              </a>
+            </div>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-4 lg:gap-6">

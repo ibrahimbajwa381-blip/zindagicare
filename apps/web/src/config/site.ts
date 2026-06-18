@@ -13,6 +13,8 @@ export const siteConfig = {
     "Lahore's at-home medical care — verified doctors and nurses visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations and free 10-minute Sunday consults (Rs. 0).",
   launchCity: LAUNCH_CITY,
   supportEmail: "support@zindagicare.pk",
+  supportWhatsApp: "923074583567",
+  supportWhatsAppDisplay: "0307 458 3567",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   links: {
     doctors: "/doctors",

@@ -41,6 +41,9 @@ export const en = {
     signingIn: "Signing in…",
     or: "or",
     continueGoogle: "Continue with Google",
+    signUpWithGoogle: "Sign up with Google",
+    googleSignupHint: "Create your account in one tap — no password needed",
+    googleSignInHint: "Sign in instantly with your Google account",
     preferPhone: "Prefer phone?",
     signInOtp: "Sign in with OTP",
     language: "Language",
@@ -102,6 +105,8 @@ export const en = {
     emergencyDescription:
       "For chest pain, severe breathing difficulty, or any life-threatening condition, call 1122 or go to the nearest hospital immediately.",
     contactSupport: "Need help?",
+    contactWhatsApp: "Chat on WhatsApp",
+    contactWhatsAppHint: "For any questions, message us on WhatsApp.",
     pmdcBadge: "PMDC-verified doctors",
     productOfBefore: "A product of",
     productOfAfter: "",
@@ -133,6 +138,8 @@ export const en = {
     exploreHomeServices: "Explore in-house services",
     bookingOpen: "Booking open",
     pmdc: "PMDC",
+    whatsappChat: "Chat on WhatsApp",
+    whatsappPrefill: "Hello, I have a question about ZindagiCare.",
   },
   hero: {
     learnMore: "Learn more →",
@@ -149,8 +156,9 @@ export const en = {
           title: "A doctor at",
           titleHighlight: "your home",
           description:
-            "Verified doctors and nurses come to you for check-ups, IV drips, injections, wound dressing, and post-op care — geo-tracked, transparent-priced, and safe across Lahore.",
-          badge: "Doctor visits · Nursing · IV & injections",
+            "Verified doctors and nurses visit you at home in Lahore.",
+          highlights: ["Verified doctors & nurses", "Transparent pricing"],
+          badge: "Doctor & nurse home visits",
           ctaLabel: "Book in-house care",
         },
         card: {
@@ -161,12 +169,13 @@ export const en = {
       {
         imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
         carousel: {
-          eyebrow: "Dr. Usama Riyaz · Founder",
+          eyebrow: "Online consultation",
           title: "Talk to PMDC doctors via",
           titleHighlight: "secure video",
           description:
-            "Book a slot, join a private HD video room, share symptoms and reports in chat, and receive digital prescriptions from verified specialists across Lahore.",
-          badge: "HD video · E-prescription · Verified doctors",
+            "Book a video slot with PMDC-verified doctors in Lahore.",
+          highlights: ["PMDC verified specialists", "E-prescriptions included"],
+          badge: "PMDC verified · Secure video call",
           ctaLabel: "Book online consultation",
         },
         card: {
@@ -181,8 +190,9 @@ export const en = {
           title: "Free doctor video call",
           titleHighlight: "every Sunday",
           description:
-            "Rs. 0 for a 10-minute video consult with a PMDC-verified doctor. Book one free slot per week (first come, first served), join online at your chosen time — no clinic visit required.",
-          badge: "Rs. 0 · 10 minutes · Online only",
+            "Free 10-minute video consult with a PMDC-verified doctor.",
+          highlights: ["Completely free · Rs. 0", "Every Sunday online"],
+          badge: "Free · Rs. 0 · Every Sunday",
           ctaLabel: "Book free Sunday slot",
         },
         card: {
@@ -296,8 +306,8 @@ export const en = {
     description:
       "Quick answers about online consults, Sunday free care, and in-house medical visits in Lahore.",
     stillHaveQuestions: "Still have questions?",
-    stillHaveQuestionsHint: "Create a free account and our team can guide you to the right service.",
-    getStarted: "Get started free",
+    stillHaveQuestionsHint: "Message us on WhatsApp and our team will help you.",
+    contactWhatsApp: "Message on WhatsApp",
     items: [
       {
         q: "What services does ZindagiCare offer at launch?",

@@ -15,7 +15,6 @@ import {
 const AUTO_ADVANCE_MS = 3000;
 
 type HeroCarouselLabels = {
-  servingPatients: string;
   prevService: string;
   nextService: string;
 };
@@ -112,30 +111,24 @@ export function HeroCarousel({
             />
 
             <div className="relative flex h-full flex-col overflow-hidden lg:flex-row">
-              <div className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden p-4 pr-14 sm:p-8 sm:pr-8 lg:max-w-[58%] lg:p-10">
-                <div className="min-h-0 flex-1">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-brand-lighter/80 sm:text-sm">
-                    {service.carousel.eyebrow}
-                  </p>
-                  <h2 className="mt-1.5 font-display text-xl font-semibold leading-tight tracking-tight text-white sm:mt-3 sm:text-3xl lg:text-4xl">
-                    {service.carousel.title}{" "}
-                    <span className="text-gradient-hero">
-                      {service.carousel.titleHighlight}
-                    </span>
-                  </h2>
-                  <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-brand-muted backdrop-blur-sm sm:mt-4 sm:text-sm">
-                    <BadgeCheck className="h-4 w-4 shrink-0 text-brand-lighter" />
-                    <span className="truncate">{service.carousel.badge}</span>
-                  </div>
-                  <p className="mt-3 line-clamp-3 max-w-xl text-sm leading-relaxed text-white/80 sm:mt-4 sm:text-base">
-                    {service.carousel.description}
-                  </p>
+              <div className="flex shrink-0 flex-col p-5 pr-12 sm:p-7 sm:pr-8 lg:w-[38%] lg:max-w-xl lg:shrink-0 lg:justify-center lg:p-10 xl:w-[36%]">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/95 sm:text-sm">
+                  {service.carousel.eyebrow}
+                </p>
+                <h2 className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]">
+                  {service.carousel.title}{" "}
+                  <span className="text-gradient-hero">
+                    {service.carousel.titleHighlight}
+                  </span>
+                </h2>
+                <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-2 text-sm font-medium leading-snug text-white backdrop-blur-sm sm:mt-4 sm:px-4 sm:py-2.5 sm:text-base">
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-brand-lighter sm:h-5 sm:w-5" />
+                  <span>{service.carousel.badge}</span>
                 </div>
-
-                <div className="mt-3 shrink-0 sm:mt-6">
+                <div className="mt-4 sm:mt-5">
                   <Button
                     size="lg"
-                    className="shadow-premium h-12 w-full rounded-xl px-6 shadow-brand-dark/25 sm:h-11 sm:w-auto"
+                    className="shadow-premium h-14 w-full rounded-xl px-6 text-base font-semibold shadow-brand-dark/25 sm:h-12 sm:w-auto sm:text-lg"
                     asChild
                   >
                     <Link href={service.carousel.href}>
@@ -143,33 +136,48 @@ export function HeroCarousel({
                     </Link>
                   </Button>
                 </div>
-
-                <div className="mt-3 hidden shrink-0 border-t border-white/15 pt-3 sm:mt-6 sm:block sm:pt-4">
-                  <p className="text-xs text-brand-lighter/60">{labels.servingPatients}</p>
-                </div>
               </div>
 
-              <div className="relative h-28 w-full shrink-0 sm:h-36 lg:h-full lg:w-[42%] lg:max-w-md">
-                <Image
-                  src={service.image}
-                  alt={service.imageAlt}
-                  fill
-                  priority={index === 0}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  sizes="(max-width: 1024px) 100vw, 42vw"
-                  className={cn(
-                    "object-cover",
-                    service.id === "online-consult"
-                      ? HERO_USAMA_CAROUSEL_IMAGE_CLASS
-                      : service.id === "sunday-consult"
-                        ? "object-center lg:object-[center_35%]"
-                        : "object-center lg:object-[center_20%]",
-                  )}
-                />
-                <div
-                  aria-hidden
-                  className="absolute inset-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/20 to-transparent lg:bg-gradient-to-l lg:from-accent-dark/80 lg:via-transparent lg:to-transparent"
-                />
+              <div className="flex min-h-[11.5rem] flex-1 flex-col sm:min-h-[14rem] lg:min-h-0 lg:flex-row">
+                <div className="relative min-h-[11.5rem] flex-1 sm:min-h-[14rem] lg:min-h-0 lg:min-w-0">
+                  <Image
+                    src={service.image}
+                    alt={service.imageAlt}
+                    fill
+                    priority={index === 0}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    sizes="(max-width: 1024px) 100vw, 38vw"
+                    className={cn(
+                      "object-cover",
+                      service.id === "online-consult"
+                        ? HERO_USAMA_CAROUSEL_IMAGE_CLASS
+                        : service.id === "sunday-consult"
+                          ? "object-center lg:object-[center_35%]"
+                          : "object-center lg:object-[center_20%]",
+                    )}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/20 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-brand-dark/35"
+                  />
+                </div>
+
+                <div className="hidden lg:flex lg:w-[min(22rem,34%)] lg:shrink-0 lg:flex-col lg:justify-center lg:border-l lg:border-white/10 lg:bg-white/5 lg:px-8 lg:py-10 lg:backdrop-blur-sm xl:px-10">
+                  <p className="text-lg leading-relaxed text-white/90 xl:text-xl">
+                    {service.carousel.description}
+                  </p>
+                  <ul className="mt-6 space-y-3">
+                    {service.carousel.highlights.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-2.5 text-sm font-medium text-white/85 xl:text-base"
+                      >
+                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-lighter" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

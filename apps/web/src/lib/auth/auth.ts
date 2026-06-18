@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { Roles } from "@zindagi/shared";
 import { authConfig } from "./auth.config";
+import { isGoogleAuthConfigured } from "./google";
 import {
   findOrCreateGoogleUser,
   findOrCreatePhoneUser,
@@ -11,14 +12,20 @@ import {
 } from "@/server/services/auth.service";
 import { otpService } from "@/server/services/otp.service";
 
+const googleProvider = isGoogleAuthConfigured()
+  ? [
+      Google({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        allowDangerousEmailAccountLinking: false,
+      }),
+    ]
+  : [];
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: false,
-    }),
+    ...googleProvider,
     Credentials({
       id: "credentials",
       name: "Email and Password",
@@ -80,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        if (user.id) token.sub = user.id;
         token.roles = user.roles ?? [Roles.PATIENT];
         token.onboardingCompleted = user.onboardingCompleted ?? false;
         token.doctorVerificationStatus = user.doctorVerificationStatus;

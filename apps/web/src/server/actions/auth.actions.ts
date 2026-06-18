@@ -1,6 +1,6 @@
 "use server";
 
-import { AuthError, CredentialsSignin } from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { auth, signIn } from "@/lib/auth";
@@ -22,6 +22,7 @@ export type RegisterFormState = {
 import { registerWithCredentials } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
 import { loginSchema, otpVerifySchema, registerSchema } from "@zindagi/validators";
+import { isGoogleAuthConfigured } from "@/lib/auth/google";
 import { AUTH_ROUTES, resolveLoginRedirectPath } from "@/lib/auth/routes";
 
 async function signInWithProvider(
@@ -114,21 +115,7 @@ export async function registerAction(
 
   try {
     await registerWithCredentials(parsed.data);
-    const redirectTo =
-      parsed.data.accountType === "patient"
-        ? AUTH_ROUTES.onboarding
-        : parsed.data.accountType === "doctor"
-          ? AUTH_ROUTES.doctorVerification
-          : AUTH_ROUTES.nurseVerification;
-
-    await signInWithProvider(
-      "credentials",
-      {
-        email: parsed.data.email,
-        password: parsed.data.password,
-      },
-      { redirectTo },
-    );
+    redirect(AUTH_ROUTES.login);
   } catch (e) {
     if (isRedirectError(e)) throw e;
     if (e instanceof AppError && e.code === "CONFLICT" && e.field) {
@@ -137,9 +124,6 @@ export async function registerAction(
     if (e instanceof AppError && e.code === "CONFLICT") {
       return { error: authMessage(locale, "accountExists") };
     }
-    if (e instanceof AuthError) {
-      return { error: authMessage(locale, "signInAfterRegisterFailed") };
-    }
     const message = authActionErrorMessage(e);
     if (message) return { error: message };
     throw e;
@@ -147,12 +131,12 @@ export async function registerAction(
 }
 
 export async function loginWithGoogleAction(callbackUrl?: string) {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    redirect("/login?error=Configuration");
+  if (!isGoogleAuthConfigured()) {
+    redirect(`${AUTH_ROUTES.login}?error=Configuration`);
   }
 
   await signIn("google", {
-    redirectTo: callbackUrl ?? AUTH_ROUTES.onboarding,
+    redirectTo: callbackUrl ?? AUTH_ROUTES.patientDashboard,
   });
 }
 

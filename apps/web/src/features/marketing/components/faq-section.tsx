@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { HelpCircle, MessageCircle } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
-import { siteConfig } from "@/config/site";
+import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { FaqAccordion } from "./faq-accordion";
 import { useTranslations } from "@/i18n/locale-provider";
 
@@ -37,13 +36,15 @@ export function FaqSection() {
               <p className="mt-0.5 text-sm text-slate-600">{t.faq.stillHaveQuestionsHint}</p>
             </div>
           </div>
-          <Link
-            href={siteConfig.links.register}
+          <a
+            href={getWhatsAppSupportUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark"
           >
             <MessageCircle className="h-4 w-4" />
-            {t.faq.getStarted}
-          </Link>
+            {t.faq.contactWhatsApp}
+          </a>
         </div>
       </div>
     </PageSection>

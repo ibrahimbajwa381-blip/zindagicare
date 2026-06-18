@@ -9,7 +9,6 @@ import { PageSection } from "@/components/layout/page-section";
 type HeroLabels = {
   learnMore: string;
   swipeHint: string;
-  servingPatients: string;
   freeBadge: string;
   prevService: string;
   nextService: string;
@@ -32,7 +31,10 @@ export function HeroSectionClient({
         services={services}
         activeIndex={activeIndex}
         onIndexChange={setActiveIndex}
-        labels={labels}
+        labels={{
+          prevService: labels.prevService,
+          nextService: labels.nextService,
+        }}
       />
       <HeroServiceCards
         services={services}

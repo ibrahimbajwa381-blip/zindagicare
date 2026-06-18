@@ -19,7 +19,7 @@ export function resolveAuthErrorMessage(code?: string): string | undefined {
     case "OAuthAccountNotLinked":
       return "This email is already registered. Sign in with your password instead.";
     case "Configuration":
-      return "Sign-in is temporarily unavailable. Please try again later.";
+      return "Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment.";
     case "AccessDenied":
       return "Access denied. Please try again.";
     default:
