@@ -12,6 +12,7 @@ import {
   ErrorCodes,
   VIDEO_CONSULT_CONFIG,
   VideoSessionStatuses,
+  getVideoJoinWindow,
 } from "@zindagi/shared";
 import { createZoomMeeting } from "@/lib/zoom/api";
 import { ZOOM_CONSULT_MEETING_TITLE } from "@/lib/zoom/branding";
@@ -41,18 +42,7 @@ type ParticipantContext = {
 };
 
 function getJoinWindow(scheduledStart: Date, scheduledEnd: Date) {
-  const joinOpensAt = new Date(
-    scheduledStart.getTime() - VIDEO_CONSULT_CONFIG.joinEarlyMinutes * 60_000,
-  );
-  const joinClosesAt = new Date(
-    scheduledEnd.getTime() + VIDEO_CONSULT_CONFIG.joinLateMinutes * 60_000,
-  );
-  const now = new Date();
-  return {
-    joinOpensAt,
-    joinClosesAt,
-    canJoin: now >= joinOpensAt && now <= joinClosesAt,
-  };
+  return getVideoJoinWindow(scheduledStart, scheduledEnd);
 }
 
 function meetingDurationMinutes(start: Date, end: Date) {

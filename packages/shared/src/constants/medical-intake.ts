@@ -83,6 +83,22 @@ export function getDefaultIntakeQuestions(locale: IntakeLocale = "en") {
   return locale === "ur" ? DEFAULT_INTAKE_QUESTIONS_UR : DEFAULT_INTAKE_QUESTIONS;
 }
 
+/** Core health questions shown in the paid online consult in-chat form. */
+export const PAID_ONLINE_INTAKE_QUESTION_KEYS = [
+  "chief_complaint",
+  "current_medications",
+  "allergies",
+  "chronic_conditions",
+  "additional_info",
+] as const;
+
+export function getPaidOnlineIntakeQuestions(locale: IntakeLocale = "en") {
+  const defaults = getDefaultIntakeQuestions(locale);
+  return PAID_ONLINE_INTAKE_QUESTION_KEYS.map((key) =>
+    defaults.find((question) => question.key === key),
+  ).filter((question): question is IntakeQuestionDefinition => !!question);
+}
+
 export const MEDICAL_INTAKE_CONFIG = {
   maxQuestions: 20,
   maxQuestionLength: 300,
@@ -108,6 +124,40 @@ export function getIntakeIntroMessage(locale: IntakeLocale = "en") {
 
 export function getIntakeCompleteMessage(locale: IntakeLocale = "en") {
   return locale === "ur" ? INTAKE_COMPLETE_MESSAGE_UR : INTAKE_COMPLETE_MESSAGE;
+}
+
+export const RETURNING_PATIENT_CONSULT_MESSAGE =
+  "Your consultation is confirmed. We already have your medical history on file — feel free to message the doctor here if anything has changed since your last visit.";
+
+export const RETURNING_PATIENT_CONSULT_MESSAGE_UR =
+  "آپ کی مشاورت کی تصدیق ہو گئی ہے۔ ہمارے پاس آپ کی طبی تاریخ پہلے سے موجود ہے — اگر پچھلی ملاقات کے بعد کچھ تبدیل ہوا ہو تو یہاں ڈاکٹر کو پیغام بھیج سکتے ہیں۔";
+
+export function getReturningPatientConsultMessage(locale: IntakeLocale = "en") {
+  return locale === "ur"
+    ? RETURNING_PATIENT_CONSULT_MESSAGE_UR
+    : RETURNING_PATIENT_CONSULT_MESSAGE;
+}
+
+export const INTAKE_FORM_INVITE_MESSAGE =
+  "Assalam-o-Alaikum! Before your consultation, please fill in the short optional health form below. It helps me prepare for your visit — you may skip any question that does not apply, or skip the form entirely for now.";
+
+export const INTAKE_FORM_INVITE_MESSAGE_UR =
+  "السلام علیکم! مشاورت سے پہلے، نیچے دیا گیا مختصر اختیاری صحت کا فارم بھر دیں۔ اس سے میں آپ کی ملاقات کی تیاری کر سکتا ہوں — جو سوال لاگو نہ ہو اسے خالی چھوڑ سکتے ہیں، یا ابھی فارم چھوڑ بھی سکتے ہیں۔";
+
+export const INTAKE_FORM_SUBMITTED_MESSAGE =
+  "Thank you for sharing your health information. Feel free to message me here if there is anything else you would like me to know.";
+
+export const INTAKE_FORM_SUBMITTED_MESSAGE_UR =
+  "آپ کی صحت کی معلومات شیئر کرنے کا شکریہ۔ اگر کچھ اور بتانا چاہیں تو یہاں پیغام بھیج سکتے ہیں۔";
+
+export function getIntakeFormInviteMessage(locale: IntakeLocale = "en") {
+  return locale === "ur" ? INTAKE_FORM_INVITE_MESSAGE_UR : INTAKE_FORM_INVITE_MESSAGE;
+}
+
+export function getIntakeFormSubmittedMessage(locale: IntakeLocale = "en") {
+  return locale === "ur"
+    ? INTAKE_FORM_SUBMITTED_MESSAGE_UR
+    : INTAKE_FORM_SUBMITTED_MESSAGE;
 }
 
 export function formatIntakeQuestion(

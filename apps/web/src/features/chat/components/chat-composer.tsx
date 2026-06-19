@@ -21,9 +21,9 @@ export function ChatComposer({ onSend, placeholder, disabled }: ChatComposerProp
     if (!body || sending || disabled) return;
 
     setSending(true);
+    setText("");
     try {
       await onSend(body);
-      setText("");
     } finally {
       setSending(false);
     }
@@ -39,7 +39,7 @@ export function ChatComposer({ onSend, placeholder, disabled }: ChatComposerProp
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
         rows={1}
-        disabled={disabled || sending}
+        disabled={disabled}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();

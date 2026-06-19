@@ -849,6 +849,19 @@ export const en = {
     doctorSummaryEmpty: "No answer provided",
     viewHistory: "View medical history",
     hideHistory: "Hide medical history",
+    chatForm: {
+      title: "Optional health form",
+      subtitle: "Share a few details to help your doctor prepare.",
+      loading: "Loading health form…",
+      optionalHint: "All questions are optional. Leave blank anything that does not apply.",
+      answerPlaceholder: "Your answer (optional)",
+      submit: "Share with doctor",
+      submitting: "Sharing…",
+      submitError: "Could not submit the form. Please try again.",
+      skip: "Skip for now",
+      reopen: "Fill optional health form",
+      completed: "Health form shared with your doctor.",
+    },
     editor: {
       title: "Intake questions",
       subtitle:

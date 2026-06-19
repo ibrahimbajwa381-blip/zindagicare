@@ -5,7 +5,7 @@ import {
 import {
   AppointmentStatuses,
   AppointmentTypes,
-  VIDEO_CONSULT_CONFIG,
+  getVideoJoinWindow,
 } from "@zindagi/shared";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { mongoFilter } from "@/lib/mongo/query";
@@ -67,11 +67,10 @@ function resolveHistoryFlags(
   type: "online" | "sunday_free",
 ) {
   const now = new Date();
-  const joinOpensAt = new Date(
-    scheduledStart.getTime() - VIDEO_CONSULT_CONFIG.joinEarlyMinutes * 60_000,
-  );
-  const joinClosesAt = new Date(
-    scheduledEnd.getTime() + VIDEO_CONSULT_CONFIG.joinLateMinutes * 60_000,
+  const { joinClosesAt, canJoin: withinJoinWindow } = getVideoJoinWindow(
+    scheduledStart,
+    scheduledEnd,
+    now,
   );
 
   if (status === AppointmentStatuses.NO_SHOW) {
@@ -92,8 +91,7 @@ function resolveHistoryFlags(
 
   const canJoin =
     type === "online" &&
-    now >= joinOpensAt &&
-    now <= joinClosesAt &&
+    withinJoinWindow &&
     (status === AppointmentStatuses.CONFIRMED ||
       status === AppointmentStatuses.IN_PROGRESS);
 

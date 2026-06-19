@@ -13,14 +13,18 @@ import {
   sendMessage,
 } from "@/features/chat/lib/chat-api";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
+import { ChatIntakeForm } from "@/features/intake/components/chat-intake-form";
 
 type ChatConversationProps = {
   thread: ChatThreadDto;
   messages: ChatMessageDto[];
   hasMore: boolean;
   loadingMessages: boolean;
+  currentUserId: string;
   onBack?: () => void;
   onMessageSent: (message: ChatMessageDto) => void;
+  onMessageReplaced: (tempId: string, message: ChatMessageDto) => void;
+  onMessageFailed: (tempId: string) => void;
   onThreadRead?: (threadId: string) => void;
   onMessagesLoaded: (messages: ChatMessageDto[], hasMore: boolean, prepend?: boolean) => void;
   placeholder: string;
@@ -33,8 +37,11 @@ export function ChatConversation({
   messages,
   hasMore,
   loadingMessages,
+  currentUserId,
   onBack,
   onMessageSent,
+  onMessageReplaced,
+  onMessageFailed,
   onThreadRead,
   onMessagesLoaded,
   placeholder,
@@ -77,13 +84,32 @@ export function ChatConversation({
   }
 
   async function handleSend(body: string) {
-    const message = await sendMessage(thread.id, body, locale);
-    onMessageSent(message);
-    scrollToBottom();
+    const tempId = `pending-${Date.now()}`;
+    const optimisticMessage: ChatMessageDto = {
+      id: tempId,
+      threadId: thread.id,
+      senderId: currentUserId,
+      kind: "user",
+      body,
+      createdAt: new Date().toISOString(),
+      isMine: true,
+      readBy: [currentUserId],
+    };
+
+    onMessageSent(optimisticMessage);
+    scrollToBottom("auto");
+
+    try {
+      const message = await sendMessage(thread.id, body, locale);
+      onMessageReplaced(tempId, message);
+      scrollToBottom("smooth");
+    } catch {
+      onMessageFailed(tempId);
+    }
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#e5ddd5]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-[#e5ddd5]">
       <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-[#f0f2f5] px-3 py-3 sm:px-4">
         {onBack && (
           <button
@@ -108,6 +134,10 @@ export function ChatConversation({
           </p>
         </div>
       </header>
+
+      {!isDoctorView && thread.appointmentId && (
+        <ChatIntakeForm appointmentId={thread.appointmentId} />
+      )}
 
       {isDoctorView && thread.appointmentId && (
         <div className="shrink-0 border-b border-slate-200 bg-[#f0f2f5] px-3 pb-2 sm:px-4">

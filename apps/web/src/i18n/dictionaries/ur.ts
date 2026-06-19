@@ -851,6 +851,19 @@ export const ur: Dictionary = {
     doctorSummaryEmpty: "کوئی جواب نہیں دیا گیا",
     viewHistory: "طبی تاریخ دیکھیں",
     hideHistory: "طبی تاریخ چھپائیں",
+    chatForm: {
+      title: "اختیاری صحت کا فارم",
+      subtitle: "ڈاکٹر کی تیاری میں مدد کے لیے چند معلومات شیئر کریں۔",
+      loading: "صحت کا فارم لوڈ ہو رہا ہے…",
+      optionalHint: "تمام سوالات اختیاری ہیں۔ جو لاگو نہ ہو خالی چھوڑ دیں۔",
+      answerPlaceholder: "آپ کا جواب (اختیاری)",
+      submit: "ڈاکٹر کے ساتھ شیئر کریں",
+      submitting: "شیئر ہو رہا ہے…",
+      submitError: "فارم جمع نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+      skip: "ابھی چھوڑ دیں",
+      reopen: "اختیاری صحت کا فارم بھریں",
+      completed: "صحت کا فارم آپ کے ڈاکٹر کے ساتھ شیئر ہو گیا۔",
+    },
     editor: {
       title: "انٹیک سوالات",
       subtitle:

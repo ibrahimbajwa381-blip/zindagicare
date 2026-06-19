@@ -52,7 +52,22 @@ function mergeContactsWithThreads(
 ): MergedContact[] {
   const threadByParticipant = new Map<string, ChatThreadDto>();
   for (const thread of threadRows) {
-    threadByParticipant.set(thread.otherParticipant.id, thread);
+    const key = thread.otherParticipant.id;
+    const existing = threadByParticipant.get(key);
+    if (!existing) {
+      threadByParticipant.set(key, thread);
+      continue;
+    }
+
+    const existingTime = existing.lastMessageAt
+      ? new Date(existing.lastMessageAt).getTime()
+      : 0;
+    const threadTime = thread.lastMessageAt
+      ? new Date(thread.lastMessageAt).getTime()
+      : 0;
+    if (threadTime > existingTime) {
+      threadByParticipant.set(key, thread);
+    }
   }
 
   const merged = contactRows.map((contact) => {

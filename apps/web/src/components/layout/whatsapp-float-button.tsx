@@ -33,7 +33,7 @@ export function WhatsAppFloatButton() {
         "bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white",
         "shadow-lg shadow-[#25D366]/35 ring-2 ring-white/90",
         "transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-[#25D366]/45 active:scale-95",
-        "bottom-[max(1.25rem,env(safe-area-inset-bottom))] end-[max(1rem,env(safe-area-inset-right))]",
+        "bottom-[max(1.25rem,env(safe-area-inset-bottom))] start-[max(1rem,env(safe-area-inset-left))]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2",
       )}
     >

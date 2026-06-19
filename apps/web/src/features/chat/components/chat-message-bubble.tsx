@@ -1,9 +1,8 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
 import { cn, localizeIntakeSystemMessage, type IntakeLocale } from "@zindagi/shared";
 import type { ChatMessageDto } from "@/features/chat/types";
-import { useLocale, useTranslations } from "@/i18n/locale-provider";
+import { useLocale } from "@/i18n/locale-provider";
 
 type ChatMessageBubbleProps = {
   message: ChatMessageDto;
@@ -15,26 +14,27 @@ function formatTime(iso: string) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function SystemMessageBubble({
-  message,
-  locale,
+function IncomingMessageBubble({
+  body,
+  createdAt,
+  showTail,
 }: {
-  message: ChatMessageDto;
-  locale: IntakeLocale;
+  body: string;
+  createdAt: string;
+  showTail?: boolean;
 }) {
-  const t = useTranslations();
-  const displayBody = localizeIntakeSystemMessage(message.body, locale);
-
   return (
-    <div className="flex w-full justify-center">
-      <div className="max-w-[88%] rounded-2xl border border-brand-light/40 bg-brand-muted/70 px-4 py-2.5 text-[14px] leading-snug text-slate-800 shadow-sm sm:max-w-[72%]">
-        <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-brand-dark">
-          <Sparkles className="h-3 w-3" aria-hidden />
-          {t.chat.assistantName}
-        </p>
-        <p className="whitespace-pre-wrap break-words">{displayBody}</p>
+    <div className="flex w-full justify-start">
+      <div
+        className={cn(
+          "relative max-w-[82%] px-3.5 py-2 text-[15px] leading-snug text-slate-900 shadow-sm",
+          "rounded-2xl rounded-bl-md bg-white",
+          showTail && "rounded-bl-sm",
+        )}
+      >
+        <p className="whitespace-pre-wrap break-words">{body}</p>
         <p className="mt-1 text-right text-[11px] text-slate-400">
-          {formatTime(message.createdAt)}
+          {formatTime(createdAt)}
         </p>
       </div>
     </div>
@@ -46,33 +46,37 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
   const isMine = message.isMine;
 
   if (message.kind === "system") {
-    return <SystemMessageBubble message={message} locale={locale} />;
+    const displayBody = localizeIntakeSystemMessage(message.body, locale as IntakeLocale);
+    return (
+      <IncomingMessageBubble
+        body={displayBody}
+        createdAt={message.createdAt}
+        showTail={showTail}
+      />
+    );
+  }
+
+  if (!isMine) {
+    return (
+      <IncomingMessageBubble
+        body={message.body}
+        createdAt={message.createdAt}
+        showTail={showTail}
+      />
+    );
   }
 
   return (
-    <div
-      className={cn(
-        "flex w-full",
-        isMine ? "justify-end" : "justify-start",
-      )}
-    >
+    <div className="flex w-full justify-end">
       <div
         className={cn(
-          "relative max-w-[82%] px-3.5 py-2 text-[15px] leading-snug shadow-sm",
-          isMine
-            ? "rounded-2xl rounded-br-md bg-[#dcf8c6] text-slate-900"
-            : "rounded-2xl rounded-bl-md bg-white text-slate-900",
-          showTail && isMine && "rounded-br-sm",
-          showTail && !isMine && "rounded-bl-sm",
+          "relative max-w-[82%] px-3.5 py-2 text-[15px] leading-snug text-slate-900 shadow-sm",
+          "rounded-2xl rounded-br-md bg-[#dcf8c6]",
+          showTail && "rounded-br-sm",
         )}
       >
         <p className="whitespace-pre-wrap break-words">{message.body}</p>
-        <p
-          className={cn(
-            "mt-1 text-right text-[11px]",
-            isMine ? "text-emerald-800/70" : "text-slate-400",
-          )}
-        >
+        <p className="mt-1 text-right text-[11px] text-emerald-800/70">
           {formatTime(message.createdAt)}
         </p>
       </div>

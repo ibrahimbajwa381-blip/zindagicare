@@ -1,16 +1,9 @@
-import { SiteHeader } from "@/components/layout/site-header";
-import { SiteFooter } from "@/components/layout/site-footer";
+import { PatientShell } from "@/components/layout/patient-shell";
 
 export default function PatientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <SiteHeader enrichUserFromProfile />
-      <main className="flex-1">{children}</main>
-      <SiteFooter />
-    </>
-  );
+  return <PatientShell>{children}</PatientShell>;
 }

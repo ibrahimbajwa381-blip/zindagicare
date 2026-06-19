@@ -11,6 +11,7 @@ import {
   DEFAULT_INTAKE_QUESTIONS,
   ErrorCodes,
   getDefaultIntakeQuestions,
+  getPaidOnlineIntakeQuestions,
   IntakeSources,
   IntakeStatuses,
   normalizeIntakeLocale,
@@ -87,6 +88,7 @@ function toDto(row: IntakeRow): MedicalIntakeDto {
 async function resolveQuestionSnapshot(
   doctorProfileId: string,
   locale: IntakeLocale,
+  questionSet: "full" | "paid_online" = "full",
 ) {
   const profile = await DoctorProfileModel.findById(doctorProfileId).lean();
   const custom = (profile?.intakeQuestions ?? [])
@@ -94,7 +96,16 @@ async function resolveQuestionSnapshot(
     .sort((a, b) => a.order - b.order);
 
   if (custom.length > 0) {
-    return custom.map((q) => ({ key: q.id, text: q.text }));
+    const selected =
+      questionSet === "paid_online" ? custom.slice(0, 5) : custom;
+    return selected.map((q) => ({ key: q.id, text: q.text }));
+  }
+
+  if (questionSet === "paid_online") {
+    return getPaidOnlineIntakeQuestions(locale).map((q) => ({
+      key: q.key,
+      text: q.text,
+    }));
   }
 
   return getDefaultIntakeQuestions(locale).map((q) => ({
@@ -156,6 +167,7 @@ export class MedicalIntakeService {
     appointmentId: string,
     source: IntakeSource,
     preferredLocale?: string | null,
+    options?: { questionSet?: "full" | "paid_online" },
   ): Promise<MedicalIntakeDto> {
     await MedicalIntakeService.ensureConnected();
 
@@ -175,6 +187,7 @@ export class MedicalIntakeService {
     const questions = await resolveQuestionSnapshot(
       appointment.doctorId.toString(),
       locale,
+      options?.questionSet ?? "full",
     );
 
     const created = await MedicalIntakeModel.create({
@@ -189,6 +202,111 @@ export class MedicalIntakeService {
     });
 
     return toDto(created.toObject() as unknown as IntakeRow);
+  }
+
+  /**
+   * Seeds a new appointment intake as already completed, copying answers from a
+   * prior visit with the same doctor so returning patients skip chat questions.
+   */
+  static async createCompletedFromPrior(
+    appointmentId: string,
+    prior: MedicalIntakeDto,
+    source: IntakeSource,
+    preferredLocale?: string | null,
+  ): Promise<MedicalIntakeDto> {
+    await MedicalIntakeService.ensureConnected();
+
+    const existing = await MedicalIntakeModel.findOne(
+      mongoFilter({ appointmentId }),
+    ).lean();
+    if (existing) return toDto(existing as unknown as IntakeRow);
+
+    const appointment = await AppointmentModel.findById(appointmentId).lean();
+    if (!appointment) {
+      throw new AppError("Appointment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const locale = preferredLocale
+      ? normalizeIntakeLocale(preferredLocale)
+      : normalizeIntakeLocale(prior.locale);
+    const questions = prior.questions.map((question) => ({
+      key: question.key,
+      text: question.text,
+      answer: question.answer,
+      answeredAt: question.answeredAt
+        ? new Date(question.answeredAt)
+        : undefined,
+    }));
+
+    const created = await MedicalIntakeModel.create({
+      appointmentId,
+      patientId: appointment.patientId,
+      doctorId: appointment.doctorId,
+      source,
+      locale,
+      status: IntakeStatuses.COMPLETED,
+      currentQuestionIndex: questions.length,
+      questions,
+      completedAt: new Date(),
+    });
+
+    return toDto(created.toObject() as unknown as IntakeRow);
+  }
+
+  /** Marks an in-flight intake as completed using a prior visit's answers. */
+  static async upgradeToCompletedFromPrior(
+    appointmentId: string,
+    prior: MedicalIntakeDto,
+  ): Promise<MedicalIntakeDto | null> {
+    await MedicalIntakeService.ensureConnected();
+
+    const intake = await MedicalIntakeModel.findOne(
+      mongoFilter({ appointmentId }),
+    );
+    if (!intake || intake.status === IntakeStatuses.COMPLETED) return null;
+
+    intake.set(
+      "questions",
+      prior.questions.map((question) => ({
+        key: question.key,
+        text: question.text,
+        answer: question.answer,
+        answeredAt: question.answeredAt
+          ? new Date(question.answeredAt)
+          : undefined,
+      })),
+    );
+    intake.status = IntakeStatuses.COMPLETED;
+    intake.currentQuestionIndex = intake.questions.length;
+    intake.completedAt = new Date();
+    intake.locale = normalizeIntakeLocale(prior.locale);
+    await intake.save();
+
+    return toDto(intake.toObject() as unknown as IntakeRow);
+  }
+
+  /** Latest completed intake for a patient with a given doctor (any prior appointment). */
+  static async findLatestCompletedWithDoctor(
+    patientUserId: string,
+    doctorProfileId: string,
+    excludeAppointmentId?: string,
+  ): Promise<MedicalIntakeDto | null> {
+    await MedicalIntakeService.ensureConnected();
+
+    const filter: Record<string, unknown> = {
+      patientId: patientUserId,
+      doctorId: doctorProfileId,
+      status: IntakeStatuses.COMPLETED,
+    };
+    if (excludeAppointmentId) {
+      filter.appointmentId = { $ne: excludeAppointmentId };
+    }
+
+    const intake = await MedicalIntakeModel.findOne(mongoFilter(filter))
+      .sort({ completedAt: -1 })
+      .lean();
+
+    return intake ? toDto(intake as unknown as IntakeRow) : null;
   }
 
   /** Intake for an appointment regardless of status, or null. */
@@ -350,24 +468,19 @@ export class MedicalIntakeService {
     }
 
     const hasAnyAnswer = intake.questions.some((q) => !!q.answer);
-    if (!hasAnyAnswer) {
-      throw new AppError(
-        "Please answer at least one question",
-        ErrorCodes.VALIDATION,
-        400,
-      );
-    }
 
     intake.status = IntakeStatuses.COMPLETED;
     intake.completedAt = now;
     intake.currentQuestionIndex = intake.questions.length;
     await intake.save();
 
-    await notifyDoctorIntakeCompleted({
-      doctorProfileId: intake.doctorId.toString(),
-      patientId: patientUserId,
-      appointmentId,
-    });
+    if (hasAnyAnswer) {
+      await notifyDoctorIntakeCompleted({
+        doctorProfileId: intake.doctorId.toString(),
+        patientId: patientUserId,
+        appointmentId,
+      });
+    }
 
     return toDto(intake.toObject() as unknown as IntakeRow);
   }

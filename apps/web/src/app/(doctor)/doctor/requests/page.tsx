@@ -8,10 +8,7 @@ import {
 } from "@/features/doctor/components/doctor-workspace-panels";
 import { listDoctorConsultRequests } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
-import Link from "next/link";
-import { Video } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { videoConsultPath } from "@/features/consult/paths";
+import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 import { AppointmentTypes, VerificationStatuses } from "@zindagi/shared";
 
 export const metadata = { title: "Consult requests | Doctor" };
@@ -61,12 +58,12 @@ export default async function DoctorRequestsPage() {
                   badge={request.status.replace("_", " ")}
                   action={
                     request.type === AppointmentTypes.ONLINE ? (
-                      <Button size="sm" asChild className="gap-1">
-                        <Link href={videoConsultPath(request.id)}>
-                          <Video className="h-3.5 w-3.5" />
-                          Join video
-                        </Link>
-                      </Button>
+                      <VideoJoinLinkButton
+                        appointmentId={request.id}
+                        scheduledStart={request.scheduledStart}
+                        scheduledEnd={request.scheduledEnd}
+                        size="sm"
+                      />
                     ) : undefined
                   }
                 />

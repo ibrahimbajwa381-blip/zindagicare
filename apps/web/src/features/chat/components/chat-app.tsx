@@ -216,10 +216,6 @@ export function ChatApp({
           },
         };
       });
-
-      if (activeThreadId === threadId) {
-        void loadThreads();
-      }
       return;
     }
 
@@ -265,6 +261,49 @@ export function ChatApp({
         },
       };
     });
+
+    if (!message.id.startsWith("pending-")) {
+      setThreads((prev) =>
+        prev
+          .map((thread) =>
+            thread.id === activeThreadId
+              ? {
+                  ...thread,
+                  lastMessageAt: message.createdAt,
+                  lastMessagePreview: message.body,
+                  unreadCount: 0,
+                }
+              : thread,
+          )
+          .sort((a, b) => {
+            const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+            const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+            return bTime - aTime;
+          }),
+      );
+    }
+  }
+
+  function handleMessageReplaced(tempId: string, message: ChatMessageDto) {
+    if (!activeThreadId) return;
+    setMessagesByThread((prev) => {
+      const current = prev[activeThreadId];
+      if (!current) return prev;
+
+      const hasTemp = current.messages.some((entry) => entry.id === tempId);
+      const messages = hasTemp
+        ? current.messages.map((entry) => (entry.id === tempId ? message : entry))
+        : appendUniqueMessage(current.messages, message);
+
+      return {
+        ...prev,
+        [activeThreadId]: {
+          ...current,
+          messages: sortByCreatedAt(messages),
+        },
+      };
+    });
+
     setThreads((prev) =>
       prev
         .map((thread) =>
@@ -283,6 +322,21 @@ export function ChatApp({
           return bTime - aTime;
         }),
     );
+  }
+
+  function handleMessageFailed(tempId: string) {
+    if (!activeThreadId) return;
+    setMessagesByThread((prev) => {
+      const current = prev[activeThreadId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [activeThreadId]: {
+          ...current,
+          messages: current.messages.filter((entry) => entry.id !== tempId),
+        },
+      };
+    });
   }
 
   function handleMessagesLoaded(
@@ -315,19 +369,19 @@ export function ChatApp({
   const shellHeight = embedded
     ? "h-[28rem] md:h-[32rem]"
     : fillViewport
-      ? "h-full min-h-0"
+      ? "min-h-0"
       : "h-[calc(100dvh-13rem)] min-h-[24rem]";
 
   return (
     <div
       className={cn(
         "w-full",
-        embedded || fillViewport ? "h-full max-w-none" : "mx-auto max-w-6xl",
+        embedded || fillViewport ? "flex h-full min-h-0 max-w-none flex-col" : "mx-auto max-w-6xl",
       )}
     >
       <div
         className={cn(
-          "grid overflow-hidden bg-white",
+          "grid min-h-0 flex-1 overflow-hidden bg-white",
           fillViewport
             ? "h-full border-y border-slate-200"
             : "rounded-2xl border border-slate-200 shadow-sm",
@@ -381,8 +435,11 @@ export function ChatApp({
               messages={messageState?.messages ?? []}
               hasMore={messageState?.hasMore ?? false}
               loadingMessages={!messageState?.loaded}
+              currentUserId={currentUserId}
               onBack={() => setView("inbox")}
               onMessageSent={handleMessageSent}
+              onMessageReplaced={handleMessageReplaced}
+              onMessageFailed={handleMessageFailed}
               onThreadRead={handleThreadRead}
               onMessagesLoaded={(messages, hasMore, prepend) =>
                 handleMessagesLoaded(activeThreadId, messages, hasMore, prepend)

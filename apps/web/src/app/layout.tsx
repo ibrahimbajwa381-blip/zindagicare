@@ -54,7 +54,7 @@ export default async function RootLayout({
       className={`${jakarta.variable} ${notoArabic.variable} h-full`}
     >
       <body
-        className="flex min-h-full flex-col font-sans text-foreground antialiased"
+        className="flex min-h-dvh flex-col font-sans text-foreground antialiased"
         suppressHydrationWarning
       >
         <AppProviders session={session}>{children}</AppProviders>

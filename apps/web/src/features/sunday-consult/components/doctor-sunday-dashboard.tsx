@@ -6,15 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import { Video } from "lucide-react";
-import { videoConsultPath } from "@/features/consult/paths";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
+import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 
 type QueueAppointment = {
   _id: string;
   scheduledStart: string;
+  scheduledEnd: string;
   status: string;
   patientId: { name?: string; phone?: string };
 };
@@ -167,12 +166,12 @@ export function DoctorSundayDashboard() {
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" asChild className="gap-1">
-                    <Link href={videoConsultPath(apt._id)}>
-                      <Video className="h-3.5 w-3.5" />
-                      Join video
-                    </Link>
-                  </Button>
+                  <VideoJoinLinkButton
+                    appointmentId={apt._id}
+                    scheduledStart={apt.scheduledStart}
+                    scheduledEnd={apt.scheduledEnd}
+                    size="sm"
+                  />
                   <Button
                     size="sm"
                     variant="outline"
