@@ -92,8 +92,7 @@ export function AdminUrgentCareBoard() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        MVP dispatch: assign a doctor from your team. The doctor calls the patient directly on the
-        number below — no in-app video required.
+        Assign a doctor from your team. They call the patient directly on the number shown below.
       </p>
 
       {requests.length === 0 ? (

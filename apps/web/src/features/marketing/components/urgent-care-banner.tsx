@@ -4,10 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, Clock, Phone, Zap } from "lucide-react";
+import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/layout/page-section";
-import { URGENT_CARE_HERO_IMAGE } from "@/features/marketing/data/hero-services";
+import { URGENT_CARE_HERO_IMAGE, URGENT_CARE_HERO_IMAGE_CLASS } from "@/features/marketing/data/hero-services";
 import { useTranslations } from "@/i18n/locale-provider";
 import { URGENT_CONSULT_CONFIG } from "@zindagi/shared";
 
@@ -30,13 +31,13 @@ export function UrgentCareBanner() {
     >
       <div className="overflow-hidden rounded-2xl bg-banner-brand shadow-premium-lg sm:rounded-3xl">
         <div className="relative flex flex-col lg:flex-row">
-          <div className="relative h-36 w-full shrink-0 sm:h-44 lg:order-2 lg:h-auto lg:min-h-[20rem] lg:w-[40%] xl:min-h-[22rem]">
+          <div className="relative h-40 w-full shrink-0 sm:h-44 lg:order-2 lg:h-auto lg:min-h-[20rem] lg:w-[40%] xl:min-h-[22rem]">
             <Image
               src={URGENT_CARE_HERO_IMAGE}
               alt="Urgent phone consultation with a PMDC doctor on ZindagiCare"
               fill
               sizes="(max-width: 1024px) 100vw, 40vw"
-              className="object-cover object-center lg:object-[center_30%]"
+              className={cn("object-cover", URGENT_CARE_HERO_IMAGE_CLASS)}
             />
             <div
               aria-hidden

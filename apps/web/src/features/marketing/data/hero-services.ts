@@ -116,5 +116,9 @@ export const HERO_CAROUSEL_HEIGHT =
 export const HERO_USAMA_CAROUSEL_IMAGE_CLASS =
   "object-[center_30%] sm:object-[center_26%] lg:object-[center_18%]" as const;
 
+/** Urgent care hero — mobile crop is short; anchor higher so the doctor's face stays visible. */
+export const URGENT_CARE_HERO_IMAGE_CLASS =
+  "object-[center_14%] sm:object-[center_18%] lg:object-[center_22%]" as const;
+
 export const HERO_USAMA_CARD_IMAGE_CLASS =
   "object-[center_26%] sm:object-[center_22%]" as const;

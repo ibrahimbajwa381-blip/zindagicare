@@ -307,7 +307,7 @@ export const en = {
     heroStripTagline: "Share your WhatsApp number — a doctor calls you directly.",
     heroStripCtaHint: "No login · No payment",
     howItWorks: "How it works",
-    howItWorksTitle: "How MVP urgent care works",
+    howItWorksTitle: "What happens next",
     pageTitle: "Get a doctor call in 10 minutes",
     pageDescription:
       "Enter your WhatsApp number below. A PMDC-verified doctor will call you — no login, no payment.",
@@ -323,35 +323,34 @@ export const en = {
     formFootnote: "That’s it — our team will assign a doctor and call you within 5–10 minutes.",
     successTitle: "Request received!",
     successBody: "Keep your phone nearby. A doctor will call you shortly.",
-    requesting: "Submitting request…",
-    waitTime: "Typical response",
+    requesting: "Sending your request…",
+    waitTime: "Doctor calls in",
     activeRequestTitle: "Your request is with our care team",
     activeRequestBody:
       "Keep your phone nearby. Once a doctor is assigned, they will call you on the number you provided.",
     steps: [
       {
-        title: "Submit request",
-        description: "Share your number and symptoms.",
+        title: "Share your number",
+        description: "Tell us your mobile number and what is bothering you.",
       },
       {
-        title: "Team assigns doctor",
-        description: "Our admin assigns a doctor from the ZindagiCare team.",
+        title: "We find a doctor",
+        description: "Our team picks a PMDC-verified doctor for you.",
       },
       {
         title: "Doctor calls you",
-        description: "Expect a direct phone call within 5–10 minutes.",
+        description: "Expect a phone call in about 5–10 minutes.",
       },
     ],
-    mvpSteps: {
-      submit: "Submit your number and symptoms — no payment required for MVP.",
-      assign: "Our admin team assigns a doctor from your main care team.",
-      call: "The doctor calls you directly on your mobile — consult may happen outside the app.",
-    },
+    guide: [
+      "Give your mobile number and briefly say what is wrong.",
+      "Our team connects you with a licensed doctor from ZindagiCare.",
+      "The doctor calls you directly on your phone in about 5–10 minutes.",
+    ],
     rules: [
-      "One active urgent request per patient at a time.",
-      "Keep your phone reachable — the doctor calls the number you provide.",
-      "MVP: coordination by phone; in-app video may come later.",
-      "Not a substitute for emergency services (1122).",
+      "One request at a time — please wait until your call is done before sending another.",
+      "Keep your phone on and nearby — we call the number you enter.",
+      "Not for serious emergencies — for chest pain, breathing trouble, or stroke, call 1122.",
     ],
     errors: {
       checkoutFailed: "Could not start urgent care request. Please try again.",
@@ -807,7 +806,7 @@ export const en = {
       "Free 10-minute video call with a verified doctor on {date} — Rs. 0, from home.",
     urgentCare: "Urgent Care",
     urgentCareDesc:
-      "Need a doctor now? Video call with a PMDC-verified doctor within 5–10 minutes.",
+      "Need a doctor now? Share your number — a PMDC-verified doctor will call you in 5–10 minutes.",
     bookUrgent: "Get urgent care",
     bookSunday: "Book free Sunday slot",
     appointmentConfirmation: {

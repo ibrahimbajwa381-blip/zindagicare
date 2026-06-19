@@ -4,13 +4,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Clock, Loader2, Video } from "lucide-react";
+import { ArrowLeft, Clock, FileText, Loader2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
+import { InCallPrescriptionPanel } from "@/features/prescriptions/components/in-call-prescription-panel";
 import {
   formatConsultParticipantLine,
-  ZOOM_CONSULT_MEETING_SUBTITLE,
   ZOOM_CONSULT_MEETING_TITLE,
 } from "@/lib/zoom/branding";
 import { CountdownTimer } from "@/features/sunday-consult/components/countdown-timer";
@@ -50,6 +50,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showPostConsultReview, setShowPostConsultReview] = useState(leftSession ?? false);
   const [showDoctorPostConsult, setShowDoctorPostConsult] = useState(false);
+  const [rxPanelOpen, setRxPanelOpen] = useState(false);
   const joinAttemptedRef = useRef(false);
 
   const dashboardHref =
@@ -205,10 +206,12 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   }
 
   if (inCall && joinPayload) {
+    const isDoctor = joinPayload.role === "doctor";
+
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-slate-900">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-brand/30 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 py-3 text-white">
-          <div className="flex min-w-0 items-center gap-4">
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-brand/30 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-3 py-2.5 text-white sm:gap-3 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <SiteLogo size="lg" href={null} priority className="shrink-0" />
             <div className="min-w-0">
               <p className="truncate font-display text-sm font-semibold text-white">
@@ -217,26 +220,65 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
               <p className="truncate text-xs text-slate-400">
                 {formatConsultParticipantLine(joinPayload.role, joinPayload.counterpartName)}
               </p>
-              <p className="hidden text-[11px] text-slate-500 sm:block">
-                {ZOOM_CONSULT_MEETING_SUBTITLE}
-              </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 border-white/20 bg-transparent text-white hover:bg-white/10"
-            onClick={() => void handleLeave()}
-          >
-            End session
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {isDoctor && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={`gap-1 border-white/20 bg-transparent text-white hover:bg-white/10 ${
+                  rxPanelOpen ? "border-brand-light/60 bg-brand/20" : ""
+                }`}
+                onClick={() => setRxPanelOpen((open) => !open)}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {rxPanelOpen ? "Hide Rx" : "Write Rx"}
+                </span>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-white/20 bg-transparent text-white hover:bg-white/10"
+              onClick={() => void handleLeave()}
+            >
+              End session
+            </Button>
+          </div>
         </header>
-        <div className="min-h-0 flex-1">
-          <ZoomMeetingRoom
-            appointmentId={appointmentId}
-            payload={joinPayload}
-            onLeave={handleLeave}
-          />
+        <div className="relative flex min-h-0 flex-1">
+          <div
+            className={`min-h-0 min-w-0 transition-[flex] duration-200 ${
+              isDoctor && rxPanelOpen ? "flex-1" : "h-full w-full flex-1"
+            }`}
+          >
+            <ZoomMeetingRoom
+              appointmentId={appointmentId}
+              payload={joinPayload}
+              onLeave={handleLeave}
+            />
+          </div>
+          {isDoctor && rxPanelOpen && (
+            <>
+              <button
+                type="button"
+                className="absolute inset-0 z-10 bg-black/40 lg:hidden"
+                aria-label="Close prescription panel"
+                onClick={() => setRxPanelOpen(false)}
+              />
+              <aside
+                className="absolute inset-y-0 right-0 z-20 flex w-[min(100%,20rem)] flex-col border-l border-slate-200/80 lg:relative lg:z-0 lg:w-80 lg:max-w-[40%] lg:shrink-0"
+              >
+                <InCallPrescriptionPanel
+                  appointmentId={appointmentId}
+                  patientName={joinPayload.counterpartName}
+                  onClose={() => setRxPanelOpen(false)}
+                />
+              </aside>
+            </>
+          )}
         </div>
       </div>
     );

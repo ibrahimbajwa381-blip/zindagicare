@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Phone, Zap } from "lucide-react";
 import { siteConfig } from "@/config/site";
-import { URGENT_CARE_HERO_IMAGE } from "@/features/marketing/data/hero-services";
+import { URGENT_CARE_HERO_IMAGE, URGENT_CARE_HERO_IMAGE_CLASS } from "@/features/marketing/data/hero-services";
 import { useTranslations } from "@/i18n/locale-provider";
 import { URGENT_CONSULT_CONFIG } from "@zindagi/shared";
 
@@ -55,7 +55,7 @@ export function HeroUrgentCareStrip() {
           alt=""
           fill
           sizes="200px"
-          className="object-cover object-center"
+          className={`object-cover ${URGENT_CARE_HERO_IMAGE_CLASS}`}
           aria-hidden
         />
         <div

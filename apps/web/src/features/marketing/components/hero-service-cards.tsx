@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@zindagi/shared";
 import {
   HERO_USAMA_CARD_IMAGE_CLASS,
+  URGENT_CARE_HERO_IMAGE_CLASS,
   type HeroService,
 } from "@/features/marketing/data/hero-services";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
@@ -62,7 +63,7 @@ export function HeroServiceCards({
                       : service.id === "in-house-medical"
                         ? "object-[center_20%]"
                         : service.id === "urgent-care"
-                          ? "object-[center_22%]"
+                          ? URGENT_CARE_HERO_IMAGE_CLASS
                           : "object-center",
                   )}
                 />

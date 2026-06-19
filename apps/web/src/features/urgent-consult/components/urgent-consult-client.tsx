@@ -254,7 +254,34 @@ export function UrgentConsultClient() {
           </div>
         )}
 
-        <div className="mt-8 rounded-xl border border-amber-200/60 bg-amber-50/80 px-4 py-3">
+        <div className="mt-8 rounded-2xl border border-brand-light/35 bg-brand-muted/25 p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-brand-dark">{u.howItWorksTitle}</h2>
+          <ol className="mt-4 space-y-3">
+            {u.guide.map((line, index) => (
+              <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-700">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-bold text-brand-dark">
+                  {index + 1}
+                </span>
+                <span className="pt-0.5">{line}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Clock className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+            {u.waitTime}: {URGENT_CONSULT_CONFIG.minWaitMinutes}–{URGENT_CONSULT_CONFIG.maxWaitMinutes}{" "}
+            min
+          </p>
+          <ul className="mt-4 space-y-2 border-t border-brand-light/25 pt-4">
+            {u.rules.map((rule) => (
+              <li key={rule} className="flex gap-2 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+                {rule}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-amber-200/60 bg-amber-50/80 px-4 py-3">
           <div className="flex gap-3">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden />
             <p className="text-xs font-medium text-amber-900 sm:text-sm">{u.disclaimerBody}</p>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   HERO_CAROUSEL_HEIGHT,
   HERO_USAMA_CAROUSEL_IMAGE_CLASS,
+  URGENT_CARE_HERO_IMAGE_CLASS,
   type HeroService,
 } from "@/features/marketing/data/hero-services";
 
@@ -152,7 +153,7 @@ export function HeroCarousel({
                       service.id === "online-consult"
                         ? HERO_USAMA_CAROUSEL_IMAGE_CLASS
                         : service.id === "urgent-care"
-                          ? "object-center lg:object-[center_22%]"
+                          ? URGENT_CARE_HERO_IMAGE_CLASS
                           : service.id === "sunday-consult"
                           ? "object-center lg:object-[center_35%]"
                           : "object-center lg:object-[center_20%]",
