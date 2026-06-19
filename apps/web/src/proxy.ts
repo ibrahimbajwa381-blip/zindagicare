@@ -106,6 +106,8 @@ export const config = {
     "/consult/:path*",
     "/dashboard",
     "/dashboard/:path*",
+    "/prescriptions",
+    "/prescriptions/:path*",
     "/doctor/:path*",
     "/admin/:path*",
     "/nurse/:path*",

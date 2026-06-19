@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Calendar, Video } from "lucide-react";
+import { Calendar, Video, FileText } from "lucide-react";
 import { AppointmentStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ type Props = {
     optional: string;
     cancel: string;
   };
+  viewPrescriptionLabel: string;
 };
 
 function statusBadgeClass(status: string, isMissed: boolean) {
@@ -74,6 +75,7 @@ export function PatientAppointmentHistorySection({
   missedLabel,
   statusLabels,
   reviewCopy,
+  viewPrescriptionLabel,
 }: Props) {
   return (
     <Card className={cn(surfaceCardInteractive, "overflow-hidden")}>
@@ -135,6 +137,17 @@ export function PatientAppointmentHistorySection({
                           <Video className="h-3.5 w-3.5" />
                           Join
                         </Link>
+                      </Button>
+                    ) : item.prescription ? (
+                      <Button asChild size="sm" variant="outline" className="gap-1.5">
+                        <a
+                          href={item.prescription.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          {viewPrescriptionLabel}
+                        </a>
                       </Button>
                     ) : null}
                   </div>

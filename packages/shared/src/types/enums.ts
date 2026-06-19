@@ -14,6 +14,7 @@ export const AppointmentTypes = {
   ONLINE: "online",
   SUNDAY_FREE: "sunday_free",
   HOME_VISIT: "home_visit",
+  URGENT_ONLINE: "urgent_online",
 } as const;
 
 export type AppointmentType =
@@ -99,6 +100,16 @@ export const HomeVisitStatuses = {
 
 export type HomeVisitStatus =
   (typeof HomeVisitStatuses)[keyof typeof HomeVisitStatuses];
+
+export const UrgentCareRequestStatuses = {
+  REQUESTED: "requested",
+  ASSIGNED: "assigned",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+} as const;
+
+export type UrgentCareRequestStatus =
+  (typeof UrgentCareRequestStatuses)[keyof typeof UrgentCareRequestStatuses];
 
 export const OrderStatuses = {
   DRAFT: "draft",

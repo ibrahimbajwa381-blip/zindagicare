@@ -9,6 +9,7 @@ import {
   type HeroService,
 } from "@/features/marketing/data/hero-services";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import { useTranslations } from "@/i18n/locale-provider";
 
 type HeroServiceCardsProps = {
   services: HeroService[];
@@ -27,9 +28,11 @@ export function HeroServiceCards({
   onSelect,
   labels,
 }: HeroServiceCardsProps) {
+  const t = useTranslations();
+
   return (
     <div className="-mx-4 sm:mx-0">
-      <div className="browse-scroll flex gap-3 px-4 pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
+      <div className="browse-scroll flex gap-3 px-4 pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
         {services.map((service, index) => {
           const isActive = index === activeIndex;
 
@@ -58,12 +61,19 @@ export function HeroServiceCards({
                       ? HERO_USAMA_CARD_IMAGE_CLASS
                       : service.id === "in-house-medical"
                         ? "object-[center_20%]"
-                        : "object-center",
+                        : service.id === "urgent-care"
+                          ? "object-[center_22%]"
+                          : "object-center",
                   )}
                 />
                 {service.id === "sunday-consult" && (
                   <span className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm sm:text-xs">
                     {labels.freeBadge}
+                  </span>
+                )}
+                {service.id === "urgent-care" && (
+                  <span className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm sm:text-xs">
+                    {t.nav.urgentBadge}
                   </span>
                 )}
               </div>

@@ -2,6 +2,8 @@ import { siteConfig } from "@/config/site";
 
 export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.png";
 export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.jpg";
+/** Doctor on a phone / video consult — used for urgent care hero & banners */
+export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.jpg";
 
 export type HeroService = {
   id: string;
@@ -42,6 +44,26 @@ export const heroServices: HeroService[] = [
     card: {
       title: "In-house Medical Services",
       description: "Professional medical care delivered at your doorstep.",
+    },
+  },
+  {
+    id: "urgent-care",
+    image: URGENT_CARE_HERO_IMAGE,
+    imageAlt: "PMDC doctor on urgent phone consultation via ZindagiCare",
+    carousel: {
+      eyebrow: "Urgent Care",
+      title: "Doctor call in",
+      titleHighlight: "10 minutes",
+      description:
+        "Share your WhatsApp number — a PMDC-verified doctor calls you within 5–10 minutes. No login, no payment.",
+      highlights: ["Phone callback in 5–10 min", "No account needed"],
+      badge: "Fast · PMDC verified · Phone consult",
+      ctaLabel: "Get urgent care now",
+      href: `${siteConfig.links.urgentCare}#request`,
+    },
+    card: {
+      title: "Urgent Care",
+      description: "Need a doctor now? Get a direct phone call within minutes.",
     },
   },
   {

@@ -12,6 +12,7 @@ export * from "./notification.model";
 export * from "./chat.model";
 export * from "./video-session.model";
 export * from "./home-visit.model";
+export * from "./urgent-care-request.model";
 export * from "./payment.model";
 export * from "./medical-intake.model";
 export * from "./audit-log.model";

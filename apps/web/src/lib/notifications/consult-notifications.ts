@@ -54,7 +54,7 @@ export async function sendDoctorConsultBooked(params: {
   patientName: string;
   slotStart: Date;
   appointmentId: string;
-  type: "online" | "clinic" | "sunday_free";
+  type: "online" | "clinic" | "sunday_free" | "urgent_online";
 }) {
   const time = params.slotStart.toLocaleString("en-PK", {
     timeZone: "Asia/Karachi",
@@ -67,16 +67,43 @@ export async function sendDoctorConsultBooked(params: {
       ? "Sunday Free Consult"
       : params.type === "clinic"
         ? "clinic appointment"
-        : "online consult";
+        : params.type === "urgent_online"
+          ? "urgent care consult"
+          : "online consult";
 
   await sendConsultNotification({
     userId: params.userId,
     phone: params.phone,
-    title: "New consult booked",
-    body: `${params.patientName} booked a ${label} for ${time}.`,
+    title: params.type === "urgent_online" ? "Urgent care patient waiting" : "New consult booked",
+    body:
+      params.type === "urgent_online"
+        ? `${params.patientName} needs an urgent video consult — join within 5–10 minutes (${time}).`
+        : `${params.patientName} booked a ${label} for ${time}.`,
     payload: {
       type: "doctor_consult_booked",
       appointmentId: params.appointmentId,
     },
+  });
+}
+
+export async function sendUrgentConsultConfirmation(params: {
+  userId: string;
+  phone?: string;
+  doctorName: string;
+  slotStart: Date;
+  amount: number;
+}) {
+  const time = params.slotStart.toLocaleString("en-PK", {
+    timeZone: "Asia/Karachi",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  await sendConsultNotification({
+    userId: params.userId,
+    phone: params.phone,
+    title: "Urgent care — doctor assigned",
+    body: `Dr. ${params.doctorName} will call you by ${time}. Fee: Rs. ${params.amount.toLocaleString()}. Stay ready on your dashboard.`,
+    payload: { type: "urgent_consult_confirmed" },
   });
 }

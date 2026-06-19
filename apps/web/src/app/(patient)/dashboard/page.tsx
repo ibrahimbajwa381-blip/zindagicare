@@ -13,6 +13,7 @@ import { PatientSundayBookingSection } from "@/features/sunday-consult/component
 import { PatientVisitsSection } from "@/features/home-care/components/patient-visits-section";
 import { PatientAppointmentHistorySection } from "@/features/patient/components/patient-appointment-history-section";
 import { PatientProfileSection } from "@/features/patient/components/patient-profile-section";
+import { PatientPrescriptionsSection } from "@/features/prescriptions/components/patient-prescriptions-section";
 import { WelcomeTour } from "@/features/patient/components/welcome-tour";
 import { AppointmentReminderService } from "@/server/services/appointment-reminder.service";
 import { PatientAppointmentsService } from "@/server/services/patient-appointments.service";
@@ -20,6 +21,9 @@ import { getDictionary } from "@/i18n";
 import { formatMessage } from "@/i18n/messages";
 import { getLocale } from "@/i18n/server";
 import { getPatientProfile } from "@/server/services/patient-profile.service";
+import { PatientUrgentBookingSection } from "@/features/urgent-consult/components/patient-urgent-booking-section";
+import { UrgentConsultService } from "@/server/services/urgent-consult.service";
+import { PrescriptionService } from "@/server/services/prescription.service";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
 import { loadPatientOnlineBooking } from "@/features/consult/components/patient-online-booking-section";
 import { PatientOnlineBookingSection } from "@/features/consult/components/patient-online-booking-section";
@@ -40,12 +44,14 @@ export default async function PatientDashboardPage() {
 
   const locale = await getLocale();
   const t = getDictionary(locale);
-  const [profile, sundayBooking, onlineBooking, appointmentHistory, _reminders] =
+  const [profile, sundayBooking, urgentBooking, onlineBooking, appointmentHistory, prescriptions, _reminders] =
     await Promise.all([
       getPatientProfile(session.user.id),
       SundayConsultService.getPatientBooking(session.user.id),
+      UrgentConsultService.getPatientRequest(session.user.id),
       loadPatientOnlineBooking(session.user.id),
       PatientAppointmentsService.listHistory(session.user.id),
+      PrescriptionService.listForPatient(session.user.id),
       AppointmentReminderService.processDueReminders().catch(() => null),
     ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
@@ -83,6 +89,10 @@ export default async function PatientDashboardPage() {
           )}
         </div>
 
+        {urgentBooking ? (
+          <PatientUrgentBookingSection variant="dashboard" initialRequest={urgentBooking} />
+        ) : null}
+
         {sundayBooking ? (
           <PatientSundayBookingSection
             variant="dashboard"
@@ -97,7 +107,10 @@ export default async function PatientDashboardPage() {
           missedLabel={t.dashboard.appointmentHistory.missed}
           statusLabels={t.dashboard.appointmentHistory.status}
           reviewCopy={t.dashboard.appointmentHistory.review}
+          viewPrescriptionLabel={t.prescriptions.viewPrescription}
         />
+
+        <PatientPrescriptionsSection initialItems={prescriptions} />
 
         <div>
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

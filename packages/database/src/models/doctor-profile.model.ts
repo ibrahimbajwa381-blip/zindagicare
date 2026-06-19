@@ -45,6 +45,8 @@ const doctorProfileSchema = new Schema(
     ],
     consultationFee: { type: Number, default: 0, min: 0 },
     videoConsultEnabled: { type: Boolean, default: false },
+    /** On-call for urgent video consults (5–10 min match) */
+    urgentConsultEnabled: { type: Boolean, default: false, index: true },
     ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },
     sundayConsultEnabled: { type: Boolean, default: false, index: true },

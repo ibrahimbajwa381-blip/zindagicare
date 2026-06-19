@@ -21,7 +21,11 @@ import { generateZoomMeetingSdkSignature } from "@/lib/zoom/signature";
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { mongoFilter } from "@/lib/mongo/query";
 
-const ONLINE_TYPES = [AppointmentTypes.ONLINE, AppointmentTypes.SUNDAY_FREE] as const;
+const ONLINE_TYPES = [
+  AppointmentTypes.ONLINE,
+  AppointmentTypes.SUNDAY_FREE,
+  AppointmentTypes.URGENT_ONLINE,
+] as const;
 
 export type VideoParticipantRole = "patient" | "doctor";
 

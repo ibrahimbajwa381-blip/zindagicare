@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { FileText } from "lucide-react";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
@@ -172,6 +174,12 @@ export function DoctorSundayDashboard() {
                     scheduledEnd={apt.scheduledEnd}
                     size="sm"
                   />
+                  <Button size="sm" variant="outline" asChild className="gap-1">
+                    <Link href={`/doctor/prescriptions/new?appointmentId=${apt._id}`}>
+                      <FileText className="h-3.5 w-3.5" />
+                      Issue Rx
+                    </Link>
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"

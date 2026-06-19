@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { HeroService } from "@/features/marketing/data/hero-services";
 import { HeroCarousel } from "./hero-carousel";
 import { HeroServiceCards } from "./hero-service-cards";
+import { HeroUrgentCareStrip } from "./hero-urgent-care-strip";
 import { PageSection } from "@/components/layout/page-section";
 
 type HeroLabels = {
@@ -36,6 +37,7 @@ export function HeroSectionClient({
           nextService: labels.nextService,
         }}
       />
+      <HeroUrgentCareStrip />
       <HeroServiceCards
         services={services}
         activeIndex={activeIndex}

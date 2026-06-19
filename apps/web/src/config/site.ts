@@ -8,9 +8,9 @@ export const siteConfig = {
   logo: "/logo1.png",
   favicon: "/favicon.ico",
   icon: "/icon-192.png",
-  tagline: "At-home medical care, online consults & free Sunday care",
+  tagline: "At-home medical care, online consults, urgent care & free Sunday care",
   description:
-    "Lahore's at-home medical care — verified doctors and nurses visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations and free 10-minute Sunday consults (Rs. 0).",
+    "Lahore's at-home medical care — verified doctors and nurses visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations, urgent care calls in 10 minutes, and free 10-minute Sunday consults (Rs. 0).",
   launchCity: LAUNCH_CITY,
   supportEmail: "support@zindagicare.pk",
   supportWhatsApp: "923074583567",
@@ -19,6 +19,7 @@ export const siteConfig = {
   links: {
     doctors: "/doctors",
     sundayConsult: "/sunday-consult",
+    urgentCare: "/urgent-care",
     homeServices: "/home-services",
     homeCareRequest: "/home-care/request",
     homeCareVisits: "/home-care/visits",
@@ -44,6 +45,11 @@ export const siteConfig = {
         label: "Sunday Free Consult",
         href: "/sunday-consult",
         badge: "Free",
+      },
+      {
+        label: "Urgent Care",
+        href: "/urgent-care",
+        badge: "Fast",
       },
     ],
   },

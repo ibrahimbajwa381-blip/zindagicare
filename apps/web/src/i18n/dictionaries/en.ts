@@ -1,4 +1,4 @@
-import { SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
+import { SUNDAY_CONSULT_CONFIG, URGENT_CONSULT_CONFIG } from "@zindagi/shared";
 
 export const en = {
   site: {
@@ -16,6 +16,8 @@ export const en = {
     homeServices: "In-house medical services",
     homeCareVisits: "My home care visits",
     freeBadge: "Free",
+    urgentCare: "Urgent Care",
+    urgentBadge: "Fast",
   },
   header: {
     actions: {
@@ -167,6 +169,23 @@ export const en = {
         },
       },
       {
+        imageAlt: "PMDC doctor on urgent phone consultation via ZindagiCare",
+        carousel: {
+          eyebrow: "Urgent Care",
+          title: "Doctor call in",
+          titleHighlight: "10 minutes",
+          description:
+            "Share your WhatsApp number — a PMDC-verified doctor calls you within 5–10 minutes. No login, no payment.",
+          highlights: ["Phone callback in 5–10 min", "No account needed"],
+          badge: "Fast · PMDC verified · Phone consult",
+          ctaLabel: "Get urgent care now",
+        },
+        card: {
+          title: "Urgent Care",
+          description: "Need a doctor now? Get a direct phone call within minutes.",
+        },
+      },
+      {
         imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
         carousel: {
           eyebrow: "Online consultation",
@@ -276,6 +295,107 @@ export const en = {
         description: "Log in at your slot time and speak with the doctor online.",
       },
     ],
+  },
+  urgentCare: {
+    shortName: "Urgent Care",
+    tagline: "Need a doctor now? Submit a request and our team assigns a PMDC-verified doctor to call you within 5–10 minutes.",
+    heroHeadline: "Doctor call in",
+    heroHeadlineHighlight: "10 minutes",
+    durationLabel: `${URGENT_CONSULT_CONFIG.consultDurationMins}-min phone consult`,
+    waitBadge: "Doctor in {min}–{max} min",
+    requestCta: "Get urgent care now",
+    heroStripTagline: "Share your WhatsApp number — a doctor calls you directly.",
+    heroStripCtaHint: "No login · No payment",
+    howItWorks: "How it works",
+    howItWorksTitle: "How MVP urgent care works",
+    pageTitle: "Get a doctor call in 10 minutes",
+    pageDescription:
+      "Enter your WhatsApp number below. A PMDC-verified doctor will call you — no login, no payment.",
+    modality: "Phone callback from a PMDC-verified doctor",
+    disclaimerTitle: "Not for life-threatening emergencies",
+    disclaimerBody:
+      "Not for emergencies — for chest pain, severe breathing difficulty, or stroke symptoms, call 1122 immediately.",
+    phoneLabel: "WhatsApp / mobile number",
+    phoneHint: "Use a number you can answer right now.",
+    symptomsLabel: "Briefly describe your problem",
+    symptomsPlaceholder: "e.g. fever since last night, sore throat…",
+    optionalLabel: "optional",
+    formFootnote: "That’s it — our team will assign a doctor and call you within 5–10 minutes.",
+    successTitle: "Request received!",
+    successBody: "Keep your phone nearby. A doctor will call you shortly.",
+    requesting: "Submitting request…",
+    waitTime: "Typical response",
+    activeRequestTitle: "Your request is with our care team",
+    activeRequestBody:
+      "Keep your phone nearby. Once a doctor is assigned, they will call you on the number you provided.",
+    steps: [
+      {
+        title: "Submit request",
+        description: "Share your number and symptoms.",
+      },
+      {
+        title: "Team assigns doctor",
+        description: "Our admin assigns a doctor from the ZindagiCare team.",
+      },
+      {
+        title: "Doctor calls you",
+        description: "Expect a direct phone call within 5–10 minutes.",
+      },
+    ],
+    mvpSteps: {
+      submit: "Submit your number and symptoms — no payment required for MVP.",
+      assign: "Our admin team assigns a doctor from your main care team.",
+      call: "The doctor calls you directly on your mobile — consult may happen outside the app.",
+    },
+    rules: [
+      "One active urgent request per patient at a time.",
+      "Keep your phone reachable — the doctor calls the number you provide.",
+      "MVP: coordination by phone; in-app video may come later.",
+      "Not a substitute for emergency services (1122).",
+    ],
+    errors: {
+      checkoutFailed: "Could not start urgent care request. Please try again.",
+      requestFailed: "Could not submit your request. Please try again.",
+      phoneRequired: "Enter your mobile number so the doctor can call you.",
+    },
+    booking: {
+      title: "Your urgent care request",
+      subtitle: "Our team is coordinating your callback.",
+      requestedMessage: "We received your request. A doctor will be assigned shortly.",
+      assignedMessage: "Dr. {name} has been assigned. Expect a call on {phone} within a few minutes.",
+      matchingTitle: "Matching you with a doctor",
+      matchingBody:
+        "Our care team is assigning a PMDC-verified doctor from ZindagiCare. Keep your phone nearby — they will call you soon.",
+      callbackNumber: "Callback number",
+      requestedAt: "Requested at",
+      symptomsSummary: "Your symptoms",
+      expectCallSoon: "Your doctor will call you directly on the number above.",
+      viewUrgentPage: "Urgent care page",
+      viewDashboard: "View dashboard",
+      statusRequested: "Awaiting doctor",
+      statusAssigned: "Doctor assigned",
+      statusConfirmed: "Doctor assigned",
+      statusInProgress: "In progress",
+      statusPending: "Submitted",
+    },
+    payment: {
+      title: "Complete urgent care payment",
+      description: "Confirm payment to assign your on-call doctor.",
+      loading: "Loading payment…",
+      completeTest: "Complete test payment",
+      processing: "Processing…",
+      backToUrgent: "Back to urgent care",
+      confirming: "Confirming payment…",
+      confirmingDesc: "Please wait while we assign your doctor.",
+      pending: "Payment pending",
+      confirmed: "Urgent care confirmed!",
+      confirmedDesc: "Your doctor has been assigned. Stay ready for the call.",
+      failed: "Payment failed. Please try again.",
+      processingLong: "Payment is still processing. Check your dashboard shortly.",
+      verifying: "Verifying payment and assigning doctor…",
+      doctorAssigned: "A doctor has been assigned — expect a call soon.",
+      goDashboard: "Go to dashboard",
+    },
   },
   howItWorks: {
     eyebrow: "Simple process",
@@ -685,6 +805,10 @@ export const en = {
     sundayConsult: "Sunday Free Consult",
     sundayConsultDesc:
       "Free 10-minute video call with a verified doctor on {date} — Rs. 0, from home.",
+    urgentCare: "Urgent Care",
+    urgentCareDesc:
+      "Need a doctor now? Video call with a PMDC-verified doctor within 5–10 minutes.",
+    bookUrgent: "Get urgent care",
     bookSunday: "Book free Sunday slot",
     appointmentConfirmation: {
       title: "Appointment confirmed!",
@@ -710,6 +834,9 @@ export const en = {
       statusConfirmed: "Confirmed",
       statusPending: "Pending",
       statusInProgress: "In progress",
+    },
+    urgentBooking: {
+      loading: "Loading your urgent care request…",
     },
     profile: {
       title: "My profile",
@@ -878,6 +1005,21 @@ export const en = {
       saveError: "Could not save questions. Please try again.",
       resetToDefaults: "Reset to defaults",
     },
+  },
+  prescriptions: {
+    eyebrow: "Your records",
+    title: "Prescriptions",
+    pageTitle: "My prescriptions",
+    pageDescription: "Digital prescriptions from your doctors — view and download anytime.",
+    loading: "Loading prescriptions…",
+    empty: "Prescriptions from your doctors will appear here after consultations.",
+    viewAll: "View all",
+    download: "Download",
+    viewPrescription: "View prescription",
+    fromDoctor: "Dr. {name}",
+    medicationCountOne: "1 medication",
+    medicationCountMany: "{count} medications",
+    backToDashboard: "Back to dashboard",
   },
   providerOnboarding: {
     preview: {

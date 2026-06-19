@@ -49,8 +49,10 @@ export function buildMarketingMobileNav(
     home: string;
     onlineConsult: string;
     sundayConsult: string;
+    urgentCare: string;
     homeServices: string;
     freeBadge: string;
+    urgentBadge: string;
     myDashboard: string;
     signOut: string;
     login: string;
@@ -64,6 +66,11 @@ export function buildMarketingMobileNav(
       href: siteConfig.links.sundayConsult,
       label: labels.sundayConsult,
       badge: labels.freeBadge,
+    },
+    {
+      href: siteConfig.links.urgentCare,
+      label: labels.urgentCare,
+      badge: labels.urgentBadge,
     },
   ];
 

@@ -62,6 +62,7 @@ export const ONBOARDING_EXEMPT_PREFIXES = [
   "/nurse/profile",
   "/doctor/patients",
   "/doctor/requests",
+  "/doctor/prescriptions",
   "/doctor/home-visits",
   "/doctor/sunday-consult",
   "/doctor/messages",
@@ -84,6 +85,7 @@ export const DOCTOR_VERIFICATION_EXEMPT_PREFIXES = [
   AUTH_ROUTES.doctorProfile,
   "/doctor/patients",
   "/doctor/requests",
+  "/doctor/prescriptions",
   "/doctor/home-visits",
   "/doctor/sunday-consult",
   "/doctor/messages",
@@ -112,7 +114,9 @@ export type PostAuthUser = {
 export function isPatientDashboardPath(pathname: string) {
   return (
     pathname === AUTH_ROUTES.patientDashboard ||
-    pathname.startsWith(`${AUTH_ROUTES.patientDashboard}/`)
+    pathname.startsWith(`${AUTH_ROUTES.patientDashboard}/`) ||
+    pathname === "/prescriptions" ||
+    pathname.startsWith("/prescriptions/")
   );
 }
 

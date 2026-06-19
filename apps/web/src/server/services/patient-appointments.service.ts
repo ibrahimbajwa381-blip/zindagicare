@@ -10,6 +10,8 @@ import {
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { mongoFilter } from "@/lib/mongo/query";
 import { ReviewService } from "@/server/services/review.service";
+import { PrescriptionService } from "@/server/services/prescription.service";
+import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
 
 
 export type PatientAppointmentHistoryItem = {
@@ -34,6 +36,7 @@ export type PatientAppointmentHistoryItem = {
     comment?: string;
     createdAt: string;
   };
+  prescription?: AppointmentPrescriptionLink;
 };
 
 function mapDoctor(
@@ -153,7 +156,10 @@ export class PatientAppointmentsService {
       .lean();
 
     const appointmentIds = appointments.map((a) => a._id.toString());
-    const reviewsByAppointment = await ReviewService.getReviewsForAppointments(appointmentIds);
+    const [reviewsByAppointment, prescriptionsByAppointment] = await Promise.all([
+      ReviewService.getReviewsForAppointments(appointmentIds),
+      PrescriptionService.getPrescriptionsForAppointments(appointmentIds),
+    ]);
 
     const items: PatientAppointmentHistoryItem[] = [];
 
@@ -209,6 +215,7 @@ export class PatientAppointmentsService {
               createdAt: existingReview.createdAt,
             }
           : undefined,
+        prescription: prescriptionsByAppointment.get(appointment._id.toString()),
       });
     }
 

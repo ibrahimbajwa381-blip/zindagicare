@@ -151,7 +151,9 @@ export function HeroCarousel({
                       "object-cover",
                       service.id === "online-consult"
                         ? HERO_USAMA_CAROUSEL_IMAGE_CLASS
-                        : service.id === "sunday-consult"
+                        : service.id === "urgent-care"
+                          ? "object-center lg:object-[center_22%]"
+                          : service.id === "sunday-consult"
                           ? "object-center lg:object-[center_35%]"
                           : "object-center lg:object-[center_20%]",
                     )}

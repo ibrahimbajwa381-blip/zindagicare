@@ -1,4 +1,4 @@
-import { SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
+import { SUNDAY_CONSULT_CONFIG, URGENT_CONSULT_CONFIG } from "@zindagi/shared";
 import type { Dictionary } from "./en";
 
 export const ur: Dictionary = {
@@ -17,6 +17,8 @@ export const ur: Dictionary = {
     homeServices: "گھر پر طبی خدمات",
     homeCareVisits: "میری گھر پر دیکھ بھال",
     freeBadge: "مفت",
+    urgentCare: "فوری دیکھ بھال",
+    urgentBadge: "فوری",
   },
   header: {
     actions: {
@@ -169,6 +171,23 @@ export const ur: Dictionary = {
         },
       },
       {
+        imageAlt: "زندگی کیئر پر فوری فون مشاورت — پی ایم ڈی سی ڈاکٹر",
+        carousel: {
+          eyebrow: "فوری دیکھ بھال",
+          title: "ڈاکٹر کال",
+          titleHighlight: "10 منٹ میں",
+          description:
+            "واٹس ایپ نمبر دیں — پی ایم ڈی سی ڈاکٹر 5–10 منٹ میں کال کرے گا۔ لاگ ان یا ادائیگی نہیں۔",
+          highlights: ["5–10 منٹ میں فون کال", "اکاؤنٹ کی ضرورت نہیں"],
+          badge: "تیز · پی ایم ڈی سی · فون مشاورت",
+          ctaLabel: "فوری دیکھ بھال حاصل کریں",
+        },
+        card: {
+          title: "فوری دیکھ بھال",
+          description: "ابھی ڈاکٹر چاہیے؟ چند منٹ میں براہ راست فون کال۔",
+        },
+      },
+      {
         imageAlt: "ڈاکٹر اسامہ ریاض، زندگی کیئر کے بانی، طبی لباس میں",
         carousel: {
           eyebrow: "آن لائن مشاورت",
@@ -278,6 +297,97 @@ export const ur: Dictionary = {
         description: "اپنے سلاٹ کے وقت لاگ ان کریں اور ڈاکٹر سے آن لائن بات کریں۔",
       },
     ],
+  },
+  urgentCare: {
+    shortName: "فوری دیکھ بھال",
+    tagline: "ابھی ڈاکٹر چاہیے؟ درخواست جمع کروائیں — ہماری ٹیم 5–10 منٹ میں ڈاکٹر آپ کو فون کرے گی۔",
+    heroHeadline: "ڈاکٹر کال",
+    heroHeadlineHighlight: "10 منٹ میں",
+    durationLabel: `${URGENT_CONSULT_CONFIG.consultDurationMins} منٹ فون مشاورت`,
+    waitBadge: "ڈاکٹر {min}–{max} منٹ میں",
+    requestCta: "فوری دیکھ بھال حاصل کریں",
+    heroStripTagline: "اپنا واٹس ایپ نمبر دیں — ڈاکٹر براہ راست کال کرے گا۔",
+    heroStripCtaHint: "لاگ ان نہیں · ادائیگی نہیں",
+    howItWorks: "یہ کیسے کام کرتا ہے",
+    howItWorksTitle: "MVP فوری دیکھ بھال",
+    pageTitle: "10 منٹ میں ڈاکٹر کی کال",
+    pageDescription:
+      "نیچے اپنا واٹس ایپ نمبر درج کریں۔ پی ایم ڈی سی ڈاکٹر آپ کو کال کرے گا — لاگ ان یا ادائیگی نہیں۔",
+    modality: "پی ایم ڈی سی ڈاکٹر کی فون کال",
+    disclaimerTitle: "جان لیوا ایمرجنسیوں کے لیے نہیں",
+    disclaimerBody:
+      "ایمرجنسی نہیں — سینے میں درد، شدید سانس کی تکلیف، یا فالج کی علامات پر فوراً 1122 پر کال کریں۔",
+    phoneLabel: "واٹس ایپ / موبائل نمبر",
+    phoneHint: "ایسا نمبر دیں جس پر آپ ابھی جواب دے سکیں۔",
+    symptomsLabel: "اپنی بیماری مختصراً بیان کریں",
+    symptomsPlaceholder: "مثلاً کل رات سے بخار، گلے میں خراش…",
+    optionalLabel: "اختیاری",
+    formFootnote: "بس — ہماری ٹیم ڈاکٹر تفویض کرے گی اور 5–10 منٹ میں کال کرے گی۔",
+    successTitle: "درخواست موصول!",
+    successBody: "فون قریب رکھیں۔ ڈاکٹر جلد کال کرے گا۔",
+    requesting: "درخواست جمع ہو رہی ہے…",
+    waitTime: "عام جواب",
+    activeRequestTitle: "آپ کی درخواست ہماری ٹیم کے پاس ہے",
+    activeRequestBody: "فون قریب رکھیں۔ ڈاکٹر تفویض ہونے پر آپ کے نمبر پر کال آئے گی۔",
+    steps: [
+      { title: "درخواست جمع کریں", description: "نمبر اور علامات شیئر کریں۔" },
+      { title: "ٹیم ڈاکٹر تفویض کرے", description: "ایڈمن زندگی کیئر ٹیم سے ڈاکٹر چنیں گے۔" },
+      { title: "ڈاکٹر کال کرے", description: "5–10 منٹ میں براہ راست فون کال۔" },
+    ],
+    mvpSteps: {
+      submit: "نمبر اور علامات جمع کریں — MVP میں ادائیگی نہیں۔",
+      assign: "ایڈمن ٹیم سے ڈاکٹر تفویض ہوگا۔",
+      call: "ڈاکٹر براہ راست فون کرے گا۔",
+    },
+    rules: [
+      "ایک وقت میں ایک فعال درخواست۔",
+      "فون قابلِ رسائی رکھیں۔",
+      "MVP: فون پر کوآرڈination۔",
+      "1122 کا متبادل نہیں۔",
+    ],
+    errors: {
+      checkoutFailed: "درخواست شروع نہیں ہو سکی۔",
+      requestFailed: "درخواست جمع نہیں ہو سکی۔",
+      phoneRequired: "موبائل نمبر درج کریں۔",
+    },
+    booking: {
+      title: "آپ کی فوری دیکھ بھال درخواست",
+      subtitle: "ہماری ٹیم آپ کی کال کا انتظام کر رہی ہے۔",
+      requestedMessage: "درخواست موصول — جلد ڈاکٹر تفویض ہوگا۔",
+      assignedMessage: "ڈاکٹر {name} تفویض — {phone} پر کال کی توقع رکھیں۔",
+      matchingTitle: "آپ کو ڈاکٹر سے ملایا جا رہا ہے",
+      matchingBody:
+        "زندگی کیئر کی ٹیم پی ایم ڈی سی تصدیق شدہ ڈاکٹر تفویض کر رہی ہے۔ فون قریب رکھیں — جلد کال آئے گی۔",
+      callbackNumber: "کال بیک نمبر",
+      requestedAt: "درخواست کا وقت",
+      symptomsSummary: "آپ کی علامات",
+      expectCallSoon: "ڈاکٹر اوپر والے نمبر پر براہ راست کال کرے گا۔",
+      viewUrgentPage: "فوری دیکھ بھال صفحہ",
+      viewDashboard: "ڈیش بورڈ دیکھیں",
+      statusRequested: "ڈاکٹر کا انتظار",
+      statusAssigned: "ڈاکٹر تفویض",
+      statusConfirmed: "ڈاکٹر تفویض",
+      statusInProgress: "جاری",
+      statusPending: "جمع",
+    },
+    payment: {
+      title: "فوری دیکھ بھال کی ادائیگی",
+      description: "اپنے آن کال ڈاکٹر کو تفویض کرنے کے لیے ادائیگی کی تصدیق کریں۔",
+      loading: "ادائیگی لوڈ ہو رہی ہے…",
+      completeTest: "ٹیسٹ ادائیگی مکمل کریں",
+      processing: "پروسیس ہو رہا ہے…",
+      backToUrgent: "فوری دیکھ بھال پر واپس",
+      confirming: "ادائیگی کی تصدیق…",
+      confirmingDesc: "براہ کرم انتظار کریں، ڈاکٹر تفویض ہو رہا ہے۔",
+      pending: "ادائیگی زیر التوا",
+      confirmed: "فوری دیکھ بھال تصدیق!",
+      confirmedDesc: "آپ کا ڈاکٹر تفویض ہو گیا۔ فون قریب رکھیں۔",
+      failed: "ادائیگی ناکام۔ دوبارہ کوشش کریں۔",
+      processingLong: "ادائیگی ابھی پروسیس ہو رہی ہے۔ جلد ڈیش بورڈ چیک کریں۔",
+      verifying: "ادائیگی کی تصدیق…",
+      doctorAssigned: "ڈاکٹر تفویض — آپ کی کال جلد شروع ہوگی۔",
+      goDashboard: "ڈیش بورڈ پر جائیں",
+    },
   },
   howItWorks: {
     eyebrow: "آسان عمل",
@@ -687,6 +797,9 @@ export const ur: Dictionary = {
     sundayConsult: "اتوار مفت مشاورت",
     sundayConsultDesc:
       "تصدیق شدہ ڈاکٹر کے ساتھ {date} کو 10 منٹ کی مفت ویڈیو کال — Rs. 0، گھر سے۔",
+    urgentCare: "فوری دیکھ بھال",
+    urgentCareDesc: "ابھی ڈاکٹر چاہیے؟ 5–10 منٹ میں پی ایم ڈی سی ڈاکٹر سے ویڈیو کال۔",
+    bookUrgent: "فوری دیکھ بھال حاصل کریں",
     bookSunday: "اتوار کا مفت سلاٹ بک کریں",
     appointmentConfirmation: {
       title: "اپائنٹمنٹ تصدیق ہو گئی!",
@@ -712,6 +825,9 @@ export const ur: Dictionary = {
       statusConfirmed: "تصدیق شدہ",
       statusPending: "زیر التوا",
       statusInProgress: "جاری",
+    },
+    urgentBooking: {
+      loading: "فوری دیکھ بھال درخواست لوڈ ہو رہی ہے…",
     },
     profile: {
       title: "میرا پروفائل",
@@ -880,6 +996,21 @@ export const ur: Dictionary = {
       saveError: "سوالات محفوظ نہیں ہو سکے۔ دوبارہ کوشش کریں۔",
       resetToDefaults: "معیاری سوالات پر واپس جائیں",
     },
+  },
+  prescriptions: {
+    eyebrow: "آپ کے ریکارڈ",
+    title: "نسخے",
+    pageTitle: "میرے نسخے",
+    pageDescription: "اپنے ڈاکٹروں کے ڈیجیٹل نسخے — کسی بھی وقت دیکھیں اور ڈاؤن لوڈ کریں۔",
+    loading: "نسخے لوڈ ہو رہے ہیں…",
+    empty: "مشاورت کے بعد آپ کے ڈاکٹروں کے نسخے یہاں ظاہر ہوں گے۔",
+    viewAll: "سب دیکھیں",
+    download: "ڈاؤن لوڈ",
+    viewPrescription: "نسخہ دیکھیں",
+    fromDoctor: "ڈاکٹر {name}",
+    medicationCountOne: "1 دوا",
+    medicationCountMany: "{count} دوائیں",
+    backToDashboard: "ڈیش بورڈ پر واپس",
   },
   providerOnboarding: {
     preview: {

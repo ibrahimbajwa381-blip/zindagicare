@@ -41,6 +41,7 @@ const NAV = [
   { href: "/admin/reviews", label: "Patient reviews", icon: Star },
   { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/admin/sunday-consult", label: "Sunday consult", icon: Sun },
+  { href: "/admin/urgent-care", label: "Urgent care", icon: Activity },
   { href: "/admin/home-visits", label: "Home care", icon: Home },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];

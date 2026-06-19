@@ -8,6 +8,9 @@ import {
 } from "@/features/doctor/components/doctor-workspace-panels";
 import { listDoctorConsultRequests } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
+import Link from "next/link";
+import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 import { AppointmentTypes, VerificationStatuses } from "@zindagi/shared";
 
@@ -15,6 +18,7 @@ export const metadata = { title: "Consult requests | Doctor" };
 
 function formatType(type: string) {
   if (type === "online") return "Online consult";
+  if (type === "urgent_online") return "Urgent care";
   if (type === "clinic") return "Clinic visit";
   return type;
 }
@@ -57,14 +61,23 @@ export default async function DoctorRequestsPage() {
                   meta={`${formatType(request.type)} · ${formatDateTime(request.scheduledStart)}${request.patientNotes ? ` · ${request.patientNotes}` : ""}`}
                   badge={request.status.replace("_", " ")}
                   action={
-                    request.type === AppointmentTypes.ONLINE ? (
-                      <VideoJoinLinkButton
-                        appointmentId={request.id}
-                        scheduledStart={request.scheduledStart}
-                        scheduledEnd={request.scheduledEnd}
-                        size="sm"
-                      />
-                    ) : undefined
+                    <div className="flex flex-wrap gap-2">
+                      {request.type === AppointmentTypes.ONLINE ||
+                      request.type === AppointmentTypes.URGENT_ONLINE ? (
+                        <VideoJoinLinkButton
+                          appointmentId={request.id}
+                          scheduledStart={request.scheduledStart}
+                          scheduledEnd={request.scheduledEnd}
+                          size="sm"
+                        />
+                      ) : null}
+                      <Button size="sm" variant="outline" asChild className="gap-1">
+                        <Link href={`/doctor/prescriptions/new?appointmentId=${request.id}`}>
+                          <FileText className="h-3.5 w-3.5" />
+                          Issue Rx
+                        </Link>
+                      </Button>
+                    </div>
                   }
                 />
               </div>

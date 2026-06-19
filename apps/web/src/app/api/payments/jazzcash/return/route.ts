@@ -4,9 +4,22 @@ import {
   parseIpnFields,
   verifySecureHash,
 } from "@/lib/payments/jazzcash";
-import { OnlineConsultService } from "@/server/services/online-consult.service";
+import {
+  completePaymentAfterGateway,
+  failPayment,
+  paymentFailedPath,
+  paymentSuccessPath,
+} from "@/lib/payments/payment-router";
+import { PaymentModel, AppointmentModel } from "@zindagi/database";
 
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+async function resolveType(paymentId: string) {
+  const payment = await PaymentModel.findById(paymentId).lean();
+  if (!payment?.appointmentId) return null;
+  const appointment = await AppointmentModel.findById(payment.appointmentId).lean();
+  return appointment?.type ?? null;
+}
 
 export async function GET(req: NextRequest) {
   const fields = parseIpnFields(Object.fromEntries(req.nextUrl.searchParams.entries()));
@@ -23,27 +36,26 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const appointmentType = await resolveType(paymentId);
+
   try {
     if (isJazzCashSuccess(fields.pp_ResponseCode)) {
-      await OnlineConsultService.confirmAfterPayment(
+      await completePaymentAfterGateway(
         paymentId,
         fields.pp_TxnRefNo ?? fields.pp_RetreivalReferenceNo,
       );
       return NextResponse.redirect(
-        new URL(`/doctors/booking/success?paymentId=${paymentId}`, appUrl()),
+        new URL(paymentSuccessPath(paymentId, appointmentType), appUrl()),
       );
     }
 
-    await OnlineConsultService.failPayment(
-      paymentId,
-      fields.pp_ResponseMessage ?? fields.pp_ResponseCode,
-    );
+    await failPayment(paymentId, fields.pp_ResponseMessage ?? fields.pp_ResponseCode);
     return NextResponse.redirect(
-      new URL(`/doctors/booking/failed?paymentId=${paymentId}`, appUrl()),
+      new URL(paymentFailedPath(paymentId, appointmentType), appUrl()),
     );
   } catch {
     return NextResponse.redirect(
-      new URL(`/doctors/booking/failed?paymentId=${paymentId}`, appUrl()),
+      new URL(paymentFailedPath(paymentId, appointmentType), appUrl()),
     );
   }
 }
@@ -75,21 +87,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const appointmentType = await resolveType(paymentId);
+
   if (isJazzCashSuccess(fields.pp_ResponseCode)) {
-    await OnlineConsultService.confirmAfterPayment(
+    await completePaymentAfterGateway(
       paymentId,
       fields.pp_TxnRefNo ?? fields.pp_RetreivalReferenceNo,
     );
     return NextResponse.redirect(
-      new URL(`/doctors/booking/success?paymentId=${paymentId}`, appUrl()),
+      new URL(paymentSuccessPath(paymentId, appointmentType), appUrl()),
     );
   }
 
-  await OnlineConsultService.failPayment(
-    paymentId,
-    fields.pp_ResponseMessage ?? fields.pp_ResponseCode,
-  );
+  await failPayment(paymentId, fields.pp_ResponseMessage ?? fields.pp_ResponseCode);
   return NextResponse.redirect(
-    new URL(`/doctors/booking/failed?paymentId=${paymentId}`, appUrl()),
+    new URL(paymentFailedPath(paymentId, appointmentType), appUrl()),
   );
 }

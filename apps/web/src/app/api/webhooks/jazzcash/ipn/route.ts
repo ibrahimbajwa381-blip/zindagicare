@@ -5,7 +5,10 @@ import {
   parseIpnFields,
   verifySecureHash,
 } from "@/lib/payments/jazzcash";
-import { OnlineConsultService } from "@/server/services/online-consult.service";
+import {
+  completePaymentAfterGateway,
+  failPayment,
+} from "@/lib/payments/payment-router";
 import { apiError } from "@/server/api/response";
 
 async function parseBody(req: NextRequest): Promise<Record<string, unknown>> {
@@ -38,12 +41,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (isJazzCashSuccess(fields.pp_ResponseCode)) {
-      await OnlineConsultService.confirmAfterPayment(
+      await completePaymentAfterGateway(
         paymentId,
         fields.pp_TxnRefNo ?? fields.pp_RetreivalReferenceNo,
       );
     } else {
-      await OnlineConsultService.failPayment(
+      await failPayment(
         paymentId,
         fields.pp_ResponseMessage ?? fields.pp_ResponseCode,
       );

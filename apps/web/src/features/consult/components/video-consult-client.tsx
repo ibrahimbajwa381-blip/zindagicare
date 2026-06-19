@@ -49,6 +49,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPostConsultReview, setShowPostConsultReview] = useState(leftSession ?? false);
+  const [showDoctorPostConsult, setShowDoctorPostConsult] = useState(false);
   const joinAttemptedRef = useRef(false);
 
   const dashboardHref =
@@ -118,6 +119,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
       setShowPostConsultReview(true);
       return;
     }
+    setShowDoctorPostConsult(true);
     await loadStatus();
   };
 
@@ -131,6 +133,27 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
 
   if ((showPostConsultReview || leftSession) && sessionStatus?.role === "patient") {
     return <PostConsultReviewPrompt appointmentId={appointmentId} />;
+  }
+
+  if (showDoctorPostConsult && sessionStatus?.role === "doctor") {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="font-display text-xl font-semibold text-foreground">Consultation ended</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Issue a digital prescription for your patient if clinically appropriate.
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Button asChild>
+            <Link href={`/doctor/prescriptions/new?appointmentId=${appointmentId}`}>
+              Issue prescription
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={dashboardHref}>Back to dashboard</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (leftSession) {

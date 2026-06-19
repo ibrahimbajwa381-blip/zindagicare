@@ -62,8 +62,10 @@ export function UnifiedHeader({
     home: t.nav.home,
     onlineConsult: t.nav.onlineConsult,
     sundayConsult: t.nav.sundayConsult,
+    urgentCare: t.nav.urgentCare,
     homeServices: t.nav.homeServices,
     freeBadge: t.nav.freeBadge,
+    urgentBadge: t.nav.urgentBadge,
     myDashboard: t.dashboard.header.myDashboard,
     signOut: t.dashboard.header.signOut,
     login: t.auth.login,
@@ -77,6 +79,11 @@ export function UnifiedHeader({
       label: t.nav.sundayConsult,
       href: siteConfig.links.sundayConsult,
       badge: t.nav.freeBadge,
+    },
+    {
+      label: t.nav.urgentCare,
+      href: siteConfig.links.urgentCare,
+      badge: t.nav.urgentBadge,
     },
   ];
 

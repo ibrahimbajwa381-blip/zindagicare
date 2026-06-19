@@ -1,6 +1,6 @@
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { AppError, ErrorCodes } from "@zindagi/shared";
-import { OnlineConsultService } from "@/server/services/online-consult.service";
+import { completeTestPayment } from "@/lib/payments/payment-router";
 import { isDummyPaymentMode } from "@/lib/payments/dummy-payment";
 
 export const POST = withApiHandler(
@@ -21,7 +21,7 @@ export const POST = withApiHandler(
       );
     }
 
-    return OnlineConsultService.completeTestPayment(paymentId, session!.user!.id);
+    return completeTestPayment(paymentId, session!.user!.id);
   },
   { auth: true },
 );

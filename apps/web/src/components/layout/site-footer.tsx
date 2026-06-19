@@ -18,6 +18,7 @@ import {
   Stethoscope,
   UserPlus,
   Video,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@zindagi/shared";
@@ -108,6 +109,12 @@ export function SiteFooter() {
       label: t.nav.sundayConsult,
       icon: CalendarHeart,
       badge: t.nav.freeBadge,
+    },
+    {
+      href: siteConfig.links.urgentCare,
+      label: t.nav.urgentCare,
+      icon: Zap,
+      badge: t.nav.urgentBadge,
     },
     { href: siteConfig.links.homeServices, label: t.nav.homeServices, icon: Home },
     {

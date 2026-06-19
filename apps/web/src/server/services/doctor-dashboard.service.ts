@@ -40,7 +40,7 @@ function activeConsultRequestFilter(now = new Date()) {
   );
 
   return {
-    type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC] },
+    type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC, AppointmentTypes.URGENT_ONLINE] },
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     $or: [
       { scheduledEnd: { $gte: windowEnd } },

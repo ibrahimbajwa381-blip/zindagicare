@@ -1,5 +1,6 @@
 import {
   CalendarClock,
+  FileText,
   Home,
   LayoutDashboard,
   MessageSquare,
@@ -53,6 +54,12 @@ export const DOCTOR_WORKSPACE_ACTIONS: DoctorWorkspaceNavItem[] = [
     description: "Online & clinic appointments",
     icon: CalendarClock,
     badgeKey: "pendingRequests",
+  },
+  {
+    href: "/doctor/prescriptions",
+    label: "Prescriptions",
+    description: "Digital prescriptions issued to patients",
+    icon: FileText,
   },
   {
     href: "/doctor/sunday-consult",

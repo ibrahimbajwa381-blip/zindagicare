@@ -4,7 +4,8 @@ export type StorageNamespace =
   | "doctor-avatars"
   | "doctor-verification"
   | "nurse-verification"
-  | "home-visit-reports";
+  | "home-visit-reports"
+  | "prescriptions";
 
 type StorageConfig = {
   url: string;
