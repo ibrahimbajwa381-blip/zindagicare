@@ -18,6 +18,7 @@ import {
 } from "@zindagi/shared";
 import type { DoctorReviewDto } from "@/features/marketing/types/doctor-public";
 import { mongoFilter } from "@/lib/mongo/query";
+import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
 function maskPatientName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -394,6 +395,10 @@ export class ReviewService {
           },
         },
       );
+    }
+
+    if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
+      await UrgentConsultService.tryCompleteByAppointmentId(appointment._id.toString());
     }
 
     await ReviewService.refreshDoctorRatingAggregates(appointment.doctorId.toString());

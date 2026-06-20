@@ -47,10 +47,15 @@ export type UrgentPatientRequestDto = {
   patientNotes?: string;
   createdAt: string;
   assignedAt?: string;
+  completedAt?: string;
   appointmentId?: string;
   scheduledStart?: string;
   scheduledEnd?: string;
   doctor?: UrgentCareRequestDto["doctor"];
+  prescription?: {
+    id: string;
+    downloadUrl: string;
+  };
 };
 
 export type UrgentCheckoutResult = {

@@ -8,6 +8,7 @@ import {
 import {
   AppError,
   AppointmentStatuses,
+  AppointmentTypes,
   ErrorCodes,
   VIDEO_CONSULT_CONFIG,
   VideoSessionStatuses,
@@ -19,6 +20,7 @@ import { getPublicZoomSdkKey, getZoomSdkSignatureCredentials, isZoomConfigured }
 import { generateZoomMeetingSdkSignature } from "@/lib/zoom/signature";
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { mongoFilter } from "@/lib/mongo/query";
+import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
 const ONLINE_TYPES = ["online", "sunday_free", "urgent_online"] as const;
 
@@ -204,6 +206,16 @@ export class VideoSessionService {
       );
     }
 
+    const existingSession = await VideoSessionModel.findOne(
+      mongoFilter({ appointmentId: appointment._id.toString() }),
+    )
+      .select("status")
+      .lean();
+
+    if (existingSession?.status === VideoSessionStatuses.COMPLETED) {
+      throw new AppError("This video consult has ended.", ErrorCodes.VALIDATION, 400);
+    }
+
     const session = await VideoSessionService.ensureZoomSession(appointment);
     const metadata = session.metadata as {
       meetingId: number;
@@ -254,6 +266,7 @@ export class VideoSessionService {
       canJoin,
       joinOpensAt: joinOpensAt.toISOString(),
       joinClosesAt: joinClosesAt.toISOString(),
+      appointmentType: appointment.type,
     };
   }
 
@@ -324,6 +337,10 @@ export class VideoSessionService {
         },
       },
     );
+
+    if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
+      await UrgentConsultService.tryCompleteByAppointmentId(appointment._id.toString());
+    }
   }
 
   static async getSessionStatus(userId: string, appointmentId: string) {
@@ -349,6 +366,7 @@ export class VideoSessionService {
       scheduledStart: appointment.scheduledStart.toISOString(),
       scheduledEnd: appointment.scheduledEnd.toISOString(),
       zoomConfigured: isZoomConfigured(),
+      appointmentType: appointment.type,
     };
   }
 }

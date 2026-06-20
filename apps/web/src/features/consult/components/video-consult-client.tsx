@@ -22,6 +22,7 @@ import { ZOOM_CONSULT_MEETING_TITLE } from "@/lib/zoom/branding";
 import { CountdownTimer } from "@/features/sunday-consult/components/countdown-timer";
 import { PostConsultReviewPrompt } from "@/features/consult/components/post-consult-review-prompt";
 import type { VideoJoinPayload } from "@/features/consult/types";
+import { AppointmentTypes } from "@zindagi/shared";
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
 
@@ -42,6 +43,7 @@ type SessionStatus = {
   scheduledStart: string;
   scheduledEnd: string;
   zoomConfigured: boolean;
+  appointmentType?: string;
 };
 
 type Props = {
@@ -75,13 +77,21 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [showPostConsultReview, setShowPostConsultReview] = useState(leftSession ?? false);
   const [showDoctorPostConsult, setShowDoctorPostConsult] = useState(false);
   const [rxPanelOpen, setRxPanelOpen] = useState(false);
+  const rxAutoOpenedRef = useRef(false);
   const joinAttemptedRef = useRef(false);
 
   const supportUrl = getWhatsAppSupportUrl(copy.supportPrefill);
   const joiningTips = [copy.joiningTip1, copy.joiningTip2, copy.joiningTip3];
 
+  const doctorDashboardHref =
+    sessionStatus?.appointmentType === AppointmentTypes.URGENT_ONLINE
+      ? "/doctor/urgent-calls"
+      : sessionStatus?.appointmentType === AppointmentTypes.ONLINE
+        ? "/doctor/requests"
+        : "/doctor/sunday-consult";
+
   const dashboardHref =
-    sessionStatus?.role === "doctor" ? "/doctor/sunday-consult" : siteConfig.links.dashboard;
+    sessionStatus?.role === "doctor" ? doctorDashboardHref : siteConfig.links.dashboard;
 
   const formatParticipantLine = useCallback(
     (role: "patient" | "doctor", name: string) =>
@@ -140,6 +150,14 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     const interval = window.setInterval(loadStatus, 30_000);
     return () => window.clearInterval(interval);
   }, [sessionStatus, loadStatus]);
+
+  useEffect(() => {
+    if (!inCall || !joinPayload || joinPayload.role !== "doctor" || rxAutoOpenedRef.current) {
+      return;
+    }
+    rxAutoOpenedRef.current = true;
+    setRxPanelOpen(true);
+  }, [inCall, joinPayload]);
 
   /** Single-click flow: auto-join as soon as the room window opens. */
   useEffect(() => {
@@ -283,15 +301,13 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
               <Button
                 variant="outline"
                 size="sm"
-                className={`gap-1 border-white/20 bg-transparent text-white hover:bg-white/10 ${
+                className={`gap-1.5 border-white/20 bg-transparent text-white hover:bg-white/10 ${
                   rxPanelOpen ? "border-brand-light/60 bg-brand/20" : ""
                 }`}
                 onClick={() => setRxPanelOpen((open) => !open)}
               >
-                <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  {rxPanelOpen ? copy.hideRx : copy.writeRx}
-                </span>
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                {rxPanelOpen ? copy.hideRx : copy.writePrescription}
               </Button>
             )}
             <Button

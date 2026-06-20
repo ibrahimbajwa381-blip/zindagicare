@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AppUserMenu } from "@/components/layout/app-user-menu";
 import {
@@ -21,6 +22,7 @@ export function AppHeaderUser({
   variant = "header",
 }: AppHeaderUserProps) {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<{
     email?: string;
     phone?: string;
@@ -29,10 +31,20 @@ export function AppHeaderUser({
   } | null>(null);
 
   const user = session?.user;
-  const isPatient = resolveHeaderAccountType(user?.roles) === "patient";
+  const accountType = resolveHeaderAccountType(user?.roles);
+  const isPatient = accountType === "patient";
+  const isDoctor = accountType === "doctor";
 
   useEffect(() => {
-    if (!enrichFromProfile || !isPatient || !user?.id) {
+    if (!user?.id) {
+      setProfile(null);
+      return;
+    }
+
+    const shouldFetchPatient = enrichFromProfile && isPatient;
+    const shouldFetchDoctor = isDoctor;
+
+    if (!shouldFetchPatient && !shouldFetchDoctor) {
       setProfile(null);
       return;
     }
@@ -41,7 +53,10 @@ export function AppHeaderUser({
 
     (async () => {
       try {
-        const res = await fetch("/api/v1/patient/profile");
+        const endpoint = shouldFetchDoctor
+          ? "/api/v1/doctor/profile"
+          : "/api/v1/patient/profile";
+        const res = await fetch(endpoint);
         const json = await res.json();
         if (!cancelled && json.success && json.data?.user) {
           setProfile({
@@ -59,7 +74,7 @@ export function AppHeaderUser({
     return () => {
       cancelled = true;
     };
-  }, [enrichFromProfile, isPatient, user?.id]);
+  }, [enrichFromProfile, isPatient, isDoctor, user?.id, pathname]);
 
   if (!user) return null;
 

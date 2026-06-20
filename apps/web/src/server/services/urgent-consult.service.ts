@@ -5,7 +5,9 @@ import {
   UrgentCareRequestModel,
   PaymentModel,
   AppointmentModel,
+  VideoSessionModel,
 } from "@zindagi/database";
+import { PrescriptionService } from "@/server/services/prescription.service";
 import {
   AppError,
   ErrorCodes,
@@ -17,6 +19,7 @@ import {
   PaymentStatuses,
   AppointmentTypes,
   AppointmentStatuses,
+  VideoSessionStatuses,
 } from "@zindagi/shared";
 import type {
   UrgentCareAssignInput,
@@ -58,6 +61,9 @@ const ACTIVE_REQUEST_STATUSES = [
   UrgentCareRequestStatuses.REQUESTED,
   UrgentCareRequestStatuses.ASSIGNED,
 ];
+
+/** Show recently finished urgent consults on the patient dashboard. */
+const COMPLETED_REQUEST_DISPLAY_MS = 7 * 24 * 60 * 60 * 1000;
 
 const URGENT_PAYMENT_KIND = "urgent_care";
 
@@ -507,6 +513,7 @@ export class UrgentConsultService {
 
   private static mapDocToPatientRequest(
     doc: Parameters<typeof mapRequestRow>[0],
+    prescription?: UrgentPatientRequestDto["prescription"],
   ): UrgentPatientRequestDto {
     const row = mapRequestRow(doc);
     return {
@@ -516,11 +523,61 @@ export class UrgentConsultService {
       patientNotes: row.patientNotes,
       createdAt: row.createdAt,
       assignedAt: row.assignedAt,
+      completedAt: row.completedAt,
       appointmentId: row.appointmentId,
       scheduledStart: row.scheduledStart,
       scheduledEnd: row.scheduledEnd,
       doctor: row.doctor,
+      prescription,
     };
+  }
+
+  /** Close stale urgent requests when the linked video consult already ended. */
+  private static async reconcileAssignedRequest(requestId: string): Promise<void> {
+    const request = await UrgentCareRequestModel.findById(requestId).lean();
+    if (
+      !request ||
+      request.status !== UrgentCareRequestStatuses.ASSIGNED ||
+      !request.appointmentId
+    ) {
+      return;
+    }
+
+    const appointmentId = request.appointmentId.toString();
+    const appointment = await AppointmentModel.findById(appointmentId)
+      .select("status")
+      .lean();
+
+    if (appointment?.status === AppointmentStatuses.COMPLETED) {
+      await UrgentConsultService.updateStatus(requestId, { status: "completed" });
+      return;
+    }
+
+    const session = await VideoSessionModel.findOne(
+      mongoFilter({ appointmentId }),
+    )
+      .select("status")
+      .lean();
+
+    if (session?.status === VideoSessionStatuses.COMPLETED) {
+      await UrgentConsultService.tryCompleteByAppointmentId(appointmentId);
+    }
+  }
+
+  static async tryCompleteByAppointmentId(appointmentId: string): Promise<boolean> {
+    await UrgentConsultService.ensureConnected();
+
+    const request = await UrgentCareRequestModel.findOne(
+      mongoFilter({
+        appointmentId,
+        status: UrgentCareRequestStatuses.ASSIGNED,
+      }),
+    ).lean();
+
+    if (!request) return false;
+
+    await UrgentConsultService.updateStatus(request._id.toString(), { status: "completed" });
+    return true;
   }
 
   private static async createRequestInternal(
@@ -613,6 +670,24 @@ export class UrgentConsultService {
       doc = await UrgentCareRequestModel.findById(doc._id).lean();
     }
 
+    if (doc?.status === UrgentCareRequestStatuses.ASSIGNED) {
+      await UrgentConsultService.reconcileAssignedRequest(doc._id.toString());
+      doc = await UrgentCareRequestModel.findById(doc._id).lean();
+    }
+
+    if (!doc) {
+      const completedCutoff = new Date(Date.now() - COMPLETED_REQUEST_DISPLAY_MS);
+      doc = await UrgentCareRequestModel.findOne(
+        mongoFilter({
+          patientId,
+          status: UrgentCareRequestStatuses.COMPLETED,
+          completedAt: { $gte: completedCutoff },
+        }),
+      )
+        .sort({ completedAt: -1 })
+        .lean();
+    }
+
     if (!doc) return null;
 
     const populated = await UrgentCareRequestModel.findById(doc._id)
@@ -626,19 +701,25 @@ export class UrgentConsultService {
 
     if (!populated) return null;
 
-    const row = mapRequestRow(populated as Parameters<typeof mapRequestRow>[0]);
-    return {
-      requestId: row.requestId,
-      status: row.status,
-      patientPhone: row.patientPhone,
-      patientNotes: row.patientNotes,
-      createdAt: row.createdAt,
-      assignedAt: row.assignedAt,
-      appointmentId: row.appointmentId,
-      scheduledStart: row.scheduledStart,
-      scheduledEnd: row.scheduledEnd,
-      doctor: row.doctor,
-    };
+    return UrgentConsultService.mapPopulatedPatientRequest(
+      populated as Parameters<typeof mapRequestRow>[0],
+    );
+  }
+
+  private static async mapPopulatedPatientRequest(
+    doc: Parameters<typeof mapRequestRow>[0],
+  ): Promise<UrgentPatientRequestDto> {
+    const row = mapRequestRow(doc);
+    let prescription: UrgentPatientRequestDto["prescription"];
+
+    if (row.appointmentId) {
+      const prescriptions = await PrescriptionService.getPrescriptionsForAppointments([
+        row.appointmentId,
+      ]);
+      prescription = prescriptions.get(row.appointmentId);
+    }
+
+    return UrgentConsultService.mapDocToPatientRequest(doc, prescription);
   }
 
   static async listAdminRequests(): Promise<UrgentCareRequestDto[]> {
@@ -929,6 +1010,8 @@ export class UrgentConsultService {
     for (const doc of docs) {
       if (!doc.appointmentId && doc.assignedDoctorId) {
         await UrgentConsultService.ensureAssignedVideoAppointment(doc._id.toString());
+      } else if (doc.status === UrgentCareRequestStatuses.ASSIGNED) {
+        await UrgentConsultService.reconcileAssignedRequest(doc._id.toString());
       }
     }
 

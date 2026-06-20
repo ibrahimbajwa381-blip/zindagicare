@@ -31,6 +31,7 @@ export const authConfig = {
         token.nurseVerificationStatus = (
           user as { nurseVerificationStatus?: string }
         ).nurseVerificationStatus;
+        if (user.image) token.picture = user.image;
       }
 
       if (trigger === "update" && session) {
@@ -39,6 +40,7 @@ export const authConfig = {
           onboardingCompleted?: boolean;
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
+          image?: string;
         };
         if (patch.roles) token.roles = patch.roles;
         if (typeof patch.onboardingCompleted === "boolean") {
@@ -50,6 +52,7 @@ export const authConfig = {
         if (patch.nurseVerificationStatus) {
           token.nurseVerificationStatus = patch.nurseVerificationStatus;
         }
+        if (patch.image) token.picture = patch.image;
       }
 
       return token;
@@ -66,6 +69,7 @@ export const authConfig = {
         session.user.nurseVerificationStatus = token.nurseVerificationStatus as
           | string
           | undefined;
+        session.user.image = (token.picture as string | undefined) ?? session.user.image;
       }
       return session;
     },

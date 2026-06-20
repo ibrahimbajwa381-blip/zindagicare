@@ -9,12 +9,19 @@ const monorepoRoot = path.resolve(
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  outputFileTracingIncludes: {
+    "/**/*": [
+      "../../node_modules/pdfkit/js/data/**/*",
+      "./public/logo1.png",
+      "./public/icon-192.png",
+    ],
+  },
   transpilePackages: [
     "@zindagi/shared",
     "@zindagi/database",
     "@zindagi/validators",
   ],
-  serverExternalPackages: ["mongoose", "bcryptjs"],
+  serverExternalPackages: ["mongoose", "bcryptjs", "pdfkit", "fontkit"],
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

@@ -36,6 +36,7 @@ export type VideoJoinPayload = {
   canJoin: boolean;
   joinOpensAt: string;
   joinClosesAt: string;
+  appointmentType?: string;
 };
 
 export type CheckoutResult = {

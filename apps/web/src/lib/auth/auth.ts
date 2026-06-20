@@ -92,6 +92,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.onboardingCompleted = user.onboardingCompleted ?? false;
         token.doctorVerificationStatus = user.doctorVerificationStatus;
         token.nurseVerificationStatus = user.nurseVerificationStatus;
+        if (user.image) token.picture = user.image;
       }
 
       if (trigger === "update" && session) {
@@ -100,6 +101,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           onboardingCompleted?: boolean;
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
+          image?: string;
         };
         if (patch.roles) token.roles = patch.roles;
         if (typeof patch.onboardingCompleted === "boolean") {
@@ -111,6 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (patch.nurseVerificationStatus) {
           token.nurseVerificationStatus = patch.nurseVerificationStatus;
         }
+        if (patch.image) token.picture = patch.image;
       }
 
       return token;

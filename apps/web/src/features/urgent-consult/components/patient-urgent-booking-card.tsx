@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Calendar, Clock, Video, Zap } from "lucide-react";
+import { BadgeCheck, Calendar, Clock, FileText, Video, Zap } from "lucide-react";
 import { UrgentCareRequestStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,22 +48,29 @@ export function PatientUrgentRequestCard({
   const b = t.urgentCare.booking;
   const isProfile = variant === "profile" || variant === "page";
 
-  const statusLabel =
-    request.status === UrgentCareRequestStatuses.ASSIGNED
-      ? b.statusAssigned
-      : request.status === UrgentCareRequestStatuses.REQUESTED
-        ? b.statusRequested
-        : request.status;
+  const isCompleted = request.status === UrgentCareRequestStatuses.COMPLETED;
 
-  const statusMessage =
-    request.status === UrgentCareRequestStatuses.ASSIGNED
+  const statusLabel =
+    isCompleted
+      ? b.statusCompleted
+      : request.status === UrgentCareRequestStatuses.ASSIGNED
+        ? b.statusAssigned
+        : request.status === UrgentCareRequestStatuses.REQUESTED
+          ? b.statusRequested
+          : request.status;
+
+  const statusMessage = isCompleted
+    ? b.completedMessage
+    : request.status === UrgentCareRequestStatuses.ASSIGNED
       ? request.doctor
         ? b.assignedMessage.replace("{name}", request.doctor.name)
         : b.assignedMessage.replace("{name}", "Your doctor")
       : b.requestedMessage;
 
   const canJoin =
-    request.status === UrgentCareRequestStatuses.ASSIGNED && request.appointmentId;
+    !isCompleted &&
+    request.status === UrgentCareRequestStatuses.ASSIGNED &&
+    request.appointmentId;
 
   const joinStart =
     request.scheduledStart ?? request.assignedAt ?? request.createdAt;
@@ -161,6 +168,13 @@ export function PatientUrgentRequestCard({
           </div>
         )}
 
+        {isCompleted && (
+          <div className="flex gap-3 rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 text-sm text-slate-800">
+            <Video className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+            <p>{b.consultEnded}</p>
+          </div>
+        )}
+
         {request.patientNotes && (
           <div className="rounded-xl border border-slate-200/70 bg-white/80 p-3 text-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -184,9 +198,23 @@ export function PatientUrgentRequestCard({
           ) : request.status === UrgentCareRequestStatuses.ASSIGNED ? (
             <p className="text-sm text-amber-800">{b.videoSessionPreparing}</p>
           ) : null}
-          <Button variant="outline" asChild>
-            <Link href={siteConfig.links.urgentCare}>{b.viewUrgentPage}</Link>
-          </Button>
+          {isCompleted && request.prescription ? (
+            <Button asChild className="gap-1.5 bg-brand hover:bg-brand-dark">
+              <a
+                href={request.prescription.downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText className="h-4 w-4" />
+                {b.viewPrescription}
+              </a>
+            </Button>
+          ) : null}
+          {!isCompleted ? (
+            <Button variant="outline" asChild>
+              <Link href={siteConfig.links.urgentCare}>{b.viewUrgentPage}</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

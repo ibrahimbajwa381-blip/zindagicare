@@ -70,7 +70,8 @@ export function DoctorUrgentCallsPanel() {
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
         Patients assigned to you for urgent video consults. Join the secure session on ZindagiCare
-        within 10 minutes of assignment — same flow as online consultation.
+        within 10 minutes of assignment. During the call, use the <strong>Prescription</strong> button
+        in the top bar to write an e-Rx while you speak with the patient.
       </p>
 
       {requests.length === 0 ? (
@@ -82,7 +83,9 @@ export function DoctorUrgentCallsPanel() {
       ) : (
         requests.map((request) => {
           const highlighted = highlightId === request.requestId;
-          const canJoin = Boolean(request.appointmentId);
+          const canJoin =
+            request.status === UrgentCareRequestStatuses.ASSIGNED &&
+            Boolean(request.appointmentId);
           const joinStart =
             request.scheduledStart ?? request.assignedAt ?? request.createdAt;
           const joinEnd =

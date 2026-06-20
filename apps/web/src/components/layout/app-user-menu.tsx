@@ -83,6 +83,10 @@ export function AppUserMenu({
   const showImage = Boolean(avatarUrl) && !imageFailed;
 
   useEffect(() => {
+    setImageFailed(false);
+  }, [avatarUrl]);
+
+  useEffect(() => {
     if (!open) return;
 
     const onPointerDown = (event: MouseEvent) => {

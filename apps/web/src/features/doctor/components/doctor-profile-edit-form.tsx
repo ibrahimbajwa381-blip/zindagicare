@@ -233,7 +233,12 @@ export function DoctorProfileEditForm({ profile }: Props) {
       return;
     }
 
-    await update({ name: name.trim() });
+    await update({
+      name: name.trim(),
+      ...(avatarUrl && avatarUrl !== profile.user.avatarUrl
+        ? { image: avatarUrl }
+        : {}),
+    });
     router.push("/doctor/profile");
     router.refresh();
   }
