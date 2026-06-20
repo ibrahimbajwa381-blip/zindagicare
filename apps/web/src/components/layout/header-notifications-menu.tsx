@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bell, CheckCheck } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { HeaderIconButton } from "@/components/layout/header-icon-button";
@@ -48,8 +49,19 @@ export function HeaderNotificationsMenu({
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+
+  useEffect(() => {
+    setMounted(true);
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const syncLayout = () => setIsMobile(mediaQuery.matches);
+    syncLayout();
+    mediaQuery.addEventListener("change", syncLayout);
+    return () => mediaQuery.removeEventListener("change", syncLayout);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -84,23 +96,29 @@ export function HeaderNotificationsMenu({
   useEffect(() => {
     if (!open) return;
 
-    const onPointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (
+        isMobile &&
+        (target as Element).closest?.(`[data-notifications-panel="${menuId}"]`)
+      ) {
+        return;
       }
+      setOpen(false);
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
 
-    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, isMobile, menuId]);
 
   async function markRead(notificationId: string) {
     await fetch(`/api/v1/notifications/${notificationId}/read`, {
@@ -129,6 +147,93 @@ export function HeaderNotificationsMenu({
     onCountChange?.();
   }
 
+  const panel = open ? (
+    <div
+      id={menuId}
+      role="menu"
+      data-notifications-panel={menuId}
+      className={cn(
+        "z-[60] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-premium-lg",
+        isMobile
+          ? "fixed inset-x-4 top-[calc(4rem+env(safe-area-inset-top,0px)+0.5rem)] sm:top-[calc(4.75rem+env(safe-area-inset-top,0px)+0.5rem)]"
+          : "absolute right-0 top-[calc(100%+0.5rem)] w-[min(100vw-2rem,22rem)]",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{labels.notifications}</p>
+          <p className="text-xs text-slate-500">{labels.notificationsHint}</p>
+        </div>
+        {count > 0 ? (
+          <button
+            type="button"
+            onClick={() => void markAllRead()}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-dark transition-colors hover:bg-brand-muted"
+          >
+            <CheckCheck className="h-3.5 w-3.5" aria-hidden />
+            {labels.markAllRead}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="max-h-[min(24rem,calc(100dvh-6rem-env(safe-area-inset-top,0px)))] overflow-y-auto overscroll-contain">
+        {loading ? (
+          <p className="px-4 py-8 text-center text-sm text-slate-500">
+            {labels.loadingNotifications}
+          </p>
+        ) : items.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-slate-500">
+            {labels.noNotifications}
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {items.map((item) => {
+              const unread = !item.readAt;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      if (unread) void markRead(item.id);
+                    }}
+                    className={cn(
+                      "flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100",
+                      unread && "bg-brand-muted/30",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium text-slate-900">{item.title}</p>
+                      {unread ? (
+                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
+                      ) : null}
+                    </div>
+                    <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
+                      {item.body}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {formatRelativeTime(item.createdAt)}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  const mobileOverlay =
+    open && isMobile ? (
+      <button
+        type="button"
+        aria-label={t.common.closeMenu}
+        className="fixed inset-0 z-[55] bg-slate-900/20 backdrop-blur-[1px]"
+        onClick={() => setOpen(false)}
+      />
+    ) : null;
+
   return (
     <div ref={containerRef} className="relative">
       <HeaderIconButton
@@ -139,76 +244,15 @@ export function HeaderNotificationsMenu({
         onClick={() => setOpen((value) => !value)}
       />
 
-      {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-premium-lg"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">{labels.notifications}</p>
-              <p className="text-xs text-slate-500">{labels.notificationsHint}</p>
-            </div>
-            {count > 0 ? (
-              <button
-                type="button"
-                onClick={() => void markAllRead()}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-dark transition-colors hover:bg-brand-muted"
-              >
-                <CheckCheck className="h-3.5 w-3.5" aria-hidden />
-                {labels.markAllRead}
-              </button>
-            ) : null}
-          </div>
-
-          <div className="max-h-[min(24rem,60vh)] overflow-y-auto">
-            {loading ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-500">
-                {labels.loadingNotifications}
-              </p>
-            ) : items.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-500">
-                {labels.noNotifications}
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {items.map((item) => {
-                  const unread = !item.readAt;
-                  return (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          if (unread) void markRead(item.id);
-                        }}
-                        className={cn(
-                          "flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-slate-50",
-                          unread && "bg-brand-muted/30",
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium text-slate-900">{item.title}</p>
-                          {unread ? (
-                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
-                          ) : null}
-                        </div>
-                        <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
-                          {item.body}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          {formatRelativeTime(item.createdAt)}
-                        </p>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
-      ) : null}
+      {mounted && isMobile && open
+        ? createPortal(
+            <>
+              {mobileOverlay}
+              {panel}
+            </>,
+            document.body,
+          )
+        : panel}
     </div>
   );
 }

@@ -52,7 +52,10 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
       }
 
       if (event.data?.type === "zindagi-zoom-error") {
-        setError(event.data.message ?? "Could not join video room.");
+        const message =
+          event.data.message ??
+          "Could not join video room. If you changed domains, add this site to your Zoom SDK allowlist.";
+        setError(message);
       }
     };
 

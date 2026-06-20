@@ -16,7 +16,7 @@ import {
 } from "@zindagi/shared";
 import { createZoomMeeting } from "@/lib/zoom/api";
 import { ZOOM_CONSULT_MEETING_TITLE } from "@/lib/zoom/branding";
-import { getPublicZoomSdkKey, getZoomConfig, isZoomConfigured } from "@/lib/zoom/config";
+import { getPublicZoomSdkKey, getZoomSdkSignatureCredentials, isZoomConfigured } from "@/lib/zoom/config";
 import { generateZoomMeetingSdkSignature } from "@/lib/zoom/signature";
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { mongoFilter } from "@/lib/mongo/query";
@@ -219,7 +219,7 @@ export class VideoSessionService {
     const patient = await UserModel.findById(appointment.patientId).lean();
     const doctorUser = doctor?.userId as { name?: string } | null;
 
-    const { sdkKey, sdkSecret } = getZoomConfig();
+    const { sdkKey, sdkSecret } = getZoomSdkSignatureCredentials();
     const publicSdkKey = getPublicZoomSdkKey() ?? sdkKey;
     const meetingNumber = String(metadata.meetingId);
     const zoomRole: 0 | 1 = role === "doctor" ? 1 : 0;

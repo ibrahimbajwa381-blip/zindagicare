@@ -35,6 +35,7 @@
         color: #e2e8f0;
         font-family: system-ui, sans-serif;
         background: #0f172a;
+        pointer-events: none;
       }
       #loading-title {
         font-size: 18px;
@@ -47,6 +48,8 @@
         font-size: 14px;
         color: #94a3b8;
         text-align: center;
+        max-width: 90%;
+        line-height: 1.45;
       }
       /* Hide Zoom Workplace branding inside embedded client */
       .wr-brand,
@@ -66,7 +69,7 @@
   <body>
     <div id="loading">
       <div id="loading-title">ZindagiCare — Patient &amp; Doctor consultation</div>
-      <div id="loading-subtitle">Connecting to your secure video room…</div>
+      <div id="loading-subtitle">Preparing your secure video room…</div>
     </div>
     <div id="zmmtg-root"></div>
 
@@ -80,8 +83,21 @@
       (function () {
         var ZOOM_VERSION = "3.12.0";
         var DEFAULT_TITLE = "ZindagiCare — Patient & Doctor consultation";
+        var JOIN_TIMEOUT_MS = 45000;
         var started = false;
+        var joinTimeoutId = null;
         var brandingObserver = null;
+
+        function postToParent(type, extra) {
+          try {
+            window.parent.postMessage(
+              Object.assign({ type: type }, extra || {}),
+              window.location.origin,
+            );
+          } catch (e) {
+            /* ignore */
+          }
+        }
 
         function hideLoading() {
           var el = document.getElementById("loading");
@@ -89,6 +105,10 @@
         }
 
         function showError(message) {
+          if (joinTimeoutId) {
+            clearTimeout(joinTimeoutId);
+            joinTimeoutId = null;
+          }
           hideLoading();
           var el = document.getElementById("loading");
           if (el) {
@@ -97,6 +117,28 @@
             document.getElementById("loading-subtitle").textContent =
               message || "Please try again.";
           }
+        }
+
+        function clearJoinTimeout() {
+          if (joinTimeoutId) {
+            clearTimeout(joinTimeoutId);
+            joinTimeoutId = null;
+          }
+        }
+
+        function startJoinTimeout() {
+          clearJoinTimeout();
+          joinTimeoutId = setTimeout(function () {
+            var domain = window.location.hostname;
+            showError(
+              "Video is taking too long to connect. If you recently changed domains, add \"" +
+                domain +
+                "\" to your Zoom app's domain allowlist (Zoom Marketplace → your app → Allowlists). Then restart the call.",
+            );
+            postToParent("zindagi-zoom-error", {
+              message: "Join timed out — check Zoom domain allowlist for " + domain,
+            });
+          }, JOIN_TIMEOUT_MS);
         }
 
         function applyBranding() {
@@ -138,6 +180,12 @@
           });
         }
 
+        function formatZoomError(err) {
+          if (!err) return "Could not join meeting.";
+          if (typeof err === "string") return err;
+          return err.reason || err.message || err.errorMessage || JSON.stringify(err);
+        }
+
         function joinMeeting(payload) {
           if (started || !payload) return;
           started = true;
@@ -145,11 +193,12 @@
           var title = payload.meetingTitle || DEFAULT_TITLE;
           document.getElementById("loading-title").textContent = title;
           document.getElementById("loading-subtitle").textContent =
-            "Connecting to your secure video room…";
+            "Preparing your secure video room…";
           document.title = title;
 
           if (typeof ZoomMtg === "undefined") {
-            showError("Video SDK failed to load.");
+            showError("Video SDK failed to load. Check your network or ad blockers.");
+            postToParent("zindagi-zoom-error", { message: "Video SDK failed to load." });
             return;
           }
 
@@ -157,47 +206,45 @@
           ZoomMtg.preLoadWasm();
           ZoomMtg.prepareWebSDK();
 
-          ZoomMtg.init({
-            leaveUrl: payload.leaveUrl,
-            patchJsMedia: true,
-            disableInvite: true,
-            disableZoomLogo: true,
-            showMeetingHeader: true,
-            meetingInfo: ["topic"],
-            success: function () {
-              ZoomMtg.join({
-                signature: payload.signature,
-                meetingNumber: payload.meetingNumber,
-                userName: payload.userName,
-                sdkKey: payload.sdkKey,
-                passWord: payload.passcode || "",
-                success: function () {
-                  hideLoading();
-                  watchBranding();
-                  window.parent.postMessage({ type: "zindagi-zoom-joined" }, window.location.origin);
-                },
-                error: function (err) {
-                  showError(err.reason || err.message || "Could not join meeting.");
-                  window.parent.postMessage(
-                    {
-                      type: "zindagi-zoom-error",
-                      message: err.reason || err.message || "Could not join meeting.",
-                    },
-                    window.location.origin,
-                  );
-                },
-              });
-            },
-            error: function (err) {
-              showError(err.reason || err.message || "Could not start video.");
-              window.parent.postMessage(
-                {
-                  type: "zindagi-zoom-error",
-                  message: err.reason || err.message || "Could not start video.",
-                },
-                window.location.origin,
-              );
-            },
+          ZoomMtg.i18n.load("en-US");
+          ZoomMtg.i18n.onLoad(function () {
+            /* Zoom SDK requires #zmmtg-root to be unobstructed during init/join. */
+            hideLoading();
+            startJoinTimeout();
+
+            ZoomMtg.init({
+              leaveUrl: payload.leaveUrl,
+              patchJsMedia: true,
+              disableInvite: true,
+              disableZoomLogo: true,
+              showMeetingHeader: true,
+              meetingInfo: ["topic"],
+              disableCORP: !window.crossOriginIsolated,
+              success: function () {
+                ZoomMtg.join({
+                  signature: payload.signature,
+                  sdkKey: payload.sdkKey,
+                  meetingNumber: payload.meetingNumber,
+                  userName: payload.userName,
+                  passWord: payload.passcode || "",
+                  success: function () {
+                    clearJoinTimeout();
+                    watchBranding();
+                    postToParent("zindagi-zoom-joined");
+                  },
+                  error: function (err) {
+                    var message = formatZoomError(err);
+                    showError(message);
+                    postToParent("zindagi-zoom-error", { message: message });
+                  },
+                });
+              },
+              error: function (err) {
+                var message = formatZoomError(err);
+                showError(message);
+                postToParent("zindagi-zoom-error", { message: message });
+              },
+            });
           });
         }
 
@@ -208,7 +255,7 @@
           }
         });
 
-        window.parent.postMessage({ type: "zindagi-zoom-ready" }, window.location.origin);
+        postToParent("zindagi-zoom-ready");
       })();
     </script>
   </body>

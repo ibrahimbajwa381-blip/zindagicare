@@ -41,5 +41,20 @@ export function getZoomConfig(): ZoomConfig {
 }
 
 export function getPublicZoomSdkKey(): string | null {
+  if (process.env.ZOOM_SDK_USE_CLIENT_ID === "true") {
+    return process.env.ZOOM_CLIENT_ID ?? null;
+  }
   return process.env.NEXT_PUBLIC_ZOOM_SDK_KEY ?? process.env.ZOOM_SDK_KEY ?? null;
+}
+
+/** Credentials used to sign Meeting SDK JWTs. */
+export function getZoomSdkSignatureCredentials(): {
+  sdkKey: string;
+  sdkSecret: string;
+} {
+  const config = getZoomConfig();
+  if (process.env.ZOOM_SDK_USE_CLIENT_ID === "true") {
+    return { sdkKey: config.clientId, sdkSecret: config.clientSecret };
+  }
+  return { sdkKey: config.sdkKey, sdkSecret: config.sdkSecret };
 }
