@@ -22,7 +22,7 @@ export default async function DoctorHomeVisitsPage() {
       <DoctorPageHeader
         eyebrow="Home treatment"
         title="In-house visit requests"
-        description="Doctor home visits assigned to you by admin — update status as you travel to the patient."
+        description="Active visits assigned to you by admin, plus your completed and cancelled home visit history."
       />
       <DoctorHomeVisitsDashboard />
     </>

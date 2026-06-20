@@ -264,6 +264,54 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
 
       <Card className="rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>
+          <CardTitle className="text-base">Commission rates</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Effective:{" "}
+            <span className="font-semibold text-slate-900">
+              {doctor.effectiveOnlineCommissionPercent}%
+            </span>{" "}
+            online ·{" "}
+            <span className="font-semibold text-slate-900">
+              {doctor.effectiveHomeVisitCommissionPercent}%
+            </span>{" "}
+            in-house
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CommissionOverrideField
+              label="Online & clinic override (%)"
+              inputId="doctor-online-commission"
+              defaultValue={doctor.onlineCommissionPercent}
+              placeholder={String(doctor.effectiveOnlineCommissionPercent)}
+              disabled={pending}
+              onSave={(value) => updateDoctor({ onlineCommissionPercent: value })}
+              onClear={() => updateDoctor({ onlineCommissionPercent: null })}
+              hasOverride={doctor.onlineCommissionPercent != null}
+            />
+            <CommissionOverrideField
+              label="In-house visit override (%)"
+              inputId="doctor-home-commission"
+              defaultValue={doctor.homeVisitCommissionPercent}
+              placeholder={String(doctor.effectiveHomeVisitCommissionPercent)}
+              disabled={pending}
+              onSave={(value) => updateDoctor({ homeVisitCommissionPercent: value })}
+              onClear={() => updateDoctor({ homeVisitCommissionPercent: null })}
+              hasOverride={doctor.homeVisitCommissionPercent != null}
+            />
+          </div>
+          <p className="text-xs text-slate-500">
+            Leave blank to use platform defaults from{" "}
+            <Link href="/admin/finances" className="font-medium text-brand hover:underline">
+              Finances
+            </Link>
+            .
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl border-slate-200/80 shadow-sm">
+        <CardHeader>
           <CardTitle className="text-base">Service toggles</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
@@ -405,6 +453,69 @@ function StatCard({
       </div>
       <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
       {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
+    </div>
+  );
+}
+
+function CommissionOverrideField({
+  label,
+  inputId,
+  defaultValue,
+  placeholder,
+  disabled,
+  onSave,
+  onClear,
+  hasOverride,
+}: {
+  label: string;
+  inputId: string;
+  defaultValue: number | null;
+  placeholder: string;
+  disabled?: boolean;
+  onSave: (value: number) => void;
+  onClear: () => void;
+  hasOverride: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+      <label htmlFor={inputId} className="mb-2 block text-xs text-slate-500">
+        {label}
+      </label>
+      <div className="flex flex-wrap items-end gap-2">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          id={inputId}
+          defaultValue={defaultValue ?? ""}
+          placeholder={placeholder}
+          className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          disabled={disabled}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={disabled}
+          onClick={() => {
+            const input = document.getElementById(inputId) as HTMLInputElement | null;
+            const raw = input?.value.trim();
+            if (!raw) {
+              onClear();
+              return;
+            }
+            const value = Number(raw);
+            if (Number.isNaN(value) || value < 0 || value > 100) return;
+            onSave(value);
+          }}
+        >
+          Save
+        </Button>
+        {hasOverride && (
+          <Button size="sm" variant="ghost" disabled={disabled} onClick={onClear}>
+            Default
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

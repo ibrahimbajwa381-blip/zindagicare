@@ -18,6 +18,8 @@ function formatConsultType(type: string) {
       return "Online consult";
     case "clinic":
       return "Clinic visit";
+    case "doctor_visit":
+      return "In-house visit";
     default:
       return type.replace(/_/g, " ");
   }
@@ -30,6 +32,18 @@ type Props = {
 export function DoctorEarningsPanel({ earnings }: Props) {
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
+        Your revenue share is{" "}
+        <span className="font-semibold text-slate-900">
+          {earnings.onlineCommissionPercent}%
+        </span>{" "}
+        for online/clinic consults and{" "}
+        <span className="font-semibold text-slate-900">
+          {earnings.homeVisitCommissionPercent}%
+        </span>{" "}
+        for in-house visits. Amounts below are your net earnings after platform commission.
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -49,7 +63,7 @@ export function DoctorEarningsPanel({ earnings }: Props) {
         </div>
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Paid consultations
+            Paid services
           </p>
           <p className="mt-2 text-2xl font-semibold text-slate-900">
             {earnings.completedPaidConsults}
@@ -61,11 +75,11 @@ export function DoctorEarningsPanel({ earnings }: Props) {
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900">Earning history</h2>
           <p className="mt-1 text-xs text-slate-500">
-            Revenue from completed paid online and clinic consultations.
+            Net revenue from completed paid online, clinic, and in-house visits.
           </p>
         </div>
         {earnings.transactions.length === 0 ? (
-          <DoctorEmptyState message="No paid consultations completed yet. Earnings appear here after patients complete bookings." />
+          <DoctorEmptyState message="No paid services completed yet. Earnings appear here after patients complete bookings or home visits." />
         ) : (
           <div className="divide-y divide-slate-100">
             {earnings.transactions.map((tx) => (
@@ -73,7 +87,7 @@ export function DoctorEarningsPanel({ earnings }: Props) {
                 <DoctorListCard
                   title={tx.patient.name}
                   subtitle={formatConsultType(tx.type)}
-                  meta={`Completed ${formatDateTime(tx.completedAt)}`}
+                  meta={`Completed ${formatDateTime(tx.completedAt)} · ${tx.commissionPercent}% of ${formatCurrency(tx.grossAmount, tx.currency)}`}
                   badge={formatCurrency(tx.amount, tx.currency)}
                 />
               </div>

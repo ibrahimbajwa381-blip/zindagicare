@@ -43,7 +43,7 @@ export const updateHomeVisitStatusSchema = z.object({
 
 export const listHomeVisitsQuerySchema = z.object({
   status: z.string().optional(),
-  scope: z.enum(["mine", "assigned", "pending", "all"]).optional(),
+  scope: z.enum(["mine", "assigned", "assigned-history", "pending", "all"]).optional(),
 });
 
 export type CreateHomeVisitInput = z.infer<typeof createHomeVisitSchema>;

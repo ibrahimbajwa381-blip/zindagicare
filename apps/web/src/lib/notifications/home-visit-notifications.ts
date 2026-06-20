@@ -1,5 +1,43 @@
-import { NotificationModel } from "@zindagi/database";
-import { HomeVisitStatuses, NotificationChannels } from "@zindagi/shared";
+import { connectDatabase, NotificationModel, UserModel } from "@zindagi/database";
+import { HomeVisitStatuses, NotificationChannels, Roles } from "@zindagi/shared";
+import { formatKarachiDateTime } from "@/lib/format/datetime";
+
+export async function notifyAdminsHomeVisitRequested(input: {
+  visitId: string;
+  patientName: string;
+  serviceLabel: string;
+  scheduledAt: Date;
+}) {
+  await connectDatabase();
+
+  const admins = await UserModel.find({
+    roles: { $in: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+    isActive: { $ne: false },
+    deletedAt: null,
+  })
+    .select("_id")
+    .lean();
+
+  if (!admins.length) return;
+
+  const scheduled = formatKarachiDateTime(input.scheduledAt);
+
+  await Promise.all(
+    admins.map((admin) =>
+      NotificationModel.create({
+        userId: admin._id.toString(),
+        channel: NotificationChannels.IN_APP,
+        title: "New home care request",
+        body: `${input.patientName} requested ${input.serviceLabel} — scheduled ${scheduled}. Assign a provider from Home care.`,
+        payload: {
+          type: "home_visit_requested",
+          visitId: input.visitId,
+        },
+        sentAt: new Date(),
+      }),
+    ),
+  );
+}
 
 export async function notifyStaffHomeVisitAssigned(input: {
   staffUserId: string;

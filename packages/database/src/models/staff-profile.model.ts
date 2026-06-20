@@ -51,6 +51,8 @@ const staffProfileSchema = new Schema(
     verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
     verifiedAt: { type: Date },
     rejectionReason: { type: String },
+    /** Nurse revenue share override (0–100). Null uses platform default. */
+    commissionPercent: { type: Number, min: 0, max: 100, default: null },
     /** Private admin-only notes (e.g. interview observations). */
     adminNotes: { type: String, maxlength: 5000 },
     deletedAt: { type: Date },

@@ -118,7 +118,7 @@ export function HeroCarousel({
                 </p>
                 <h2 className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]">
                   {service.carousel.title}{" "}
-                  <span className="text-gradient-hero">
+                  <span className="text-hero-highlight drop-shadow-sm">
                     {service.carousel.titleHighlight}
                   </span>
                 </h2>

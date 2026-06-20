@@ -29,6 +29,10 @@ export const adminUpdateDoctorSchema = z.object({
     .optional(),
   sundayMaxSlots: z.number().min(5).max(20).optional(),
   sundaySlotDurationMins: z.number().min(5).max(60).optional(),
+  onlineCommissionPercent: z.number().min(0).max(100).nullable().optional(),
+  homeVisitCommissionPercent: z.number().min(0).max(100).nullable().optional(),
+  /** @deprecated Use onlineCommissionPercent / homeVisitCommissionPercent */
+  commissionPercent: z.number().min(0).max(100).nullable().optional(),
 });
 
 export const adminCancelAppointmentSchema = z.object({
@@ -43,6 +47,12 @@ export const adminSundaySettingsSchema = z.object({
   sundayConsultEnabled: z.boolean().optional(),
   sundayDefaultMaxSlots: z.number().min(5).max(20).optional(),
   sundaySlotDurationMins: z.number().min(5).max(60).optional(),
+});
+
+export const adminCommissionSettingsSchema = z.object({
+  defaultDoctorOnlineCommissionPercent: z.number().min(0).max(100).optional(),
+  defaultDoctorHomeVisitCommissionPercent: z.number().min(0).max(100).optional(),
+  defaultNurseCommissionPercent: z.number().min(0).max(100).optional(),
 });
 
 export const adminSendNotificationSchema = z.object({

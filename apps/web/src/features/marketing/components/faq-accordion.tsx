@@ -36,7 +36,7 @@ export function FaqAccordion({ items }: FaqAccordionProps) {
               aria-expanded={isOpen}
               aria-controls={`faq-panel-${index}`}
               onClick={() => setOpenIndex(isOpen ? -1 : index)}
-              className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50/80 sm:gap-4 sm:px-6 sm:py-5"
+              className="flex w-full items-start gap-3 px-4 py-4 text-start transition-colors hover:bg-slate-50/80 sm:gap-4 sm:px-6 sm:py-5"
             >
               <span
                 className={cn(
@@ -70,7 +70,7 @@ export function FaqAccordion({ items }: FaqAccordionProps) {
               )}
             >
               <div className="overflow-hidden">
-                <p className="px-4 pb-4 pl-[3.25rem] text-sm leading-relaxed text-slate-600 sm:px-6 sm:pb-5 sm:pl-[4.25rem] sm:text-[0.9375rem]">
+                <p className="px-4 pb-4 ps-[3.25rem] text-sm leading-relaxed text-slate-600 sm:px-6 sm:pb-5 sm:ps-[4.25rem] sm:text-[0.9375rem]">
                   {faq.a}
                 </p>
               </div>

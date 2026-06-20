@@ -10,6 +10,14 @@ const systemSettingsSchema = new Schema(
     sundaySlotDurationMins: { type: Number, default: 10, min: 5, max: 60 },
     maintenanceMode: { type: Boolean, default: false },
     maintenanceMessage: { type: String, maxlength: 500 },
+    /** Default doctor share for online/clinic paid consults (0–100). */
+    defaultDoctorOnlineCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
+    /** Default doctor share for in-house home visits (0–100). */
+    defaultDoctorHomeVisitCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
+    /** @deprecated Legacy single doctor default — migrated on read */
+    defaultDoctorCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
+    /** Default revenue share for nurses when profile has no override (0–100). */
+    defaultNurseCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
   },
   { timestamps: true },
 );

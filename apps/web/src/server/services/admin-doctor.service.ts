@@ -3,6 +3,7 @@ import {
   connectDatabase,
   AppointmentModel,
   DoctorProfileModel,
+  HomeVisitModel,
   PaymentModel,
   SundaySlotTemplateModel,
   UserModel,
@@ -11,6 +12,8 @@ import {
 import {
   AppError,
   AppointmentStatuses,
+  HomeVisitServiceTypes,
+  HomeVisitStatuses,
   PaymentStatuses,
   Roles,
   SUNDAY_CONSULT_CONFIG,
@@ -29,6 +32,11 @@ import { mapUserPii, revealPii } from "@/server/lib/decrypt-pii";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { SundayConsultService } from "./sunday-consult.service";
 import { decideDoctorVerification } from "./doctor-verification.service";
+import {
+  calculateStaffNetEarnings,
+  getDoctorCommissionRatesByProfileIds,
+  type DoctorCommissionRates,
+} from "./commission.service";
 
 type CreateDoctorInput = z.infer<typeof adminCreateDoctorSchema>;
 type UpdateDoctorInput = z.infer<typeof adminUpdateDoctorSchema>;
@@ -105,6 +113,10 @@ export type AdminDoctorRow = {
   homeVisitEnabled: boolean;
   homeVisitFee: number;
   consultationFee: number;
+  onlineCommissionPercent: number | null;
+  homeVisitCommissionPercent: number | null;
+  effectiveOnlineCommissionPercent: number;
+  effectiveHomeVisitCommissionPercent: number;
   ratingAvg: number;
   ratingCount: number;
   weeklyAvailability: { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string }[];
@@ -155,6 +167,9 @@ function mapDoctorRow(
     homeVisitEnabled?: boolean;
     homeVisitFee?: number;
     consultationFee?: number;
+    onlineCommissionPercent?: number | null;
+    homeVisitCommissionPercent?: number | null;
+    commissionPercent?: number | null;
     ratingAvg?: number;
     ratingCount?: number;
     weeklyAvailability?: AdminDoctorRow["weeklyAvailability"];
@@ -167,6 +182,7 @@ function mapDoctorRow(
     };
   },
   stats: AdminDoctorStats = EMPTY_STATS,
+  effectiveRates: DoctorCommissionRates = { online: 70, homeVisit: 70 },
 ): AdminDoctorRow {
   const user = profile.userId ?? {};
   const pii = mapUserPii(user);
@@ -188,6 +204,10 @@ function mapDoctorRow(
     homeVisitEnabled: profile.homeVisitEnabled ?? false,
     homeVisitFee: profile.homeVisitFee ?? 0,
     consultationFee: profile.consultationFee ?? 0,
+    onlineCommissionPercent: profile.onlineCommissionPercent ?? null,
+    homeVisitCommissionPercent: profile.homeVisitCommissionPercent ?? null,
+    effectiveOnlineCommissionPercent: effectiveRates.online,
+    effectiveHomeVisitCommissionPercent: effectiveRates.homeVisit,
     ratingAvg: profile.ratingAvg ?? 0,
     ratingCount: profile.ratingCount ?? 0,
     weeklyAvailability: profile.weeklyAvailability ?? [],
@@ -234,12 +254,29 @@ async function loadDoctorStatsBatch(
 
   const doctorObjectIds = mongoObjectIds(doctorProfileIds);
 
+  const [commissionRatesByProfile, profileUsers] = await Promise.all([
+    getDoctorCommissionRatesByProfileIds(doctorProfileIds),
+    DoctorProfileModel.find(
+      mongoFilter({ _id: { $in: mongoObjectIds(doctorProfileIds) } }),
+    )
+      .select("userId")
+      .lean(),
+  ]);
+  const userIdByProfileId = new Map(
+    profileUsers.map((p) => [p._id.toString(), p.userId?.toString() ?? ""]),
+  );
+  const profileIdByUserId = new Map(
+    profileUsers
+      .map((p) => [p.userId?.toString() ?? "", p._id.toString()] as const)
+      .filter(([userId]) => Boolean(userId)),
+  );
+
   const baseFilter = mongoFilter({
     doctorId: { $in: doctorObjectIds },
     $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
   });
 
-  const [appointments, completedAppts] = await Promise.all([
+  const [appointments, completedAppts, completedHomeVisits] = await Promise.all([
     AppointmentModel.find(baseFilter)
       .select("doctorId status scheduledStart completedAt")
       .lean(),
@@ -252,6 +289,18 @@ async function loadDoctorStatsBatch(
       }),
     )
       .select("doctorId paymentId completedAt")
+      .lean(),
+    HomeVisitModel.find(
+      mongoFilter({
+        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+        assignedStaffId: {
+          $in: [...userIdByProfileId.values()].filter(Boolean),
+        },
+        status: HomeVisitStatuses.COMPLETED,
+        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      }),
+    )
+      .select("assignedStaffId paymentId pricing completedAt")
       .lean(),
   ]);
 
@@ -283,37 +332,71 @@ async function loadDoctorStatsBatch(
   }
 
   const paymentIds = [
-    ...new Set(
-      completedAppts
+    ...new Set([
+      ...completedAppts
         .map((a) => a.paymentId?.toString())
         .filter((id): id is string => Boolean(id)),
-    ),
+      ...completedHomeVisits
+        .map((v) => v.paymentId?.toString())
+        .filter((id): id is string => Boolean(id)),
+    ]),
   ];
 
+  const paymentAmounts = new Map<string, number>();
   if (paymentIds.length) {
     const payments = await PaymentModel.find(
       mongoFilter({ _id: { $in: mongoObjectIds(paymentIds) }, status: PaymentStatuses.PAID }),
     )
       .select("_id amount")
       .lean();
-    const paymentAmounts = new Map(
-      payments.map((p) => [p._id.toString(), p.amount ?? 0]),
-    );
-
-    for (const appt of completedAppts) {
-      const doctorId = appt.doctorId?.toString();
-      const paymentId = appt.paymentId?.toString();
-      if (!doctorId || !paymentId) continue;
-      const amount = paymentAmounts.get(paymentId) ?? 0;
-      if (!amount) continue;
-
-      const current = statsMap.get(doctorId) ?? { ...EMPTY_STATS };
-      current.totalEarnings += amount;
-      if (appt.completedAt && appt.completedAt >= startOfMonth) {
-        current.earningsThisMonth += amount;
-      }
-      statsMap.set(doctorId, current);
+    for (const payment of payments) {
+      paymentAmounts.set(payment._id.toString(), payment.amount ?? 0);
     }
+  }
+
+  const addEarnings = (
+    profileId: string,
+    grossAmount: number,
+    completedAt: Date | null | undefined,
+    channel: "online" | "homeVisit",
+  ) => {
+    if (!grossAmount) return;
+    const rates = commissionRatesByProfile.get(profileId) ?? {
+      online: 70,
+      homeVisit: 70,
+    };
+    const commissionPercent = channel === "online" ? rates.online : rates.homeVisit;
+    const netAmount = calculateStaffNetEarnings(grossAmount, commissionPercent);
+    const current = statsMap.get(profileId) ?? { ...EMPTY_STATS };
+    current.totalEarnings += netAmount;
+    if (completedAt && completedAt >= startOfMonth) {
+      current.earningsThisMonth += netAmount;
+    }
+    statsMap.set(profileId, current);
+  };
+
+  for (const appt of completedAppts) {
+    const doctorId = appt.doctorId?.toString();
+    const paymentId = appt.paymentId?.toString();
+    if (!doctorId || !paymentId) continue;
+    addEarnings(
+      doctorId,
+      paymentAmounts.get(paymentId) ?? 0,
+      appt.completedAt,
+      "online",
+    );
+  }
+
+  for (const visit of completedHomeVisits) {
+    const staffUserId = visit.assignedStaffId?.toString();
+    if (!staffUserId) continue;
+    const profileId = profileIdByUserId.get(staffUserId);
+    if (!profileId) continue;
+    const paymentId = visit.paymentId?.toString();
+    const grossAmount = paymentId
+      ? (paymentAmounts.get(paymentId) ?? visit.pricing?.total ?? 0)
+      : (visit.pricing?.total ?? 0);
+    addEarnings(profileId, grossAmount, visit.completedAt, "homeVisit");
   }
 
   return statsMap;
@@ -325,7 +408,10 @@ async function buildAdminDoctorRow(profileId: string): Promise<AdminDoctorRow> {
 
   const userId = profile.userId?.toString();
   const users = userId ? await loadUsersById([userId]) : new Map();
-  const statsMap = await loadDoctorStatsBatch([profileId]);
+  const [statsMap, commissionRates] = await Promise.all([
+    loadDoctorStatsBatch([profileId]),
+    getDoctorCommissionRatesByProfileIds([profileId]),
+  ]);
 
   return mapDoctorRow(
     {
@@ -333,6 +419,7 @@ async function buildAdminDoctorRow(profileId: string): Promise<AdminDoctorRow> {
       userId: users.get(userId ?? "") ?? {},
     } as Parameters<typeof mapDoctorRow>[0],
     statsMap.get(profileId) ?? EMPTY_STATS,
+    commissionRates.get(profileId) ?? { online: 70, homeVisit: 70 },
   );
 }
 
@@ -370,9 +457,10 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
   const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];
   const profileIds = profiles.map((p) => p._id.toString());
 
-  const [userMap, statsMap] = await Promise.all([
+  const [userMap, statsMap, commissionRates] = await Promise.all([
     loadUsersById(userIds),
     loadDoctorStatsBatch(profileIds),
+    getDoctorCommissionRatesByProfileIds(profileIds),
   ]);
 
   return profiles.map((profile) => {
@@ -384,6 +472,7 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
         userId: userMap.get(userId) ?? {},
       } as Parameters<typeof mapDoctorRow>[0],
       statsMap.get(id) ?? EMPTY_STATS,
+      commissionRates.get(id) ?? { online: 70, homeVisit: 70 },
     );
   });
 }
@@ -521,6 +610,15 @@ export async function adminUpdateDoctor(
   }
   if (input.homeVisitFee !== undefined) {
     refreshed.homeVisitFee = input.homeVisitFee;
+  }
+  if (input.onlineCommissionPercent !== undefined) {
+    refreshed.onlineCommissionPercent = input.onlineCommissionPercent;
+  }
+  if (input.homeVisitCommissionPercent !== undefined) {
+    refreshed.homeVisitCommissionPercent = input.homeVisitCommissionPercent;
+  }
+  if (input.commissionPercent !== undefined) {
+    refreshed.commissionPercent = input.commissionPercent;
   }
   if (input.weeklyAvailability !== undefined) {
     refreshed.set("weeklyAvailability", input.weeklyAvailability);

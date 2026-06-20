@@ -111,7 +111,7 @@ export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
       {
         href: "/doctor/earnings",
         label: "Earnings",
-        description: "Paid consultation revenue",
+        description: "Paid consult & home visit revenue",
         icon: Wallet,
       },
     ],

@@ -10,6 +10,7 @@ import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
 import {
   Activity,
   Bell,
+  Banknote,
   CalendarDays,
   HeartPulse,
   Home,
@@ -49,6 +50,7 @@ const NAV = [
     countKey: "reviews" as const,
   },
   { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/admin/finances", label: "Finances", icon: Banknote },
   { href: "/admin/sunday-consult", label: "Sunday consult", icon: Sun },
   {
     href: "/admin/urgent-care",

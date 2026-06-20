@@ -31,6 +31,13 @@ import type {
 } from "@zindagi/validators";
 import { saveHomeVisitReport } from "./home-visit-reports.storage";
 import {
+  citiesMatch,
+  doctorCoversCity,
+  mongoCoverageCityFilter,
+  nurseCoversCity,
+} from "@/lib/geo/city-match";
+import {
+  notifyAdminsHomeVisitRequested,
   notifyPatientHomeVisitStatus,
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
@@ -296,11 +303,12 @@ export type HomeCareStaffOption = {
   homeVisitFee?: number;
 };
 
-function nurseGeoPoints(nurse: unknown): { lng: number; lat: number }[] {
+function nurseGeoPoints(nurse: unknown, city?: string): { lng: number; lat: number }[] {
   const profile = nurse as {
-    serviceAreas?: { geo?: { coordinates?: number[] } | null }[];
+    serviceAreas?: { city?: string; geo?: { coordinates?: number[] } | null }[];
   };
   return (profile.serviceAreas ?? [])
+    .filter((area) => !city || citiesMatch(area.city ?? LAUNCH_CITY, city))
     .filter((a) => a.geo?.coordinates?.length === 2)
     .map((a) => ({
       lng: a.geo!.coordinates![0],
@@ -395,6 +403,16 @@ export class HomeVisitService {
       patientNotes: input.patientNotes,
     });
 
+    const patient = await UserModel.findById(patientId).select("name").lean();
+    await notifyAdminsHomeVisitRequested({
+      visitId: visit._id.toString(),
+      patientName: patient?.name ?? "A patient",
+      serviceLabel: SERVICE_LABELS[input.serviceType] ?? "Home visit",
+      scheduledAt,
+    }).catch((err) => {
+      console.error("[home-visit] admin notification failed", err);
+    });
+
     if (input.autoAssign) {
       try {
         await HomeVisitService.autoAssignStaff(visit._id.toString());
@@ -426,6 +444,7 @@ export class HomeVisitService {
     await HomeVisitService.ensureConnected();
 
     const filter: Record<string, unknown> = { deletedAt: { $exists: false } };
+    let sort: Record<string, 1 | -1> = { scheduledAt: 1 };
 
     if (status) filter.status = status;
 
@@ -433,19 +452,39 @@ export class HomeVisitService {
       if (scope === "pending") {
         filter.status = HomeVisitStatuses.REQUESTED;
       }
-    } else if (roles.includes(Roles.NURSE) && scope === "assigned") {
+    } else if (
+      roles.includes(Roles.NURSE) &&
+      (scope === "assigned" || scope === "assigned-history")
+    ) {
       filter.assignedStaffId = userId;
-      filter.status = { $in: ACTIVE_STATUSES };
-    } else if (roles.includes(Roles.DOCTOR) && scope === "assigned") {
+      if (scope === "assigned-history") {
+        filter.status = {
+          $in: [HomeVisitStatuses.COMPLETED, HomeVisitStatuses.CANCELLED],
+        };
+        sort = { scheduledAt: -1 };
+      } else {
+        filter.status = { $in: ACTIVE_STATUSES };
+      }
+    } else if (
+      roles.includes(Roles.DOCTOR) &&
+      (scope === "assigned" || scope === "assigned-history")
+    ) {
       filter.assignedStaffId = userId;
       filter.serviceType = HomeVisitServiceTypes.DOCTOR_VISIT;
-      filter.status = { $in: ACTIVE_STATUSES };
+      if (scope === "assigned-history") {
+        filter.status = {
+          $in: [HomeVisitStatuses.COMPLETED, HomeVisitStatuses.CANCELLED],
+        };
+        sort = { scheduledAt: -1 };
+      } else {
+        filter.status = { $in: ACTIVE_STATUSES };
+      }
     } else {
       filter.patientId = userId;
     }
 
     const visits = await HomeVisitModel.find(filter)
-      .sort({ scheduledAt: 1 })
+      .sort(sort)
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
       .lean();
@@ -501,7 +540,7 @@ export class HomeVisitService {
     }
   }
 
-  static async findNearestAvailableStaff(lng: number, lat: number) {
+  static async findNearestAvailableStaff(lng: number, lat: number, city: string) {
     const nurses = await StaffProfileModel.find({
       staffType: Roles.NURSE,
       isAvailable: true,
@@ -515,6 +554,8 @@ export class HomeVisitService {
     let best: { userId: string; distanceKm: number; name: string } | null = null;
 
     for (const nurse of nurses) {
+      if (!nurseCoversCity(nurse, city, LAUNCH_CITY)) continue;
+
       const areas = nurse.serviceAreas ?? [];
       for (const area of areas) {
         if (!area.geo?.coordinates) continue;
@@ -549,7 +590,7 @@ export class HomeVisitService {
       verificationStatus: VerificationStatuses.APPROVED,
       homeVisitEnabled: true,
       isListed: true,
-      coverageCities: city,
+      ...mongoCoverageCityFilter(city),
       deletedAt: { $exists: false },
     })
       .populate("userId", "name phone isActive")
@@ -658,7 +699,7 @@ export class HomeVisitService {
       };
     }
 
-    const match = await HomeVisitService.findNearestAvailableStaff(lng, lat);
+    const match = await HomeVisitService.findNearestAvailableStaff(lng, lat, city);
 
     if (!match) {
       throw new AppError(
@@ -712,6 +753,8 @@ export class HomeVisitService {
       throw new AppError("Visit cannot be reassigned", ErrorCodes.CONFLICT, 409);
     }
 
+    const visitCity = visit.address?.city ?? LAUNCH_CITY;
+
     const staff = await UserModel.findById(input.staffId);
     if (!staff) {
       throw new AppError("Staff member not found", ErrorCodes.NOT_FOUND, 404);
@@ -727,7 +770,8 @@ export class HomeVisitService {
       if (
         !profile ||
         profile.verificationStatus !== VerificationStatuses.APPROVED ||
-        !profile.homeVisitEnabled
+        !profile.homeVisitEnabled ||
+        !profile.isListed
       ) {
         throw new AppError(
           "Doctor is not approved for home visits",
@@ -735,8 +779,26 @@ export class HomeVisitService {
           400,
         );
       }
+      if (!doctorCoversCity(profile, visitCity)) {
+        throw new AppError(
+          `Doctor is not listed for home visits in ${visitCity}`,
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
     } else if (!staff.roles?.includes(Roles.NURSE)) {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
+    } else {
+      const nurseProfile = await StaffProfileModel.findOne(
+        mongoFilter({ userId: staff._id, staffType: Roles.NURSE }),
+      ).lean();
+      if (!nurseProfile || !nurseCoversCity(nurseProfile, visitCity, LAUNCH_CITY)) {
+        throw new AppError(
+          `Nurse is not listed for home visits in ${visitCity}`,
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
     }
 
     const [lng, lat] = visitPatientCoords(visit);
@@ -745,6 +807,7 @@ export class HomeVisitService {
       isDoctorHomeVisitService(visit.serviceType),
       lng,
       lat,
+      visitCity,
     );
 
     if (
@@ -916,6 +979,7 @@ export class HomeVisitService {
     isDoctor: boolean,
     patientLng: number,
     patientLat: number,
+    visitCity?: string,
   ): Promise<number | null> {
     await HomeVisitService.ensureConnected();
 
@@ -933,7 +997,7 @@ export class HomeVisitService {
       mongoFilter({ userId: staffUserId, staffType: Roles.NURSE }),
     ).lean();
     if (!profile) return null;
-    const points = nurseGeoPoints(profile);
+    const points = nurseGeoPoints(profile, visitCity);
     if (!points.length) return null;
     return nearestGeoDistanceKm(patientLng, patientLat, points);
   }
@@ -970,14 +1034,17 @@ export class HomeVisitService {
 
     const nursesWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
       nurseProfiles
+        .filter((p) => nurseCoversCity(p, city, LAUNCH_CITY))
         .map((p) => {
           const user = p.userId as {
             _id?: { toString(): string };
             name?: string;
             phone?: string;
           };
-          const area = p.serviceAreas?.[0];
-          const points = nurseGeoPoints(p);
+          const area =
+            p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
+            p.serviceAreas?.[0];
+          const points = nurseGeoPoints(p, city);
           const distanceKm = points.length
             ? nearestGeoDistanceKm(lng, lat, points)
             : undefined;
@@ -998,7 +1065,7 @@ export class HomeVisitService {
       verificationStatus: VerificationStatuses.APPROVED,
       homeVisitEnabled: true,
       isListed: true,
-      coverageCities: city,
+      ...mongoCoverageCityFilter(city),
       deletedAt: { $exists: false },
     })
       .populate("userId", "name phone isActive")
@@ -1102,7 +1169,9 @@ export class HomeVisitService {
       isListed: true,
       deletedAt: { $exists: false },
     };
-    if (city) filter.coverageCities = city;
+    if (city) {
+      Object.assign(filter, mongoCoverageCityFilter(city));
+    }
 
     const profiles = await DoctorProfileModel.find(filter)
       .populate("userId", "name phone isActive")

@@ -67,6 +67,12 @@ export function resolveNotificationHref(
       if (isDoctor) return "/doctor/home-visits";
       return null;
 
+    case "home_visit_requested":
+      if (!isStaffAdmin) return null;
+      return typeof payload.visitId === "string"
+        ? `/admin/home-visits?visitId=${encodeURIComponent(payload.visitId)}`
+        : "/admin/home-visits";
+
     case "home_visit_review":
     case "home_visit_status":
       return "/home-care/visits";

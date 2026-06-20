@@ -69,10 +69,10 @@ export function ProviderOnboardingPreview() {
                 >
                   <Icon className="h-5 w-5" />
                 </span>
-                <h3 className="mt-4 font-display text-xl font-semibold text-foreground sm:text-2xl">
+                <h3 className="mt-4 font-display text-xl font-semibold text-foreground sm:text-2xl [:where(html[lang=ur])_&]:leading-[2.1] [:where(html[lang=ur])_&]:font-medium">
                   {card.title}
                 </h3>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600 sm:text-base">
+                <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600 sm:text-base [:where(html[lang=ur])_&]:leading-[2.25]">
                   {card.description}
                 </p>
                 <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition-colors group-hover:text-brand-dark">

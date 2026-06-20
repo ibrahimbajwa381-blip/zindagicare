@@ -30,8 +30,10 @@ export function GeoLocationPicker({
   const [mapsInput, setMapsInput] = useState("");
   const [parseError, setParseError] = useState<string>();
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading">("idle");
+  const [useGpsMode, setUseGpsMode] = useState(false);
 
   function applyParsedLink() {
+    setUseGpsMode(false);
     setParseError(undefined);
     const parsed = parseGoogleMapsUrl(mapsInput);
     if (!parsed) {
@@ -44,6 +46,7 @@ export function GeoLocationPicker({
   }
 
   function detectCurrentLocation() {
+    setUseGpsMode(true);
     setGeoStatus("loading");
     setParseError(undefined);
 
@@ -64,6 +67,7 @@ export function GeoLocationPicker({
       },
       () => {
         if (!mountedRef.current) return;
+        setUseGpsMode(false);
         setParseError("Could not detect your location. Paste a Google Maps link instead.");
         setGeoStatus("idle");
       },
@@ -71,31 +75,39 @@ export function GeoLocationPicker({
     );
   }
 
+  function clearLocation() {
+    setUseGpsMode(false);
+    setParseError(undefined);
+    onChange(null);
+  }
+
   return (
     <div className="space-y-3">
-      <div>
-        <Label htmlFor={`${id}-maps-link`}>
-          Google Maps location{required ? " *" : ""}
-        </Label>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Open Google Maps, share your clinic or home base location, and paste the link
-          below. We use this to match you with in-house visits within{" "}
-          {HOME_CARE_MATCH_RADIUS_KM} km.
-        </p>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <Input
-            id={`${id}-maps-link`}
-            value={mapsInput}
-            onChange={(e) => setMapsInput(e.target.value)}
-            placeholder="https://maps.google.com/… or 31.5204, 74.3587"
-            className="flex-1"
-          />
-          <Button type="button" variant="secondary" onClick={applyParsedLink}>
-            Apply link
-          </Button>
+      {!useGpsMode && (
+        <div>
+          <Label htmlFor={`${id}-maps-link`}>
+            Google Maps location{required ? " *" : ""}
+          </Label>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Open Google Maps, share your clinic or home base location, and paste the link
+            below. We use this to match you with in-house visits within{" "}
+            {HOME_CARE_MATCH_RADIUS_KM} km.
+          </p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <Input
+              id={`${id}-maps-link`}
+              value={mapsInput}
+              onChange={(e) => setMapsInput(e.target.value)}
+              placeholder="https://maps.google.com/… or 31.5204, 74.3587"
+              className="flex-1"
+            />
+            <Button type="button" variant="secondary" onClick={applyParsedLink}>
+              Apply link
+            </Button>
+          </div>
+          {parseError && <p className="mt-1.5 text-xs text-red-600">{parseError}</p>}
         </div>
-        {parseError && <p className="mt-1.5 text-xs text-red-600">{parseError}</p>}
-      </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -109,11 +121,15 @@ export function GeoLocationPicker({
           {geoStatus === "loading" ? "Detecting…" : "Use my current location"}
         </Button>
         {value && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+          <Button type="button" variant="ghost" size="sm" onClick={clearLocation}>
             Clear location
           </Button>
         )}
       </div>
+
+      {useGpsMode && parseError && (
+        <p className="text-xs text-red-600">{parseError}</p>
+      )}
 
       {value && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">

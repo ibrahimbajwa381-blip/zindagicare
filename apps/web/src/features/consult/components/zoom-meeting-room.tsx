@@ -1,7 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MessageCircle } from "lucide-react";
 import type { VideoJoinPayload } from "@/features/consult/types";
+import { getWhatsAppSupportUrl } from "@/lib/support-contact";
+import { useOptionalLocale, useTranslations } from "@/i18n/locale-provider";
 
 type Props = {
   appointmentId: string;
@@ -11,10 +14,29 @@ type Props = {
 
 /** Embedded Zoom via isolated iframe (Zoom CDN + React 18), stays on ZindagiCare. */
 export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
+  const t = useTranslations();
+  const copy = t.consult.videoSession;
+  const locale = useOptionalLocale();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const joinSentRef = useRef(false);
   const joinedRecordedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+
+  const uiCopy = useMemo(
+    () => ({
+      gettingReady: copy.gettingReady,
+      couldNotJoinTitle: copy.couldNotJoinTitle,
+      pleaseTryAgain: copy.pleaseTryAgain,
+      errors: {
+        generic: copy.errors.generic,
+        timeout: copy.errors.timeout,
+        sdkLoad: copy.errors.sdkLoad,
+      },
+    }),
+    [copy],
+  );
+
+  const supportUrl = getWhatsAppSupportUrl(copy.supportPrefill);
 
   const sendJoinToFrame = useCallback(() => {
     const frame = iframeRef.current?.contentWindow;
@@ -32,11 +54,13 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
           passcode: payload.passcode,
           meetingTitle: payload.meetingTitle,
           leaveUrl: `${window.location.origin}/consult/video/${appointmentId}?left=1`,
+          locale,
+          uiCopy,
         },
       },
       window.location.origin,
     );
-  }, [appointmentId, payload]);
+  }, [appointmentId, locale, payload, uiCopy]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -52,39 +76,56 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
       }
 
       if (event.data?.type === "zindagi-zoom-error") {
+        const raw = event.data.message ?? "";
         const message =
-          event.data.message ??
-          "Could not join video room. If you changed domains, add this site to your Zoom SDK allowlist.";
+          raw.includes("allowlist") || raw.includes("timed out")
+            ? copy.errors.timeout
+            : raw.includes("SDK failed to load")
+              ? copy.errors.sdkLoad
+              : raw.includes("permission") || raw.includes("Permission")
+                ? copy.errors.permissions
+                : copy.errors.generic;
         setError(message);
       }
     };
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [appointmentId, sendJoinToFrame]);
+  }, [appointmentId, copy.errors, sendJoinToFrame]);
 
   if (error) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-        <p className="text-sm text-red-600">{error}</p>
-        <button
-          type="button"
-          className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white"
-          onClick={() => {
-            setError(null);
-            joinSentRef.current = false;
-            sendJoinToFrame();
-          }}
+        <p className="max-w-md text-sm text-red-600">{error}</p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+            onClick={() => {
+              setError(null);
+              joinSentRef.current = false;
+              sendJoinToFrame();
+            }}
+          >
+            {copy.tryAgain}
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => void onLeave()}
+          >
+            {copy.leave}
+          </button>
+        </div>
+        <a
+          href={supportUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-medium text-brand hover:text-brand-dark"
         >
-          Try again
-        </button>
-        <button
-          type="button"
-          className="text-sm text-slate-500 underline"
-          onClick={() => void onLeave()}
-        >
-          Leave
-        </button>
+          <MessageCircle className="h-4 w-4" />
+          {copy.contactSupport}
+        </a>
       </div>
     );
   }

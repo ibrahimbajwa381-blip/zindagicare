@@ -1,19 +1,32 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
+import { Gulzar, Noto_Nastaliq_Urdu, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { AppProviders } from "@/components/providers/app-providers";
-import { DEFAULT_LOCALE } from "@/i18n/config";
 import { auth } from "@/lib/auth";
+import { getLocale } from "@/i18n/server";
+
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
 });
 
-const notoArabic = Noto_Sans_Arabic({
+/** Flowing Nastaleeq for body copy — designed for Urdu screen reading. */
+const gulzar = Gulzar({
   subsets: ["arabic"],
-  variable: "--font-urdu",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-urdu-body",
+  weight: "400",
+  display: "swap",
+  preload: true,
+});
+
+/** Nastaleeq with real bold weights for headings and emphasis. */
+const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
+  subsets: ["arabic"],
+  variable: "--font-urdu-display",
+  weight: ["400", "600", "700"],
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -45,19 +58,21 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  const [session, locale] = await Promise.all([auth(), getLocale()]);
 
   return (
     <html
-      lang={DEFAULT_LOCALE}
-      dir={DEFAULT_LOCALE === "ur" ? "rtl" : "ltr"}
-      className={`${jakarta.variable} ${notoArabic.variable} h-full`}
+      lang={locale}
+      dir={locale === "ur" ? "rtl" : "ltr"}
+      className={`${jakarta.variable} ${gulzar.variable} ${notoNastaliqUrdu.variable} h-full`}
     >
       <body
         className="flex min-h-dvh flex-col font-sans text-foreground antialiased"
         suppressHydrationWarning
       >
-        <AppProviders session={session}>{children}</AppProviders>
+        <AppProviders session={session} initialLocale={locale}>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

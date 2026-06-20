@@ -3,11 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
-import { CalendarHeart, Clock, Plus, Trash2 } from "lucide-react";
+import { CalendarHeart, Clock, Home, Plus, Trash2 } from "lucide-react";
+import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
+import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { previewSundaySlots } from "@/lib/sunday/display";
+import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import type { DoctorProfileDto } from "@/features/doctor/types";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
 
@@ -98,6 +101,11 @@ export function DoctorProfileEditForm({ profile }: Props) {
   const [slotDurationMins, setSlotDurationMins] = useState(
     profile.sundayConsult.slotDurationMins ?? 10,
   );
+  const [homeVisitEnabled, setHomeVisitEnabled] = useState(profile.homeVisit.enabled);
+  const [homeVisitArea, setHomeVisitArea] = useState(profile.homeVisit.area ?? "");
+  const [homeVisitGeo, setHomeVisitGeo] = useState<GeoCoordinates | null>(
+    profile.homeVisit.geo ?? null,
+  );
 
   function updateAvailability(day: number, patch: Partial<AvailabilityDay>) {
     setAvailability((prev) => ({
@@ -170,6 +178,19 @@ export function DoctorProfileEditForm({ profile }: Props) {
       return;
     }
 
+    if (homeVisitEnabled) {
+      if (homeVisitArea.trim().length < 2) {
+        setError("Add your service area for in-house visits (e.g. DHA Phase 5, Gulberg).");
+        setPending(false);
+        return;
+      }
+      if (!homeVisitGeo) {
+        setError("Add your location for in-house visit matching.");
+        setPending(false);
+        return;
+      }
+    }
+
     const body = {
       name: name.trim(),
       phone: phone.trim() || undefined,
@@ -181,6 +202,11 @@ export function DoctorProfileEditForm({ profile }: Props) {
       languages: languageList,
       hospitals: cleanedHospitals,
       weeklyAvailability,
+      homeVisit: {
+        enabled: homeVisitEnabled,
+        area: homeVisitArea.trim() || undefined,
+        geo: homeVisitGeo ?? undefined,
+      },
       sundayConsult: {
         enabled: sundayEnabled,
         startTimeLocal: sundayEnabled ? sundayStart : undefined,
@@ -353,6 +379,60 @@ export function DoctorProfileEditForm({ profile }: Props) {
             className="max-w-xs"
           />
         </div>
+      </section>
+
+      <section className="space-y-4 overflow-hidden rounded-2xl border border-emerald-200/60 bg-gradient-to-br from-emerald-50/80 via-white to-white p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <Home className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">In-house visit service</h2>
+            <p className="mt-0.5 text-xs text-slate-600">
+              Offer doctor home visits in Lahore. Admin assigns you to nearby patient requests
+              when you are the nearest available doctor within {HOME_CARE_MATCH_RADIUS_KM} km.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="homeVisitArea">Service area / neighborhood</Label>
+          <Input
+            id="homeVisitArea"
+            value={homeVisitArea}
+            onChange={(e) => setHomeVisitArea(e.target.value)}
+            placeholder="e.g. DHA Phase 5, Gulberg — where you can travel for home visits"
+            disabled={!homeVisitEnabled}
+            className="mt-1"
+          />
+        </div>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={homeVisitEnabled}
+            onChange={(e) => setHomeVisitEnabled(e.target.checked)}
+            className="mt-1"
+          />
+          <div>
+            <p className="text-sm font-semibold text-slate-900">
+              I am available for in-house doctor visits within {HOME_CARE_MATCH_RADIUS_KM} km
+              of my area
+            </p>
+            <p className="text-xs text-slate-600">
+              Turn this on to receive home visit assignments from admin dispatch.
+            </p>
+          </div>
+        </label>
+
+        {homeVisitEnabled && (
+          <GeoLocationPicker
+            id="doctor-profile-home-visit-geo"
+            value={homeVisitGeo}
+            onChange={setHomeVisitGeo}
+            required
+          />
+        )}
       </section>
 
       <section className="space-y-3">

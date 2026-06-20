@@ -55,7 +55,7 @@ export const DEFAULT_INTAKE_QUESTIONS_UR: readonly IntakeQuestionDefinition[] = 
   },
   {
     key: "current_medications",
-    text: "کیا آپ فی الحال کوئی دوائیں، سپلیمنٹس یا گھریلو نسخے استعمال کر رہے ہیں؟ اگر ہاں، تو براہ کرم فہرست بنائیں۔",
+    text: "کیا آپ فی الحال کوئی دوائیں، غذائی ضمیمے یا گھریلو نسخے استعمال کر رہے ہیں؟ اگر ہاں، تو براہ کرم فہرست بنائیں۔",
   },
   {
     key: "allergies",
@@ -63,7 +63,7 @@ export const DEFAULT_INTAKE_QUESTIONS_UR: readonly IntakeQuestionDefinition[] = 
   },
   {
     key: "chronic_conditions",
-    text: "کیا آپ کو کوئی مسلسل طبی حالت ہے (مثلاً ذیابیطس، بلڈ پریشر، دمہ، دل کی بیماری)؟",
+    text: "کیا آپ کو کوئی مسلسل طبی حالت ہے (مثلاً ذیابیطس، بلند فشار خون، دمہ، دل کی بیماری)؟",
   },
   {
     key: "past_surgeries",

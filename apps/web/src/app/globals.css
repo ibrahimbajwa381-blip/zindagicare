@@ -75,8 +75,67 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+html[lang="ur"] {
+  --font-sans: var(--font-urdu-body), "Urdu Typesetting", "Jameel Noori Nastaleeq", serif;
+  --font-display: var(--font-urdu-display), var(--font-urdu-body), "Urdu Typesetting", serif;
+  font-size: 106.25%;
+}
+
 html[lang="ur"] body {
-  font-family: var(--font-urdu), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-urdu-body), "Urdu Typesetting", "Jameel Noori Nastaleeq", serif;
+  line-height: 2;
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+html[lang="ur"] .font-display,
+html[lang="ur"] h1,
+html[lang="ur"] h2,
+html[lang="ur"] h3,
+html[lang="ur"] h4,
+html[lang="ur"] h5,
+html[lang="ur"] h6 {
+  font-family: var(--font-urdu-display), var(--font-urdu-body), "Urdu Typesetting", serif;
+  line-height: 2.15;
+  letter-spacing: 0;
+  word-spacing: 0.05em;
+}
+
+html[lang="ur"] p,
+html[lang="ur"] li,
+html[lang="ur"] dd,
+html[lang="ur"] .text-slate-600 {
+  line-height: 2.15;
+  word-spacing: 0.04em;
+}
+
+html[lang="ur"] .tracking-tight,
+html[lang="ur"] .tracking-wider,
+html[lang="ur"] .tracking-wide {
+  letter-spacing: 0;
+}
+
+html[lang="ur"] .leading-snug {
+  line-height: 2;
+}
+
+html[lang="ur"] .leading-relaxed {
+  line-height: 2.25;
+}
+
+html[lang="ur"] .font-semibold {
+  font-weight: 600;
+}
+
+html[lang="ur"] .font-bold {
+  font-weight: 700;
+}
+
+html[lang="ur"] h1.font-semibold,
+html[lang="ur"] h2.font-semibold,
+html[lang="ur"] h3.font-semibold {
+  font-weight: 500;
 }
 
 @layer utilities {
@@ -102,6 +161,12 @@ html[lang="ur"] body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /** Solid blue highlight for headline accents on teal hero banners */
+  .text-hero-highlight {
+    color: var(--accent-lighter);
+    -webkit-text-fill-color: var(--accent-lighter);
   }
 
   .bg-hero-brand {

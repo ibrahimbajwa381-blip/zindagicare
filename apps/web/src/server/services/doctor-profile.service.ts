@@ -104,6 +104,17 @@ function mapProfileToDto(
       endTimeLocal: slot.endTimeLocal,
     })),
     sundayConsult,
+    homeVisit: {
+      enabled: profile.homeVisitEnabled ?? false,
+      area: profile.homeVisitLocation?.area ?? undefined,
+      geo:
+        profile.homeVisitLocation?.geo?.coordinates?.length === 2
+          ? {
+              lng: profile.homeVisitLocation.geo.coordinates[0],
+              lat: profile.homeVisitLocation.geo.coordinates[1],
+            }
+          : undefined,
+    },
     verificationStatus: profile.verificationStatus,
     verificationSubmittedAt: profile.verificationSubmittedAt?.toISOString(),
     rejectionReason: profile.rejectionReason ?? undefined,
@@ -292,6 +303,30 @@ export async function updateDoctorProfile(
   }
   if (data.weeklyAvailability !== undefined) {
     profile.set("weeklyAvailability", data.weeklyAvailability);
+  }
+
+  if (data.homeVisit !== undefined) {
+    profile.homeVisitEnabled = data.homeVisit.enabled;
+    if (data.homeVisit.enabled && data.homeVisit.geo) {
+      profile.homeVisitLocation = {
+        area: data.homeVisit.area?.trim(),
+        geo: {
+          type: "Point",
+          coordinates: [data.homeVisit.geo.lng, data.homeVisit.geo.lat],
+        },
+      };
+    } else if (!data.homeVisit.enabled) {
+      profile.homeVisitLocation = undefined;
+    }
+
+    if (data.homeVisit.enabled) {
+      profile.coverageCities = [
+        ...new Set([
+          ...(profile.coverageCities ?? []),
+          ...(profile.hospitals ?? []).map((h) => h.city?.trim()).filter(Boolean),
+        ]),
+      ];
+    }
   }
 
   await profile.save();

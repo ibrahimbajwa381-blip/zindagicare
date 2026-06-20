@@ -12,6 +12,12 @@ export type SundayConsultDto = {
   maxSlots?: number;
 };
 
+export type DoctorHomeVisitDto = {
+  enabled: boolean;
+  area?: string;
+  geo?: { lng: number; lat: number };
+};
+
 export type DoctorProfileDto = {
   id: string;
   user: {
@@ -36,6 +42,7 @@ export type DoctorProfileDto = {
   consultationFee: number;
   weeklyAvailability: WeeklyAvailabilityDto[];
   sundayConsult: SundayConsultDto;
+  homeVisit: DoctorHomeVisitDto;
   verificationStatus: string;
   verificationSubmittedAt?: string;
   rejectionReason?: string;

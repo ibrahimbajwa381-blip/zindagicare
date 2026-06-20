@@ -6,6 +6,7 @@ import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { videoConsultPath } from "@/features/consult/paths";
 import { useVideoJoinWindow } from "@/features/consult/hooks/use-video-join-window";
+import { useTranslations } from "@/i18n/locale-provider";
 
 type Props = {
   appointmentId: string;
@@ -23,13 +24,15 @@ export function VideoJoinLinkButton({
   appointmentId,
   scheduledStart,
   scheduledEnd,
-  label = "Join video",
+  label,
   size = "default",
   className,
   iconClassName = "h-3.5 w-3.5",
   urgent = false,
 }: Props) {
+  const t = useTranslations();
   const { canJoin } = useVideoJoinWindow(scheduledStart, scheduledEnd);
+  const buttonLabel = label ?? t.consult.videoSession.joinVideo;
 
   if (!urgent && !canJoin) return null;
 
@@ -37,7 +40,7 @@ export function VideoJoinLinkButton({
     <Button size={size} asChild className={cn("gap-1", className)}>
       <Link href={videoConsultPath(appointmentId)}>
         <Video className={iconClassName} />
-        {label}
+        {buttonLabel}
       </Link>
     </Button>
   );

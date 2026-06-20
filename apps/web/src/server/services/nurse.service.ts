@@ -27,6 +27,10 @@ import type {
   AdminNurseVisitRow,
 } from "@/features/admin/types/nurse-admin";
 import { cnicLast4, hashCnic } from "./auth.service";
+import {
+  calculateStaffNetEarnings,
+  getNurseCommissionPercentByUserId,
+} from "./commission.service";
 
 const ACTIVE_VISIT_STATUSES = [
   HomeVisitStatuses.ASSIGNED,
@@ -526,8 +530,10 @@ export async function getNurseProfileForAdmin(
 
   let totalEarnings = 0;
   let earningsThisMonth = 0;
+  const commissionPercent = await getNurseCommissionPercentByUserId(userId);
   for (const visit of completedVisits) {
-    const total = visit.pricing?.total ?? 0;
+    const gross = visit.pricing?.total ?? 0;
+    const total = calculateStaffNetEarnings(gross, commissionPercent);
     totalEarnings += total;
     if (visit.completedAt && visit.completedAt >= startOfMonth) {
       earningsThisMonth += total;

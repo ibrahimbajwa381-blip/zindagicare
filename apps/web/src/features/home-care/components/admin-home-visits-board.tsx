@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   HomeVisitStatuses,
   HomeVisitServiceTypes,
+  HOME_CARE_MATCH_RADIUS_KM,
   isDoctorHomeVisitService,
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
@@ -181,7 +182,7 @@ export function AdminHomeVisitsBoard() {
       ? (staffLists?.all.doctors ?? [])
       : (staffLists?.all.nurses ?? []);
     const options = override ? allOptions : nearbyOptions;
-    const radiusKm = staffLists?.radiusKm ?? 15;
+    const radiusKm = staffLists?.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM;
     const autoLabel = doctorVisit
       ? "Auto-assign nearest doctor"
       : "Auto-assign nearest nurse";
@@ -247,7 +248,10 @@ export function AdminHomeVisitsBoard() {
           {!override && (
             <span>
               {nearbyOptions.length} provider(s) within {radiusKm} km
-              {nearbyOptions.length === 0 && " — enable override to assign any provider"}
+              {nearbyOptions.length === 0 &&
+                (doctorVisit
+                  ? ` — no matching doctors for ${visit.address.city}. See eligibility rules above, or enable override.`
+                  : " — enable override to assign any provider")}
             </span>
           )}
           {override && (
@@ -280,12 +284,53 @@ export function AdminHomeVisitsBoard() {
       <div className="rounded-xl border border-brand/15 bg-brand-muted/30 p-4 text-sm text-slate-700">
         <p className="font-medium text-slate-900">Home treatment dispatch</p>
         <p className="mt-1">
-          Providers within 15 km of the patient&apos;s Google Maps pin are shown
-          first. Use auto-assign for the closest match, pick from the list, or
-          enable manual override to assign any available nurse or doctor. After
-          assignment, the provider updates en route, arrived, and completed
-          status from their visits dashboard.
+          By default, only providers within {HOME_CARE_MATCH_RADIUS_KM} km of the
+          patient&apos;s Google Maps pin appear in the dropdown. Use auto-assign for
+          the closest match, pick from the list, or enable manual override to assign
+          outside the radius. After assignment, the provider updates en route, arrived,
+          and completed status from their visits dashboard.
         </p>
+
+        <div className="mt-4 rounded-lg border border-slate-200/80 bg-white/70 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Doctor home visit — who appears in the list
+          </p>
+          <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
+            <li>
+              <span className="font-medium text-slate-800">In-house visits enabled</span>{" "}
+              — doctor turned on in-house visits in profile edit (or at verification)
+            </li>
+            <li>
+              <span className="font-medium text-slate-800">Publicly listed</span> — doctor
+              is listed on the online doctors page (Admin → Doctors)
+            </li>
+            <li>
+              <span className="font-medium text-slate-800">Same city as patient</span>{" "}
+              — always required; doctor coverage cities must include the visit city
+              (case-insensitive)
+            </li>
+            <li>
+              <span className="font-medium text-slate-800">Within {HOME_CARE_MATCH_RADIUS_KM} km</span>{" "}
+              — doctor&apos;s home-visit location is within radius of the patient pin
+              (override skips distance only, not the other rules for auto-assign)
+            </li>
+          </ul>
+          <p className="mt-2 text-xs text-slate-500">
+            Manual override allows assignment outside {HOME_CARE_MATCH_RADIUS_KM} km only.
+            The provider must still cover the patient&apos;s city — city always matches.
+          </p>
+        </div>
+
+        <div className="mt-3 rounded-lg border border-slate-200/80 bg-white/70 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Nurse visits — who appears in the list
+          </p>
+          <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
+            <li>Verified nurse with home visits enabled and available</li>
+            <li>Service area in the same city as the patient visit</li>
+            <li>Location within {HOME_CARE_MATCH_RADIUS_KM} km of the patient pin</li>
+          </ul>
+        </div>
       </div>
 
       {pendingVisits.length === 0 && visits.length === 0 && (
@@ -317,6 +362,13 @@ export function AdminHomeVisitsBoard() {
                     {visit.patient?.name} · {formatKarachiDateTime(visit.scheduledAt)}
                   </p>
                   <p className="text-sm text-slate-600">{visit.address.line}</p>
+                  <p className="text-xs text-slate-500">
+                    Visit city:{" "}
+                    <span className="font-medium text-slate-700">{visit.address.city}</span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Visit city: <span className="font-medium text-slate-700">{visit.address.city}</span>
+                  </p>
                   {renderPatientLocation(visit)}
                   {visit.patientNotes && (
                     <p className="text-xs text-slate-500">Notes: {visit.patientNotes}</p>

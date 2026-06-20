@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { pakistaniPhoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
+import { geoPointInputSchema } from "./geo.schema";
 
 const timeLocalSchema = z
   .string()
@@ -10,6 +11,30 @@ const hospitalSchema = z.object({
   city: z.string().min(2, "City is required"),
   address: z.string().optional(),
 });
+
+const doctorHomeVisitSchema = z
+  .object({
+    enabled: z.boolean(),
+    area: z.string().min(2).optional(),
+    geo: geoPointInputSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.enabled) return;
+    if (!data.area?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Service area is required for in-house visits",
+        path: ["area"],
+      });
+    }
+    if (!data.geo) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Location is required for in-house visits",
+        path: ["geo"],
+      });
+    }
+  });
 
 export const updateDoctorProfileSchema = z.object({
   name: z.string().min(2, "Name is required").optional(),
@@ -23,6 +48,7 @@ export const updateDoctorProfileSchema = z.object({
     .array(weeklyAvailabilityEntrySchema)
     .min(1, "Add at least one availability window")
     .optional(),
+  homeVisit: doctorHomeVisitSchema.optional(),
   sundayConsult: z
     .object({
       enabled: z.boolean(),

@@ -79,6 +79,12 @@ const doctorProfileSchema = new Schema(
       geo: geoPointSchema,
     },
     homeVisitFee: { type: Number, default: 0, min: 0 },
+    /** Override for online/clinic consult revenue share (0–100). Null uses platform default. */
+    onlineCommissionPercent: { type: Number, min: 0, max: 100, default: null },
+    /** Override for in-house visit revenue share (0–100). Null uses platform default. */
+    homeVisitCommissionPercent: { type: Number, min: 0, max: 100, default: null },
+    /** @deprecated Legacy single override — applies to both channels when channel override is null */
+    commissionPercent: { type: Number, min: 0, max: 100, default: null },
     verificationStatus: {
       type: String,
       enum: Object.values(VerificationStatuses),
