@@ -30,18 +30,13 @@ export function WhatsAppFloatButton() {
       aria-label={t.common.whatsappChat}
       className={cn(
         "group fixed z-40 flex h-14 w-14 items-center justify-center rounded-full",
-        "bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white",
-        "shadow-lg shadow-[#25D366]/35 ring-2 ring-white/90",
-        "transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-[#25D366]/45 active:scale-95",
+        "bg-[#25D366] text-white shadow-lg ring-2 ring-white",
+        "transition-transform duration-200 hover:scale-105 active:scale-95",
         "bottom-[max(1.25rem,env(safe-area-inset-bottom))] start-[max(1rem,env(safe-area-inset-left))]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2",
       )}
     >
-      <span
-        aria-hidden
-        className="absolute -inset-1 rounded-full border border-[#25D366]/35 motion-safe:animate-pulse"
-      />
-      <WhatsAppIcon className="relative h-7 w-7" />
+      <WhatsAppIcon className="h-7 w-7" />
     </a>
   );
 }

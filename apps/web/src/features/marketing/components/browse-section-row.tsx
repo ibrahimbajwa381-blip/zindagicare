@@ -20,6 +20,8 @@ type BrowseSectionRowProps = {
   onViewAllClick?: () => void;
   items: BrowseItem[];
   queryParam: "specialty" | "condition";
+  /** Hide items beyond this count below the `sm` breakpoint. */
+  mobileLimit?: number;
   className?: string;
 };
 
@@ -30,6 +32,7 @@ export function BrowseSectionRow({
   onViewAllClick,
   items,
   queryParam,
+  mobileLimit,
   className,
 }: BrowseSectionRowProps) {
   const desktopCols =
@@ -64,15 +67,18 @@ export function BrowseSectionRow({
 
       <div
         className={cn(
-          "mt-5 grid grid-cols-4 gap-3 sm:mt-6 sm:gap-4",
+          "mt-5 grid grid-cols-3 gap-2.5 sm:mt-6 sm:grid-cols-4 sm:gap-3 md:gap-4",
           desktopCols,
         )}
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <BrowseIconTile
             key={item.slug}
             item={item}
             href={`${siteConfig.links.doctors}?${queryParam}=${item.slug}`}
+            className={
+              mobileLimit != null && index >= mobileLimit ? "hidden sm:flex" : undefined
+            }
           />
         ))}
       </div>

@@ -22,14 +22,14 @@ export function BrowseIconTile({
       onClick={onNavigate}
       className={cn(
         surfaceCardInteractive,
-        "group flex flex-col items-center gap-3 p-3 text-center sm:p-4",
+        "group flex min-w-0 w-full flex-col items-center gap-2 p-2.5 text-center sm:gap-3 sm:p-4",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light/40 focus-visible:ring-offset-2",
         className,
       )}
     >
       <span
         className={cn(
-          "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br p-2.5 shadow-sm ring-1 ring-white/60 transition-transform duration-300 group-hover:scale-105",
+          "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br p-2 shadow-sm ring-1 ring-white/60 transition-transform duration-300 group-hover:scale-105 sm:h-14 sm:w-14 sm:p-2.5",
           item.ring,
         )}
       >
@@ -42,10 +42,10 @@ export function BrowseIconTile({
           height={40}
           loading="lazy"
           decoding="async"
-          className="relative h-8 w-8 object-contain"
+          className="relative h-7 w-7 object-contain sm:h-8 sm:w-8"
         />
       </span>
-      <span className="font-display text-xs font-semibold leading-snug text-slate-700 transition-colors group-hover:text-foreground sm:text-sm">
+      <span className="flex min-h-[2.75rem] w-full min-w-0 items-start justify-center px-0.5 text-center font-display text-[11px] font-semibold leading-[1.3] text-slate-700 [overflow-wrap:anywhere] transition-colors group-hover:text-foreground sm:min-h-[2.5rem] sm:text-sm">
         {item.label}
       </span>
     </Link>

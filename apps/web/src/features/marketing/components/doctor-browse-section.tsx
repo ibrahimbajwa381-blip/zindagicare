@@ -22,6 +22,7 @@ export function DoctorBrowseSection() {
           items={conditions}
           queryParam="condition"
           viewAllLabel={t.common.viewAll}
+          mobileLimit={6}
         />
       </div>
     </PageSection>

@@ -11,12 +11,6 @@ export const conditionBrowse: BrowseItem[] = [
     ring: "from-brand-muted to-white ring-brand/25",
   },
   {
-    slug: "heart-attack",
-    label: "Heart Attack",
-    image: conditionImage("heart-attack"),
-    ring: "from-accent-muted to-white ring-accent/25",
-  },
-  {
     slug: "pregnancy",
     label: "Pregnancy",
     image: conditionImage("pregnancy"),
