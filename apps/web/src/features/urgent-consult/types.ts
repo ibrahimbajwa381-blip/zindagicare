@@ -24,6 +24,13 @@ export type UrgentCareRequestDto = {
   status: string;
   createdAt: string;
   assignedAt?: string;
+  appointmentId?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  feePkr?: number;
   doctor?: {
     doctorId: string;
     name: string;
@@ -40,7 +47,21 @@ export type UrgentPatientRequestDto = {
   patientNotes?: string;
   createdAt: string;
   assignedAt?: string;
+  appointmentId?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
   doctor?: UrgentCareRequestDto["doctor"];
+};
+
+export type UrgentCheckoutResult = {
+  paymentId: string;
+  amount: number;
+  testMode?: boolean;
+  testPayment?: import("@/lib/payments/dummy-payment").TestPaymentCheckout;
+  jazzcash?: {
+    actionUrl: string;
+    fields: Record<string, string>;
+  };
 };
 
 /** @deprecated use UrgentPatientRequestDto */

@@ -43,6 +43,7 @@ export function DoctorSidebar({
     pendingRequests: 0,
     sundayQueue: 0,
     homeVisits: 0,
+    urgentCalls: 0,
   });
 
   useEffect(() => {

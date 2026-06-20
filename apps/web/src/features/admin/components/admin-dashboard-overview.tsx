@@ -19,6 +19,7 @@ type Stats = {
   totalPatients: number;
   appointmentsToday: number;
   pendingHomeVisits: number;
+  pendingUrgentCare: number;
   sundayBookingsThisWeek: number;
   systemHealth: {
     database: "ok" | "error";
@@ -34,6 +35,13 @@ const KPI_CONFIG = [
     href: "/admin/doctors",
     icon: UserCheck,
     accent: "text-amber-600 bg-amber-50 border-amber-100",
+  },
+  {
+    key: "pendingUrgentCare" as const,
+    label: "Urgent care active",
+    href: "/admin/urgent-care",
+    icon: Activity,
+    accent: "text-red-600 bg-red-50 border-red-100",
   },
   {
     key: "activeDoctors" as const,
@@ -88,7 +96,7 @@ export function AdminDashboardOverview() {
   if (loading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 7 }).map((_, i) => (
           <div
             key={i}
             className="h-32 animate-pulse rounded-2xl border border-slate-200 bg-white"
@@ -168,13 +176,21 @@ export function AdminDashboardOverview() {
             </div>
             <div className="rounded-xl bg-slate-50 p-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Urgent care in queue
+              </dt>
+              <dd className="mt-1 text-2xl font-semibold text-slate-900">
+                {stats.pendingUrgentCare}
+              </dd>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Today&apos;s appointments
               </dt>
               <dd className="mt-1 text-2xl font-semibold text-slate-900">
                 {stats.appointmentsToday}
               </dd>
             </div>
-            <div className="rounded-xl bg-slate-50 p-4">
+            <div className="rounded-xl bg-slate-50 p-4 sm:col-span-2">
               <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Sunday bookings (week)
               </dt>

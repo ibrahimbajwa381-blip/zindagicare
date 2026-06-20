@@ -12,12 +12,11 @@ export function generateZoomMeetingSdkSignature(
 
   const header = { alg: "HS256", typ: "JWT" };
   const payload = {
-    sdkKey,
+    appKey: sdkKey,
     mn: meetingNumber,
     role,
     iat,
     exp,
-    appKey: sdkKey,
     tokenExp: exp,
   };
 

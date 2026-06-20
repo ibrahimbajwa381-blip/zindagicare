@@ -4,6 +4,7 @@ import {
   DoctorProfileModel,
   HomeVisitModel,
   PaymentModel,
+  UrgentCareRequestModel,
   UserModel,
 } from "@zindagi/database";
 import {
@@ -14,6 +15,7 @@ import {
   HomeVisitStatuses,
   PaymentStatuses,
   Roles,
+  UrgentCareRequestStatuses,
   VIDEO_CONSULT_CONFIG,
 } from "@zindagi/shared";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
@@ -54,6 +56,7 @@ export type DoctorDashboardSummary = {
   pendingRequests: number;
   sundayQueue: number;
   homeVisitRequests: number;
+  urgentCalls: number;
   totalEarnings: number;
   earningsThisMonth: number;
 };
@@ -177,7 +180,7 @@ export async function getDoctorDashboardSummary(
   const sundayDate = getNextSundayDate();
   const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
 
-  const [patientIds, pendingRequests, sundayQueue, homeVisitRequests, earnings] =
+  const [patientIds, pendingRequests, sundayQueue, homeVisitRequests, urgentCalls, earnings] =
     await Promise.all([
       AppointmentModel.distinct("patientId", mongoFilter({ doctorId: profile._id })),
       AppointmentModel.countDocuments(
@@ -201,6 +204,12 @@ export async function getDoctorDashboardSummary(
           status: { $in: ACTIVE_HOME_VISIT_STATUSES },
         }),
       ),
+      UrgentCareRequestModel.countDocuments(
+        mongoFilter({
+          assignedDoctorId: profile._id,
+          status: UrgentCareRequestStatuses.ASSIGNED,
+        }),
+      ),
       loadDoctorEarningsTotals(profile._id.toString()),
     ]);
 
@@ -209,6 +218,7 @@ export async function getDoctorDashboardSummary(
     pendingRequests,
     sundayQueue,
     homeVisitRequests,
+    urgentCalls,
     totalEarnings: earnings.totalEarnings,
     earningsThisMonth: earnings.earningsThisMonth,
   };

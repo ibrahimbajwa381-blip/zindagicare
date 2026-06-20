@@ -55,15 +55,15 @@ export const heroServices: HeroService[] = [
       title: "Doctor call in",
       titleHighlight: "10 minutes",
       description:
-        "Share your WhatsApp number — a PMDC-verified doctor calls you within 5–10 minutes. No login, no payment.",
-      highlights: ["Phone callback in 5–10 min", "No account needed"],
-      badge: "Fast · PMDC verified · Phone consult",
-      ctaLabel: "Get urgent care now",
+        "Share your WhatsApp number — pay Rs. 2,000 and a PMDC-verified doctor calls you within 5–10 minutes.",
+      highlights: ["Video consult in 5–10 min", "Rs. 2,000 flat fee"],
+      badge: "Fast · PMDC verified · Video consult",
+      ctaLabel: "Pay & get urgent care",
       href: `${siteConfig.links.urgentCare}#request`,
     },
     card: {
       title: "Urgent Care",
-      description: "Need a doctor now? Get a direct phone call within minutes.",
+      description: "Need a doctor now? Get a secure video consult within 10 minutes.",
     },
   },
   {

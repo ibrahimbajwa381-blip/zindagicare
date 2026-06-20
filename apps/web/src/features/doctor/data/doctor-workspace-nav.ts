@@ -8,6 +8,7 @@ import {
   UserCog,
   Users,
   Wallet,
+  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
@@ -17,7 +18,8 @@ export type DoctorNavBadgeKey =
   | "patients"
   | "pendingRequests"
   | "sundayQueue"
-  | "homeVisits";
+  | "homeVisits"
+  | "urgentCalls";
 
 export type DoctorWorkspaceNavItem = {
   href: string;
@@ -54,6 +56,13 @@ export const DOCTOR_WORKSPACE_ACTIONS: DoctorWorkspaceNavItem[] = [
     description: "Online & clinic appointments",
     icon: CalendarClock,
     badgeKey: "pendingRequests",
+  },
+  {
+    href: "/doctor/urgent-calls",
+    label: "Urgent care",
+    description: "Urgent video consults assigned to you",
+    icon: Zap,
+    badgeKey: "urgentCalls",
   },
   {
     href: "/doctor/prescriptions",
@@ -134,6 +143,7 @@ export type DoctorNavStats = {
   pendingRequests: number;
   sundayQueue: number;
   homeVisits: number;
+  urgentCalls: number;
 };
 
 export function doctorNavBadgeCount(
@@ -153,6 +163,8 @@ export function doctorNavBadgeCount(
       return stats.sundayQueue > 0 ? stats.sundayQueue : null;
     case "homeVisits":
       return stats.homeVisits > 0 ? stats.homeVisits : null;
+    case "urgentCalls":
+      return stats.urgentCalls > 0 ? stats.urgentCalls : null;
     default:
       return null;
   }
@@ -168,5 +180,6 @@ export function summaryToNavStats(
     pendingRequests: summary.pendingRequests,
     sundayQueue: summary.sundayQueue,
     homeVisits: summary.homeVisitRequests,
+    urgentCalls: summary.urgentCalls,
   };
 }

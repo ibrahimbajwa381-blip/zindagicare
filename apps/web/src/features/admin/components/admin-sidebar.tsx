@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { workspaceSidebarTop } from "@/lib/ui/surfaces";
 import { siteConfig } from "@/config/site";
+import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
 import {
   Activity,
   Bell,
@@ -26,6 +28,7 @@ const NAV = [
     href: "/admin/doctors",
     label: "Doctor verifications",
     icon: UserCheck,
+    countKey: "doctors" as const,
   },
   {
     href: "/admin/doctors/manage",
@@ -36,15 +39,51 @@ const NAV = [
     href: "/admin/nurses",
     label: "Nurse verifications",
     icon: HeartPulse,
+    countKey: "nurses" as const,
   },
   { href: "/admin/patients", label: "Patients", icon: Users },
-  { href: "/admin/reviews", label: "Patient reviews", icon: Star },
+  {
+    href: "/admin/reviews",
+    label: "Patient reviews",
+    icon: Star,
+    countKey: "reviews" as const,
+  },
   { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/admin/sunday-consult", label: "Sunday consult", icon: Sun },
-  { href: "/admin/urgent-care", label: "Urgent care", icon: Activity },
-  { href: "/admin/home-visits", label: "Home care", icon: Home },
+  {
+    href: "/admin/urgent-care",
+    label: "Urgent care",
+    icon: Activity,
+    countKey: "urgentCare" as const,
+  },
+  {
+    href: "/admin/home-visits",
+    label: "Home care",
+    icon: Home,
+    countKey: "homeVisits" as const,
+  },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
+
+const NAV_POLL_MS = 30_000;
+
+function NavCountBadge({ count, active }: { count: number; active: boolean }) {
+  if (count <= 0) return null;
+
+  const label = count > 99 ? "99+" : String(count);
+
+  return (
+    <span
+      className={cn(
+        "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums",
+        active ? "bg-white/20 text-white" : "bg-amber-500 text-white",
+      )}
+      aria-label={`${label} pending`}
+    >
+      {label}
+    </span>
+  );
+}
 
 type AdminSidebarProps = {
   mobileOpen: boolean;
@@ -53,6 +92,21 @@ type AdminSidebarProps = {
 
 export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const [counts, setCounts] = useState<AdminNavCounts | null>(null);
+
+  const loadCounts = useCallback(async () => {
+    const res = await fetch("/api/v1/admin/nav-counts");
+    const json = await res.json();
+    if (json.success) {
+      setCounts(json.data as AdminNavCounts);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCounts();
+    const interval = setInterval(loadCounts, NAV_POLL_MS);
+    return () => clearInterval(interval);
+  }, [loadCounts]);
 
   function isActive(item: (typeof NAV)[number]) {
     if (item.exact) return pathname === item.href;
@@ -98,6 +152,9 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
         {NAV.map((item) => {
           const active = isActive(item);
           const Icon = item.icon;
+          const count =
+            item.countKey && counts ? counts[item.countKey] : 0;
+
           return (
             <Link
               key={item.href}
@@ -112,7 +169,8 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
               )}
             >
               <Icon className="h-4 w-4 shrink-0 opacity-90" />
-              {item.label}
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              <NavCountBadge count={count} active={active} />
             </Link>
           );
         })}

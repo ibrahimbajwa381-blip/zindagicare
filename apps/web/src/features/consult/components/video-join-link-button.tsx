@@ -15,6 +15,8 @@ type Props = {
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   iconClassName?: string;
+  /** Urgent care — joinable while the consult is still active. */
+  urgent?: boolean;
 };
 
 export function VideoJoinLinkButton({
@@ -25,10 +27,11 @@ export function VideoJoinLinkButton({
   size = "default",
   className,
   iconClassName = "h-3.5 w-3.5",
+  urgent = false,
 }: Props) {
   const { canJoin } = useVideoJoinWindow(scheduledStart, scheduledEnd);
 
-  if (!canJoin) return null;
+  if (!urgent && !canJoin) return null;
 
   return (
     <Button size={size} asChild className={cn("gap-1", className)}>

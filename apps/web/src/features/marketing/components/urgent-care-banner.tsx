@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight, Clock, Phone, Zap } from "lucide-react";
+import { ArrowRight, Clock, Video, Zap } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export function UrgentCareBanner() {
           <div className="relative h-40 w-full shrink-0 sm:h-44 lg:order-2 lg:h-auto lg:min-h-[20rem] lg:w-[40%] xl:min-h-[22rem]">
             <Image
               src={URGENT_CARE_HERO_IMAGE}
-              alt="Urgent phone consultation with a PMDC doctor on ZindagiCare"
+              alt="Urgent video consultation with a PMDC doctor on ZindagiCare"
               fill
               sizes="(max-width: 1024px) 100vw, 40vw"
               className={cn("object-cover", URGENT_CARE_HERO_IMAGE_CLASS)}
@@ -61,7 +61,7 @@ export function UrgentCareBanner() {
             </p>
 
             <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white/90 backdrop-blur-sm sm:text-sm">
-              <Phone className="h-4 w-4 shrink-0 text-brand-lighter" />
+              <Video className="h-4 w-4 shrink-0 text-brand-lighter" />
               <span>
                 {u.waitBadge
                   .replace("{min}", String(URGENT_CONSULT_CONFIG.minWaitMinutes))

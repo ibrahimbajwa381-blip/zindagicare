@@ -19,6 +19,7 @@ const accentByHref: Record<string, string> = {
   "/doctor/messages": "text-brand bg-brand/10 border-brand/20",
   "/doctor/patients": "text-sky-600 bg-sky-50 border-sky-100",
   "/doctor/requests": "text-violet-600 bg-violet-50 border-violet-100",
+  "/doctor/urgent-calls": "text-rose-600 bg-rose-50 border-rose-100",
   "/doctor/sunday-consult": "text-amber-600 bg-amber-50 border-amber-100",
   "/doctor/home-visits": "text-emerald-600 bg-emerald-50 border-emerald-100",
 };

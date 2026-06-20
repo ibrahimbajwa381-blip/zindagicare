@@ -8,11 +8,10 @@ import {
 import {
   AppError,
   AppointmentStatuses,
-  AppointmentTypes,
   ErrorCodes,
   VIDEO_CONSULT_CONFIG,
   VideoSessionStatuses,
-  getVideoJoinWindow,
+  getVideoJoinWindowForAppointment,
 } from "@zindagi/shared";
 import { createZoomMeeting } from "@/lib/zoom/api";
 import { ZOOM_CONSULT_MEETING_TITLE } from "@/lib/zoom/branding";
@@ -21,11 +20,7 @@ import { generateZoomMeetingSdkSignature } from "@/lib/zoom/signature";
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { mongoFilter } from "@/lib/mongo/query";
 
-const ONLINE_TYPES = [
-  AppointmentTypes.ONLINE,
-  AppointmentTypes.SUNDAY_FREE,
-  AppointmentTypes.URGENT_ONLINE,
-] as const;
+const ONLINE_TYPES = ["online", "sunday_free", "urgent_online"] as const;
 
 export type VideoParticipantRole = "patient" | "doctor";
 
@@ -45,8 +40,17 @@ type ParticipantContext = {
   role: VideoParticipantRole;
 };
 
-function getJoinWindow(scheduledStart: Date, scheduledEnd: Date) {
-  return getVideoJoinWindow(scheduledStart, scheduledEnd);
+function getJoinWindow(appointment: AppointmentRow) {
+  const urgentWhileActive =
+    appointment.type === "urgent_online" &&
+    (appointment.status === AppointmentStatuses.CONFIRMED ||
+      appointment.status === AppointmentStatuses.IN_PROGRESS);
+
+  return getVideoJoinWindowForAppointment(
+    appointment.scheduledStart,
+    appointment.scheduledEnd,
+    { urgentWhileActive },
+  );
 }
 
 function meetingDurationMinutes(start: Date, end: Date) {
@@ -190,10 +194,7 @@ export class VideoSessionService {
       appointmentId,
     );
 
-    const { joinOpensAt, joinClosesAt, canJoin } = getJoinWindow(
-      appointment.scheduledStart,
-      appointment.scheduledEnd,
-    );
+    const { joinOpensAt, joinClosesAt, canJoin } = getJoinWindow(appointment);
 
     if (!canJoin) {
       throw new AppError(
@@ -222,7 +223,9 @@ export class VideoSessionService {
     const { sdkKey, sdkSecret } = getZoomSdkSignatureCredentials();
     const publicSdkKey = getPublicZoomSdkKey() ?? sdkKey;
     const meetingNumber = String(metadata.meetingId);
-    const zoomRole: 0 | 1 = role === "doctor" ? 1 : 0;
+    // Meetings are pre-created via the Zoom REST API; join as participant (role 0).
+    // Host role (1) requires a ZAK token and is not needed for scheduled consults.
+    const zoomRole: 0 | 1 = 0;
     const signature = generateZoomMeetingSdkSignature(
       sdkKey,
       sdkSecret,
@@ -333,10 +336,7 @@ export class VideoSessionService {
       mongoFilter({ appointmentId: appointment._id.toString() }),
     ).lean();
 
-    const { joinOpensAt, joinClosesAt, canJoin } = getJoinWindow(
-      appointment.scheduledStart,
-      appointment.scheduledEnd,
-    );
+    const { joinOpensAt, joinClosesAt, canJoin } = getJoinWindow(appointment);
 
     return {
       appointmentId: appointment._id.toString(),

@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Calendar, Clock, Phone, Zap } from "lucide-react";
+import { BadgeCheck, Calendar, Clock, Video, Zap } from "lucide-react";
 import { UrgentCareRequestStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { useTranslations } from "@/i18n/locale-provider";
+import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 import type { UrgentPatientRequestDto } from "../types";
 
 type Props = {
@@ -57,11 +58,18 @@ export function PatientUrgentRequestCard({
   const statusMessage =
     request.status === UrgentCareRequestStatuses.ASSIGNED
       ? request.doctor
-        ? b.assignedMessage
-            .replace("{name}", request.doctor.name)
-            .replace("{phone}", request.patientPhone)
-        : b.assignedMessage.replace("{name}", "Your doctor").replace("{phone}", request.patientPhone)
+        ? b.assignedMessage.replace("{name}", request.doctor.name)
+        : b.assignedMessage.replace("{name}", "Your doctor")
       : b.requestedMessage;
+
+  const canJoin =
+    request.status === UrgentCareRequestStatuses.ASSIGNED && request.appointmentId;
+
+  const joinStart =
+    request.scheduledStart ?? request.assignedAt ?? request.createdAt;
+  const joinEnd =
+    request.scheduledEnd ??
+    new Date(new Date(joinStart).getTime() + 10 * 60_000).toISOString();
 
   return (
     <div
@@ -125,14 +133,12 @@ export function PatientUrgentRequestCard({
 
         <dl className="grid gap-3 sm:grid-cols-2">
           <div className="flex gap-3 rounded-xl border border-slate-200/70 bg-white/80 p-3">
-            <Phone className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+            <Video className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
             <div>
               <dt className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                {b.callbackNumber}
+                {b.consultType}
               </dt>
-              <dd className="mt-1 font-mono text-sm font-semibold text-slate-800">
-                {request.patientPhone}
-              </dd>
+              <dd className="mt-1 text-sm font-medium text-slate-800">{b.videoConsultLabel}</dd>
             </div>
           </div>
           <div className="flex gap-3 rounded-xl border border-slate-200/70 bg-white/80 p-3">
@@ -151,7 +157,7 @@ export function PatientUrgentRequestCard({
         {request.status === UrgentCareRequestStatuses.ASSIGNED && request.assignedAt && (
           <div className="flex gap-3 rounded-xl border border-emerald-200/60 bg-emerald-50/60 p-3 text-sm text-emerald-900">
             <Clock className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{b.expectCallSoon}</p>
+            <p>{b.expectVideoSoon}</p>
           </div>
         )}
 
@@ -165,6 +171,19 @@ export function PatientUrgentRequestCard({
         )}
 
         <div className="flex flex-wrap gap-2">
+          {canJoin ? (
+            <VideoJoinLinkButton
+              urgent
+              appointmentId={request.appointmentId!}
+              scheduledStart={joinStart}
+              scheduledEnd={joinEnd}
+              label={b.joinVideo}
+              className="gap-1.5 bg-brand hover:bg-brand-dark"
+              iconClassName="h-4 w-4"
+            />
+          ) : request.status === UrgentCareRequestStatuses.ASSIGNED ? (
+            <p className="text-sm text-amber-800">{b.videoSessionPreparing}</p>
+          ) : null}
           <Button variant="outline" asChild>
             <Link href={siteConfig.links.urgentCare}>{b.viewUrgentPage}</Link>
           </Button>

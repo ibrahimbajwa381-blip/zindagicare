@@ -10,19 +10,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { JazzCashRedirectForm } from "@/features/consult/components/jazzcash-redirect-form";
 import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  CreditCard,
   Loader2,
-  Phone,
   ShieldAlert,
+  Video,
   Zap,
 } from "lucide-react";
 import { URGENT_CONSULT_CONFIG, UrgentCareRequestStatuses } from "@zindagi/shared";
 import { PatientUrgentRequestCard } from "./patient-urgent-booking-card";
 import { useUrgentRealtime } from "../hooks/use-urgent-realtime";
-import type { UrgentPatientRequestDto } from "../types";
+import type { UrgentCheckoutResult, UrgentPatientRequestDto } from "../types";
 
 export function UrgentConsultClient() {
   const t = useTranslations();
@@ -34,6 +36,9 @@ export function UrgentConsultClient() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jazzcashRedirect, setJazzcashRedirect] = useState<
+    UrgentCheckoutResult["jazzcash"] | null
+  >(null);
 
   const loadMyRequest = useCallback(async () => {
     if (!session?.user) return;
@@ -82,11 +87,17 @@ export function UrgentConsultClient() {
       return;
     }
 
+    if (status !== "authenticated") {
+      window.location.href = `/login?callbackUrl=${encodeURIComponent(`${siteConfig.links.urgentCare}#request`)}`;
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setJazzcashRedirect(null);
 
     try {
-      const res = await fetch("/api/v1/urgent/request", {
+      const res = await fetch("/api/v1/urgent/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -96,16 +107,24 @@ export function UrgentConsultClient() {
       });
       const json = await res.json();
       if (!json.success) {
-        throw new Error(json.error?.message ?? u.errors.requestFailed);
+        throw new Error(json.error?.message ?? u.errors.checkoutFailed);
       }
-      setSubmitted(true);
-      if (json.data) {
-        setRequest(json.data as UrgentPatientRequestDto);
-      } else if (session?.user) {
-        await loadMyRequest();
+
+      const checkout = json.data as UrgentCheckoutResult;
+
+      if (checkout.testMode && checkout.testPayment?.completeUrl) {
+        window.location.href = checkout.testPayment.completeUrl;
+        return;
       }
+
+      if (checkout.jazzcash) {
+        setJazzcashRedirect(checkout.jazzcash);
+        return;
+      }
+
+      window.location.href = `/urgent-care/pay?paymentId=${checkout.paymentId}`;
     } catch (err) {
-      setError(err instanceof Error ? err.message : u.errors.requestFailed);
+      setError(err instanceof Error ? err.message : u.errors.checkoutFailed);
     } finally {
       setLoading(false);
     }
@@ -129,6 +148,10 @@ export function UrgentConsultClient() {
             {u.pageTitle}
           </h1>
           <p className="mt-3 text-sm text-slate-600 sm:text-base">{u.pageDescription}</p>
+          <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-dark">
+            <CreditCard className="h-4 w-4 text-brand" aria-hidden />
+            {u.feeLabel.replace("{amount}", URGENT_CONSULT_CONFIG.defaultFeePkr.toLocaleString())}
+          </p>
           <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-500">
             <Clock className="h-4 w-4 text-brand" aria-hidden />
             {u.waitBadge
@@ -137,7 +160,14 @@ export function UrgentConsultClient() {
           </p>
         </div>
 
-        {showForm ? (
+        {jazzcashRedirect && (
+          <JazzCashRedirectForm
+            actionUrl={jazzcashRedirect.actionUrl}
+            fields={jazzcashRedirect.fields}
+          />
+        )}
+
+        {showForm && !jazzcashRedirect ? (
           <Card className="mt-6 overflow-hidden border-brand-light/40 shadow-premium">
             <CardContent className="p-5 sm:p-6">
               <form onSubmit={submitRequest} className="space-y-5">
@@ -195,13 +225,16 @@ export function UrgentConsultClient() {
                     </>
                   ) : (
                     <>
-                      <Phone className="mr-2 h-4 w-4" />
+                      <CreditCard className="mr-2 h-4 w-4" />
                       {u.requestCta}
                     </>
                   )}
                 </Button>
 
                 <p className="text-center text-xs text-slate-500">{u.formFootnote}</p>
+                {status !== "authenticated" && (
+                  <p className="text-center text-xs text-slate-500">{u.loginHint}</p>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -222,15 +255,10 @@ export function UrgentConsultClient() {
                 <p className="mx-auto mt-3 max-w-md text-base font-medium leading-relaxed text-slate-700 sm:text-lg">
                   {b.matchingBody}
                 </p>
-                {(request?.patientPhone ?? patientPhone) ? (
-                  <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl border border-brand-light/50 bg-white px-4 py-3 text-sm shadow-sm">
-                    <Phone className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-                    <span className="text-slate-500">{b.callbackNumber}:</span>
-                    <span className="font-mono font-semibold text-slate-900">
-                      {request?.patientPhone ?? patientPhone}
-                    </span>
-                  </div>
-                ) : null}
+                <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl border border-brand-light/50 bg-white px-4 py-3 text-sm shadow-sm">
+                  <Video className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+                  <span className="text-slate-600">{b.matchingVideoHint}</span>
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-5 py-4 text-center">

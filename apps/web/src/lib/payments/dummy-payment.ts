@@ -36,7 +36,8 @@ export function buildDummyPaymentPreview(params: {
   paymentId: string;
   appointmentId: string;
   amountPkr: number;
-  doctorName: string;
+  doctorName?: string;
+  description?: string;
   txnRefNo?: string;
 }): DummyPaymentPreview {
   const txnRefNo = params.txnRefNo ?? `DUMMY-${generateTxnRefNo()}`;
@@ -51,7 +52,11 @@ export function buildDummyPaymentPreview(params: {
     amountPaisa,
     currency: "PKR",
     billReference: params.appointmentId.slice(-12),
-    description: `Online consult with ${params.doctorName}`,
+    description:
+      params.description ??
+      (params.doctorName
+        ? `Online consult with ${params.doctorName}`
+        : "ZindagiCare payment"),
     responseCode: "000",
     secureHash: "DUMMY_HASH_MVP_TESTING",
   };
@@ -61,13 +66,15 @@ export function buildTestPaymentCheckout(params: {
   paymentId: string;
   appointmentId: string;
   amountPkr: number;
-  doctorName: string;
+  doctorName?: string;
+  description?: string;
   txnRefNo?: string;
+  payPath?: string;
 }): TestPaymentCheckout {
   const preview = buildDummyPaymentPreview(params);
   return {
     ...preview,
-    completeUrl: `/doctors/booking/pay?paymentId=${params.paymentId}`,
+    completeUrl: params.payPath ?? `/doctors/booking/pay?paymentId=${params.paymentId}`,
   };
 }
 

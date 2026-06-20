@@ -81,7 +81,14 @@ export async function createZoomMeeting(input: {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Zoom create meeting failed (${res.status}): ${body}`);
+    let hint = "";
+    if (body.includes("Invalid access token") || body.includes("does not contain scopes")) {
+      hint =
+        " Check your Server-to-Server app scopes include meeting:write:meeting:admin and that the app is activated.";
+    } else if (res.status === 404 || body.includes("User does not exist")) {
+      hint = ` Set ZOOM_HOST_USER_ID to the licensed Zoom host email (currently "${hostUserId}").`;
+    }
+    throw new Error(`Zoom create meeting failed (${res.status}): ${body}${hint}`);
   }
 
   return res.json() as Promise<ZoomMeeting>;

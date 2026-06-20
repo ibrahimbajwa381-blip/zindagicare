@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Clock, Phone, Zap } from "lucide-react";
+import { ArrowRight, Clock, Video, Zap } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { URGENT_CARE_HERO_IMAGE, URGENT_CARE_HERO_IMAGE_CLASS } from "@/features/marketing/data/hero-services";
 import { useTranslations } from "@/i18n/locale-provider";
@@ -37,7 +37,7 @@ export function HeroUrgentCareStrip() {
         <p className="mt-1 line-clamp-2 text-xs text-white sm:text-sm">{u.heroStripTagline}</p>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-emerald-50 sm:text-xs">
           <span className="inline-flex items-center gap-1">
-            <Phone className="h-3.5 w-3.5 text-amber-200" aria-hidden />
+            <Video className="h-3.5 w-3.5 text-amber-200" aria-hidden />
             {u.heroStripCtaHint}
           </span>
           <span className="inline-flex items-center gap-1">

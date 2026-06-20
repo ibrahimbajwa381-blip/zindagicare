@@ -30,6 +30,10 @@ import type {
   UpdateHomeVisitStatusInput,
 } from "@zindagi/validators";
 import { saveHomeVisitReport } from "./home-visit-reports.storage";
+import {
+  notifyPatientHomeVisitStatus,
+  notifyStaffHomeVisitAssigned,
+} from "@/lib/notifications/home-visit-notifications";
 
 const ACTIVE_STATUSES: HomeVisitStatus[] = [
   HomeVisitStatuses.REQUESTED,
@@ -45,6 +49,56 @@ const STATUS_ORDER: HomeVisitStatus[] = [
   HomeVisitStatuses.ARRIVED,
   HomeVisitStatuses.COMPLETED,
 ];
+
+const SERVICE_LABELS: Record<string, string> = {
+  [HomeVisitServiceTypes.DOCTOR_VISIT]: "Doctor home visit",
+  [HomeVisitServiceTypes.NURSE]: "Nurse visit",
+  [HomeVisitServiceTypes.IV_DRIP]: "IV drip",
+  [HomeVisitServiceTypes.INJECTION]: "Injection",
+  [HomeVisitServiceTypes.WOUND_CARE]: "Wound care",
+};
+
+async function notifyVisitAssignment(visit: Record<string, unknown>, staffUserId: string) {
+  const patient = visit.patientId as { name?: string } | undefined;
+  const patientName =
+    typeof patient === "object" && patient !== null && "name" in patient
+      ? (patient.name ?? "Patient")
+      : "Patient";
+  const serviceType = visit.serviceType as HomeVisitServiceType;
+
+  await notifyStaffHomeVisitAssigned({
+    staffUserId,
+    visitId: (visit._id as { toString(): string }).toString(),
+    serviceLabel: SERVICE_LABELS[serviceType] ?? "Home visit",
+    patientName,
+    scheduledAt: visit.scheduledAt as Date,
+  });
+}
+
+async function notifyVisitStatusChange(
+  visit: Record<string, unknown>,
+  status: HomeVisitStatus,
+) {
+  const patientUserId = refId(visit.patientId);
+  if (!patientUserId) return;
+
+  if (
+    status !== HomeVisitStatuses.EN_ROUTE &&
+    status !== HomeVisitStatuses.ARRIVED &&
+    status !== HomeVisitStatuses.COMPLETED
+  ) {
+    return;
+  }
+
+  const staff = visit.assignedStaffId as { name?: string } | undefined;
+  await notifyPatientHomeVisitStatus({
+    patientUserId,
+    visitId: (visit._id as { toString(): string }).toString(),
+    status,
+    staffName:
+      typeof staff === "object" && staff !== null ? staff.name : undefined,
+  });
+}
 
 export type HomeVisitDto = {
   id: string;
@@ -589,6 +643,12 @@ export class HomeVisitService {
         visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
       }
       await visit.save();
+      const populated = await HomeVisitModel.findById(visit._id)
+        .populate("patientId", "name")
+        .lean();
+      if (populated) {
+        await notifyVisitAssignment(populated as Record<string, unknown>, match.userId);
+      }
       return {
         staffId: match.userId,
         staffName: match.name,
@@ -614,6 +674,13 @@ export class HomeVisitService {
       visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
     }
     await visit.save();
+
+    const populated = await HomeVisitModel.findById(visit._id)
+      .populate("patientId", "name")
+      .lean();
+    if (populated) {
+      await notifyVisitAssignment(populated as Record<string, unknown>, match.userId);
+    }
 
     return {
       staffId: match.userId,
@@ -698,6 +765,16 @@ export class HomeVisitService {
     }
     await visit.save();
 
+    const populated = await HomeVisitModel.findById(visit._id)
+      .populate("patientId", "name")
+      .lean();
+    if (populated) {
+      await notifyVisitAssignment(
+        populated as Record<string, unknown>,
+        input.staffId,
+      );
+    }
+
     return {
       staffId: input.staffId,
       staffName: staff.name ?? (isDoctorHomeVisitService(visit.serviceType) ? "Doctor" : "Nurse"),
@@ -760,6 +837,22 @@ export class HomeVisitService {
 
     await visit.save();
 
+    if (
+      input.status === HomeVisitStatuses.EN_ROUTE ||
+      input.status === HomeVisitStatuses.ARRIVED ||
+      input.status === HomeVisitStatuses.COMPLETED
+    ) {
+      const populated = await HomeVisitModel.findById(visit._id)
+        .populate("assignedStaffId", "name")
+        .lean();
+      if (populated) {
+        await notifyVisitStatusChange(
+          populated as Record<string, unknown>,
+          input.status,
+        );
+      }
+    }
+
     return HomeVisitService.getById(visitId, userId, roles);
   }
 
@@ -802,6 +895,18 @@ export class HomeVisitService {
     }
 
     await visit.save();
+
+    if (visit.status === HomeVisitStatuses.COMPLETED) {
+      const populated = await HomeVisitModel.findById(visit._id)
+        .populate("assignedStaffId", "name")
+        .lean();
+      if (populated) {
+        await notifyVisitStatusChange(
+          populated as Record<string, unknown>,
+          HomeVisitStatuses.COMPLETED,
+        );
+      }
+    }
 
     return HomeVisitService.getById(visitId, userId, roles);
   }

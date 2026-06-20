@@ -92,18 +92,16 @@ export async function sendUrgentConsultConfirmation(params: {
   doctorName: string;
   slotStart: Date;
   amount: number;
+  appointmentId?: string;
 }) {
-  const time = params.slotStart.toLocaleString("en-PK", {
-    timeZone: "Asia/Karachi",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
   await sendConsultNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Urgent care — doctor assigned",
-    body: `Dr. ${params.doctorName} will call you by ${time}. Fee: Rs. ${params.amount.toLocaleString()}. Stay ready on your dashboard.`,
-    payload: { type: "urgent_consult_confirmed" },
+    body: `Dr. ${params.doctorName} is ready for your urgent video consult. Join from your dashboard now. Fee: Rs. ${params.amount.toLocaleString()}.`,
+    payload: {
+      type: "urgent_consult_confirmed",
+      ...(params.appointmentId ? { appointmentId: params.appointmentId } : {}),
+    },
   });
 }

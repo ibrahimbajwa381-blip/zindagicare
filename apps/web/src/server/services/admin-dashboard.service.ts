@@ -6,6 +6,9 @@ import {
   AppointmentModel,
   HomeVisitModel,
   SundaySlotInstanceModel,
+  UrgentCareRequestModel,
+  StaffProfileModel,
+  ReviewModel,
 } from "@zindagi/database";
 import {
   AppointmentStatuses,
@@ -13,10 +16,14 @@ import {
   HomeVisitStatuses,
   Roles,
   STAFF_ROLES,
+  UrgentCareRequestStatuses,
   VerificationStatuses,
 } from "@zindagi/shared";
 import { getSystemSettings } from "./system-settings.service";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
+import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
+
+export type { AdminNavCounts };
 
 export type AdminDashboardStats = {
   pendingDoctorVerifications: number;
@@ -24,6 +31,7 @@ export type AdminDashboardStats = {
   totalPatients: number;
   appointmentsToday: number;
   pendingHomeVisits: number;
+  pendingUrgentCare: number;
   sundayBookingsThisWeek: number;
   systemHealth: {
     database: "ok" | "error";
@@ -31,6 +39,36 @@ export type AdminDashboardStats = {
     maintenanceMode: boolean;
   };
 };
+
+export async function getAdminNavCounts(): Promise<AdminNavCounts> {
+  await connectDatabase();
+
+  const [doctors, nurses, reviews, urgentCare, homeVisits] = await Promise.all([
+    DoctorProfileModel.countDocuments({
+      verificationStatus: VerificationStatuses.PENDING,
+      verificationSubmittedAt: { $exists: true },
+    }),
+    StaffProfileModel.countDocuments({
+      staffType: Roles.NURSE,
+      verificationStatus: VerificationStatuses.PENDING,
+      verificationSubmittedAt: { $exists: true },
+    }),
+    ReviewModel.countDocuments({
+      deletedAt: null,
+      isModerated: false,
+    }),
+    UrgentCareRequestModel.countDocuments({
+      status: {
+        $in: [UrgentCareRequestStatuses.REQUESTED, UrgentCareRequestStatuses.ASSIGNED],
+      },
+    }),
+    HomeVisitModel.countDocuments({
+      status: { $in: [HomeVisitStatuses.REQUESTED, HomeVisitStatuses.ASSIGNED] },
+    }),
+  ]);
+
+  return { doctors, nurses, reviews, urgentCare, homeVisits };
+}
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   await connectDatabase();
@@ -52,6 +90,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     totalPatients,
     appointmentsToday,
     pendingHomeVisits,
+    pendingUrgentCare,
     sundayBookingsThisWeek,
   ] = await Promise.all([
     DoctorProfileModel.countDocuments({
@@ -80,6 +119,11 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     HomeVisitModel.countDocuments({
       status: { $in: [HomeVisitStatuses.REQUESTED, HomeVisitStatuses.ASSIGNED] },
     }),
+    UrgentCareRequestModel.countDocuments({
+      status: {
+        $in: [UrgentCareRequestStatuses.REQUESTED, UrgentCareRequestStatuses.ASSIGNED],
+      },
+    }),
     AppointmentModel.countDocuments({
       type: AppointmentTypes.SUNDAY_FREE,
       scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
@@ -102,6 +146,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     totalPatients,
     appointmentsToday,
     pendingHomeVisits,
+    pendingUrgentCare,
     sundayBookingsThisWeek,
     systemHealth: {
       database,

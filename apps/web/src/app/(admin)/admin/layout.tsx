@@ -1,7 +1,13 @@
+import dynamic from "next/dynamic";
 import { auth } from "@/lib/auth";
 import { isAdmin } from "@zindagi/shared";
 import { redirect } from "next/navigation";
-import { AdminShell } from "@/features/admin/components/admin-shell";
+
+const AdminShell = dynamic(() =>
+  import("@/features/admin/components/admin-shell").then((mod) => ({
+    default: mod.AdminShell,
+  })),
+);
 
 export default async function AdminLayout({
   children,

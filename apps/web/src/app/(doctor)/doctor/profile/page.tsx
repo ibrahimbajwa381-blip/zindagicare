@@ -33,6 +33,7 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
         pendingRequests: 0,
         sundayQueue: 0,
         homeVisitRequests: 0,
+        urgentCalls: 0,
         totalEarnings: 0,
         earningsThisMonth: 0,
       };

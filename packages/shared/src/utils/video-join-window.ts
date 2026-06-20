@@ -24,3 +24,24 @@ export function getVideoJoinWindow(
     canJoin: now >= joinOpensAt && now <= joinClosesAt,
   };
 }
+
+/** Urgent care stays joinable while the request is still active (not slot-based). */
+export function getUrgentActiveJoinWindow(now = new Date()) {
+  return {
+    joinOpensAt: now,
+    joinClosesAt: now,
+    canJoin: true,
+  };
+}
+
+export function getVideoJoinWindowForAppointment(
+  scheduledStart: Date | string,
+  scheduledEnd: Date | string,
+  options?: { urgentWhileActive?: boolean },
+  now = new Date(),
+) {
+  if (options?.urgentWhileActive) {
+    return getUrgentActiveJoinWindow(now);
+  }
+  return getVideoJoinWindow(scheduledStart, scheduledEnd, now);
+}

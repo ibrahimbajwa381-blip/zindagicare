@@ -1,4 +1,8 @@
-import { PatientShell } from "@/components/layout/patient-shell";
+import dynamic from "next/dynamic";
+
+const PatientShell = dynamic(() =>
+  import("./patient-shell").then((mod) => ({ default: mod.PatientShell })),
+);
 
 export default function PatientLayout({
   children,

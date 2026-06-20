@@ -14,7 +14,7 @@ const urgentCareRequestSchema = new Schema(
       required: true,
       index: true,
     },
-    /** Callback number for the on-call doctor (MVP: phone call outside the app) */
+    /** Contact number on file for the patient */
     patientPhone: { type: String, required: true, trim: true },
     patientNotes: { type: String, maxlength: 1000 },
     status: {
@@ -26,6 +26,8 @@ const urgentCareRequestSchema = new Schema(
     assignedDoctorId: { type: Schema.Types.ObjectId, ref: "DoctorProfile", index: true },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     assignedAt: { type: Date },
+    paymentId: { type: Schema.Types.ObjectId, ref: "Payment" },
+    appointmentId: { type: Schema.Types.ObjectId, ref: "Appointment", index: true },
     adminNotes: { type: String, maxlength: 2000, select: false },
     completedAt: { type: Date },
     cancelledAt: { type: Date },

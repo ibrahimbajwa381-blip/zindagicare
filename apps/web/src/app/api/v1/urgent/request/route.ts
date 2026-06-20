@@ -1,12 +1,11 @@
-import {
-  urgentCareRequestSchema,
-  type UrgentCareRequestInput,
-} from "@zindagi/validators";
+import { AppError, ErrorCodes } from "@zindagi/shared";
 import { withApiHandler } from "@/server/api/with-api-handler";
-import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
-export const POST = withApiHandler<UrgentCareRequestInput>(
-  async ({ session, body }) =>
-    UrgentConsultService.createRequest(body, session?.user?.id ?? null),
-  { bodySchema: urgentCareRequestSchema },
-);
+/** Urgent care is paid-only. Use POST /api/v1/urgent/checkout. */
+export const POST = withApiHandler(async () => {
+  throw new AppError(
+    "Urgent care requires payment. Use POST /api/v1/urgent/checkout.",
+    ErrorCodes.VALIDATION,
+    400,
+  );
+});

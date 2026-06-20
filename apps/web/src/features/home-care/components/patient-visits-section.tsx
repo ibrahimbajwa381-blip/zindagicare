@@ -10,6 +10,10 @@ import { useTranslations } from "@/i18n/locale-provider";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { VisitStatusStepper } from "./visit-status-stepper";
+import {
+  HomeVisitReviewSection,
+  isHomeVisitReviewEligible,
+} from "./home-visit-review-section";
 import type { HomeVisitDto } from "@/server/services/home-visit.service";
 
 const SERVICE_LABELS: Record<string, keyof ReturnType<typeof useTranslations>["homeCare"]["services"]> = {
@@ -23,6 +27,7 @@ const SERVICE_LABELS: Record<string, keyof ReturnType<typeof useTranslations>["h
 export function PatientVisitsSection() {
   const t = useTranslations();
   const h = t.homeCare;
+  const reviewCopy = h.review;
   const [visits, setVisits] = useState<HomeVisitDto[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,6 +94,9 @@ export function PatientVisitsSection() {
                     {h.viewReport}
                   </a>
                 </Button>
+              )}
+              {isHomeVisitReviewEligible(visit.status) && (
+                <HomeVisitReviewSection visitId={visit.id} copy={reviewCopy} />
               )}
             </CardContent>
           </Card>

@@ -34,6 +34,12 @@ const SERVICE_LABELS: Record<string, string> = {
   [HomeVisitServiceTypes.WOUND_CARE]: "Wound care",
 };
 
+const ACTIVE_STATUS_HINTS: Partial<Record<string, string>> = {
+  [HomeVisitStatuses.ASSIGNED]: "Assigned provider will mark en route from their visits dashboard.",
+  [HomeVisitStatuses.EN_ROUTE]: "Provider is en route. They will mark arrival when they reach the patient.",
+  [HomeVisitStatuses.ARRIVED]: "Provider is with the patient and will mark the visit complete when finished.",
+};
+
 function isDoctorVisit(visit: HomeVisitDto) {
   return isDoctorHomeVisitService(visit.serviceType);
 }
@@ -60,14 +66,10 @@ export function AdminHomeVisitsBoard() {
   const [manualOverride, setManualOverride] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
-  const [seedMsg, setSeedMsg] = useState<string | null>(null);
-  const isDev = process.env.NODE_ENV === "development";
 
   const loadStaffForVisits = useCallback(async (visitList: HomeVisitDto[]) => {
     const assignable = visitList.filter(
-      (v) =>
-        v.status === HomeVisitStatuses.REQUESTED ||
-        v.status === HomeVisitStatuses.ASSIGNED,
+      (v) => v.status === HomeVisitStatuses.REQUESTED,
     );
     const results = await Promise.all(
       assignable.map(async (visit) => {
@@ -150,17 +152,6 @@ export function AdminHomeVisitsBoard() {
       alert(e instanceof Error ? e.message : "Cancel failed");
     } finally {
       setPending(null);
-    }
-  };
-
-  const seedNurses = async () => {
-    const res = await fetch("/api/internal/seed-home-care", { method: "POST" });
-    const json = await res.json();
-    if (json.success) {
-      setSeedMsg(`Seeded ${json.created?.length ?? 0} demo nurses.`);
-      await load();
-    } else {
-      setSeedMsg(json.error ?? "Seed failed");
     }
   };
 
@@ -291,18 +282,11 @@ export function AdminHomeVisitsBoard() {
         <p className="mt-1">
           Providers within 15 km of the patient&apos;s Google Maps pin are shown
           first. Use auto-assign for the closest match, pick from the list, or
-          enable manual override to assign any available nurse or doctor.
+          enable manual override to assign any available nurse or doctor. After
+          assignment, the provider updates en route, arrived, and completed
+          status from their visits dashboard.
         </p>
       </div>
-
-      {isDev && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" onClick={seedNurses}>
-            Load demo nurses (dev)
-          </Button>
-          {seedMsg && <span className="text-xs text-slate-600">{seedMsg}</span>}
-        </div>
-      )}
 
       {pendingVisits.length === 0 && visits.length === 0 && (
         <Card className={surfaceCard}>
@@ -373,21 +357,19 @@ export function AdminHomeVisitsBoard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <VisitStatusStepper status={visit.status} compact />
-                  {visit.status === HomeVisitStatuses.ASSIGNED && (
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {renderAssignControls(visit)}
-                    </div>
+                  {ACTIVE_STATUS_HINTS[visit.status] && (
+                    <p className="text-sm text-slate-600">
+                      {ACTIVE_STATUS_HINTS[visit.status]}
+                    </p>
                   )}
-                  {visit.status !== HomeVisitStatuses.CANCELLED && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={pending === visit.id}
-                      onClick={() => cancelVisit(visit.id)}
-                    >
-                      Cancel visit
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending === visit.id}
+                    onClick={() => cancelVisit(visit.id)}
+                  >
+                    Cancel visit
+                  </Button>
                 </CardContent>
               </Card>
             ))}

@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { createPortal } from "react-dom";
-import { Bell, CheckCheck } from "lucide-react";
-import { cn } from "@zindagi/shared";
+import { Bell, CheckCheck, ExternalLink } from "lucide-react";
+import { cn, type Role } from "@zindagi/shared";
 import { HeaderIconButton } from "@/components/layout/header-icon-button";
+import { Spinner } from "@/components/ui/spinner";
 import { useTranslations } from "@/i18n/locale-provider";
+import { resolveNotificationHref } from "@/lib/notifications/resolve-notification-href";
 
 type NotificationItem = {
   id: string;
@@ -13,6 +17,7 @@ type NotificationItem = {
   body: string;
   readAt?: string;
   createdAt: string;
+  payload?: Record<string, unknown>;
 };
 
 type HeaderNotificationsMenuProps = {
@@ -45,6 +50,9 @@ export function HeaderNotificationsMenu({
   onCountChange,
 }: HeaderNotificationsMenuProps) {
   const t = useTranslations();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const roles = (session?.user?.roles ?? []) as Role[];
   const labels = t.header.actions;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -147,6 +155,18 @@ export function HeaderNotificationsMenu({
     onCountChange?.();
   }
 
+  async function handleNotificationClick(item: NotificationItem) {
+    if (!item.readAt) {
+      await markRead(item.id);
+    }
+
+    const href = resolveNotificationHref(item.payload, roles);
+    if (href) {
+      setOpen(false);
+      router.push(href);
+    }
+  }
+
   const panel = open ? (
     <div
       id={menuId}
@@ -178,9 +198,9 @@ export function HeaderNotificationsMenu({
 
       <div className="max-h-[min(24rem,calc(100dvh-6rem-env(safe-area-inset-top,0px)))] overflow-y-auto overscroll-contain">
         {loading ? (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">
-            {labels.loadingNotifications}
-          </p>
+          <div className="flex items-center justify-center px-4 py-10">
+            <Spinner size="md" label={labels.loadingNotifications} />
+          </div>
         ) : items.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-slate-500">
             {labels.noNotifications}
@@ -189,24 +209,32 @@ export function HeaderNotificationsMenu({
           <ul className="divide-y divide-slate-100">
             {items.map((item) => {
               const unread = !item.readAt;
+              const href = resolveNotificationHref(item.payload, roles);
               return (
                 <li key={item.id}>
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => {
-                      if (unread) void markRead(item.id);
-                    }}
+                    onClick={() => void handleNotificationClick(item)}
                     className={cn(
                       "flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100",
                       unread && "bg-brand-muted/30",
+                      href && "cursor-pointer",
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-medium text-slate-900">{item.title}</p>
-                      {unread ? (
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
-                      ) : null}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {href ? (
+                          <ExternalLink
+                            className="h-3.5 w-3.5 text-slate-400"
+                            aria-hidden
+                          />
+                        ) : null}
+                        {unread ? (
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
+                        ) : null}
+                      </div>
                     </div>
                     <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
                       {item.body}

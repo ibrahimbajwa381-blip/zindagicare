@@ -198,8 +198,12 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
       <div className="mx-auto max-w-lg rounded-2xl border border-amber-200 bg-amber-50 p-6">
         <p className="font-medium text-amber-900">Video is not configured</p>
         <p className="mt-2 text-sm text-amber-800">
-          Zoom credentials are missing on the server. Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID,
-          ZOOM_CLIENT_SECRET, ZOOM_SDK_KEY, and ZOOM_SDK_SECRET to enable consultations.
+          Zoom credentials are missing or incomplete. You need two Zoom Marketplace apps:
+          a Server-to-Server OAuth app (meeting creation) and an activated General app with
+          Meeting SDK enabled (embedded join). Add the variables listed in{" "}
+          <code className="text-xs">.env.example</code> to{" "}
+          <code className="text-xs">apps/web/.env.local</code> (dev) and your hosting
+          provider (production), and add your domain to the General app allowlist.
         </p>
       </div>
     );
