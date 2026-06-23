@@ -36,6 +36,9 @@ export const siteConfig = {
     dashboard: "/dashboard",
     messages: "/messages",
     doctorMessages: "/doctor/messages",
+    getApp: "/get-app",
+    getAppAndroid: "/get-app?platform=android",
+    getAppIos: "/get-app?platform=ios",
   },
   nav: {
     main: [

@@ -115,6 +115,9 @@ export const ur: Dictionary = {
     productOfBefore: "",
     productOfAfter: "کا پروڈکٹ",
     productOfCompany: "TechCognify.com",
+    getApp: "ایپ حاصل کریں",
+    getAppAndroid: "اینڈرائیڈ ایپ",
+    getAppIos: "آئی فون / آئی پیڈ ایپ",
   },
   legal: {
     backToHome: "صفحۂ اول پر واپس",
@@ -156,6 +159,21 @@ export const ur: Dictionary = {
       "فوری رسائی کے لیے ہوم اسکرین پر شامل کریں۔",
     installAction: "ایپ انسٹال کریں",
     installDismiss: "ابھی نہیں",
+    promptTitleMobile: "زندگی کیئر فون پر بہترین کام کرتی ہے",
+    promptTitleDesktop: "زندگی کیئر ڈیسک ٹاپ پر آزمائیں",
+    promptDescriptionMobile:
+      "تیز بکنگ، مشاورت اور کیئر الرٹس کے لیے ہم آپ کو مشورہ دیتے ہیں کہ زندگی کیئر کو فون پر شامل کریں — صرف ایک لمحہ لگتا ہے۔",
+    promptDescriptionDesktop:
+      "آپ زندگی کیئر کو کمپیوٹر پر انسٹال کر سکتے ہیں تاکہ فوری رسائی ہو، بالکل نیٹیو ایپ کی طرح۔ App Store کی ضرورت نہیں۔",
+    promptMobileHint:
+      "اپنے ڈیوائس پر مرحلہ وار ہدایات کے لیے انسٹال گائیڈ کھولیں۔",
+    promptDesktopHint:
+      "Chrome یا Edge استعمال کریں، پھر براؤزر مینو سے Install ZindagiCare منتخب کریں۔",
+    promptDesktopInstallHint:
+      "نیچے Install پر کلک کریں — زندگی کیئر ڈیسک ٹاپ یا ٹاسک بار سے کھلے گی۔",
+    promptDesktopAction: "ڈیسک ٹاپ پر انسٹال کریں",
+    promptViewGuide: "انسٹال گائیڈ دیکھیں",
+    promptContinueBrowser: "براؤزر میں جاری رکھیں",
     iosInstallHint:
       "شیئر پر ٹیپ کریں، پھر \"Add to Home Screen\" سے زندگی کیئر انسٹال کریں۔",
     pushTitle: "فوری کیئر الرٹس آن کریں",
@@ -166,6 +184,39 @@ export const ur: Dictionary = {
     pushEnabled: "اطلاعات فعال ہیں",
     pushDenied:
       "اطلاعات بلاک ہیں۔ براؤزر یا ڈیوائس کی ترتیبات میں انہیں فعال کریں۔",
+    getAppTitle: "زندگی کیئر ایپ حاصل کریں",
+    getAppDescription:
+      "فون پر انسٹال کریں — تیز بکنگ، مشاورت اور فوری کیئر کے لیے۔ App Store کی ضرورت نہیں۔",
+    getAppFooterHint: "Android (Chrome) اور iPhone/iPad (Safari) پر کام کرتا ہے۔",
+    backToHome: "صفحۂ اول پر واپس",
+    alreadyInstalled: "زندگی کیئر اس ڈیوائس پر پہلے سے انسٹال ہے۔",
+    shareLinkTitle: "یہ لنک شیئر کریں",
+    shareLinkDescription: "مریضوں، ڈاکٹروں یا کسی کو بھی یہ لنک بھیجیں۔",
+    copyLink: "لنک کاپی کریں",
+    copyLinkPrompt: "شیئر کرنے کے لیے یہ لنک کاپی کریں:",
+    linkCopied: "لنک کاپی ہو گیا",
+    androidTitle: "Android پر انسٹال کریں",
+    androidSteps: [
+      "Google Chrome میں یہ صفحہ کھولیں۔",
+      "مینو (⋮) پر ٹیپ کریں یا اوپر Install app بٹن استعمال کریں۔",
+      "Install کی تصدیق کریں — زندگی کیئر ہوم اسکرین پر ظاہر ہوگی۔",
+    ],
+    androidChromeHint: "انسٹال کے لیے Android فون پر Chrome میں یہ صفحہ کھولیں۔",
+    iosTitle: "iPhone یا iPad پر انسٹال کریں",
+    iosSteps: [
+      "Safari میں یہ صفحہ کھولیں (Chrome نہیں)۔",
+      "اسکرین کے نیچے Share بٹن پر ٹیپ کریں۔",
+      "نیچے سکرول کریں، Add to Home Screen منتخب کریں، پھر Add۔",
+    ],
+    iosSafariHint: "Safari ضروری ہے — iOS پر دوسرے براؤزرز میں Add to Home Screen دستیاب نہیں۔",
+    downloadBannerBadge: "مفت موبائل ایپ",
+    downloadBannerTitle: "زندگی کیئر اپنے فون پر حاصل کریں",
+    downloadBannerSubtitle:
+      "ڈاکٹر بک کریں، ویڈیو مشاورت میں شامل ہوں، فوری کیئر الرٹس حاصل کریں — سیکنڈوں میں انسٹال، App Store کی ضرورت نہیں۔",
+    downloadBannerPlatformAndroid: "Android",
+    downloadBannerPlatformIos: "iPhone اور iPad",
+    downloadBannerAndroid: "Android کے لیے انسٹال کریں",
+    downloadBannerIos: "iPhone کے لیے انسٹال کریں",
   },
   hero: {
     learnMore: "مزید جانیں ←",

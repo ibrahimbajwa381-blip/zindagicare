@@ -113,6 +113,9 @@ export const en = {
     productOfBefore: "A product of",
     productOfAfter: "",
     productOfCompany: "TechCognify.com",
+    getApp: "Get the app",
+    getAppAndroid: "Android app",
+    getAppIos: "iPhone / iPad app",
   },
   legal: {
     backToHome: "Back to home",
@@ -153,6 +156,20 @@ export const en = {
     installDescription: "Add to your home screen for quick access to care and consults.",
     installAction: "Install app",
     installDismiss: "Not now",
+    promptTitleMobile: "ZindagiCare works best as an app",
+    promptTitleDesktop: "Try ZindagiCare on your desktop",
+    promptDescriptionMobile:
+      "For faster bookings, consults, and care alerts, we gently recommend adding ZindagiCare to your phone — it takes just a moment.",
+    promptDescriptionDesktop:
+      "You can install ZindagiCare on your computer for quick access, just like a native app. No download store required.",
+    promptMobileHint:
+      "Open our install guide for step-by-step instructions on your device.",
+    promptDesktopHint:
+      "Use Chrome or Edge, then open the browser menu and choose Install ZindagiCare.",
+    promptDesktopInstallHint: "Click Install below — ZindagiCare will open from your desktop or taskbar.",
+    promptDesktopAction: "Install on desktop",
+    promptViewGuide: "View install guide",
+    promptContinueBrowser: "Continue in browser",
     iosInstallHint:
       "Tap Share, then \"Add to Home Screen\" to install ZindagiCare on your iPhone.",
     pushTitle: "Enable urgent care alerts",
@@ -163,6 +180,39 @@ export const en = {
     pushEnabled: "Notifications enabled",
     pushDenied:
       "Notifications are blocked. Enable them in your browser or device settings.",
+    getAppTitle: "Get the ZindagiCare app",
+    getAppDescription:
+      "Install on your phone for faster booking, consults, and urgent care — no App Store required.",
+    getAppFooterHint: "Works on Android (Chrome) and iPhone/iPad (Safari).",
+    backToHome: "Back to home",
+    alreadyInstalled: "ZindagiCare is already installed on this device.",
+    shareLinkTitle: "Share this link",
+    shareLinkDescription: "Send this link to patients, doctors, or anyone who needs the app.",
+    copyLink: "Copy link",
+    copyLinkPrompt: "Copy this link to share:",
+    linkCopied: "Link copied",
+    androidTitle: "Install on Android",
+    androidSteps: [
+      "Open this page in Google Chrome.",
+      "Tap the menu (⋮) or use the Install app button above when it appears.",
+      "Confirm Install — ZindagiCare will appear on your home screen.",
+    ],
+    androidChromeHint: "Open this page in Chrome on your Android phone to install.",
+    iosTitle: "Install on iPhone or iPad",
+    iosSteps: [
+      "Open this page in Safari (not Chrome).",
+      "Tap the Share button at the bottom of the screen.",
+      "Scroll down and tap Add to Home Screen, then tap Add.",
+    ],
+    iosSafariHint: "Safari is required — Add to Home Screen is not available in other browsers on iOS.",
+    downloadBannerBadge: "Free mobile app",
+    downloadBannerTitle: "Get ZindagiCare on your phone",
+    downloadBannerSubtitle:
+      "Book doctors, join video consults, and get urgent care alerts — install in seconds, no app store needed.",
+    downloadBannerPlatformAndroid: "Android",
+    downloadBannerPlatformIos: "iPhone & iPad",
+    downloadBannerAndroid: "Install for Android",
+    downloadBannerIos: "Install for iPhone",
   },
   hero: {
     learnMore: "Learn more →",

@@ -38,6 +38,7 @@ import { Types } from "mongoose";
 /** Paid consult types that unlock doctor–patient chat (Sunday free is excluded). */
 const CHAT_ELIGIBLE_APPOINTMENT_TYPES = [
   AppointmentTypes.ONLINE,
+  AppointmentTypes.URGENT_ONLINE,
   AppointmentTypes.CLINIC,
   AppointmentTypes.HOME_VISIT,
 ] as const;
@@ -103,7 +104,10 @@ async function isPaidAppointmentChatEligible(
     return payment?.status === PaymentStatuses.PAID;
   }
 
-  return appointment.type !== AppointmentTypes.ONLINE;
+  return (
+    appointment.type !== AppointmentTypes.ONLINE &&
+    appointment.type !== AppointmentTypes.URGENT_ONLINE
+  );
 }
 
 async function findLatestEligibleAppointment(

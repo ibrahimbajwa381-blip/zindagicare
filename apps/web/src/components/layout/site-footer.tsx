@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Scale,
   Shield,
+  Smartphone,
   Stethoscope,
   UserPlus,
   Video,
@@ -23,6 +24,7 @@ import {
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
+import { AppDownloadBanner } from "@/components/pwa/app-download-banner";
 import { formatMessage } from "@/i18n/messages";
 import { useTranslations } from "@/i18n/locale-provider";
 
@@ -136,8 +138,23 @@ export function SiteFooter() {
     { href: siteConfig.links.refundPolicy, label: t.legal.pages.refundPolicy, icon: RotateCcw },
   ];
 
+  const getAppLinks: FooterLinkItem[] = [
+    {
+      href: siteConfig.links.getAppAndroid,
+      label: t.footer.getAppAndroid,
+      icon: Smartphone,
+    },
+    {
+      href: siteConfig.links.getAppIos,
+      label: t.footer.getAppIos,
+      icon: Smartphone,
+    },
+  ];
+
   return (
-    <footer className="border-t border-white/10 bg-[#041530] text-slate-300">
+    <>
+      <AppDownloadBanner />
+      <footer className="border-t border-white/10 bg-[#041530] text-slate-300">
       <div className="mx-auto w-full max-w-[100rem] px-4 sm:px-8 lg:px-14">
         <div className="grid gap-10 py-10 sm:gap-12 sm:py-14 lg:grid-cols-12 lg:py-16">
           <div className="space-y-6 lg:col-span-4">
@@ -211,10 +228,11 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-4 lg:gap-6">
+          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-5 lg:gap-6">
             <FooterColumn title={t.footer.services} links={serviceLinks} />
             <FooterColumn title={t.footer.providers} links={providerLinks} />
             <FooterColumn title={t.footer.account} links={accountLinks} />
+            <FooterColumn title={t.footer.getApp} links={getAppLinks} />
             <FooterColumn title={t.footer.legal} links={legalLinks} />
           </div>
         </div>
@@ -265,6 +283,7 @@ export function SiteFooter() {
           </div>
         </div>
       </div>
-    </footer>
+      </footer>
+    </>
   );
 }
