@@ -145,6 +145,28 @@ export const ur: Dictionary = {
     whatsappChat: "واٹس ایپ پر چیٹ",
     whatsappPrefill: "سلام، مجھے زندگی کیئر کے بارے میں ایک سوال ہے۔",
   },
+  pwa: {
+    offlineTitle: "آپ آف لائن ہیں",
+    offlineDescription:
+      "اپنا Wi‑Fi یا موبائل ڈیٹا چیک کریں، پھر دوبارہ کوشش کریں۔",
+    offlineRetry: "دوبارہ کوشش کریں",
+    offlineSupport: "واٹس ایپ پر سپورٹ سے رابطہ کریں",
+    installTitle: "زندگی کیئر انسٹال کریں",
+    installDescription:
+      "فوری رسائی کے لیے ہوم اسکرین پر شامل کریں۔",
+    installAction: "ایپ انسٹال کریں",
+    installDismiss: "ابھی نہیں",
+    iosInstallHint:
+      "شیئر پر ٹیپ کریں، پھر \"Add to Home Screen\" سے زندگی کیئر انسٹال کریں۔",
+    pushTitle: "فوری کیئر الرٹس آن کریں",
+    pushDescription:
+      "جب فوری مریض آپ کو تفویض کیا جائے تو اطلاع حاصل کریں، چاہے ایپ بند ہو۔",
+    pushEnable: "اطلاعات آن کریں",
+    pushDismiss: "بعد میں",
+    pushEnabled: "اطلاعات فعال ہیں",
+    pushDenied:
+      "اطلاعات بلاک ہیں۔ براؤزر یا ڈیوائس کی ترتیبات میں انہیں فعال کریں۔",
+  },
   hero: {
     learnMore: "مزید جانیں ←",
     swipeHint: "خدمات دیکھنے کے لیے سوائپ کریں · اوپر پیش نظارہ کے لیے کارڈ ٹیپ کریں",
@@ -1026,7 +1048,11 @@ export const ur: Dictionary = {
       "مشاورت سے پہلے ان سوالات کے جواب دیں تاکہ ڈاکٹر تیاری کر سکے اور آپ کی مشاورت مرکوز رہے۔",
     formTitle: "مشاورت سے پہلے طبی تاریخ",
     formSubtitle: "آپ کے جوابات صرف آپ کے ڈاکٹر کے ساتھ شیئر کیے جاتے ہیں۔",
+    questionCount: "آپ کے ڈاکٹر کے {count} سوالات",
+    progressAnswered: "{total} میں سے {answered} کے جواب",
+    optionalHintShort: "سب اختیاری",
     loading: "آپ کا طبی تاریخ فارم لوڈ ہو رہا ہے…",
+    notFoundTitle: "فارم دستیاب نہیں",
     notFound: "اس اپائنٹمنٹ کے لیے کوئی طبی تاریخ فارم نہیں ملا۔",
     optionalHint:
       "جتنے سوالات کے جواب دے سکیں دیں۔ اگر کوئی سوال آپ پر لاگو نہیں ہوتا تو اسے خالی چھوڑ سکتے ہیں۔",

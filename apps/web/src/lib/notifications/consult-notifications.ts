@@ -1,5 +1,6 @@
 import { connectDatabase, NotificationModel } from "@zindagi/database";
 import { NotificationChannels } from "@zindagi/shared";
+import { sendWebPushToUser } from "@/server/services/push.service";
 
 type ReminderPayload = {
   userId: string;
@@ -71,19 +72,40 @@ export async function sendDoctorConsultBooked(params: {
           ? "urgent care consult"
           : "online consult";
 
+  const isUrgent = params.type === "urgent_online";
+  const title = isUrgent ? "Urgent care patient waiting" : "New consult booked";
+  const body = isUrgent
+    ? `${params.patientName} needs an urgent video consult — join within 5–10 minutes (${time}).`
+    : `${params.patientName} booked a ${label} for ${time}.`;
+
   await sendConsultNotification({
     userId: params.userId,
     phone: params.phone,
-    title: params.type === "urgent_online" ? "Urgent care patient waiting" : "New consult booked",
-    body:
-      params.type === "urgent_online"
-        ? `${params.patientName} needs an urgent video consult — join within 5–10 minutes (${time}).`
-        : `${params.patientName} booked a ${label} for ${time}.`,
-    payload: {
-      type: "doctor_consult_booked",
-      appointmentId: params.appointmentId,
-    },
+    title,
+    body,
+    payload: isUrgent
+      ? {
+          type: "urgent_care_assigned",
+          appointmentId: params.appointmentId,
+          requestId: params.appointmentId,
+        }
+      : {
+          type: "doctor_consult_booked",
+          appointmentId: params.appointmentId,
+        },
   });
+
+  if (isUrgent) {
+    const pushUrl = `/doctor/urgent-calls?requestId=${encodeURIComponent(params.appointmentId)}`;
+    await sendWebPushToUser(params.userId, {
+      title,
+      body,
+      url: pushUrl,
+      tag: `urgent-${params.appointmentId}`,
+    }).catch((err) => {
+      console.error("[urgent-care] doctor web push failed", err);
+    });
+  }
 }
 
 export async function sendUrgentConsultConfirmation(params: {

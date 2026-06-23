@@ -143,6 +143,27 @@ export const en = {
     whatsappChat: "Chat on WhatsApp",
     whatsappPrefill: "Hello, I have a question about ZindagiCare.",
   },
+  pwa: {
+    offlineTitle: "You're offline",
+    offlineDescription:
+      "Check your Wi‑Fi or mobile data, then try again. Cached pages may still be available.",
+    offlineRetry: "Try again",
+    offlineSupport: "Contact support on WhatsApp",
+    installTitle: "Install ZindagiCare",
+    installDescription: "Add to your home screen for quick access to care and consults.",
+    installAction: "Install app",
+    installDismiss: "Not now",
+    iosInstallHint:
+      "Tap Share, then \"Add to Home Screen\" to install ZindagiCare on your iPhone.",
+    pushTitle: "Enable urgent care alerts",
+    pushDescription:
+      "Get notified when an urgent patient is assigned to you, even when the app is closed.",
+    pushEnable: "Turn on notifications",
+    pushDismiss: "Maybe later",
+    pushEnabled: "Notifications enabled",
+    pushDenied:
+      "Notifications are blocked. Enable them in your browser or device settings.",
+  },
   hero: {
     learnMore: "Learn more →",
     swipeHint: "Swipe to explore services · tap a card to preview above",
@@ -1032,7 +1053,11 @@ export const en = {
       "Answer these questions before your consultation so your doctor can prepare and your visit stays focused.",
     formTitle: "Pre-consult medical history",
     formSubtitle: "Your answers are shared only with your doctor.",
+    questionCount: "{count} questions from your doctor",
+    progressAnswered: "{answered} of {total} answered",
+    optionalHintShort: "All optional",
     loading: "Loading your medical history form…",
+    notFoundTitle: "Form not available",
     notFound: "No medical history form was found for this appointment.",
     optionalHint:
       "Answer as many questions as you can. You may leave a question blank if it does not apply.",

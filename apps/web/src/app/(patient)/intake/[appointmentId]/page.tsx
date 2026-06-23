@@ -24,13 +24,20 @@ export default async function IntakePage({ params }: PageProps) {
   const t = getDictionary(locale);
 
   return (
-    <PageShell variant="brand" spacing="default" flipBlur>
+    <PageShell
+      variant="brand"
+      spacing="default"
+      flipBlur
+      innerClassName="!max-w-3xl"
+    >
       <PageTitle
         eyebrow={t.intake.pageTitle}
         title={t.intake.formTitle}
         description={t.intake.pageDescription}
+        align="center"
+        className="mx-auto"
       />
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-8 sm:mt-10">
         <IntakeForm appointmentId={appointmentId} />
       </div>
     </PageShell>

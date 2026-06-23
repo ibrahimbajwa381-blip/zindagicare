@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Gulzar, Noto_Nastaliq_Urdu, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
+import { theme } from "@/config/theme";
 import { AppProviders } from "@/components/providers/app-providers";
 import { auth } from "@/lib/auth";
 import { getLocale } from "@/i18n/server";
@@ -30,12 +31,21 @@ const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
 });
 
 export const metadata: Metadata = {
+  applicationName: siteConfig.name,
   title: {
     default: siteConfig.name,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
   metadataBase: new URL(siteConfig.url),
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: siteConfig.name,
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: siteConfig.favicon, sizes: "any" },
@@ -45,10 +55,11 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  viewportFit: "cover" as const,
+  viewportFit: "cover",
+  themeColor: theme.brand.DEFAULT,
 };
 
 export const dynamic = "force-dynamic";

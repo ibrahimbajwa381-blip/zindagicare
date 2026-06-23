@@ -19,3 +19,4 @@ export * from "./medical-intake.model";
 export * from "./audit-log.model";
 export * from "./doctor-miss.model";
 export * from "./system-settings.model";
+export * from "./push-subscription.model";

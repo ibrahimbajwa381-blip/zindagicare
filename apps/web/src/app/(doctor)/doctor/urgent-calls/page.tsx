@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
+import { DoctorPushPermissionBanner } from "@/features/doctor/components/doctor-push-permission-banner";
 import { DoctorUrgentCallsPanel } from "@/features/urgent-consult/components/doctor-urgent-calls-panel";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
@@ -36,6 +37,7 @@ export default async function DoctorUrgentCallsPage() {
           ) : null
         }
       />
+      <DoctorPushPermissionBanner />
       <Suspense fallback={<LoadingScreen message="Loading urgent care consults…" />}>
         <DoctorUrgentCallsPanel />
       </Suspense>

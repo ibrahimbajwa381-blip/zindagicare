@@ -1,0 +1,143 @@
+import webpush from "web-push";
+import {
+  connectDatabase,
+  NotificationModel,
+  PushSubscriptionModel,
+} from "@zindagi/database";
+import { NotificationChannels } from "@zindagi/shared";
+import type { PushSubscribeInput } from "@zindagi/validators";
+
+export type WebPushPayload = {
+  title: string;
+  body: string;
+  url: string;
+  tag?: string;
+};
+
+function getVapidConfig() {
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT ?? "mailto:support@zindagicare.pk";
+
+  if (!publicKey || !privateKey) {
+    return null;
+  }
+
+  return { publicKey, privateKey, subject };
+}
+
+function configureWebPush() {
+  const config = getVapidConfig();
+  if (!config) return false;
+
+  webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
+  return true;
+}
+
+export function isWebPushConfigured(): boolean {
+  return Boolean(getVapidConfig());
+}
+
+export async function upsertPushSubscription(
+  userId: string,
+  input: PushSubscribeInput,
+  userAgent?: string | null,
+) {
+  await connectDatabase();
+
+  await PushSubscriptionModel.findOneAndUpdate(
+    { endpoint: input.endpoint },
+    {
+      userId,
+      endpoint: input.endpoint,
+      keys: input.keys,
+      userAgent: userAgent ?? undefined,
+      lastUsedAt: new Date(),
+      expiresAt: input.expirationTime ? new Date(input.expirationTime) : undefined,
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+}
+
+export async function removePushSubscription(userId: string, endpoint: string) {
+  await connectDatabase();
+  await PushSubscriptionModel.deleteOne({ userId, endpoint });
+}
+
+export async function sendWebPushToUser(
+  userId: string,
+  payload: WebPushPayload,
+): Promise<{ sent: number; failed: number }> {
+  if (!configureWebPush()) {
+    return { sent: 0, failed: 0 };
+  }
+
+  await connectDatabase();
+  const subscriptions = await PushSubscriptionModel.find({ userId }).lean();
+
+  if (subscriptions.length === 0) {
+    return { sent: 0, failed: 0 };
+  }
+
+  const pushBody = JSON.stringify(payload);
+  let sent = 0;
+  let failed = 0;
+
+  for (const sub of subscriptions) {
+    if (!sub.keys?.p256dh || !sub.keys?.auth) {
+      failed += 1;
+      continue;
+    }
+
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.keys.p256dh,
+            auth: sub.keys.auth,
+          },
+        },
+        pushBody,
+      );
+      await PushSubscriptionModel.updateOne(
+        { _id: sub._id },
+        { lastUsedAt: new Date() },
+      );
+      sent += 1;
+    } catch (error) {
+      failed += 1;
+      const statusCode =
+        error && typeof error === "object" && "statusCode" in error
+          ? (error as { statusCode?: number }).statusCode
+          : undefined;
+
+      if (statusCode === 404 || statusCode === 410) {
+        await PushSubscriptionModel.deleteOne({ _id: sub._id });
+      }
+    }
+  }
+
+  if (sent > 0) {
+    await NotificationModel.create({
+      userId,
+      channel: NotificationChannels.PUSH,
+      title: payload.title,
+      body: payload.body,
+      payload: { url: payload.url, tag: payload.tag, delivered: true },
+      sentAt: new Date(),
+    }).catch(() => undefined);
+  } else if (failed > 0 && subscriptions.length > 0) {
+    await NotificationModel.create({
+      userId,
+      channel: NotificationChannels.PUSH,
+      title: payload.title,
+      body: payload.body,
+      payload: { url: payload.url, tag: payload.tag, deliveryFailed: true },
+      failedAt: new Date(),
+      failureReason: "All push subscriptions failed",
+    }).catch(() => undefined);
+  }
+
+  return { sent, failed };
+}
