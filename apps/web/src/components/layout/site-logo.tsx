@@ -10,10 +10,10 @@ const LOGO_WIDTH = 320;
 const LOGO_HEIGHT = 120;
 
 const sizes = {
-  sm: "h-11 w-auto min-w-[7.5rem]",
-  md: "h-12 w-auto min-w-[8rem]",
-  lg: "h-14 w-auto min-w-[9rem] sm:h-16 sm:min-w-[10rem]",
-  xl: "h-20 w-auto min-w-[11rem] sm:h-24 sm:min-w-[13rem]",
+  sm: "h-10 w-auto max-w-[8rem] object-contain object-left",
+  md: "h-11 w-auto max-w-[8.5rem] object-contain object-left sm:h-12 sm:max-w-[9rem]",
+  lg: "h-11 w-auto max-w-[9rem] object-contain object-left sm:h-14 sm:max-w-[10rem] md:h-16 md:max-w-[11rem]",
+  xl: "h-16 w-auto max-w-[11rem] object-contain object-left sm:h-20 sm:max-w-[13rem] md:h-24 md:max-w-[15rem]",
 } as const;
 
 type SiteLogoProps = {
@@ -35,15 +35,17 @@ export function SiteLogo({
 }: SiteLogoProps) {
   const content = (
     <>
-      <Image
-        src={siteConfig.logo}
-        alt={siteConfig.name}
-        width={LOGO_WIDTH}
-        height={LOGO_HEIGHT}
-        className={cn("shrink-0 object-contain", sizes[size])}
-        priority={priority ?? size !== "sm"}
-        unoptimized
-      />
+      <span className="inline-flex shrink-0 items-center py-0.5">
+        <Image
+          src={siteConfig.logo}
+          alt={siteConfig.name}
+          width={LOGO_WIDTH}
+          height={LOGO_HEIGHT}
+          className={cn(sizes[size])}
+          priority={priority ?? size !== "sm"}
+          unoptimized
+        />
+      </span>
       {showName ? (
         <span
           className={cn(

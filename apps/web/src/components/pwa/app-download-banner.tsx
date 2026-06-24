@@ -54,7 +54,7 @@ export function AppDownloadBanner() {
               alt=""
               width={80}
               height={80}
-              className="relative h-16 w-16 rounded-2xl bg-white shadow-lg ring-2 ring-white/40 sm:h-20 sm:w-20"
+              className="relative h-16 w-16 rounded-2xl bg-white object-contain p-1.5 shadow-lg ring-2 ring-white/40 sm:h-20 sm:w-20 sm:p-2"
             />
           </div>
 
@@ -80,13 +80,13 @@ export function AppDownloadBanner() {
             href={siteConfig.links.getAppAndroid}
             className="group inline-flex min-h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-white px-5 py-3.5 text-left shadow-lg transition hover:bg-white/95 hover:shadow-xl sm:min-w-[220px] lg:min-w-[240px]"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#3DDC84]/15">
+            <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl">
               <Image
-                src="/icons/android.svg"
+                src="/icons/android.png"
                 alt=""
-                width={28}
-                height={28}
-                className="h-7 w-7"
+                width={44}
+                height={44}
+                className="h-full w-full object-cover"
               />
             </span>
             <span className="min-w-0 flex-1">

@@ -65,7 +65,7 @@ export default async function PatientDashboardPage() {
         description={formatMessage(t.dashboard.welcomeMessage, { name: displayName })}
       />
 
-      <section className="mt-8 space-y-8">
+      <section className="mt-8 min-w-0 space-y-8">
         <div>
           <h2 className="font-display text-lg font-semibold text-slate-900">
             {t.dashboard.activitiesTitle}
@@ -73,12 +73,15 @@ export default async function PatientDashboardPage() {
           <p className="mt-1 text-sm text-slate-500">{t.dashboard.activitiesDescription}</p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
-          <PatientDashboardMessagesSection />
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:items-stretch">
+          <div className="min-w-0">
+            <PatientDashboardMessagesSection />
+          </div>
+          <div className="min-w-0">
           {onlineBooking ? (
             <PatientOnlineBookingSection initialBooking={onlineBooking} />
           ) : (
-            <Card className={cn(surfaceCardInteractive, "flex h-full flex-col")}>
+            <Card className={cn(surfaceCardInteractive, "flex h-full min-w-0 flex-col")}>
               <CardHeader>
                 <CardTitle className="text-base">{t.dashboard.upcomingAppointments}</CardTitle>
               </CardHeader>
@@ -87,6 +90,7 @@ export default async function PatientDashboardPage() {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
 
         {urgentBooking ? (

@@ -137,13 +137,13 @@ export function GetAppPage() {
     <div className="bg-muted/40">
       <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-sm ring-1 ring-border">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-white p-2 shadow-sm ring-1 ring-border">
             <Image
               src={siteConfig.icon}
               alt={siteConfig.name}
               width={64}
               height={64}
-              className="h-16 w-16 rounded-2xl"
+              className="h-full w-full object-contain"
               priority
             />
           </div>

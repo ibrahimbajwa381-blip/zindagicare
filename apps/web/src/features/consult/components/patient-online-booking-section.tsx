@@ -13,7 +13,7 @@ export function PatientOnlineBookingSection({ initialBooking }: Props) {
   if (!initialBooking) return null;
 
   return (
-    <Card className={cn(surfaceCardInteractive, "flex h-full flex-col")}>
+    <Card className={cn(surfaceCardInteractive, "flex h-full min-w-0 flex-col")}>
       <CardHeader>
         <CardTitle className="text-base">Online consultation</CardTitle>
       </CardHeader>

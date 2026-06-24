@@ -108,8 +108,13 @@ export function UnifiedHeader({
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {leadingSlot}
           <SiteLogo
+            size="md"
+            className="group min-w-0 shrink-0 font-semibold text-foreground sm:hidden"
+            priority
+          />
+          <SiteLogo
             size="lg"
-            className="group -my-1 min-w-0 shrink font-semibold text-foreground transition-transform group-hover:scale-[1.02] max-sm:[&_img]:h-12 max-sm:[&_img]:min-w-[7.5rem]"
+            className="group hidden min-w-0 shrink-0 font-semibold text-foreground sm:inline-flex"
             priority
           />
         </div>

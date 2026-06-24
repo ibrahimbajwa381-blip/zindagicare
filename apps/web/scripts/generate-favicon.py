@@ -13,18 +13,31 @@ alpha = data[:, :, 3]
 rgb = data[:, :, :3]
 mask = (alpha > 10) & np.any(rgb < 245, axis=2)
 icon_mask = mask.copy()
-icon_mask[:, 370:] = False
+icon_mask[:, 260:] = False
 rows, cols = np.where(icon_mask)
+if rows.size == 0:
+    raise SystemExit("Could not detect logo icon region")
 x0, y0, x1, y1 = cols.min(), rows.min(), cols.max(), rows.max()
 
-# Tight square crop around the icon with balanced padding
-pad = 12
-cx = (x0 + x1) // 2
-cy = (y0 + y1) // 2
-side = max(x1 - x0, y1 - y0) + pad * 2
-left = cx - side // 2
-top = cy - side // 2
-icon = img.crop((left, top, left + side, top + side))
+# Rectangular crop of the heart icon only, with extra top padding for the figure heads
+pad = 20
+left = max(0, x0 - pad)
+top = max(0, y0 - pad * 2)
+right = min(img.width, x1 + pad)
+bottom = min(img.height, y1 + pad)
+icon_rect = img.crop((left, top, right, bottom))
+
+# Pad to square if crop hit the image edge, then add outer safe-zone for mobile/PWA masks
+rect_w, rect_h = icon_rect.size
+inner_side = max(rect_w, rect_h)
+inner = Image.new("RGBA", (inner_side, inner_side), (255, 255, 255, 0))
+inner.paste(icon_rect, ((inner_side - rect_w) // 2, (inner_side - rect_h) // 2), icon_rect)
+
+safe_ratio = 0.14
+outer_side = int(inner_side * (1 + safe_ratio * 2))
+icon = Image.new("RGBA", (outer_side, outer_side), (255, 255, 255, 255))
+inset = (outer_side - inner_side) // 2
+icon.paste(inner, (inset, inset), inner)
 
 
 def flatten_white_rgba(src: Image.Image, bg=(255, 255, 255, 255)) -> Image.Image:
@@ -50,4 +63,4 @@ icon_rgb.resize((192, 192), Image.Resampling.LANCZOS).save(public_dir / "icon-19
 icon_rgb.resize((512, 512), Image.Resampling.LANCZOS).save(public_dir / "icon-512.png")
 
 print("Created favicon assets from logo icon")
-print("Icon crop:", left, top, left + side, top + side)
+print("Icon bounds:", left, top, right, bottom, "canvas", outer_side)

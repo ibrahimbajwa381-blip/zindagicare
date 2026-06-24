@@ -127,25 +127,27 @@ export function PatientDashboardMessagesSection() {
     <Card
       className={cn(
         surfaceCard,
-        "flex h-full flex-col max-md:overflow-visible max-md:shadow-sm md:overflow-hidden md:shadow-premium border-slate-200 p-0",
+        "flex h-full w-full min-w-0 max-w-full flex-col overflow-x-hidden border-slate-200 p-0 shadow-sm md:overflow-hidden md:shadow-premium",
       )}
     >
-      <CardHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-[#f0f2f5] px-4 py-4 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-muted text-brand">
-              <MessageSquare className="size-5" aria-hidden />
+      <CardHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-[#f0f2f5] px-3 py-3 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-muted text-brand sm:size-10">
+              <MessageSquare className="size-4 sm:size-5" aria-hidden />
             </div>
             <div className="min-w-0">
-              <CardTitle className="text-base">{t.dashboard.nav.messages}</CardTitle>
-              <p className="mt-0.5 line-clamp-1 text-sm text-slate-500">{m.description}</p>
+              <CardTitle className="truncate text-base">{t.dashboard.nav.messages}</CardTitle>
+              <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 sm:line-clamp-1 sm:text-sm">
+                {m.description}
+              </p>
             </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="shrink-0">
+          <Button asChild variant="outline" size="sm" className="h-8 shrink-0 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
             <Link href={siteConfig.links.messages}>{m.viewAll}</Link>
           </Button>
         </div>
-        <label className="relative block">
+        <label className="relative block min-w-0">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
             aria-hidden
@@ -155,74 +157,74 @@ export function PatientDashboardMessagesSection() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder={c.searchPlaceholder}
             className={cn(
-              "w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm",
+              "w-full min-w-0 rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm",
               "outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-muted",
             )}
           />
         </label>
       </CardHeader>
 
-      <CardContent className="min-h-0 flex-1 overflow-y-auto p-0">
+      <CardContent className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-0">
         {loading ? (
           <LoadingScreen message={m.loading} size="md" />
         ) : contacts.length === 0 ? (
-          <div className="px-6 py-10 text-center">
+          <div className="px-4 py-10 text-center sm:px-6">
             <p className="font-medium text-slate-700">{c.emptyTitle}</p>
             <p className="mt-1 text-sm text-slate-500">{c.emptyDescription}</p>
           </div>
         ) : (
-          <ul>
+          <ul className="min-w-0">
             {contacts.map((contact) => {
               const hasUnread = contact.unreadCount > 0;
               return (
-              <li key={contact.id}>
+              <li key={contact.id} className="min-w-0">
                 <button
                   type="button"
                   onClick={() => handleSelect(contact)}
-                  className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 sm:px-6"
+                  className="flex w-full min-w-0 max-w-full items-center gap-2.5 overflow-hidden border-b border-slate-100 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 sm:gap-3 sm:px-6 sm:py-3"
                 >
                   <ChatAvatar
                     name={contact.name}
                     avatarUrl={contact.avatarUrl}
                     isDoctor
+                    size="sm"
+                    className="sm:h-12 sm:w-12"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2">
                       <p
                         className={cn(
-                          "truncate text-slate-900",
+                          "truncate text-sm text-slate-900 sm:text-base",
                           hasUnread ? "font-bold" : "font-semibold",
                         )}
                       >
                         {contact.name}
                       </p>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {contact.lastMessageAt && (
-                          <span
-                            className={cn(
-                              "text-xs",
-                              hasUnread ? "font-semibold text-brand" : "text-slate-500",
-                            )}
-                          >
-                            {formatPreviewTime(contact.lastMessageAt)}
-                          </span>
-                        )}
-                        {hasUnread && (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white">
-                            {contact.unreadCount > 99 ? "99+" : contact.unreadCount}
-                          </span>
-                        )}
-                      </div>
+                      {contact.lastMessageAt ? (
+                        <span
+                          className={cn(
+                            "shrink-0 text-[11px] whitespace-nowrap sm:text-xs",
+                            hasUnread ? "font-semibold text-brand" : "text-slate-500",
+                          )}
+                        >
+                          {formatPreviewTime(contact.lastMessageAt)}
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2">
                       <p
                         className={cn(
-                          "truncate text-sm",
+                          "min-w-0 flex-1 truncate text-xs sm:text-sm",
                           hasUnread ? "font-medium text-slate-800" : "text-slate-500",
                         )}
                       >
                         {contact.lastMessagePreview || contact.subtitle || m.tapToChat}
                       </p>
+                      {hasUnread ? (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold leading-none text-white sm:text-[11px]">
+                          {contact.unreadCount > 99 ? "99+" : contact.unreadCount}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </button>

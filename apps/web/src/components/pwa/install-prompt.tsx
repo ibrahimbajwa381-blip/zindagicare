@@ -147,13 +147,13 @@ export function InstallPrompt() {
             </button>
 
             <div className="flex items-start gap-4">
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl shadow-sm ring-2 ring-white/80">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white p-1.5 shadow-sm ring-2 ring-white/80">
                 <Image
                   src={siteConfig.icon}
                   alt=""
                   width={64}
                   height={64}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                   priority
                 />
               </div>
