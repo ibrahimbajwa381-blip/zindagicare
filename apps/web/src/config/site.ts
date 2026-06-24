@@ -11,6 +11,25 @@ export const siteConfig = {
   tagline: "At-home medical care, online consults, urgent care & free Sunday care",
   description:
     "Lahore's at-home medical care — verified doctors, nurses, and physiotherapists visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations, urgent care calls in 10 minutes, and free 10-minute Sunday consults (Rs. 0).",
+  seo: {
+    defaultTitle: "ZindagiCare — At-Home Medical Care & Online Doctors in Lahore",
+    defaultDescription:
+      "ZindagiCare is Lahore's healthcare platform for at-home doctor and nurse visits, online video consultations, urgent care in 10 minutes, and free Sunday consults with PMDC-verified doctors.",
+    keywords: [
+      "ZindagiCare",
+      "zindagicare",
+      "Zindagi Care",
+      "zindagi care",
+      "online doctor Lahore",
+      "home doctor visit Lahore",
+      "telemedicine Pakistan",
+      "Sunday free consult",
+      "urgent care Lahore",
+    ],
+    alternateNames: ["zindagicare", "Zindagi Care", "ZindagiCare Pakistan"],
+    sameAs: [] as string[],
+    googleSiteVerification: process.env.GOOGLE_SITE_VERIFICATION,
+  },
   launchCity: LAUNCH_CITY,
   supportEmail: "support@zindagicare.pk",
   supportWhatsApp: "923074583567",

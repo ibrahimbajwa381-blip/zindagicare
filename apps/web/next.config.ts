@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
       "../../node_modules/pdfkit/js/data/**/*",
       "./public/logo1.png",
       "./public/icon-192.png",
+      "./public/icon-192-maskable.png",
+      "./public/icon-512.png",
+      "./public/icon-512-maskable.png",
     ],
   },
   transpilePackages: [

@@ -4,8 +4,10 @@ import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { theme } from "@/config/theme";
 import { AppProviders } from "@/components/providers/app-providers";
+import { SiteJsonLd } from "@/components/seo/json-ld";
 import { auth } from "@/lib/auth";
 import { getLocale } from "@/i18n/server";
+import { buildRootMetadata } from "@/lib/seo/metadata";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -30,14 +32,7 @@ const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
   preload: true,
 });
 
-export const metadata: Metadata = {
-  applicationName: siteConfig.name,
-  title: {
-    default: siteConfig.name,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  metadataBase: new URL(siteConfig.url),
+export const metadata: Metadata = buildRootMetadata({
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -53,7 +48,7 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
-};
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -81,6 +76,7 @@ export default async function RootLayout({
         className="flex min-h-dvh flex-col font-sans text-foreground antialiased"
         suppressHydrationWarning
       >
+        <SiteJsonLd />
         <AppProviders session={session} initialLocale={locale}>
           {children}
         </AppProviders>

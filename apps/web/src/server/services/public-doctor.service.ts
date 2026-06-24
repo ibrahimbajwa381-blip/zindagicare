@@ -155,4 +155,19 @@ export class PublicDoctorService {
       return [];
     }
   }
+
+  static async listPublicDoctorSlugs(): Promise<string[]> {
+    await PublicDoctorService.ensureConnected();
+
+    const doctors = await DoctorProfileModel.find(PUBLIC_DOCTOR_FILTER)
+      .select("slug userId")
+      .populate("userId", "name")
+      .lean();
+
+    return doctors.map((doc) => {
+      const user = doc.userId as { name?: string } | null;
+      const name = user?.name ?? "Doctor";
+      return (doc.slug as string | undefined)?.trim() || nameToDoctorSlug(name);
+    });
+  }
 }
