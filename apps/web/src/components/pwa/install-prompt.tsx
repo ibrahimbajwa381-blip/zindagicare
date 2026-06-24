@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { Download, Monitor, Share2, Smartphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import { useLocalStorageFlag } from "@/hooks/use-local-storage-flag";
 import { useMounted } from "@/hooks/use-mounted";
 import { useTranslations } from "@/i18n/locale-provider";
 import {
@@ -26,11 +27,6 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-function readDismissed(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(DISMISS_KEY) === "1";
-}
-
 function isMobilePlatform(platform: AppPlatform): boolean {
   return platform === "ios" || platform === "android";
 }
@@ -43,7 +39,7 @@ export function InstallPrompt() {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(readDismissed);
+  const [dismissed, setDismissed] = useLocalStorageFlag(DISMISS_KEY);
 
   const platform = mounted ? detectAppPlatform() : ("unknown" as AppPlatform);
   const isMobile = isMobilePlatform(platform);
@@ -54,7 +50,6 @@ export function InstallPrompt() {
     mounted &&
     status === "authenticated" &&
     !isStandalonePwa() &&
-    !readDismissed() &&
     !dismissed &&
     pathname !== siteConfig.links.getApp &&
     platform !== "unknown";
@@ -62,7 +57,7 @@ export function InstallPrompt() {
   const open = shouldOffer;
 
   useEffect(() => {
-    if (typeof window === "undefined" || isStandalonePwa() || readDismissed()) return;
+    if (typeof window === "undefined" || isStandalonePwa()) return;
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -89,10 +84,9 @@ export function InstallPrompt() {
   }, [open]);
 
   const dismiss = useCallback(() => {
-    localStorage.setItem(DISMISS_KEY, "1");
     setDismissed(true);
     setDeferredPrompt(null);
-  }, []);
+  }, [setDismissed]);
 
   const install = useCallback(async () => {
     if (!deferredPrompt) return;

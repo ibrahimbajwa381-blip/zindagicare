@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@zindagi/shared";
@@ -40,6 +42,7 @@ export function SiteLogo({
         height={LOGO_HEIGHT}
         className={cn("shrink-0 object-contain", sizes[size])}
         priority={priority ?? size !== "sm"}
+        unoptimized
       />
       {showName ? (
         <span

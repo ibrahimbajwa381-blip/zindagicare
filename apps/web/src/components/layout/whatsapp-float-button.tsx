@@ -1,5 +1,6 @@
 "use client";
 
+import { useMounted } from "@/hooks/use-mounted";
 import { useTranslations } from "@/i18n/locale-provider";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { cn } from "@zindagi/shared";
@@ -18,8 +19,11 @@ function WhatsAppIcon({ className }: { className?: string }) {
 }
 
 export function WhatsAppFloatButton() {
+  const mounted = useMounted();
   const t = useTranslations();
   const href = getWhatsAppSupportUrl(t.common.whatsappPrefill);
+
+  if (!mounted) return null;
 
   return (
     <a

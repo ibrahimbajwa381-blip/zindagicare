@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ArrowRight, Smartphone } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { isStandalonePwa } from "@/lib/pwa/platform";
+import { useMounted } from "@/hooks/use-mounted";
 import { useTranslations } from "@/i18n/locale-provider";
 import { useEffect, useState } from "react";
 
@@ -20,13 +21,14 @@ function AppleIcon({ className }: { className?: string }) {
 export function AppDownloadBanner() {
   const t = useTranslations();
   const pathname = usePathname();
-  const [hide, setHide] = useState(true);
+  const mounted = useMounted();
+  const [standalone, setStandalone] = useState(false);
 
   useEffect(() => {
-    setHide(isStandalonePwa());
+    setStandalone(isStandalonePwa());
   }, []);
 
-  if (hide || pathname === siteConfig.links.getApp) {
+  if (!mounted || standalone || pathname === siteConfig.links.getApp) {
     return null;
   }
 

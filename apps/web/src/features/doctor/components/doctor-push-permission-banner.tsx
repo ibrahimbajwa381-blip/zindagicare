@@ -1,31 +1,25 @@
 "use client";
 
-import { useState } from "react";
 import { Bell, BellOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocalStorageFlag } from "@/hooks/use-local-storage-flag";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { useTranslations } from "@/i18n/locale-provider";
 import { cn } from "@zindagi/shared";
 
 const DISMISS_KEY = "doctor-push-dismissed";
 
-function readDismissed(): boolean {
-  if (typeof window === "undefined") return true;
-  return localStorage.getItem(DISMISS_KEY) === "1";
-}
-
 export function DoctorPushPermissionBanner() {
   const t = useTranslations();
   const { supported, permission, subscribed, loading, error, subscribe } =
     usePushSubscription();
-  const [dismissed, setDismissed] = useState(readDismissed);
+  const [dismissed, setDismissed] = useLocalStorageFlag(DISMISS_KEY);
 
   if (!supported || dismissed || permission === "granted" || subscribed) {
     return null;
   }
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "1");
     setDismissed(true);
   };
 

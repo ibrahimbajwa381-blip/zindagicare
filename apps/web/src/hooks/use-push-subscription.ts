@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -21,17 +21,15 @@ type PushSubscriptionState = {
   error: string | null;
 };
 
-function getInitialPushState(): PushSubscriptionState {
-  if (typeof window === "undefined") {
-    return {
-      supported: false,
-      permission: "unsupported",
-      subscribed: false,
-      loading: false,
-      error: null,
-    };
-  }
+const INITIAL_PUSH_STATE: PushSubscriptionState = {
+  supported: false,
+  permission: "unsupported",
+  subscribed: false,
+  loading: false,
+  error: null,
+};
 
+function readPushState(): PushSubscriptionState {
   const supported =
     "serviceWorker" in navigator &&
     "PushManager" in window &&
@@ -47,7 +45,11 @@ function getInitialPushState(): PushSubscriptionState {
 }
 
 export function usePushSubscription() {
-  const [state, setState] = useState<PushSubscriptionState>(getInitialPushState);
+  const [state, setState] = useState<PushSubscriptionState>(INITIAL_PUSH_STATE);
+
+  useEffect(() => {
+    setState(readPushState());
+  }, []);
 
   const subscribe = useCallback(async () => {
     if (!state.supported) {
