@@ -14,6 +14,7 @@ export const en = {
     onlineConsult: "Online consultation",
     sundayConsult: "Sunday Free Consult",
     homeServices: "In-house medical services",
+    homePhysio: "Home physiotherapy",
     homeCareVisits: "My home care visits",
     freeBadge: "Free",
     urgentCare: "Urgent Care",
@@ -59,8 +60,12 @@ export const en = {
     registerNurse: "Register as nurse",
     registerNurseDescription:
       "Create a nurse account. After signup you will submit your license, service area, and identity documents.",
+    registerPhysiotherapist: "Register as physiotherapist",
+    registerPhysiotherapistDescription:
+      "Join ZindagiCare as a verified physiotherapist for home physiotherapy sessions in Lahore.",
     staffSignupTitle: "Joining as medical staff?",
-    staffSignupDescription: "Doctors and nurses use separate secure signup pages.",
+    staffSignupDescription:
+      "Doctors, nurses, and physiotherapists use separate secure signup pages.",
     patientInstead: "Need a patient account instead?",
     fullName: "Full name",
     fullNameHint: "As on your CNIC or WhatsApp",
@@ -237,6 +242,28 @@ export const en = {
         card: {
           title: "In-house Medical Services",
           description: "Professional medical care delivered at your doorstep.",
+        },
+      },
+      {
+        imageAlt:
+          "Male Pakistani physiotherapist providing professional home rehabilitation care in Lahore",
+        carousel: {
+          eyebrow: "Home physiotherapy",
+          title: "Physiotherapy at",
+          titleHighlight: "your home",
+          description:
+            "Verified male or female physiotherapists visit you in Lahore — tell us your preference when you book. Rehab, mobility, and pain relief from Rs. 2,800.",
+          highlights: [
+            "Male or female physio on request",
+            "Rs. 2,800 per session",
+          ],
+          badge: "Male & female physios · Lahore",
+          ctaLabel: "Book home physiotherapy",
+        },
+        card: {
+          title: "Home Physiotherapy",
+          description:
+            "Professional rehab at home — request a male or female physiotherapist to match your comfort.",
         },
       },
       {
@@ -535,33 +562,33 @@ export const en = {
   homeServices: {
     eyebrow: "At your home",
     title: "In-house medical services",
-    bannerBadge: "Doctor visits · Nursing · IV & injections",
+    bannerBadge: "Doctor visits · Nursing · Physiotherapy · IV & injections",
     description:
-      "Geo-tracked scheduling, transparent pricing, and PMDC-verified staff across Lahore.",
+      "Geo-tracked scheduling, transparent pricing, and verified staff across Lahore.",
     differentiator:
-      "What sets us apart — verified doctors and nurses come to your home, geo-tracked and transparently priced. Safe, convenient care that comes to you.",
+      "What sets us apart — verified doctors, nurses, and physiotherapists come to your home, geo-tracked and transparently priced. Safe, convenient care that comes to you.",
     items: [
       { title: "Doctor home visit", desc: "In-person check-up at your doorstep" },
+      { title: "Physiotherapy at home", desc: "Rehab sessions — male or female physio per your preference" },
       { title: "Nursing & IV therapy", desc: "Injections, drips, and skilled nursing" },
       { title: "Wound & post-op care", desc: "Dressings and recovery support at home" },
-      { title: "Urgent in-house visit", desc: "Timely medical support when you need it" },
     ],
     hero: {
-      badge: "Lahore · Licensed nurses & doctors",
+      badge: "Lahore · Licensed doctors, nurses & physiotherapists",
       heroHeadline: "Licensed medical care at",
       heroHeadlineHighlight: "your home",
       headline: "Medical care at your doorstep",
       subheadline: "IV drips, injections, wound care & more — without leaving home",
       body:
-        "Request a verified doctor or nurse visit anywhere in Lahore. See the price upfront, track your provider in real time, and get a visit report when care is complete.",
+        "Request a verified doctor, nurse, or physiotherapist visit anywhere in Lahore. See the price upfront, track your provider in real time, and get a visit report when care is complete.",
       highlights: [
         {
           title: "Verified staff",
-          desc: "Background-checked doctors and nurses with approved credentials",
+          desc: "Background-checked doctors, nurses, and physiotherapists with approved credentials",
         },
         {
           title: "Geo-matched dispatch",
-          desc: "Nearest available doctor or nurse assigned to your location",
+          desc: "Nearest available provider assigned to your location",
         },
         {
           title: "Transparent pricing",
@@ -570,12 +597,43 @@ export const en = {
       ],
       stats: [
         { value: "15 km", label: "Matching radius" },
-        { value: "3+", label: "Bookable services" },
+        { value: "6", label: "Bookable services" },
         { value: "Rs. 0", label: "Hidden fees" },
       ],
-      primaryCta: "Request home care",
+      primaryCta: "Choose a service",
       secondaryCta: "Track my visits",
       tertiaryCta: "How it works",
+    },
+    picker: {
+      eyebrow: "Book now",
+      title: "What do you need at home?",
+      description:
+        "Tap what matches your need — you'll pick a time and address on the next step. All services are live in Lahore with upfront pricing.",
+      scenariosLabel: "Common needs",
+      notSure: "Not sure which one?",
+      notSureLink: "Start a general request and we'll help you choose",
+      scenarios: [
+        { label: "Doctor check-up", key: "doctorVisit" },
+        { label: "Physiotherapy session", key: "physiotherapy" },
+        { label: "Skilled nursing visit", key: "generalNurse" },
+        { label: "IV drip / hydration", key: "ivDrip" },
+        { label: "Injection (IM/SC)", key: "injection" },
+        { label: "Wound dressing", key: "woundCare" },
+      ],
+      items: {
+        doctorVisit: {
+          duration: "45–60 min",
+          includes: "Vitals, exam, and care plan at your doorstep",
+        },
+        generalNurse: {
+          duration: "30–45 min",
+          includes: "Skilled nursing assessment and care as needed",
+        },
+        physiotherapy: {
+          duration: "45–60 min",
+          includes: "Assessment and guided rehab — male or female physio on request",
+        },
+      },
     },
     pricing: {
       eyebrow: "Book now",
@@ -617,7 +675,7 @@ export const en = {
       steps: [
         {
           title: "Request a visit",
-          desc: "Choose IV, injection, or wound care. Enter your address and preferred time.",
+          desc: "Choose doctor, physio, nursing, IV, injection, or wound care. Enter your address and preferred time.",
         },
         {
           title: "Provider assigned",
@@ -676,7 +734,7 @@ export const en = {
       items: [
         {
           q: "Which services can I book right now?",
-          a: "Doctor home visits, IV drip therapy, injections, and wound care are live in Lahore. Urgent in-house care is listed for reference and will expand soon.",
+          a: "Doctor home visits, physiotherapy, general nursing, IV drip therapy, injections, and wound care are all live in Lahore. Pick one on this page and we'll match the nearest provider.",
         },
         {
           q: "How quickly can someone reach me?",
@@ -700,18 +758,34 @@ export const en = {
       title: "Ready for care at home?",
       description:
         "Request a visit in under two minutes. Sign in to track your visit and download your visit report.",
-      primary: "Request home care",
+      primary: "Choose a service",
       secondary: "View my visits",
     },
+  },
+  homePhysio: {
+    eyebrow: "Home physiotherapy",
+    imageAlt:
+      "Male Pakistani physiotherapist providing professional home rehabilitation care in Lahore",
+    headline: "Rehab & recovery",
+    headlineHighlight: "at your home",
+    description:
+      "Licensed physiotherapists visit you in Lahore for post-injury rehab, mobility, and pain relief — professional care without leaving home.",
+    genderPreference:
+      "Request a male or female physiotherapist when you book — we match your preference.",
+    priceLabel: "From Rs. 2,800 per session",
+    badge: "Geo-matched across Lahore · Verified providers",
+    primaryCta: "Book home physiotherapy",
+    secondaryCta: "Join as physiotherapist",
   },
   homeCare: {
     requestTitle: "Request in-house care",
     requestDesc:
-      "Book a doctor or nurse at your home in Lahore — IV therapy, injections, wound care, or a doctor home visit. We match the nearest available provider to your location.",
+      "Book a doctor, nurse, or physiotherapist at your home in Lahore — IV therapy, injections, wound care, physiotherapy, or a doctor home visit. We match the nearest available provider to your location.",
     serviceType: "Service type",
     services: {
       doctorVisit: "Doctor home visit",
       generalNurse: "General nurse visit",
+      physiotherapy: "Physiotherapy home visit (male or female on request)",
       ivDrip: "IV drip therapy",
       injection: "Injection",
       woundCare: "Wound care",
@@ -725,7 +799,8 @@ export const en = {
     locationFallback: "Using Lahore center — enable GPS for better matching",
     scheduledAt: "Preferred visit time",
     notes: "Notes for the provider (optional)",
-    notesPlaceholder: "Allergies, symptoms, prescription details, access instructions…",
+    notesPlaceholder:
+      "Allergies, symptoms, male/female provider preference, access instructions…",
     estimatedTotal: "Estimated total",
     submit: "Request home visit",
     submitting: "Submitting…",
@@ -738,7 +813,7 @@ export const en = {
     signInToContinue: "Sign in to request",
     checkingSession: "Checking session…",
     visitsTitle: "Your home care visits",
-    visitsDesc: "Track nurse or doctor assignment and visit progress.",
+    visitsDesc: "Track nurse, doctor, or physiotherapist assignment and visit progress.",
     noVisits: "No home care visits yet.",
     bookVisit: "Request home care",
     assignedNurse: "Assigned provider",
@@ -753,12 +828,14 @@ export const en = {
       cancelled: "Cancelled",
     },
     adminTitle: "Home care dispatch",
-    adminDesc: "Assign nurses and doctors to home treatment visits in Lahore.",
+    adminDesc: "Assign nurses, doctors, and physiotherapists to home treatment visits in Lahore.",
     autoAssign: "Auto-assign nearest provider",
     manualAssign: "Assign selected provider",
     selectNurse: "Select provider",
     nurseDashboardTitle: "My assigned visits",
     nurseDashboardDesc: "Update visit status and upload completion reports.",
+    physiotherapistDashboardTitle: "My assigned visits",
+    physiotherapistDashboardDesc: "Update visit status and upload completion reports.",
     updateStatus: "Update status",
     uploadReport: "Upload visit report",
     uploading: "Uploading…",
@@ -1306,6 +1383,64 @@ export const en = {
       ctaDescription:
         "Create your nurse account and complete verification — visits unlock after admin approval.",
       primaryCta: "Register as nurse",
+      secondaryCta: "Log in",
+    },
+    physiotherapist: {
+      eyebrow: "For physiotherapists",
+      title: "Deliver rehab and mobility care at home",
+      subheadline: "Home physiotherapy sessions matched to your location",
+      body: "ZindagiCare connects verified physiotherapists with patients across Lahore for home rehabilitation, pain relief, and post-injury recovery. Accept sessions that fit your schedule and get paid through the platform.",
+      benefitsEyebrow: "Why join",
+      benefitsTitle: "Your physiotherapy workspace",
+      benefitsDescription:
+        "Focus on patient recovery while we handle booking, geo-matching, and visit coordination.",
+      benefits: [
+        {
+          title: "Geo-matched sessions",
+          desc: "Get assigned to patients near you within your service area.",
+        },
+        {
+          title: "Clear session details",
+          desc: "See patient notes, mobility goals, and location before each visit.",
+        },
+        {
+          title: "Home rehabilitation",
+          desc: "Deliver exercises, manual therapy, and recovery plans at the patient's home.",
+        },
+        {
+          title: "Visit dashboard",
+          desc: "Track upcoming, in-progress, and completed sessions from your workspace.",
+        },
+        {
+          title: "Credential verification",
+          desc: "Submit your registration and identity documents before you receive requests.",
+        },
+        {
+          title: "Flexible schedule",
+          desc: "Accept home sessions when you're available — no fixed clinic hours required.",
+        },
+      ],
+      stepsEyebrow: "Getting started",
+      stepsTitle: "How to join as a physiotherapist",
+      stepsDescription: "Three steps from signup to your first home session.",
+      steps: [
+        {
+          title: "Create your account",
+          desc: "Register with your email, phone, and professional details.",
+        },
+        {
+          title: "Submit verification",
+          desc: "Upload your registration certificate, service area, and identity documents.",
+        },
+        {
+          title: "Start accepting visits",
+          desc: "Once approved, receive and manage home physiotherapy requests in your dashboard.",
+        },
+      ],
+      ctaTitle: "Ready to join ZindagiCare?",
+      ctaDescription:
+        "Create your physiotherapist account and complete verification — home sessions unlock after admin approval.",
+      primaryCta: "Register as physiotherapist",
       secondaryCta: "Log in",
     },
   },

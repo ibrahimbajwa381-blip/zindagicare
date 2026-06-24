@@ -72,3 +72,23 @@ export const adminNurseNotesSchema = z.object({
 });
 
 export type AdminNurseNotesInput = z.infer<typeof adminNurseNotesSchema>;
+
+export const updatePhysiotherapistProfileSchema = updateNurseProfileSchema;
+export type UpdatePhysiotherapistProfileInput = z.infer<
+  typeof updatePhysiotherapistProfileSchema
+>;
+
+export const physiotherapistVerificationSchema = nurseVerificationSchema;
+export type PhysiotherapistVerificationInput = z.infer<
+  typeof physiotherapistVerificationSchema
+>;
+
+export const adminPhysiotherapistDecisionSchema = adminNurseDecisionSchema;
+export type AdminPhysiotherapistDecisionInput = z.infer<
+  typeof adminPhysiotherapistDecisionSchema
+>;
+
+export const adminPhysiotherapistNotesSchema = adminNurseNotesSchema;
+export type AdminPhysiotherapistNotesInput = z.infer<
+  typeof adminPhysiotherapistNotesSchema
+>;

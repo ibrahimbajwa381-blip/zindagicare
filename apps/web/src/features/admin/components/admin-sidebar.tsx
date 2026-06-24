@@ -42,6 +42,12 @@ const NAV = [
     icon: HeartPulse,
     countKey: "nurses" as const,
   },
+  {
+    href: "/admin/physiotherapists",
+    label: "Physiotherapist verifications",
+    icon: Activity,
+    countKey: "physiotherapists" as const,
+  },
   { href: "/admin/patients", label: "Patients", icon: Users },
   {
     href: "/admin/reviews",

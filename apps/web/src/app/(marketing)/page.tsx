@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { FaqSection } from "@/features/marketing/components/faq-section";
 import { HeroSection } from "@/features/marketing/components/hero-section";
 import { HomeServicesPreview } from "@/features/marketing/components/home-services-preview";
+import { HomePhysioBanner } from "@/features/marketing/components/home-physio-banner";
 import { HowItWorksSection } from "@/features/marketing/components/how-it-works";
 import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
@@ -16,6 +17,7 @@ export default function HomePage() {
       <HeroSection />
       <TrustBar />
       <HomeServicesPreview />
+      <HomePhysioBanner />
       <DoctorBrowseSection />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
         <TopDoctorsSection />

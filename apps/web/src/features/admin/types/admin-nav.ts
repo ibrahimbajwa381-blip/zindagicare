@@ -2,6 +2,7 @@
 export type AdminNavCounts = {
   doctors: number;
   nurses: number;
+  physiotherapists: number;
   reviews: number;
   urgentCare: number;
   homeVisits: number;

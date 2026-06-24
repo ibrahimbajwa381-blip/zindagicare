@@ -64,6 +64,7 @@ export function UnifiedHeader({
     sundayConsult: t.nav.sundayConsult,
     urgentCare: t.nav.urgentCare,
     homeServices: t.nav.homeServices,
+    homePhysio: t.nav.homePhysio,
     freeBadge: t.nav.freeBadge,
     urgentBadge: t.nav.urgentBadge,
     myDashboard: t.dashboard.header.myDashboard,
@@ -74,6 +75,10 @@ export function UnifiedHeader({
 
   const defaultNavLinks: readonly UnifiedNavLink[] = [
     { label: t.nav.homeServices, href: siteConfig.links.homeServices },
+    {
+      label: t.nav.homePhysio,
+      href: `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+    },
     { label: t.nav.onlineConsult, href: siteConfig.links.doctors },
     {
       label: t.nav.sundayConsult,
@@ -95,7 +100,7 @@ export function UnifiedHeader({
     <header
       className={cn(
         appHeaderShell,
-        "transition-transform duration-300 ease-in-out will-change-transform motion-reduce:transition-none",
+        "transition-transform duration-300 ease-in-out motion-reduce:transition-none",
         hidden && "-translate-y-full",
       )}
     >

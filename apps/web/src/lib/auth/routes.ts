@@ -5,6 +5,7 @@ export const AUTH_ROUTES = {
   register: "/register",
   registerDoctor: "/register/doctor",
   registerNurse: "/register/nurse",
+  registerPhysiotherapist: "/register/physiotherapist",
   phoneLogin: "/login/phone",
   onboarding: "/onboarding",
   doctorVerification: "/doctor/verification",
@@ -18,6 +19,9 @@ export const AUTH_ROUTES = {
   nurseDashboard: "/nurse",
   nurseVerification: "/nurse/verification",
   nurseVisits: "/nurse/visits",
+  physiotherapistDashboard: "/physiotherapist",
+  physiotherapistVerification: "/physiotherapist/verification",
+  physiotherapistVisits: "/physiotherapist/visits",
   messages: "/messages",
   doctorMessages: "/doctor/messages",
 } as const;
@@ -31,11 +35,13 @@ export const PUBLIC_PATH_PREFIXES = [
   "/home-services",
   "/for-doctors",
   "/for-nurses",
+  "/for-physiotherapists",
   "/home-care/request",
   AUTH_ROUTES.login,
   AUTH_ROUTES.register,
   AUTH_ROUTES.registerDoctor,
   AUTH_ROUTES.registerNurse,
+  AUTH_ROUTES.registerPhysiotherapist,
   AUTH_ROUTES.phoneLogin,
   "/api/auth",
   "/api/v1/sunday/doctors",
@@ -75,6 +81,8 @@ export const ONBOARDING_EXEMPT_PREFIXES = [
   "/api/v1/doctor/profile",
   "/api/v1/nurse/verification",
   "/api/v1/nurse/profile",
+  "/api/v1/physiotherapist/verification",
+  "/api/v1/physiotherapist/profile",
   "/api/auth",
   "/logout",
 ] as const;
@@ -105,11 +113,21 @@ export const NURSE_VERIFICATION_EXEMPT_PREFIXES = [
   "/api/v1/nurse/profile",
 ] as const;
 
+/** Physiotherapist verification pending — can access these paths. */
+export const PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES = [
+  AUTH_ROUTES.physiotherapistVerification,
+  "/physiotherapist/profile",
+  AUTH_ROUTES.physiotherapistDashboard,
+  "/api/v1/physiotherapist/verification",
+  "/api/v1/physiotherapist/profile",
+] as const;
+
 export type PostAuthUser = {
   roles?: Role[];
   onboardingCompleted?: boolean;
   doctorVerificationStatus?: string;
   nurseVerificationStatus?: string;
+  physiotherapistVerificationStatus?: string;
 };
 
 export function isPatientDashboardPath(pathname: string) {
@@ -154,6 +172,13 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
     return AUTH_ROUTES.nurseVerification;
   }
 
+  if (roles.includes(Roles.PHYSIOTHERAPIST)) {
+    if (user.physiotherapistVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.physiotherapistDashboard;
+    }
+    return AUTH_ROUTES.physiotherapistVerification;
+  }
+
   if (!user.onboardingCompleted) {
     return AUTH_ROUTES.onboarding;
   }
@@ -165,6 +190,7 @@ export const ROLE_ROUTE_RULES: { prefix: string; roles: Role[] }[] = [
   { prefix: "/doctor", roles: [Roles.DOCTOR] },
   { prefix: "/admin", roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
   { prefix: "/nurse", roles: [Roles.NURSE] },
+  { prefix: "/physiotherapist", roles: [Roles.PHYSIOTHERAPIST] },
   { prefix: "/rider", roles: [Roles.RIDER] },
 ];
 
@@ -189,6 +215,7 @@ export const MIDDLEWARE_PROTECTED_PREFIXES = [
   "/doctor",
   "/admin",
   "/nurse",
+  "/physiotherapist",
   "/rider",
   "/messages",
   "/intake",

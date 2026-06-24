@@ -14,7 +14,10 @@ export async function POST(req: Request, { params }: Params) {
 
     const roles = session.user.roles ?? [];
     const allowed =
-      roles.includes(Roles.NURSE) || isAdmin(roles as never);
+      roles.includes(Roles.NURSE) ||
+      roles.includes(Roles.PHYSIOTHERAPIST) ||
+      roles.includes(Roles.DOCTOR) ||
+      isAdmin(roles as never);
     if (!allowed) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }

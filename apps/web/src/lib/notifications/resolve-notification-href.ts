@@ -64,6 +64,7 @@ export function resolveNotificationHref(
 
     case "home_visit_assigned":
       if (roles.includes(Roles.NURSE)) return "/nurse/visits";
+      if (roles.includes(Roles.PHYSIOTHERAPIST)) return "/physiotherapist/visits";
       if (isDoctor) return "/doctor/home-visits";
       return null;
 

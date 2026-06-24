@@ -82,10 +82,11 @@ export function PageSection({
         className,
       )}
     >
+      {/* Blur orbs are desktop-only — filter: blur on large layers causes GPU artifacts on mobile. */}
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1/4 h-80 w-80 rounded-full blur-3xl sm:h-[28rem] sm:w-[28rem]",
+          "pointer-events-none absolute top-1/4 hidden h-80 w-80 rounded-full blur-3xl md:block sm:h-[28rem] sm:w-[28rem]",
           styles.brandBlur,
           flipBlur
             ? "-left-24 bottom-0 top-auto sm:h-96 sm:w-96"
@@ -95,7 +96,7 @@ export function PageSection({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute bottom-0 h-72 w-72 rounded-full blur-3xl sm:h-96 sm:w-96",
+          "pointer-events-none absolute bottom-0 hidden h-72 w-72 rounded-full blur-3xl md:block sm:h-96 sm:w-96",
           styles.accentBlur,
           flipBlur ? "-right-32 top-1/4 bottom-auto" : "-left-24",
         )}

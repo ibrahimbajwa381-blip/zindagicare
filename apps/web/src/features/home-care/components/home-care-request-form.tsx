@@ -16,17 +16,18 @@ import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { useTranslations } from "@/i18n/locale-provider";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { surfaceCard } from "@/lib/ui/surfaces";
-import { Syringe, Droplets, Bandage, Stethoscope, UserRound } from "lucide-react";
+import { Syringe, Droplets, Bandage, Stethoscope, UserRound, Activity } from "lucide-react";
 
 const SERVICE_META: Record<
   string,
   {
     icon: typeof Syringe;
-    labelKey: "doctorVisit" | "generalNurse" | "ivDrip" | "injection" | "woundCare";
+    labelKey: "doctorVisit" | "generalNurse" | "physiotherapy" | "ivDrip" | "injection" | "woundCare";
   }
 > = {
   [HomeVisitServiceTypes.DOCTOR_VISIT]: { icon: Stethoscope, labelKey: "doctorVisit" },
   [HomeVisitServiceTypes.NURSE]: { icon: UserRound, labelKey: "generalNurse" },
+  [HomeVisitServiceTypes.PHYSIOTHERAPY]: { icon: Activity, labelKey: "physiotherapy" },
   [HomeVisitServiceTypes.IV_DRIP]: { icon: Droplets, labelKey: "ivDrip" },
   [HomeVisitServiceTypes.INJECTION]: { icon: Syringe, labelKey: "injection" },
   [HomeVisitServiceTypes.WOUND_CARE]: { icon: Bandage, labelKey: "woundCare" },

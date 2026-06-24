@@ -5,6 +5,7 @@ export const ROLE_RANK: Record<Role, number> = {
   [Roles.PATIENT]: 0,
   [Roles.RIDER]: 10,
   [Roles.NURSE]: 20,
+  [Roles.PHYSIOTHERAPIST]: 25,
   [Roles.DOCTOR]: 30,
   [Roles.ADMIN]: 40,
   [Roles.SUPER_ADMIN]: 50,
@@ -37,6 +38,7 @@ export function isAdmin(userRoles: Role[] | undefined): boolean {
 
 export const STAFF_ROLES: Role[] = [
   Roles.NURSE,
+  Roles.PHYSIOTHERAPIST,
   Roles.RIDER,
   Roles.DOCTOR,
   Roles.ADMIN,
@@ -71,6 +73,7 @@ export const Permissions = {
   "patient.book": [Roles.PATIENT],
   "staff.deliveries": [Roles.RIDER],
   "staff.nursing": [Roles.NURSE],
+  "staff.physiotherapy": [Roles.PHYSIOTHERAPIST],
 } as const satisfies Record<string, Role[]>;
 
 export type Permission = keyof typeof Permissions;

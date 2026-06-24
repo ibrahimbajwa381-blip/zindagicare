@@ -1,6 +1,5 @@
 import { HomeServicesHero } from "@/features/marketing/components/home-services-hero";
-import { HomeServicesPricing } from "@/features/marketing/components/home-services-pricing";
-import { HomeServicesPreview } from "@/features/marketing/components/home-services-preview";
+import { HomeServicesPicker } from "@/features/marketing/components/home-services-picker";
 import { HomeServicesHowItWorks } from "@/features/marketing/components/home-services-how-it-works";
 import { HomeServicesCoverage } from "@/features/marketing/components/home-services-coverage";
 import { HomeServicesFaq } from "@/features/marketing/components/home-services-faq";
@@ -19,8 +18,7 @@ export default function HomeServicesPage() {
   return (
     <>
       <HomeServicesHero />
-      <HomeServicesPricing />
-      <HomeServicesPreview variant="catalog" />
+      <HomeServicesPicker />
       <HomeServicesHowItWorks />
       <HomeServicesCoverage />
       <HomeServicesFaq />

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@zindagi/shared";
 import {
   HERO_USAMA_CARD_IMAGE_CLASS,
+  HOME_PHYSIO_HERO_IMAGE_CLASS,
   URGENT_CARE_HERO_IMAGE_CLASS,
   type HeroService,
 } from "@/features/marketing/data/hero-services";
@@ -33,7 +34,7 @@ export function HeroServiceCards({
 
   return (
     <div className="-mx-4 sm:mx-0">
-      <div className="browse-scroll flex gap-3 px-4 pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+      <div className="browse-scroll flex gap-3 px-4 pb-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5">
         {services.map((service, index) => {
           const isActive = index === activeIndex;
 
@@ -62,7 +63,9 @@ export function HeroServiceCards({
                       ? HERO_USAMA_CARD_IMAGE_CLASS
                       : service.id === "in-house-medical"
                         ? "object-[center_20%]"
-                        : service.id === "urgent-care"
+                        : service.id === "home-physiotherapy"
+                          ? HOME_PHYSIO_HERO_IMAGE_CLASS
+                          : service.id === "urgent-care"
                           ? URGENT_CARE_HERO_IMAGE_CLASS
                           : "object-center",
                   )}

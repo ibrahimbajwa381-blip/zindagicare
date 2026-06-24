@@ -15,6 +15,7 @@ export const ur: Dictionary = {
     onlineConsult: "آن لائن مشاورت",
     sundayConsult: "اتوار مفت مشاورت",
     homeServices: "گھر پر طبی خدمات",
+    homePhysio: "گھر پر فزیوتھrapy",
     homeCareVisits: "میرے گھر کی دیکھ بھال",
     freeBadge: "مفت",
     urgentCare: "فوری دیکھ بھال",
@@ -60,8 +61,11 @@ export const ur: Dictionary = {
     registerNurse: "نرس کے طور پر رجسٹر",
     registerNurseDescription:
       "نرس اکاؤنٹ بنائیں۔ سائن اپ کے بعد آپ لائسنس، سروس ایریا اور شناختی دستاویزات جمع کرائیں گے۔",
+    registerPhysiotherapist: "فزیوتھrapist کے طور پر رجسٹر",
+    registerPhysiotherapistDescription:
+      "فزیوتھrapist اکاؤنٹ بنائیں۔ سائن اپ کے بعد آپ رجسٹریشن، سروس ایریا اور شناختی دستاویزات جمع کرائیں گے۔",
     staffSignupTitle: "طبی عملے کے طور پر شامل ہو رہے ہیں؟",
-    staffSignupDescription: "ڈاکٹرز اور نرسز کے لیے الگ محفوظ سائن اپ صفحات ہیں۔",
+    staffSignupDescription: "ڈاکٹرز، نرسز اور فزیوتھrapists کے لیے الگ محفوظ سائن اپ صفحات ہیں۔",
     patientInstead: "مریض اکاؤنٹ چاہیے؟",
     fullName: "پورا نام",
     fullNameHint: "جیسا شناختی کارڈ یا واٹس ایپ پر لکھا ہو",
@@ -241,6 +245,28 @@ export const ur: Dictionary = {
         card: {
           title: "گھر پر طبی خدمات",
           description: "آپ کے گھر پر پیشہ ورانہ طبی سہولت۔",
+        },
+      },
+      {
+        imageAlt:
+          "لاہور میں پیشہ ور مرد پاکستانی فزیوتھrapist گھر پر بحالی کی دیکھ بھال فراہم کر رہا ہے",
+        carousel: {
+          eyebrow: "گھر پر فزیوتھrapy",
+          title: "فزیوتھrapy",
+          titleHighlight: "آپ کے گھر",
+          description:
+            "تصدیق شدہ مرد یا خواتین فزیوتھrapists لاہور میں آتے ہیں — بکنگ پر اپنی ترجیح بتائیں۔ بحالی اور درد سے نجات — روپے 2,800 سے۔",
+          highlights: [
+            "مرد یا خاتون فزیو — آپ کی ترجیح",
+            "روپے 2,800 فی سیشن",
+          ],
+          badge: "مرد و خواتین فزیو · لاہور",
+          ctaLabel: "گھر پر فزیوتھrapy بک کریں",
+        },
+        card: {
+          title: "گھر پر فزیوتھrapy",
+          description:
+            "گھر پر پیشہ ورانہ بحالی — اپنی سہولت کے مطابق مرد یا خاتون فزیوتھrapist کی درخواست کریں۔",
         },
       },
       {
@@ -564,12 +590,43 @@ export const ur: Dictionary = {
       ],
       stats: [
         { value: "15 کلومیٹر", label: "میچنگ رینج" },
-        { value: "3+", label: "بکنگ کی خدمات" },
+        { value: "6", label: "بکنگ کی خدمات" },
         { value: "روپے 0", label: "پوشیدہ فیس" },
       ],
-      primaryCta: "گھر پر دیکھ بھال کی درخواست",
+      primaryCta: "خدمت منتخب کریں",
       secondaryCta: "میری وزٹس دیکھیں",
       tertiaryCta: "یہ کیسے کام کرتا ہے",
+    },
+    picker: {
+      eyebrow: "ابھی بک کریں",
+      title: "آپ کو گھر پر کیا چاہیے؟",
+      description:
+        "اپنی ضرورت کے مطابق ٹیپ کریں — اگلے مرحلے پر وقت اور پتہ منتخب کریں گے۔ تمام خدمات لاہور میں فعال ہیں، قیمت پہلے سے واضح۔",
+      scenariosLabel: "عام ضروریات",
+      notSure: "پتہ نہیں کون سی خدمت؟",
+      notSureLink: "عام درخواست شروع کریں — ہم منتخب کرنے میں مدد کریں گے",
+      scenarios: [
+        { label: "ڈاکٹر چیک اپ", key: "doctorVisit" },
+        { label: "فزیوتھrapy سیشن", key: "physiotherapy" },
+        { label: "ماہر نرس وزٹ", key: "generalNurse" },
+        { label: "آئی وی ڈرپ", key: "ivDrip" },
+        { label: "انجیکشن", key: "injection" },
+        { label: "زخم کی پٹی", key: "woundCare" },
+      ],
+      items: {
+        doctorVisit: {
+          duration: "45–60 منٹ",
+          includes: "وائٹلز، معائنہ، اور گھر پر علاج کا منصوبہ",
+        },
+        generalNurse: {
+          duration: "30–45 منٹ",
+          includes: "ماہر نرس کا جائزہ اور ضرورت کے مطابق دیکھ بھال",
+        },
+        physiotherapy: {
+          duration: "45–60 منٹ",
+          includes: "جائزہ اور رہabilitiation — مرد یا عورت فزیوتھrapist کی درخواست پر",
+        },
+      },
     },
     pricing: {
       eyebrow: "ابھی بک کریں",
@@ -698,14 +755,30 @@ export const ur: Dictionary = {
       secondary: "میری وزٹس",
     },
   },
+  homePhysio: {
+    eyebrow: "گھر پر فزیوتھrapy",
+    imageAlt:
+      "لاہور میں پیشہ ور مرد پاکستانی فزیوتھrapist گھر پر بحالی کی دیکھ بھال فراہم کر رہا ہے",
+    headline: "بحالی اور recovery",
+    headlineHighlight: "آپ کے گھر",
+    description:
+      "لائسنس یافتہ فزیوتھrapists زخم کے بعد بحالی، mobility اور درد سے نجات کے لیے آپ کے گھر آتے ہیں۔",
+    genderPreference:
+      "بکنگ پر مرد یا خاتون فزیوتھrapist کی درخواست کریں — ہم آپ کی ترجیح کے مطابق میچ کرتے ہیں۔",
+    priceLabel: "روپے 2,800 سے فی سیشن",
+    badge: "لاہور بھر · تصدیق شدہ فراہم کنندگان",
+    primaryCta: "گھر پر فزیوتھrapy بک کریں",
+    secondaryCta: "فزیوتھrapist کے طور پر شامل ہوں",
+  },
   homeCare: {
     requestTitle: "گھر پر دیکھ بھال کی درخواست",
     requestDesc:
-      "لاہور میں گھر پر ڈاکٹر یا نرس بک کریں — آئی وی تھراپی، انجیکشن، زخم کی دیکھ بھال، یا ڈاکٹر کا گھر وزٹ۔ ہم آپ کے مقام کے قریب دستیاب فراہم کنندہ سے ملائیں گے۔",
+      "لاہور میں گھر پر ڈاکٹر، نرس یا فزیوتھrapist بک کریں — آئی وی تھراپی، انجیکشن، زخم کی دیکھ بھال، فزیوتھrapy، یا ڈاکٹر کا گھر وزٹ۔ ہم آپ کے مقام کے قریب دستیاب فراہم کنندہ سے ملائیں گے۔",
     serviceType: "خدمت کی قسم",
     services: {
       doctorVisit: "ڈاکٹر کا گھر وزٹ",
       generalNurse: "عام نرس وزٹ",
+      physiotherapy: "گھر پر فزیوتھrapy (مرد یا خاتون — آپ کی ترجیح)",
       ivDrip: "آئی وی ڈرپ تھراپی",
       injection: "انجیکشن",
       woundCare: "زخم کی دیکھ بھال",
@@ -719,7 +792,7 @@ export const ur: Dictionary = {
     locationFallback: "لاہور مرکز استعمال — بہتر میچنگ کے لیے جی پی ایس فعال کریں",
     scheduledAt: "وزٹ کا ترجیحی وقت",
     notes: "فراہم کنندہ کے لیے نوٹ (اختیاری)",
-    notesPlaceholder: "الرجی، نسخہ، رسائی کی ہدایات…",
+    notesPlaceholder: "الرجی، نسخہ، مرد/خاتون فراہم کنندہ کی ترجیح، رسائی کی ہدایات…",
     estimatedTotal: "تخمینی کل",
     submit: "گھر پر وزٹ کی درخواست",
     submitting: "جمع ہو رہا ہے…",
@@ -753,6 +826,8 @@ export const ur: Dictionary = {
     selectNurse: "فراہم کنندہ منتخب کریں",
     nurseDashboardTitle: "میری تفویض شدہ وزٹس",
     nurseDashboardDesc: "وزٹ کی حیثیت اپ ڈیٹ کریں اور مکمل رپورٹ اپ لوڈ کریں۔",
+    physiotherapistDashboardTitle: "میری تفویض شدہ وزٹس",
+    physiotherapistDashboardDesc: "وزٹ کی حیثیت اپ ڈیٹ کریں اور مکمل رپورٹ اپ لوڈ کریں۔",
     updateStatus: "حیثیت اپ ڈیٹ",
     uploadReport: "وزٹ رپورٹ اپ لوڈ",
     uploading: "اپ لوڈ ہو رہا ہے…",
@@ -1302,6 +1377,37 @@ export const ur: Dictionary = {
       ctaDescription:
         "اپنا نرس اکاؤنٹ بنائیں اور تصدیق مکمل کریں — ایڈمن منظوری کے بعد وزٹ کھل جائیں گے۔",
       primaryCta: "نرس کے طور پر رجسٹر",
+      secondaryCta: "لاگ ان",
+    },
+    physiotherapist: {
+      eyebrow: "فزیوتھrapists کے لیے",
+      title: "گھر پر بحالی اور mobility کی دیکھ بھال",
+      subheadline: "آپ کے مقام کے مطابق گھر پر فزیوتھrapy سیشن",
+      body: "زندگی کیئر لاہور میں تصدیق شدہ فزیوتھrapists کو گھر پر بحالی، درد سے نجات، اور زخم کے بعد کی recovery کے لیے مریضوں سے جوڑتا ہے۔",
+      benefitsEyebrow: "کیوں شامل ہوں",
+      benefitsTitle: "آپ کا فزیوتھrapy ورک اسپیس",
+      benefitsDescription:
+        "مریض کی recovery پر توجہ دیں جبکہ ہم بکنگ، میچنگ، اور وزٹ کی ہم آہنگی سنبھالتے ہیں۔",
+      benefits: [
+        { title: "جغرافیائی طور پر میچ شدہ سیشن", desc: "اپنے سروس ایریا میں قریب کے مریضوں کو تفویض۔" },
+        { title: "واضح سیشن تفصیلات", desc: "ہر وزٹ سے پہلے نوٹس، مقاصد، اور مقام دیکھیں۔" },
+        { title: "گھر پر بحالی", desc: "مریض کے گھر exercises، manual therapy، اور recovery plans۔" },
+        { title: "وزٹ ڈیش بورڈ", desc: "آنے والے، جاری، اور مکمل سیشن ٹریک کریں۔" },
+        { title: "اسناد کی تصدیق", desc: "رجسٹریشن اور شناختی دستاویزات جمع کروائیں۔" },
+        { title: "لچکدار شیڈول", desc: "جب دستیاب ہوں گھر پر سیشن قبول کریں۔" },
+      ],
+      stepsEyebrow: "شروعات",
+      stepsTitle: "فزیوتھrapist کے طور پر کیسے شامل ہوں",
+      stepsDescription: "سائن اپ سے پہلے گھر پر سیشن تک تین مراحل۔",
+      steps: [
+        { title: "اکاؤنٹ بنائیں", desc: "ای میل، فون، اور پیشہ ورانہ تفصیلات کے ساتھ رجسٹر کریں۔" },
+        { title: "تصدیق جمع کروائیں", desc: "رجسٹریشن سرٹیفکیٹ، سروس ایریا، اور شناختی دستاویزات اپ لوڈ کریں۔" },
+        { title: "سیشن قبول کرنا شروع کریں", desc: "منظوری کے بعد گھر پر فزیوتھrapy درخواستیں منظم کریں۔" },
+      ],
+      ctaTitle: "زندگی کیئر میں شامل ہونے کے لیے تیار ہیں؟",
+      ctaDescription:
+        "اپنا فزیوتھrapist اکاؤنٹ بنائیں اور تصدیق مکمل کریں — ایڈمن منظوری کے بعد سیشن کھل جائیں گے۔",
+      primaryCta: "فزیوتھrapist کے طور پر رجسٹر",
       secondaryCta: "لاگ ان",
     },
   },

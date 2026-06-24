@@ -2,6 +2,7 @@ import { siteConfig } from "@/config/site";
 
 export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.png";
 export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.jpg";
+export const HOME_PHYSIO_HERO_IMAGE = "/hero/home-physio-male-pakistan.jpg";
 /** Doctor on a phone / video consult — used for urgent care hero & banners */
 export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.jpg";
 
@@ -36,14 +37,39 @@ export const heroServices: HeroService[] = [
       titleHighlight: "your home",
       description:
         "Verified doctors and nurses visit you at home in Lahore.",
-      highlights: ["Verified doctors & nurses", "Transparent pricing"],
-      badge: "Doctor & nurse home visits",
+      highlights: ["Verified doctors, nurses & physios", "Transparent pricing"],
+      badge: "Doctor, nurse & physio home visits",
       ctaLabel: "Book in-house care",
       href: siteConfig.links.homeServices,
     },
     card: {
       title: "In-house Medical Services",
       description: "Professional medical care delivered at your doorstep.",
+    },
+  },
+  {
+    id: "home-physiotherapy",
+    image: HOME_PHYSIO_HERO_IMAGE,
+    imageAlt:
+      "Male Pakistani physiotherapist providing professional home rehabilitation care in Lahore",
+    carousel: {
+      eyebrow: "Home physiotherapy",
+      title: "Physiotherapy at",
+      titleHighlight: "your home",
+      description:
+        "Verified male or female physiotherapists visit you in Lahore — tell us your preference when you book. Rehab, mobility, and pain relief from Rs. 2,800.",
+      highlights: [
+        "Male or female physio on request",
+        "Rs. 2,800 per session",
+      ],
+      badge: "Male & female physios · Lahore",
+      ctaLabel: "Book home physiotherapy",
+      href: `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+    },
+    card: {
+      title: "Home Physiotherapy",
+      description:
+        "Professional rehab at home — request a male or female physiotherapist to match your comfort.",
     },
   },
   {
@@ -119,6 +145,10 @@ export const HERO_USAMA_CAROUSEL_IMAGE_CLASS =
 /** Urgent care hero — mobile crop is short; anchor higher so the doctor's face stays visible. */
 export const URGENT_CARE_HERO_IMAGE_CLASS =
   "object-[center_14%] sm:object-[center_18%] lg:object-[center_22%]" as const;
+
+/** Home physiotherapy hero — anchor toward therapist and patient interaction. */
+export const HOME_PHYSIO_HERO_IMAGE_CLASS =
+  "object-[center_35%] sm:object-[center_30%] lg:object-[center_25%]" as const;
 
 export const HERO_USAMA_CARD_IMAGE_CLASS =
   "object-[center_26%] sm:object-[center_22%]" as const;

@@ -5,6 +5,7 @@ export type PlatformCommissionSettings = {
   defaultDoctorOnlineCommissionPercent: number;
   defaultDoctorHomeVisitCommissionPercent: number;
   defaultNurseCommissionPercent: number;
+  defaultPhysiotherapistCommissionPercent: number;
   updatedAt?: string;
 };
 
@@ -46,6 +47,8 @@ const DEFAULTS: SystemSettingsDto = {
   defaultDoctorOnlineCommissionPercent: STAFF_COMMISSION_CONFIG.defaultDoctorOnlinePercent,
   defaultDoctorHomeVisitCommissionPercent: STAFF_COMMISSION_CONFIG.defaultDoctorHomeVisitPercent,
   defaultNurseCommissionPercent: STAFF_COMMISSION_CONFIG.defaultNursePercent,
+  defaultPhysiotherapistCommissionPercent:
+    STAFF_COMMISSION_CONFIG.defaultPhysiotherapistPercent,
 };
 
 const SETTINGS_CACHE_MS = 30_000;
@@ -62,6 +65,7 @@ function mapSettingsDoc(
     defaultDoctorHomeVisitCommissionPercent?: number | null;
     defaultDoctorCommissionPercent?: number | null;
     defaultNurseCommissionPercent?: number | null;
+    defaultPhysiotherapistCommissionPercent?: number | null;
     updatedAt?: Date;
   } | null,
 ): SystemSettingsDto {
@@ -78,6 +82,9 @@ function mapSettingsDoc(
     defaultDoctorHomeVisitCommissionPercent: resolveDoctorHomeVisitDefault(doc),
     defaultNurseCommissionPercent:
       doc.defaultNurseCommissionPercent ?? STAFF_COMMISSION_CONFIG.defaultNursePercent,
+    defaultPhysiotherapistCommissionPercent:
+      doc.defaultPhysiotherapistCommissionPercent ??
+      STAFF_COMMISSION_CONFIG.defaultPhysiotherapistPercent,
     updatedAt: doc.updatedAt?.toISOString(),
   };
 }
@@ -102,6 +109,7 @@ export async function getPlatformCommissionSettings(): Promise<PlatformCommissio
     defaultDoctorOnlineCommissionPercent: settings.defaultDoctorOnlineCommissionPercent,
     defaultDoctorHomeVisitCommissionPercent: settings.defaultDoctorHomeVisitCommissionPercent,
     defaultNurseCommissionPercent: settings.defaultNurseCommissionPercent,
+    defaultPhysiotherapistCommissionPercent: settings.defaultPhysiotherapistCommissionPercent,
     updatedAt: settings.updatedAt,
   };
 }
@@ -132,6 +140,7 @@ export async function updatePlatformCommissionSettings(
     defaultDoctorOnlineCommissionPercent: settings.defaultDoctorOnlineCommissionPercent,
     defaultDoctorHomeVisitCommissionPercent: settings.defaultDoctorHomeVisitCommissionPercent,
     defaultNurseCommissionPercent: settings.defaultNurseCommissionPercent,
+    defaultPhysiotherapistCommissionPercent: settings.defaultPhysiotherapistCommissionPercent,
     updatedAt: settings.updatedAt,
   };
 }

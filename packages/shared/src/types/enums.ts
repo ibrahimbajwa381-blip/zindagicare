@@ -5,6 +5,7 @@ export const Roles = {
   SUPER_ADMIN: "super_admin",
   RIDER: "rider",
   NURSE: "nurse",
+  PHYSIOTHERAPIST: "physiotherapist",
 } as const;
 
 export type Role = (typeof Roles)[keyof typeof Roles];
@@ -82,6 +83,7 @@ export const HomeVisitServiceTypes = {
   IV_DRIP: "iv_drip",
   INJECTION: "injection",
   WOUND_CARE: "wound_care",
+  PHYSIOTHERAPY: "physiotherapy",
   SAMPLE_COLLECTION: "sample_collection",
   EMERGENCY: "emergency",
 } as const;

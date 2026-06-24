@@ -5,6 +5,7 @@ import {
 } from "@zindagi/database";
 import {
   STAFF_COMMISSION_CONFIG,
+  Roles,
   type DoctorCommissionChannel,
 } from "@zindagi/shared";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
@@ -133,11 +134,29 @@ export async function getNurseCommissionPercentByUserId(
   await connectDatabase();
   const [settings, staff] = await Promise.all([
     getSystemSettings(),
-    StaffProfileModel.findOne({ userId }).select("commissionPercent").lean(),
+    StaffProfileModel.findOne({ userId, staffType: Roles.NURSE })
+      .select("commissionPercent")
+      .lean(),
   ]);
   return resolveCommissionPercent(
     staff?.commissionPercent,
     settings.defaultNurseCommissionPercent,
+  );
+}
+
+export async function getPhysiotherapistCommissionPercentByUserId(
+  userId: string,
+): Promise<number> {
+  await connectDatabase();
+  const [settings, staff] = await Promise.all([
+    getSystemSettings(),
+    StaffProfileModel.findOne({ userId, staffType: Roles.PHYSIOTHERAPIST })
+      .select("commissionPercent")
+      .lean(),
+  ]);
+  return resolveCommissionPercent(
+    staff?.commissionPercent,
+    settings.defaultPhysiotherapistCommissionPercent,
   );
 }
 
@@ -149,5 +168,7 @@ export function getPlatformCommissionDefaults() {
     defaultDoctorHomeVisitCommissionPercent:
       STAFF_COMMISSION_CONFIG.defaultDoctorHomeVisitPercent,
     defaultNurseCommissionPercent: STAFF_COMMISSION_CONFIG.defaultNursePercent,
+    defaultPhysiotherapistCommissionPercent:
+      STAFF_COMMISSION_CONFIG.defaultPhysiotherapistPercent,
   };
 }

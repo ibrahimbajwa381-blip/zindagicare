@@ -53,6 +53,7 @@ export const adminCommissionSettingsSchema = z.object({
   defaultDoctorOnlineCommissionPercent: z.number().min(0).max(100).optional(),
   defaultDoctorHomeVisitCommissionPercent: z.number().min(0).max(100).optional(),
   defaultNurseCommissionPercent: z.number().min(0).max(100).optional(),
+  defaultPhysiotherapistCommissionPercent: z.number().min(0).max(100).optional(),
 });
 
 export const adminSendNotificationSchema = z.object({

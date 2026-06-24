@@ -9,14 +9,6 @@ import { isStandalonePwa } from "@/lib/pwa/platform";
 import { useTranslations } from "@/i18n/locale-provider";
 import { useEffect, useState } from "react";
 
-function AndroidIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M17.6 9.5l1.4-2.4a.5.5 0 00-.9-.5l-1.5 2.6a8.9 8.9 0 00-5.2 0L10.9 6.6a.5.5 0 00-.9.5l1.4 2.4A7.1 7.1 0 005 14.5v3.5a1 1 0 001 1h1v-5.5a1 1 0 011-1h8a1 1 0 011 1V19h1a1 1 0 001-1v-3.5a7.1 7.1 0 00-3.4-5zM9 17.5a1 1 0 102 0v-3a1 1 0 10-2 0v3zm6 0a1 1 0 102 0v-3a1 1 0 10-2 0v3z" />
-    </svg>
-  );
-}
-
 function AppleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -55,7 +47,6 @@ export function AppDownloadBanner() {
       <div className="relative mx-auto flex w-full max-w-[100rem] flex-col gap-8 px-4 py-10 sm:px-8 sm:py-12 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:px-14 lg:py-14">
         <div className="flex min-w-0 flex-1 items-start gap-5 sm:gap-6">
           <div className="relative shrink-0">
-            <div className="absolute -inset-1 rounded-3xl bg-white/20 blur-sm" aria-hidden />
             <Image
               src={siteConfig.icon}
               alt=""
@@ -87,8 +78,14 @@ export function AppDownloadBanner() {
             href={siteConfig.links.getAppAndroid}
             className="group inline-flex min-h-14 flex-1 items-center justify-center gap-3 rounded-2xl bg-white px-5 py-3.5 text-left shadow-lg transition hover:bg-white/95 hover:shadow-xl sm:min-w-[220px] lg:min-w-[240px]"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#3DDC84]/15 text-[#1a7f4b]">
-              <AndroidIcon className="h-6 w-6" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#3DDC84]/15">
+              <Image
+                src="/icons/android.svg"
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7"
+              />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
@@ -103,7 +100,7 @@ export function AppDownloadBanner() {
 
           <Link
             href={siteConfig.links.getAppIos}
-            className="group inline-flex min-h-14 flex-1 items-center justify-center gap-3 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-3.5 text-left backdrop-blur-sm transition hover:border-white/50 hover:bg-white/15 sm:min-w-[220px] lg:min-w-[240px]"
+            className="group inline-flex min-h-14 flex-1 items-center justify-center gap-3 rounded-2xl border-2 border-white/30 bg-white/15 px-5 py-3.5 text-left transition hover:border-white/50 hover:bg-white/20 sm:min-w-[220px] lg:min-w-[240px]"
           >
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
               <AppleIcon className="h-6 w-6" />

@@ -4,6 +4,7 @@ export type StorageNamespace =
   | "doctor-avatars"
   | "doctor-verification"
   | "nurse-verification"
+  | "physiotherapist-verification"
   | "home-visit-reports"
   | "prescriptions";
 

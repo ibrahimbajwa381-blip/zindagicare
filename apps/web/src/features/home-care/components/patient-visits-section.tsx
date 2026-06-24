@@ -19,6 +19,7 @@ import type { HomeVisitDto } from "@/server/services/home-visit.service";
 const SERVICE_LABELS: Record<string, keyof ReturnType<typeof useTranslations>["homeCare"]["services"]> = {
   [HomeVisitServiceTypes.DOCTOR_VISIT]: "doctorVisit",
   [HomeVisitServiceTypes.NURSE]: "generalNurse",
+  [HomeVisitServiceTypes.PHYSIOTHERAPY]: "physiotherapy",
   [HomeVisitServiceTypes.IV_DRIP]: "ivDrip",
   [HomeVisitServiceTypes.INJECTION]: "injection",
   [HomeVisitServiceTypes.WOUND_CARE]: "woundCare",

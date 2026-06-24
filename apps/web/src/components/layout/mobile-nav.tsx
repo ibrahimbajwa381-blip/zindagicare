@@ -196,7 +196,7 @@ export function MobileNav({
       <button
         type="button"
         className={cn(
-          "absolute inset-0 bg-slate-900/55 backdrop-blur-md transition-all duration-300 ease-out",
+          "absolute inset-0 bg-slate-900/55 transition-all duration-300 ease-out",
           open ? "opacity-100" : "opacity-0",
         )}
         aria-label={closeMenuLabel}
@@ -210,7 +210,7 @@ export function MobileNav({
         aria-modal="true"
         aria-label="Site navigation"
         className={cn(
-          "absolute right-0 top-0 flex h-full w-[min(88vw,24rem)] min-h-0 flex-col border-l border-white/60 bg-white/95 shadow-premium-lg backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "absolute right-0 top-0 flex h-full w-[min(88vw,24rem)] min-h-0 flex-col border-l border-slate-200 bg-white shadow-premium-lg transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
           "pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]",
           open ? "translate-x-0" : "translate-x-full",
         )}
@@ -221,7 +221,7 @@ export function MobileNav({
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-brand/15 blur-2xl"
+            className="pointer-events-none absolute -right-10 -top-10 hidden size-28 rounded-full bg-brand/15 blur-2xl md:block"
             aria-hidden
           />
           <div className="relative flex items-center justify-between gap-3">
@@ -310,7 +310,7 @@ export function MobileNav({
             )}
             style={animateItems ? { animationDelay: `${footerDelayMs}ms` } : undefined}
           >
-            <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-3 shadow-sm backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
               {footer}
             </div>
           </div>

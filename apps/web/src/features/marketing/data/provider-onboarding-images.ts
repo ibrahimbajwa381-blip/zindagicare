@@ -20,8 +20,18 @@ export const PROVIDER_ONBOARDING_IMAGES = {
       alt: "Pakistani nurse in hijab and medical scrubs in a hospital corridor",
     },
   },
+  physiotherapist: {
+    preview: {
+      src: "/hero/home-physio-male-pakistan.jpg",
+      alt: "Male Pakistani physiotherapist providing professional home rehabilitation care",
+    },
+    hero: {
+      src: "/hero/home-physio-male-pakistan.jpg",
+      alt: "Male Pakistani physiotherapist providing professional home rehabilitation care",
+    },
+  },
 } as const;
 
-export function getProviderHeroImage(role: "doctor" | "nurse") {
+export function getProviderHeroImage(role: "doctor" | "nurse" | "physiotherapist") {
   return PROVIDER_ONBOARDING_IMAGES[role].hero;
 }

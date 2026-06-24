@@ -39,7 +39,7 @@ type Props = {
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
 const selectClassName =
-  "flex h-11 w-full rounded-xl border border-white/60 bg-white/90 px-3.5 py-2 text-base text-foreground shadow-sm backdrop-blur-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm";
+  "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm md:border-white/60 md:bg-white/90 md:backdrop-blur-sm";
 
 function parseList(value: string): string[] {
   return value
@@ -309,7 +309,7 @@ export function PatientProfileSection({ initialProfile }: Props) {
               <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
             )}
 
-            <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-white/70 bg-white/95 p-3 shadow-premium backdrop-blur-md sm:bottom-4 sm:flex-row sm:flex-wrap sm:gap-3 sm:p-4">
+            <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-premium sm:bottom-4 sm:flex-row sm:flex-wrap sm:gap-3 sm:p-4 md:border-white/70 md:bg-white/95 md:backdrop-blur-md">
               <Button type="submit" disabled={pending} loading={pending} className="w-full shadow-sm shadow-brand/20 sm:min-w-[9rem] sm:w-auto">
                 {pending ? p.saving : p.save}
               </Button>
@@ -576,8 +576,8 @@ function InfoTile({
       className={cn(
         "group rounded-xl border p-3 transition-all sm:p-4 sm:hover:-translate-y-0.5 sm:hover:shadow-md",
         highlight
-          ? "border-brand-light/40 bg-gradient-to-br from-brand-muted/80 to-white"
-          : "border-slate-200/70 bg-white/90 hover:border-brand-light/30",
+          ? "border-brand-light/40 bg-gradient-to-br from-brand-muted to-white"
+          : "border-slate-200/70 bg-white hover:border-brand-light/30",
         className,
       )}
     >

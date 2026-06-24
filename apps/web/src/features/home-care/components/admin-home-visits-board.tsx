@@ -6,6 +6,7 @@ import {
   HomeVisitServiceTypes,
   HOME_CARE_MATCH_RADIUS_KM,
   isDoctorHomeVisitService,
+  isPhysiotherapyHomeVisitService,
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ const SERVICE_LABELS: Record<string, string> = {
   [HomeVisitServiceTypes.IV_DRIP]: "IV drip",
   [HomeVisitServiceTypes.INJECTION]: "Injection",
   [HomeVisitServiceTypes.WOUND_CARE]: "Wound care",
+  [HomeVisitServiceTypes.PHYSIOTHERAPY]: "Physiotherapy",
 };
 
 const ACTIVE_STATUS_HINTS: Partial<Record<string, string>> = {
@@ -43,6 +45,10 @@ const ACTIVE_STATUS_HINTS: Partial<Record<string, string>> = {
 
 function isDoctorVisit(visit: HomeVisitDto) {
   return isDoctorHomeVisitService(visit.serviceType);
+}
+
+function isPhysioVisit(visit: HomeVisitDto) {
+  return isPhysiotherapyHomeVisitService(visit.serviceType);
 }
 
 function formatStaffOption(
@@ -173,6 +179,7 @@ export function AdminHomeVisitsBoard() {
 
   function renderAssignControls(visit: HomeVisitDto) {
     const doctorVisit = isDoctorVisit(visit);
+    const physioVisit = isPhysioVisit(visit);
     const staffLists = staffByVisit[visit.id];
     const override = manualOverride[visit.id] ?? false;
     const nearbyOptions = doctorVisit
@@ -185,8 +192,14 @@ export function AdminHomeVisitsBoard() {
     const radiusKm = staffLists?.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM;
     const autoLabel = doctorVisit
       ? "Auto-assign nearest doctor"
-      : "Auto-assign nearest nurse";
-    const selectLabel = doctorVisit ? "Select doctor…" : "Select nurse…";
+      : physioVisit
+        ? "Auto-assign nearest physiotherapist"
+        : "Auto-assign nearest nurse";
+    const selectLabel = doctorVisit
+      ? "Select doctor…"
+      : physioVisit
+        ? "Select physiotherapist…"
+        : "Select nurse…";
 
     return (
       <div className="space-y-3">

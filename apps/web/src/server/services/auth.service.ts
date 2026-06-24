@@ -68,6 +68,30 @@ async function ensureNurseProfile(userId: { toString(): string }, city: string) 
   );
 }
 
+async function ensurePhysiotherapistProfile(userId: { toString(): string }, city: string) {
+  await StaffProfileModel.updateOne(
+    { userId: userId.toString() } as Record<string, unknown>,
+    {
+      $set: {
+        staffType: Roles.PHYSIOTHERAPIST,
+        isAvailable: true,
+        verificationStatus: VerificationStatuses.PENDING,
+        serviceAreas: [
+          {
+            city,
+            geo: {
+              type: "Point",
+              coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat],
+            },
+            radiusKm: 15,
+          },
+        ],
+      },
+    },
+    { upsert: true },
+  );
+}
+
 export function hashCnic(cnic: string): string {
   return createHash("sha256").update(cnic.replace(/-/g, "")).digest("hex");
 }
@@ -148,6 +172,7 @@ export async function registerWithCredentials(input: {
     patient: [Roles.PATIENT],
     doctor: [Roles.DOCTOR],
     nurse: [Roles.NURSE],
+    physiotherapist: [Roles.PHYSIOTHERAPIST],
   };
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -171,8 +196,10 @@ export async function registerWithCredentials(input: {
       await ensurePatientProfile(user._id);
     } else if (accountType === "doctor") {
       await ensureDoctorProfile(user._id, city);
-    } else {
+    } else if (accountType === "nurse") {
       await ensureNurseProfile(user._id, city);
+    } else {
+      await ensurePhysiotherapistProfile(user._id, city);
     }
   } catch (error) {
     await UserModel.findByIdAndDelete(user._id);
@@ -274,6 +301,16 @@ export async function loadAuthUserPayload(userId: string) {
     nurseVerificationStatus = staff?.verificationStatus;
   }
 
+  let physiotherapistVerificationStatus: string | undefined;
+  if (user.roles?.includes(Roles.PHYSIOTHERAPIST)) {
+    const staff = await StaffProfileModel.findOne(
+      mongoFilter({ userId: user._id, staffType: Roles.PHYSIOTHERAPIST }),
+    )
+      .select("verificationStatus")
+      .lean();
+    physiotherapistVerificationStatus = staff?.verificationStatus;
+  }
+
   return {
     id: user._id.toString(),
     email: user.email ?? undefined,
@@ -283,6 +320,7 @@ export async function loadAuthUserPayload(userId: string) {
     onboardingCompleted: user.onboardingCompleted ?? false,
     doctorVerificationStatus,
     nurseVerificationStatus,
+    physiotherapistVerificationStatus,
   };
 }
 

@@ -31,6 +31,9 @@ export const authConfig = {
         token.nurseVerificationStatus = (
           user as { nurseVerificationStatus?: string }
         ).nurseVerificationStatus;
+        token.physiotherapistVerificationStatus = (
+          user as { physiotherapistVerificationStatus?: string }
+        ).physiotherapistVerificationStatus;
         if (user.image) token.picture = user.image;
       }
 
@@ -40,6 +43,7 @@ export const authConfig = {
           onboardingCompleted?: boolean;
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
+          physiotherapistVerificationStatus?: string;
           image?: string;
         };
         if (patch.roles) token.roles = patch.roles;
@@ -51,6 +55,9 @@ export const authConfig = {
         }
         if (patch.nurseVerificationStatus) {
           token.nurseVerificationStatus = patch.nurseVerificationStatus;
+        }
+        if (patch.physiotherapistVerificationStatus) {
+          token.physiotherapistVerificationStatus = patch.physiotherapistVerificationStatus;
         }
         if (patch.image) token.picture = patch.image;
       }
@@ -69,6 +76,8 @@ export const authConfig = {
         session.user.nurseVerificationStatus = token.nurseVerificationStatus as
           | string
           | undefined;
+        session.user.physiotherapistVerificationStatus =
+          token.physiotherapistVerificationStatus as string | undefined;
         session.user.image = (token.picture as string | undefined) ?? session.user.image;
       }
       return session;

@@ -18,6 +18,8 @@ const systemSettingsSchema = new Schema(
     defaultDoctorCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
     /** Default revenue share for nurses when profile has no override (0–100). */
     defaultNurseCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
+    /** Default revenue share for physiotherapists when profile has no override (0–100). */
+    defaultPhysiotherapistCommissionPercent: { type: Number, default: 70, min: 0, max: 100 },
   },
   { timestamps: true },
 );

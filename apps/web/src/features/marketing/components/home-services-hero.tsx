@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
+import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,15 @@ import { surfaceCard, surfaceInset } from "@/lib/ui/surfaces";
 import { getServerTranslations } from "@/i18n/server";
 
 const highlightIcons = [ShieldCheck, MapPin, Stethoscope] as const;
+
+const SCENARIO_SERVICE = {
+  doctorVisit: HomeVisitServiceTypes.DOCTOR_VISIT,
+  physiotherapy: HomeVisitServiceTypes.PHYSIOTHERAPY,
+  generalNurse: HomeVisitServiceTypes.NURSE,
+  ivDrip: HomeVisitServiceTypes.IV_DRIP,
+  injection: HomeVisitServiceTypes.INJECTION,
+  woundCare: HomeVisitServiceTypes.WOUND_CARE,
+} as const;
 
 export async function HomeServicesHero() {
   const { t } = await getServerTranslations();
@@ -34,32 +44,10 @@ export async function HomeServicesHero() {
           <p className="mt-3 text-lg font-semibold text-brand-dark sm:text-xl lg:text-2xl">
             {h.subheadline}
           </p>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-700 sm:mt-6 sm:text-lg">
-            {h.body}
-          </p>
 
-          <ul className="mt-8 space-y-4 sm:mt-10">
-            {h.highlights.map((item, index) => {
-              const Icon = highlightIcons[index];
-              return (
-                <li key={item.title} className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="pt-0.5 text-sm sm:text-base">
-                    <strong className="font-semibold text-foreground">
-                      {item.title}
-                    </strong>
-                    <span className="text-slate-600"> — {item.desc}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:flex-wrap">
             <Button size="lg" className="h-12 rounded-xl shadow-premium sm:h-14" asChild>
-              <Link href={siteConfig.links.homeCareRequest}>
+              <Link href="#choose-service">
                 {h.primaryCta}
                 <ArrowRight className="h-5 w-5" />
               </Link>
@@ -81,6 +69,41 @@ export async function HomeServicesHero() {
               <Link href="#how-home-care-works">{h.tertiaryCta}</Link>
             </Button>
           </div>
+
+          <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+            {t.homeServices.picker.scenarios.map((scenario) => (
+              <Link
+                key={scenario.key}
+                href={`#service-${SCENARIO_SERVICE[scenario.key]}`}
+                className="shrink-0 rounded-full border border-brand/20 bg-white/80 px-3 py-1.5 text-xs font-medium text-brand-dark sm:text-sm"
+              >
+                {scenario.label}
+              </Link>
+            ))}
+          </div>
+
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-700 sm:mt-6 sm:text-lg">
+            {h.body}
+          </p>
+
+          <ul className="mt-8 space-y-4 sm:mt-10">
+            {h.highlights.map((item, index) => {
+              const Icon = highlightIcons[index];
+              return (
+                <li key={item.title} className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="pt-0.5 text-sm sm:text-base">
+                    <strong className="font-semibold text-foreground">
+                      {item.title}
+                    </strong>
+                    <span className="text-slate-600"> — {item.desc}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
         <div className={`p-6 sm:p-8 ${surfaceCard}`}>

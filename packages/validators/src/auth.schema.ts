@@ -27,7 +27,7 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export const accountTypes = ["patient", "doctor", "nurse"] as const;
+export const accountTypes = ["patient", "doctor", "nurse", "physiotherapist"] as const;
 export type AccountType = (typeof accountTypes)[number];
 
 export const registerSchema = z

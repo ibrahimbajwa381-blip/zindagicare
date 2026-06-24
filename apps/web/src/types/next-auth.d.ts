@@ -7,6 +7,7 @@ declare module "next-auth" {
     onboardingCompleted?: boolean;
     doctorVerificationStatus?: VerificationStatus | string;
     nurseVerificationStatus?: VerificationStatus | string;
+    physiotherapistVerificationStatus?: VerificationStatus | string;
   }
 
   interface Session {
@@ -19,6 +20,7 @@ declare module "next-auth" {
       onboardingCompleted?: boolean;
       doctorVerificationStatus?: VerificationStatus | string;
       nurseVerificationStatus?: VerificationStatus | string;
+      physiotherapistVerificationStatus?: VerificationStatus | string;
     };
   }
 }
@@ -29,5 +31,6 @@ declare module "next-auth/jwt" {
     onboardingCompleted?: boolean;
     doctorVerificationStatus?: VerificationStatus | string;
     nurseVerificationStatus?: VerificationStatus | string;
+    physiotherapistVerificationStatus?: VerificationStatus | string;
   }
 }

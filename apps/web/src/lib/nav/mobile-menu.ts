@@ -51,6 +51,7 @@ export function buildMarketingMobileNav(
     sundayConsult: string;
     urgentCare: string;
     homeServices: string;
+    homePhysio: string;
     freeBadge: string;
     urgentBadge: string;
     myDashboard: string;
@@ -61,6 +62,10 @@ export function buildMarketingMobileNav(
 ): { links: MobileNavLink[]; sections: MobileNavSection[] } {
   const links: MobileNavLink[] = [
     { href: siteConfig.links.homeServices, label: labels.homeServices },
+    {
+      href: `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+      label: labels.homePhysio,
+    },
     { href: siteConfig.links.doctors, label: labels.onlineConsult },
     {
       href: siteConfig.links.sundayConsult,

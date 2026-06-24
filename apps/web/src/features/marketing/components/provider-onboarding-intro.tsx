@@ -16,6 +16,7 @@ import {
   Video,
   Wallet,
   Clock,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 import { siteConfig } from "@/config/site";
@@ -26,7 +27,7 @@ import { SectionHeader } from "./section-header";
 import { getProviderHeroImage } from "@/features/marketing/data/provider-onboarding-images";
 import { getServerTranslations } from "@/i18n/server";
 
-export type ProviderRole = "doctor" | "nurse";
+export type ProviderRole = "doctor" | "nurse" | "physiotherapist";
 
 const doctorBenefitIcons = [
   Video,
@@ -46,17 +47,28 @@ const nurseBenefitIcons = [
   Clock,
 ] as const;
 
+const physiotherapistBenefitIcons = [
+  MapPinned,
+  Activity,
+  Home,
+  LayoutDashboard,
+  ShieldCheck,
+  Clock,
+] as const;
+
 const stepIcons = [UserPlus, FileCheck, ArrowRight] as const;
 const stepNumbers = ["01", "02", "03"] as const;
 
 const roleIcons: Record<ProviderRole, LucideIcon> = {
   doctor: Stethoscope,
   nurse: Syringe,
+  physiotherapist: Activity,
 };
 
 const registerLinks: Record<ProviderRole, string> = {
   doctor: siteConfig.links.registerDoctor,
   nurse: siteConfig.links.registerNurse,
+  physiotherapist: siteConfig.links.registerPhysiotherapist,
 };
 
 type ProviderOnboardingIntroProps = {
@@ -66,7 +78,12 @@ type ProviderOnboardingIntroProps = {
 export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroProps) {
   const { t } = await getServerTranslations();
   const content = t.providerOnboarding[role];
-  const benefitIcons = role === "doctor" ? doctorBenefitIcons : nurseBenefitIcons;
+  const benefitIcons =
+    role === "doctor"
+      ? doctorBenefitIcons
+      : role === "nurse"
+        ? nurseBenefitIcons
+        : physiotherapistBenefitIcons;
   const RoleIcon = roleIcons[role];
   const heroImage = getProviderHeroImage(role);
 

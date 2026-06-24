@@ -6,6 +6,7 @@ import {
   AUTH_ROUTES,
   DOCTOR_VERIFICATION_EXEMPT_PREFIXES,
   NURSE_VERIFICATION_EXEMPT_PREFIXES,
+  PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES,
   isPublicPath,
   matchesPrefix,
   isPatientDashboardPath,
@@ -87,6 +88,22 @@ export default auth((req) => {
     );
   }
 
+  const isPhysiotherapist = roles.includes(Roles.PHYSIOTHERAPIST);
+  const physiotherapistPending =
+    isPhysiotherapist &&
+    user.physiotherapistVerificationStatus &&
+    user.physiotherapistVerificationStatus !== VerificationStatuses.APPROVED;
+
+  if (
+    physiotherapistPending &&
+    pathname.startsWith("/physiotherapist") &&
+    !matchesPrefix(pathname, PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES)
+  ) {
+    return NextResponse.redirect(
+      new URL(AUTH_ROUTES.physiotherapistVerification, req.nextUrl.origin),
+    );
+  }
+
   for (const rule of ROLE_ROUTE_RULES) {
     if (pathname.startsWith(rule.prefix)) {
       const allowed = rule.roles.some((r) => roles.includes(r));
@@ -111,6 +128,7 @@ export const config = {
     "/doctor/:path*",
     "/admin/:path*",
     "/nurse/:path*",
+    "/physiotherapist/:path*",
     "/rider/:path*",
     "/messages/:path*",
     "/intake/:path*",

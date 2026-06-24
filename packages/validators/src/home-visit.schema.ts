@@ -13,6 +13,7 @@ export const createHomeVisitSchema = z.object({
     HomeVisitServiceTypes.IV_DRIP,
     HomeVisitServiceTypes.INJECTION,
     HomeVisitServiceTypes.WOUND_CARE,
+    HomeVisitServiceTypes.PHYSIOTHERAPY,
   ]),
   scheduledAt: z.string().datetime({ offset: true }).or(z.string().min(1)),
   addressLine: z.string().min(5).max(300),

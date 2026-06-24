@@ -257,7 +257,7 @@ export function HeaderNotificationsMenu({
       <button
         type="button"
         aria-label={t.common.closeMenu}
-        className="fixed inset-0 z-[55] bg-slate-900/20 backdrop-blur-[1px]"
+        className="fixed inset-0 z-[55] bg-slate-900/30"
         onClick={() => setOpen(false)}
       />
     ) : null;

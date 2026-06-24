@@ -18,7 +18,7 @@ export async function HomeServicesCta() {
         <p className="mt-3 text-base text-slate-600 sm:text-lg">{c.description}</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Button size="lg" className="h-12 rounded-xl shadow-premium" asChild>
-            <Link href={siteConfig.links.homeCareRequest}>
+            <Link href="#choose-service">
               {c.primary}
               <ArrowRight className="h-5 w-5" />
             </Link>

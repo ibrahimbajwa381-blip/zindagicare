@@ -43,13 +43,19 @@ export type AdminDashboardStats = {
 export async function getAdminNavCounts(): Promise<AdminNavCounts> {
   await connectDatabase();
 
-  const [doctors, nurses, reviews, urgentCare, homeVisits] = await Promise.all([
+  const [doctors, nurses, physiotherapists, reviews, urgentCare, homeVisits] =
+    await Promise.all([
     DoctorProfileModel.countDocuments({
       verificationStatus: VerificationStatuses.PENDING,
       verificationSubmittedAt: { $exists: true },
     }),
     StaffProfileModel.countDocuments({
       staffType: Roles.NURSE,
+      verificationStatus: VerificationStatuses.PENDING,
+      verificationSubmittedAt: { $exists: true },
+    }),
+    StaffProfileModel.countDocuments({
+      staffType: Roles.PHYSIOTHERAPIST,
       verificationStatus: VerificationStatuses.PENDING,
       verificationSubmittedAt: { $exists: true },
     }),
@@ -67,7 +73,7 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
     }),
   ]);
 
-  return { doctors, nurses, reviews, urgentCare, homeVisits };
+  return { doctors, nurses, physiotherapists, reviews, urgentCare, homeVisits };
 }
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {

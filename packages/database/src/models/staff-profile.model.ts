@@ -17,7 +17,7 @@ const staffProfileSchema = new Schema(
     },
     staffType: {
       type: String,
-      enum: [Roles.NURSE, Roles.RIDER],
+      enum: [Roles.NURSE, Roles.RIDER, Roles.PHYSIOTHERAPIST],
       required: true,
     },
     employeeCode: { type: String, unique: true, sparse: true },

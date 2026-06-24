@@ -1,5 +1,6 @@
 import { siteConfig } from "@/config/site";
 import {
+  HOME_PHYSIO_HERO_IMAGE,
   HOME_SERVICES_HERO_IMAGE,
   SUNDAY_FREE_CONSULT_HERO_IMAGE,
   URGENT_CARE_HERO_IMAGE,
@@ -7,15 +8,23 @@ import {
 } from "@/features/marketing/data/hero-services";
 import type { Dictionary } from "./dictionaries/en";
 
-const heroIds = ["in-house-medical", "urgent-care", "online-consult", "sunday-consult"] as const;
+const heroIds = [
+  "in-house-medical",
+  "home-physiotherapy",
+  "urgent-care",
+  "online-consult",
+  "sunday-consult",
+] as const;
 const heroImages = [
   HOME_SERVICES_HERO_IMAGE,
+  HOME_PHYSIO_HERO_IMAGE,
   URGENT_CARE_HERO_IMAGE,
   "/hero/dr-usama-riyaz.png",
   SUNDAY_FREE_CONSULT_HERO_IMAGE,
 ] as const;
 const heroHrefs = [
   siteConfig.links.homeServices,
+  `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
   `${siteConfig.links.urgentCare}#request`,
   siteConfig.links.doctors,
   siteConfig.links.sundayConsult,

@@ -21,6 +21,7 @@ import {
   VerificationStatuses,
   isAdmin,
   isDoctorHomeVisitService,
+  isPhysiotherapyHomeVisitService,
   type HomeVisitServiceType,
   type HomeVisitStatus,
 } from "@zindagi/shared";
@@ -63,6 +64,7 @@ const SERVICE_LABELS: Record<string, string> = {
   [HomeVisitServiceTypes.IV_DRIP]: "IV drip",
   [HomeVisitServiceTypes.INJECTION]: "Injection",
   [HomeVisitServiceTypes.WOUND_CARE]: "Wound care",
+  [HomeVisitServiceTypes.PHYSIOTHERAPY]: "Physiotherapy",
 };
 
 async function notifyVisitAssignment(visit: Record<string, unknown>, staffUserId: string) {
@@ -130,7 +132,7 @@ export type HomeVisitDto = {
     id: string;
     name: string;
     phone?: string;
-    role?: "nurse" | "doctor";
+    role?: "nurse" | "doctor" | "physiotherapist";
     specialties?: string[];
   };
   visitReport?: {
@@ -171,7 +173,7 @@ function getBasePrice(serviceType: HomeVisitServiceType): number {
 
 function serializeVisit(
   doc: Record<string, unknown>,
-  assigneeMeta?: { role?: "nurse" | "doctor"; specialties?: string[] },
+  assigneeMeta?: { role?: "nurse" | "doctor" | "physiotherapist"; specialties?: string[] },
 ): HomeVisitDto {
   const patient = doc.patientId as
     | { _id?: { toString(): string }; name?: string; phone?: string }
@@ -250,7 +252,7 @@ function refId(ref: unknown): string | undefined {
 async function getAssigneeMeta(
   staffUserId: string | undefined,
   serviceType: HomeVisitServiceType,
-): Promise<{ role?: "nurse" | "doctor"; specialties?: string[] } | undefined> {
+): Promise<{ role?: "nurse" | "doctor" | "physiotherapist"; specialties?: string[] } | undefined> {
   if (!staffUserId) return undefined;
   if (isDoctorHomeVisitService(serviceType)) {
     const profile = await DoctorProfileModel.findOne(
@@ -260,6 +262,9 @@ async function getAssigneeMeta(
       role: "doctor",
       specialties: profile?.specialties ?? [],
     };
+  }
+  if (isPhysiotherapyHomeVisitService(serviceType)) {
+    return { role: "physiotherapist" };
   }
   return { role: "nurse" };
 }
@@ -453,6 +458,20 @@ export class HomeVisitService {
         filter.status = HomeVisitStatuses.REQUESTED;
       }
     } else if (
+      roles.includes(Roles.PHYSIOTHERAPIST) &&
+      (scope === "assigned" || scope === "assigned-history")
+    ) {
+      filter.assignedStaffId = userId;
+      filter.serviceType = HomeVisitServiceTypes.PHYSIOTHERAPY;
+      if (scope === "assigned-history") {
+        filter.status = {
+          $in: [HomeVisitStatuses.COMPLETED, HomeVisitStatuses.CANCELLED],
+        };
+        sort = { scheduledAt: -1 };
+      } else {
+        filter.status = { $in: ACTIVE_STATUSES };
+      }
+    } else if (
       roles.includes(Roles.NURSE) &&
       (scope === "assigned" || scope === "assigned-history")
     ) {
@@ -541,8 +560,35 @@ export class HomeVisitService {
   }
 
   static async findNearestAvailableStaff(lng: number, lat: number, city: string) {
-    const nurses = await StaffProfileModel.find({
-      staffType: Roles.NURSE,
+    return HomeVisitService.findNearestAvailableStaffByType(
+      lng,
+      lat,
+      city,
+      Roles.NURSE,
+    );
+  }
+
+  static async findNearestAvailablePhysiotherapist(
+    lng: number,
+    lat: number,
+    city: string,
+  ) {
+    return HomeVisitService.findNearestAvailableStaffByType(
+      lng,
+      lat,
+      city,
+      Roles.PHYSIOTHERAPIST,
+    );
+  }
+
+  private static async findNearestAvailableStaffByType(
+    lng: number,
+    lat: number,
+    city: string,
+    staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
+  ) {
+    const staffProfiles = await StaffProfileModel.find({
+      staffType,
       isAvailable: true,
       homeVisitEnabled: true,
       verificationStatus: "approved",
@@ -552,23 +598,24 @@ export class HomeVisitService {
       .lean();
 
     let best: { userId: string; distanceKm: number; name: string } | null = null;
+    const defaultName = staffType === Roles.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
 
-    for (const nurse of nurses) {
-      if (!nurseCoversCity(nurse, city, LAUNCH_CITY)) continue;
+    for (const staff of staffProfiles) {
+      if (!nurseCoversCity(staff, city, LAUNCH_CITY)) continue;
 
-      const areas = nurse.serviceAreas ?? [];
+      const areas = staff.serviceAreas ?? [];
       for (const area of areas) {
         if (!area.geo?.coordinates) continue;
         const [areaLng, areaLat] = area.geo.coordinates;
         const dist = haversineKm(lng, lat, areaLng, areaLat);
         const radius = area.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM;
         if (dist <= radius && (!best || dist < best.distanceKm)) {
-          const user = nurse.userId as { _id?: { toString(): string }; name?: string };
+          const user = staff.userId as { _id?: { toString(): string }; name?: string };
           if (user?._id) {
             best = {
               userId: user._id.toString(),
               distanceKm: dist,
-              name: user.name ?? "Nurse",
+              name: user.name ?? defaultName,
             };
           }
         }
@@ -699,11 +746,15 @@ export class HomeVisitService {
       };
     }
 
-    const match = await HomeVisitService.findNearestAvailableStaff(lng, lat, city);
+    const match = isPhysiotherapyHomeVisitService(visit.serviceType)
+      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, city)
+      : await HomeVisitService.findNearestAvailableStaff(lng, lat, city);
 
     if (!match) {
       throw new AppError(
-        "No available provider found in your area",
+        isPhysiotherapyHomeVisitService(visit.serviceType)
+          ? "No available physiotherapist found in your area"
+          : "No available provider found in your area",
         ErrorCodes.NOT_FOUND,
         404,
       );
@@ -727,7 +778,9 @@ export class HomeVisitService {
       staffId: match.userId,
       staffName: match.name,
       distanceKm: match.distanceKm,
-      role: "nurse" as const,
+      role: isPhysiotherapyHomeVisitService(visit.serviceType)
+        ? ("physiotherapist" as const)
+        : ("nurse" as const),
     };
   }
 
@@ -786,6 +839,31 @@ export class HomeVisitService {
           400,
         );
       }
+    } else if (isPhysiotherapyHomeVisitService(visit.serviceType)) {
+      if (!staff.roles?.includes(Roles.PHYSIOTHERAPIST)) {
+        throw new AppError("Invalid physiotherapist", ErrorCodes.VALIDATION, 400);
+      }
+      const profile = await StaffProfileModel.findOne(
+        mongoFilter({ userId: staff._id, staffType: Roles.PHYSIOTHERAPIST }),
+      ).lean();
+      if (
+        !profile ||
+        profile.verificationStatus !== VerificationStatuses.APPROVED ||
+        !profile.homeVisitEnabled
+      ) {
+        throw new AppError(
+          "Physiotherapist is not approved for home visits",
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
+      if (!nurseCoversCity(profile, visitCity, LAUNCH_CITY)) {
+        throw new AppError(
+          `Physiotherapist is not listed for home visits in ${visitCity}`,
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
     } else if (!staff.roles?.includes(Roles.NURSE)) {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
     } else {
@@ -802,12 +880,15 @@ export class HomeVisitService {
     }
 
     const [lng, lat] = visitPatientCoords(visit);
+    const isDoctor = isDoctorHomeVisitService(visit.serviceType);
+    const isPhysio = isPhysiotherapyHomeVisitService(visit.serviceType);
     const distanceKm = await HomeVisitService.getStaffDistanceKm(
       input.staffId,
-      isDoctorHomeVisitService(visit.serviceType),
+      isDoctor,
       lng,
       lat,
       visitCity,
+      isPhysio ? Roles.PHYSIOTHERAPIST : Roles.NURSE,
     );
 
     if (
@@ -840,8 +921,10 @@ export class HomeVisitService {
 
     return {
       staffId: input.staffId,
-      staffName: staff.name ?? (isDoctorHomeVisitService(visit.serviceType) ? "Doctor" : "Nurse"),
-      role: isDoctorHomeVisitService(visit.serviceType) ? "doctor" : "nurse",
+      staffName:
+        staff.name ??
+        (isDoctor ? "Doctor" : isPhysio ? "Physiotherapist" : "Nurse"),
+      role: isDoctor ? "doctor" : isPhysio ? "physiotherapist" : "nurse",
       distanceKm: distanceKm ?? undefined,
     };
   }
@@ -980,6 +1063,7 @@ export class HomeVisitService {
     patientLng: number,
     patientLat: number,
     visitCity?: string,
+    staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST = Roles.NURSE,
   ): Promise<number | null> {
     await HomeVisitService.ensureConnected();
 
@@ -994,7 +1078,7 @@ export class HomeVisitService {
     }
 
     const profile = await StaffProfileModel.findOne(
-      mongoFilter({ userId: staffUserId, staffType: Roles.NURSE }),
+      mongoFilter({ userId: staffUserId, staffType }),
     ).lean();
     if (!profile) return null;
     const points = nurseGeoPoints(profile, visitCity);
@@ -1015,6 +1099,11 @@ export class HomeVisitService {
     const doctorVisit = isDoctorHomeVisitService(
       visit.serviceType as HomeVisitServiceType,
     );
+    const physioVisit = isPhysiotherapyHomeVisitService(
+      visit.serviceType as HomeVisitServiceType,
+    );
+    const staffType = physioVisit ? Roles.PHYSIOTHERAPIST : Roles.NURSE;
+    const defaultStaffName = physioVisit ? "Physiotherapist" : "Nurse";
     const busyIds = doctorVisit
       ? await getBusyStaffIds(
           visit.scheduledAt as Date,
@@ -1022,8 +1111,8 @@ export class HomeVisitService {
         )
       : [];
 
-    const nurseProfiles = await StaffProfileModel.find({
-      staffType: Roles.NURSE,
+    const staffProfiles = await StaffProfileModel.find({
+      staffType,
       isAvailable: true,
       homeVisitEnabled: true,
       verificationStatus: "approved",
@@ -1032,8 +1121,8 @@ export class HomeVisitService {
       .populate("userId", "name phone")
       .lean();
 
-    const nursesWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
-      nurseProfiles
+    const staffWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
+      staffProfiles
         .filter((p) => nurseCoversCity(p, city, LAUNCH_CITY))
         .map((p) => {
           const user = p.userId as {
@@ -1050,7 +1139,7 @@ export class HomeVisitService {
             : undefined;
           return {
             id: user?._id?.toString() ?? "",
-            name: user?.name ?? "Nurse",
+            name: user?.name ?? defaultStaffName,
             phone: user?.phone,
             serviceArea: [area?.area, area?.city ?? LAUNCH_CITY]
               .filter(Boolean)
@@ -1060,6 +1149,8 @@ export class HomeVisitService {
         })
         .filter((n) => n.id)
         .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+
+    const nursesWithDistance = staffWithDistance;
 
     const doctorProfiles = await DoctorProfileModel.find({
       verificationStatus: VerificationStatuses.APPROVED,
