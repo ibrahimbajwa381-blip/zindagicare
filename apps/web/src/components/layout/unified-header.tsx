@@ -100,8 +100,8 @@ export function UnifiedHeader({
     <header
       className={cn(
         appHeaderShell,
-        "transition-transform duration-300 ease-in-out motion-reduce:transition-none",
-        hidden && "-translate-y-full",
+        hidden &&
+          "max-md:translate-y-0 md:transition-transform md:duration-300 md:ease-in-out md:motion-reduce:transition-none md:-translate-y-full",
       )}
     >
       <div className={cn(appHeaderInner, "justify-between gap-2 text-slate-600")}>

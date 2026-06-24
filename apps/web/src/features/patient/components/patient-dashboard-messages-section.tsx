@@ -127,7 +127,7 @@ export function PatientDashboardMessagesSection() {
     <Card
       className={cn(
         surfaceCard,
-        "flex h-full flex-col overflow-hidden border-white/70 p-0 shadow-premium",
+        "flex h-full flex-col max-md:overflow-visible max-md:shadow-sm md:overflow-hidden md:shadow-premium border-slate-200 p-0",
       )}
     >
       <CardHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-[#f0f2f5] px-4 py-4 sm:px-6">

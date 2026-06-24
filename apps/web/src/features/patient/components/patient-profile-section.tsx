@@ -39,7 +39,7 @@ type Props = {
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
 const selectClassName =
-  "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm md:border-white/60 md:bg-white/90 md:backdrop-blur-sm";
+  "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm";
 
 function parseList(value: string): string[] {
   return value
@@ -162,7 +162,7 @@ export function PatientProfileSection({ initialProfile }: Props) {
   }
 
   return (
-    <Card className={cn(surfaceCard, "overflow-hidden border-white/70 p-0 shadow-premium")}>
+    <Card className={cn(surfaceCard, "max-md:overflow-visible max-md:shadow-sm md:overflow-hidden md:shadow-premium border-slate-200 p-0")}>
       <ProfileHero
         eyebrow={p.title}
         name={profile.user.name}
@@ -309,7 +309,7 @@ export function PatientProfileSection({ initialProfile }: Props) {
               <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
             )}
 
-            <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-premium sm:bottom-4 sm:flex-row sm:flex-wrap sm:gap-3 sm:p-4 md:border-white/70 md:bg-white/95 md:backdrop-blur-md">
+            <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:bottom-4 sm:flex-row sm:flex-wrap sm:gap-3 sm:p-4 md:shadow-premium">
               <Button type="submit" disabled={pending} loading={pending} className="w-full shadow-sm shadow-brand/20 sm:min-w-[9rem] sm:w-auto">
                 {pending ? p.saving : p.save}
               </Button>
@@ -429,7 +429,7 @@ function ProfileHero({
   onEdit: () => void;
 }) {
   return (
-    <div className="border-b border-slate-200/80 bg-gradient-to-br from-brand-muted/90 via-white to-accent-muted/30 px-4 py-5 sm:px-8 sm:py-7">
+    <div className="border-b border-slate-200 bg-brand-muted px-4 py-5 sm:bg-gradient-to-br sm:from-brand-muted/90 sm:via-white sm:to-accent-muted/30 sm:px-8 sm:py-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4 sm:gap-5">
           <div className="relative shrink-0">
@@ -526,7 +526,7 @@ function ProfileSection({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-white to-slate-50/80 p-4 shadow-sm sm:p-5 lg:p-6",
+        "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:bg-gradient-to-br sm:from-white sm:via-white sm:to-slate-50/80 sm:p-5 lg:p-6",
         className,
       )}
     >
@@ -574,10 +574,10 @@ function InfoTile({
   return (
     <div
       className={cn(
-        "group rounded-xl border p-3 transition-all sm:p-4 sm:hover:-translate-y-0.5 sm:hover:shadow-md",
+        "group rounded-xl border border-slate-200 bg-white p-3 sm:p-4 md:hover:-translate-y-0.5 md:hover:shadow-md md:transition-[border-color,box-shadow,transform]",
         highlight
-          ? "border-brand-light/40 bg-gradient-to-br from-brand-muted to-white"
-          : "border-slate-200/70 bg-white hover:border-brand-light/30",
+          ? "border-brand-light/40 bg-brand-muted md:bg-gradient-to-br md:from-brand-muted md:to-white"
+          : "hover:border-brand-light/30",
         className,
       )}
     >

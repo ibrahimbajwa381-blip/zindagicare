@@ -35,7 +35,7 @@ export function WhatsAppFloatButton() {
       className={cn(
         "group fixed z-40 flex h-14 w-14 items-center justify-center rounded-full",
         "bg-[#25D366] text-white shadow-lg ring-2 ring-white",
-        "transition-transform duration-200 hover:scale-105 active:scale-95",
+        "md:transition-transform md:duration-200 md:hover:scale-105 md:active:scale-95",
         "bottom-[max(1.25rem,env(safe-area-inset-bottom))] start-[max(1rem,env(safe-area-inset-left))]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2",
       )}

@@ -61,18 +61,24 @@ html {
 }
 
 body {
-  background:
-    linear-gradient(
-      180deg,
-      var(--primary-muted) 0%,
-      var(--background) 12%,
-      var(--background) 88%,
-      var(--accent-muted) 100%
-    );
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+@media (min-width: 768px) {
+  body {
+    background:
+      linear-gradient(
+        180deg,
+        var(--primary-muted) 0%,
+        var(--background) 12%,
+        var(--background) 88%,
+        var(--accent-muted) 100%
+      );
+  }
 }
 
 html[lang="ur"] {

@@ -57,7 +57,7 @@ export default async function PatientDashboardPage() {
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
 
   return (
-    <PageShell variant="brand" spacing="default" flipBlur>
+    <PageShell variant="brand" spacing="default">
       <WelcomeTour userId={session.user.id} />
       <PageTitle
         eyebrow={t.dashboard.eyebrow}

@@ -78,7 +78,7 @@ export function PatientAppointmentHistorySection({
   viewPrescriptionLabel,
 }: Props) {
   return (
-    <Card className={cn(surfaceCardInteractive, "overflow-hidden")}>
+    <Card className={cn(surfaceCardInteractive, "max-md:overflow-visible md:overflow-hidden")}>
       <CardHeader className="border-b border-slate-100/80 pb-4">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>

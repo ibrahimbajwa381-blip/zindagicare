@@ -9,14 +9,34 @@ type Options = {
   threshold?: number;
 };
 
+function isTouchViewport() {
+  if (typeof window === "undefined") return true;
+  return (
+    window.matchMedia("(pointer: coarse)").matches ||
+    window.matchMedia("(max-width: 767px)").matches
+  );
+}
+
 /**
  * Returns whether a sticky header should be visible based on scroll direction:
  * hides when scrolling down, reveals when scrolling up or near the top.
+ *
+ * Disabled on touch/mobile — transform + scroll state updates cause GPU ghosting on Android.
  */
 export function useHideOnScroll({ topOffset = 80, threshold = 6 }: Options = {}) {
   const [hidden, setHidden] = useState(false);
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    setEnabled(!isTouchViewport());
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) {
+      setHidden(false);
+      return;
+    }
+
     let lastY = window.scrollY;
     let ticking = false;
 
@@ -42,7 +62,7 @@ export function useHideOnScroll({ topOffset = 80, threshold = 6 }: Options = {})
 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [topOffset, threshold]);
+  }, [enabled, topOffset, threshold]);
 
-  return hidden;
+  return enabled ? hidden : false;
 }

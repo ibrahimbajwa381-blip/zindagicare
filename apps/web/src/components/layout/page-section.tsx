@@ -75,14 +75,14 @@ export function PageSection({
     <section
       id={id}
       className={cn(
-        "relative w-full overflow-hidden",
+        "relative w-full max-md:!bg-white max-md:overflow-visible md:overflow-hidden",
         styles.section,
-        bordered && "border-y border-brand-light/25",
+        bordered && "border-y border-brand-light/25 max-md:border-y-0",
         isTall && "flex min-h-[min(100svh,920px)] items-center",
         className,
       )}
     >
-      {/* Blur orbs are desktop-only — filter: blur on large layers causes GPU artifacts on mobile. */}
+      {/* Decorative layers are desktop-only — absolute overlays + overflow clipping ghost on mobile scroll. */}
       <div
         aria-hidden
         className={cn(
@@ -104,13 +104,13 @@ export function PageSection({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 bg-gradient-to-b via-transparent to-transparent",
+          "pointer-events-none absolute inset-0 hidden bg-gradient-to-b via-transparent to-transparent md:block",
           styles.wash,
         )}
       />
 
       <div
-        className={cn(pageContainer, spacingClasses[spacing], innerClassName)}
+        className={cn(pageContainer, spacingClasses[spacing], "max-md:py-8", innerClassName)}
       >
         {children}
       </div>
