@@ -4,14 +4,17 @@ import { HomeServicesHowItWorks } from "@/features/marketing/components/home-ser
 import { HomeServicesCoverage } from "@/features/marketing/components/home-services-coverage";
 import { HomeServicesFaq } from "@/features/marketing/components/home-services-faq";
 import { HomeServicesCta } from "@/features/marketing/components/home-services-cta";
-import { getServerTranslations } from "@/i18n/server";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { marketingPageSeo } from "@/lib/seo/pages";
 
-export async function generateMetadata() {
-  const { t } = await getServerTranslations();
-  return {
-    title: t.homeServices.title,
-    description: t.homeServices.hero.body,
-  };
+export function generateMetadata(): Metadata {
+  const seo = marketingPageSeo.homeServices;
+  return buildPageMetadata({
+    title: seo.title,
+    description: seo.description,
+    path: "/home-services",
+  });
 }
 
 export default function HomeServicesPage() {

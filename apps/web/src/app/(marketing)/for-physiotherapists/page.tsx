@@ -1,14 +1,16 @@
+import type { Metadata } from "next";
 import { ProviderOnboardingIntro } from "@/features/marketing/components/provider-onboarding-intro";
-import { getServerTranslations } from "@/i18n/server";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { marketingPageSeo } from "@/lib/seo/pages";
 
-export async function generateMetadata() {
-  const { t } = await getServerTranslations();
-  const content = t.providerOnboarding.physiotherapist;
+const seo = marketingPageSeo.forPhysiotherapists;
 
-  return {
-    title: content.eyebrow,
-    description: content.body,
-  };
+export function generateMetadata(): Metadata {
+  return buildPageMetadata({
+    title: seo.title,
+    description: seo.description,
+    path: "/for-physiotherapists",
+  });
 }
 
 export default function ForPhysiotherapistsPage() {

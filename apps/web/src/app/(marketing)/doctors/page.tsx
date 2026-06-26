@@ -1,14 +1,18 @@
+import type { Metadata } from "next";
 import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
 import { DoctorsConsultClient } from "@/features/marketing/components/doctors-consult-client";
 import { getServerTranslations } from "@/i18n/server";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { marketingPageSeo } from "@/lib/seo/pages";
 
-export async function generateMetadata() {
-  const { t } = await getServerTranslations();
-  return {
-    title: t.doctors.page.metaTitle,
-    description: t.doctors.page.metaDescription,
-  };
+export function generateMetadata(): Metadata {
+  const seo = marketingPageSeo.doctors;
+  return buildPageMetadata({
+    title: seo.title,
+    description: seo.description,
+    path: "/doctors",
+  });
 }
 
 export default async function DoctorsPage() {

@@ -1,11 +1,16 @@
+import type { Metadata } from "next";
 import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { SundayConsultClient } from "@/features/sunday-consult/components/sunday-consult-client";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { marketingPageSeo } from "@/lib/seo/pages";
 
-export const metadata = {
-  title: "Sunday Free Consult",
-  description:
-    "Book a free 10-minute video consultation with PMDC-verified doctors every Sunday on ZindagiCare. No fee, online from home, one free slot per patient per week.",
-};
+const seo = marketingPageSeo.sundayConsult;
+
+export const metadata: Metadata = buildPageMetadata({
+  title: seo.title,
+  description: seo.description,
+  path: "/sunday-consult",
+});
 
 export default function SundayConsultPage() {
   return (

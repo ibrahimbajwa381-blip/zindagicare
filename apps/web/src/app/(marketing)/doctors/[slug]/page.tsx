@@ -3,6 +3,7 @@ import { PageSection } from "@/components/layout/page-section";
 import { DoctorProfileView } from "@/features/marketing/components/doctor-profile-view";
 import { getDictionary } from "@/i18n";
 import { getLocale } from "@/i18n/server";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
 import { ReviewService } from "@/server/services/review.service";
 import type { Metadata } from "next";
@@ -19,12 +20,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const specialty = doctor.specialties[0] ?? "Specialist";
-  return {
-    title: `${doctor.name} — ${specialty}`,
-    description:
-      doctor.bio?.slice(0, 160) ??
-      `Book a paid video consultation with ${doctor.name}, ${specialty} in Lahore on ZindagiCare.`,
-  };
+  const description =
+    doctor.bio?.slice(0, 155) ??
+    `Book online doctor consultation with ${doctor.name}, ${specialty} in Lahore, Pakistan on ZindagiCare. PMDC-verified, secure video consult from home.`;
+
+  return buildPageMetadata({
+    title: `${doctor.name} — ${specialty} | Online Consult Lahore`,
+    description,
+    path: `/doctors/${slug}`,
+  });
 }
 
 export default async function DoctorProfilePage({ params }: PageProps) {

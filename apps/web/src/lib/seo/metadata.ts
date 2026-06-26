@@ -61,10 +61,20 @@ export function buildRootMetadata(overrides?: Metadata): Metadata {
         "max-snippet": -1,
       },
     },
-    verification: siteConfig.seo.googleSiteVerification
-      ? { google: siteConfig.seo.googleSiteVerification }
-      : undefined,
+    verification: buildSiteVerification(),
     ...overrides,
+  };
+}
+
+function buildSiteVerification(): Metadata["verification"] {
+  const { googleSiteVerification, bingSiteVerification } = siteConfig.seo;
+  if (!googleSiteVerification && !bingSiteVerification) return undefined;
+
+  return {
+    ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
+    ...(bingSiteVerification
+      ? { other: { "msvalidate.01": bingSiteVerification } }
+      : {}),
   };
 }
 
