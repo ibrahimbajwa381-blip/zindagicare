@@ -1,19 +1,21 @@
 "use client";
 
-import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Star } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
-import { surfaceInset, surfaceMuted } from "@/lib/ui/surfaces";
-import { Badge } from "@/components/ui/badge";
+import { surfaceMuted } from "@/lib/ui/surfaces";
 import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/config/site";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
+import { DoctorCard } from "@/features/marketing/components/doctor-card";
+import { SectionHeader } from "@/features/marketing/components/section-header";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
+import { conditionDoctorPath, getConditionBySlug } from "@/lib/seo/conditions";
+import { getSpecialtyBySlug, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
 
@@ -32,56 +34,27 @@ type DoctorRow = {
   isFull: boolean;
 };
 
-function DoctorAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
-  const src = resolveDoctorPortrait(name, avatarUrl);
-
-  if (src) {
-    return (
-      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200">
-        <Image
-          src={src}
-          alt={name}
-          fill
-          className="object-cover object-top"
-          sizes="48px"
-        />
-      </span>
-    );
-  }
-
-  return (
-    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-semibold text-slate-600">
-      {name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)}
-    </span>
-  );
-}
-
 function DoctorsListSkeleton({ label }: { label: string }) {
   return (
     <div
-      className="grid gap-3 sm:grid-cols-2"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       aria-busy="true"
       aria-live="polite"
       aria-label={label}
     >
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className={`rounded-xl border p-4 ${surfaceInset}`}>
-          <div className="flex items-start gap-3">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-4">
+            <Skeleton className="h-14 w-14 shrink-0 rounded-2xl" />
             <div className="min-w-0 flex-1 space-y-2">
               <Skeleton className="h-4 w-36 max-w-full" />
               <Skeleton className="h-3 w-28 max-w-full" />
               <Skeleton className="h-3 w-20" />
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <Skeleton className="h-5 w-12 rounded-full" />
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-3 w-20" />
-            </div>
+          </div>
+          <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-5 w-24 rounded-full" />
           </div>
         </div>
       ))}
@@ -89,18 +62,60 @@ function DoctorsListSkeleton({ label }: { label: string }) {
   );
 }
 
-export function DoctorsConsultClient() {
+type DoctorsConsultClientProps = {
+  initialSpecialty?: string;
+  initialCity?: string;
+};
+
+export function DoctorsConsultClient({
+  initialSpecialty,
+  initialCity = "Lahore",
+}: DoctorsConsultClientProps = {}) {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations();
   const copy = t.doctors.page;
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
 
+  const specialtySlug = searchParams.get("specialty");
+  const conditionSlug = searchParams.get("condition");
+
+  const activeSpecialty = useMemo(() => {
+    if (initialSpecialty) return initialSpecialty;
+    if (specialtySlug?.trim()) {
+      return getSpecialtyBySlug(specialtySlug)?.label;
+    }
+    if (conditionSlug?.trim()) {
+      return getConditionBySlug(conditionSlug)?.specialty;
+    }
+    return undefined;
+  }, [conditionSlug, initialSpecialty, specialtySlug]);
+
+  useEffect(() => {
+    if (initialSpecialty) return;
+    if (conditionSlug?.trim()) {
+      const condition = getConditionBySlug(conditionSlug);
+      if (condition) {
+        router.replace(conditionDoctorPath(condition.slug));
+      }
+      return;
+    }
+    if (!specialtySlug?.trim()) return;
+    const specialty = getSpecialtyBySlug(specialtySlug);
+    if (specialty) {
+      router.replace(specialtyDoctorPath(specialty.slug));
+    }
+  }, [conditionSlug, initialSpecialty, router, specialtySlug]);
+
   const loadDoctors = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/consult/doctors");
+      const params = new URLSearchParams({ city: initialCity });
+      if (activeSpecialty) params.set("specialty", activeSpecialty);
+      const res = await fetch(`/api/v1/consult/doctors?${params.toString()}`);
       const json = await res.json();
       if (json.success) {
         setDoctors(json.data ?? []);
@@ -108,7 +123,7 @@ export function DoctorsConsultClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeSpecialty, initialCity]);
 
   const loadMyBooking = useCallback(async () => {
     if (!session?.user) return;
@@ -129,71 +144,66 @@ export function DoctorsConsultClient() {
   }, [loadMyBooking, status]);
 
   return (
-    <PageSection variant="brand" spacing="lg" flipBlur>
+    <PageSection id="browse-doctors" variant="brand" spacing="lg" flipBlur>
       {booking && (
-        <div className="mb-8">
+        <div className="mb-10">
           <PatientOnlineBookingCard booking={booking} variant="profile" />
         </div>
       )}
 
-      <div className="space-y-4">
-        <h2 className="font-display text-lg font-semibold text-foreground sm:text-xl">
-          {copy.listTitle}
-        </h2>
+      <SectionHeader
+        eyebrow={t.doctors.eyebrow}
+        title={copy.listTitle}
+        description={copy.listDescription}
+        align="center"
+        className="mx-auto"
+      />
+
+      <div className="mt-8 sm:mt-12">
         {loading ? (
           <DoctorsListSkeleton label={copy.loading} />
+        ) : doctors.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+            {doctors.map((doc) => (
+              <DoctorCard
+                key={doc.doctorId}
+                href={doctorProfilePath(doc.slug, doc.doctorId)}
+                name={doc.name}
+                specialty={doc.specialties[0] ?? ""}
+                hospital={doc.hospital ?? ""}
+                rating={doc.ratingAvg}
+                reviews={doc.ratingCount}
+                fee={doc.consultationFee}
+                pmdcVerified={doc.pmdcVerified}
+                imageUrl={resolveDoctorPortrait(doc.name, doc.avatarUrl) ?? undefined}
+                pmdcLabel={t.common.pmdc}
+                isFull={doc.isFull}
+                slotsOpenLabel={
+                  doc.isFull
+                    ? undefined
+                    : formatMessage(copy.slotsOpen, {
+                        count: String(doc.availableSlots),
+                      })
+                }
+                noSlotsLabel={copy.noSlots}
+                bookLabel={copy.bookCta}
+              />
+            ))}
+          </div>
         ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {doctors.map((doc) => (
-            <Link
-              key={doc.doctorId}
-              href={doctorProfilePath(doc.slug, doc.doctorId)}
-              className={`block w-full rounded-xl border p-4 text-left backdrop-blur-sm transition-all active:scale-[0.99] ${surfaceInset} hover:border-brand-light/50 hover:bg-white hover:shadow-premium`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <DoctorAvatar name={doc.name} avatarUrl={doc.avatarUrl} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{doc.name}</p>
-                  <p className="text-sm text-slate-500">{doc.specialties[0]}</p>
-                  {doc.hospital && (
-                    <p className="mt-0.5 text-xs text-slate-500">{doc.hospital}</p>
-                  )}
-                  <p className="mt-1 flex items-center gap-1 text-sm">
-                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                    {doc.ratingAvg} ({doc.ratingCount})
-                  </p>
-                </div>
-                <div className="text-right">
-                  {doc.pmdcVerified && <Badge variant="secondary">PMDC</Badge>}
-                  <p className="mt-2 text-xs font-medium text-brand-dark">
-                    Rs. {doc.consultationFee.toLocaleString()}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {doc.isFull
-                      ? copy.noSlots
-                      : formatMessage(copy.slotsOpen, {
-                          count: String(doc.availableSlots),
-                        })}
-                  </p>
-                </div>
-              </div>
-            </Link>
-              ))}
-            </div>
-            {!doctors.length && (
-              <div className={`border-dashed p-6 text-sm text-slate-600 ${surfaceMuted}`}>
-                <p className="font-medium text-slate-800">{copy.emptyTitle}</p>
-                <p className="mt-2 leading-relaxed">
-                  {copy.emptyBeforeLink}{" "}
-                  <Link href={siteConfig.links.sundayConsult} className="font-medium text-brand hover:underline">
-                    {copy.emptyLink}
-                  </Link>{" "}
-                  {copy.emptyAfterLink}
-                </p>
-              </div>
-            )}
-          </>
+          <div className={`rounded-2xl border border-dashed p-8 text-center sm:p-10 ${surfaceMuted}`}>
+            <p className="font-display text-lg font-semibold text-slate-800">{copy.emptyTitle}</p>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+              {copy.emptyBeforeLink}{" "}
+              <Link
+                href={siteConfig.links.sundayConsult}
+                className="font-medium text-brand-dark underline-offset-2 hover:underline"
+              >
+                {copy.emptyLink}
+              </Link>{" "}
+              {copy.emptyAfterLink}
+            </p>
+          </div>
         )}
       </div>
     </PageSection>

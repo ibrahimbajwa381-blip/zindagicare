@@ -86,6 +86,7 @@ function mapProfileToDto(
     pmdcVerified: profile.pmdcVerified ?? false,
     cnicLast4: profile.cnicLast4 ?? undefined,
     medicalDegree: profile.medicalDegree ?? undefined,
+    qualifications: profile.qualifications ?? [],
     medicalCollege: profile.medicalCollege ?? undefined,
     graduationYear: profile.graduationYear ?? undefined,
     experienceYears: profile.experienceYears ?? 0,

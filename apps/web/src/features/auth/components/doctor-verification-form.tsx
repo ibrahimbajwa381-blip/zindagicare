@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
+import { parseQualificationsInput } from "@/lib/doctors/qualifications";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { CalendarHeart, Clock } from "lucide-react";
@@ -47,7 +48,7 @@ export function DoctorVerificationForm() {
   const [pending, setPending] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>();
   const [specialty, setSpecialty] = useState<string>(
-    SPECIALTIES[0] ?? "General Physician",
+    SPECIALTIES.find((item) => item === "General Physician") ?? SPECIALTIES[0] ?? "",
   );
   const [availability, setAvailability] = useState(DEFAULT_AVAILABILITY);
   const [sundayEnabled, setSundayEnabled] = useState(false);
@@ -127,10 +128,17 @@ export function DoctorVerificationForm() {
       return;
     }
 
+    if (!specialty) {
+      setError("Select your specialization category.");
+      setPending(false);
+      return;
+    }
+
     const body = {
       pmdcNumber: form.get("pmdcNumber"),
       cnic: form.get("cnic"),
       medicalDegree: form.get("medicalDegree"),
+      qualifications: parseQualificationsInput(String(form.get("qualifications") ?? "")),
       medicalCollege: form.get("medicalCollege"),
       graduationYear: form.get("graduationYear"),
       experienceYears: form.get("experienceYears"),
@@ -213,8 +221,19 @@ export function DoctorVerificationForm() {
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Qualifications</h2>
         <div>
-          <Label htmlFor="medicalDegree">Degree (e.g. MBBS)</Label>
-          <Input id="medicalDegree" name="medicalDegree" required />
+          <Label htmlFor="medicalDegree">Primary degree (e.g. MBBS)</Label>
+          <Input id="medicalDegree" name="medicalDegree" placeholder="MBBS" required />
+        </div>
+        <div>
+          <Label htmlFor="qualifications">Additional qualifications (optional)</Label>
+          <Input
+            id="qualifications"
+            name="qualifications"
+            placeholder="e.g. FCPS, MCPS, MRCP — separate with commas"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Postgraduate degrees and fellowships shown on your public profile alongside MBBS.
+          </p>
         </div>
         <div>
           <Label htmlFor="medicalCollege">Medical college</Label>
@@ -237,19 +256,27 @@ export function DoctorVerificationForm() {
           </div>
         </div>
         <div>
-          <Label htmlFor="specialty">Primary specialty</Label>
+          <Label htmlFor="specialty">Specialization category</Label>
           <select
             id="specialty"
+            name="specialty"
             value={specialty}
             onChange={(e) => setSpecialty(e.target.value)}
-            className="flex h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+            required
+            className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
           >
-            {SPECIALTIES.map((s) => (
-              <option key={s} value={s}>
-                {s}
+            <option value="" disabled>
+              Select your specialty
+            </option>
+            {SPECIALTIES.map((item) => (
+              <option key={item} value={item}>
+                {item}
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-slate-500">
+            Patients browse doctors by this category on the homepage and consult pages.
+          </p>
         </div>
         <div>
           <Label htmlFor="bio">Professional bio</Label>

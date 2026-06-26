@@ -32,6 +32,7 @@ export type DoctorProfileDto = {
   pmdcVerified: boolean;
   cnicLast4?: string;
   medicalDegree?: string;
+  qualifications: string[];
   medicalCollege?: string;
   graduationYear?: number;
   experienceYears: number;

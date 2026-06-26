@@ -214,6 +214,13 @@ export function PatientUrgentRequestCard({
             <Button variant="outline" asChild>
               <Link href={siteConfig.links.urgentCare}>{b.viewUrgentPage}</Link>
             </Button>
+          ) : variant !== "page" ? (
+            <Button asChild className="gap-1.5 bg-brand hover:bg-brand-dark">
+              <Link href={`${siteConfig.links.urgentCare}#request`}>
+                <Zap className="h-4 w-4" />
+                {b.bookAgain}
+              </Link>
+            </Button>
           ) : null}
         </div>
       </div>

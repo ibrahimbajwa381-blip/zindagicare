@@ -27,43 +27,61 @@ const SERVICE_CONFIG = [
     type: HomeVisitServiceTypes.DOCTOR_VISIT,
     icon: Stethoscope,
     color: "from-brand-dark to-brand",
+    bar: "from-brand-dark to-brand-light",
+    glow: "bg-brand/10",
     labelKey: "doctorVisit" as const,
     itemKey: "doctorVisit" as const,
+    featured: true,
   },
   {
     type: HomeVisitServiceTypes.PHYSIOTHERAPY,
     icon: Activity,
     color: "from-accent to-accent-dark",
+    bar: "from-accent to-accent-light",
+    glow: "bg-accent/10",
     labelKey: "physiotherapy" as const,
     itemKey: "physiotherapy" as const,
+    featured: false,
   },
   {
     type: HomeVisitServiceTypes.NURSE,
     icon: UserRound,
     color: "from-brand to-brand-light",
+    bar: "from-brand to-brand-lighter",
+    glow: "bg-brand-light/15",
     labelKey: "generalNurse" as const,
     itemKey: "generalNurse" as const,
+    featured: false,
   },
   {
     type: HomeVisitServiceTypes.IV_DRIP,
     icon: Droplets,
     color: "from-brand-dark to-brand",
+    bar: "from-brand-dark to-brand-light",
+    glow: "bg-brand/10",
     labelKey: "ivDrip" as const,
     itemKey: "ivDrip" as const,
+    featured: false,
   },
   {
     type: HomeVisitServiceTypes.INJECTION,
     icon: Syringe,
     color: "from-brand to-brand-light",
+    bar: "from-brand to-brand-lighter",
+    glow: "bg-brand-light/15",
     labelKey: "injection" as const,
     itemKey: "injection" as const,
+    featured: false,
   },
   {
     type: HomeVisitServiceTypes.WOUND_CARE,
     icon: Bandage,
-    color: "from-brand-light to-accent-light",
+    color: "from-accent-light to-brand-light",
+    bar: "from-accent-light to-brand-lighter",
+    glow: "bg-accent-light/15",
     labelKey: "woundCare" as const,
     itemKey: "woundCare" as const,
+    featured: false,
   },
 ] as const;
 
@@ -111,25 +129,31 @@ export function HomeServicesPicker() {
           {p.scenarios.map((scenario) => {
             const service =
               SCENARIO_SERVICE[scenario.key as keyof typeof SCENARIO_SERVICE];
+            const isActive = highlighted === service;
             return (
-            <Link
-              key={scenario.key}
-              href={`${siteConfig.links.homeCareRequest}?service=${service}`}
-              onMouseEnter={() => setHighlighted(service)}
-              onMouseLeave={() => setHighlighted(null)}
-              onFocus={() => setHighlighted(service)}
-              onBlur={() => setHighlighted(null)}
-              className="shrink-0 rounded-full border border-brand/25 bg-white px-4 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:border-brand hover:bg-brand-muted/40"
-            >
-              {scenario.label}
-            </Link>
+              <Link
+                key={scenario.key}
+                href={`${siteConfig.links.homeCareRequest}?service=${service}`}
+                onMouseEnter={() => setHighlighted(service)}
+                onMouseLeave={() => setHighlighted(null)}
+                onFocus={() => setHighlighted(service)}
+                onBlur={() => setHighlighted(null)}
+                className={cn(
+                  "shrink-0 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition",
+                  isActive
+                    ? "border-brand bg-brand text-white shadow-premium"
+                    : "border-brand/20 bg-white text-brand-dark hover:border-brand/40 hover:bg-brand-muted/50",
+                )}
+              >
+                {scenario.label}
+              </Link>
             );
           })}
         </div>
       </div>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-        {SERVICE_CONFIG.map(({ type, icon: Icon, color, labelKey, itemKey }) => {
+        {SERVICE_CONFIG.map(({ type, icon: Icon, color, bar, glow, labelKey, itemKey, featured }) => {
           const item = getItemCopy(itemKey);
           const price = HOME_CARE_PRICING[type];
           const isHighlighted = highlighted === type;
@@ -140,39 +164,66 @@ export function HomeServicesPicker() {
               key={type}
               id={`service-${type}`}
               className={cn(
-                `group flex flex-col p-5 sm:p-6 ${surfaceCardInteractive}`,
+                surfaceCardInteractive,
+                "group relative flex flex-col overflow-hidden p-5 sm:p-6",
+                featured && "ring-1 ring-brand/15 lg:col-span-1",
                 isHighlighted && "border-brand/40 ring-2 ring-brand/20",
               )}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div
+                aria-hidden
+                className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", bar)}
+              />
+              <div
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity",
+                  glow,
+                  isHighlighted ? "opacity-100" : "opacity-60 group-hover:opacity-100",
+                )}
+              />
+
+              <div className="relative flex items-start justify-between gap-3">
                 <span
-                  className={`inline-flex rounded-xl bg-gradient-to-br ${color} p-2.5 text-white shadow-sm`}
+                  className={cn(
+                    "inline-flex rounded-2xl bg-gradient-to-br p-3 text-white shadow-sm ring-1 ring-white/20",
+                    color,
+                  )}
                 >
-                  <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
                 </span>
-                <Badge variant="outline" className="border-brand/30 text-brand-dark">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "shrink-0 border-brand/25 bg-brand-muted/30 font-semibold text-brand-dark",
+                    featured && "border-brand/40 bg-brand-muted/60",
+                  )}
+                >
                   {pricing.fromLabel} Rs. {price.toLocaleString()}
                 </Badge>
               </div>
 
-              <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+              <h3 className="relative mt-4 font-display text-lg font-semibold text-foreground sm:text-xl">
                 {h.services[labelKey]}
               </h3>
 
-              <p className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+              <p className="relative mt-2 flex items-center gap-2 text-sm text-slate-500">
                 <Clock className="h-4 w-4 shrink-0" />
                 {pricing.durationLabel}: {item.duration}
               </p>
 
-              <p className="mt-3 flex flex-1 items-start gap-2 text-sm leading-relaxed text-slate-600">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+              <p className="relative mt-3 flex flex-1 items-start gap-2 text-sm leading-relaxed text-slate-600">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" strokeWidth={2.5} />
                 {item.includes}
               </p>
 
-              <Button className="mt-5 w-full rounded-xl" asChild>
+              <Button
+                className="relative mt-5 w-full rounded-xl shadow-sm group-hover:shadow-premium"
+                asChild
+              >
                 <Link href={bookHref}>
                   {pricing.bookCta}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </Button>
             </article>

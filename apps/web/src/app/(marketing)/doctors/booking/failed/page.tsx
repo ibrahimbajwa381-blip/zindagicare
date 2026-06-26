@@ -4,6 +4,9 @@ import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import { transactionalMetadata } from "@/lib/seo/transactional";
+
+export const metadata = transactionalMetadata;
 
 type Props = {
   searchParams: Promise<{ paymentId?: string; reason?: string }>;

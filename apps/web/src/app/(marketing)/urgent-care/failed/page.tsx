@@ -4,6 +4,9 @@ import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import { transactionalMetadata } from "@/lib/seo/transactional";
+
+export const metadata = transactionalMetadata;
 
 export default function UrgentFailedPage() {
   return (

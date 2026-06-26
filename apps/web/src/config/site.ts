@@ -39,6 +39,7 @@ export const siteConfig = {
     sundayConsult: "/sunday-consult",
     urgentCare: "/urgent-care",
     homeServices: "/home-services",
+    homePhysiotherapy: "/home-physiotherapy",
     homeCareRequest: "/home-care/request",
     homeCareVisits: "/home-care/visits",
     login: "/login",

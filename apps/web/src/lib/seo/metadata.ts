@@ -25,9 +25,6 @@ export function buildRootMetadata(overrides?: Metadata): Metadata {
     creator: siteConfig.name,
     publisher: siteConfig.name,
     category: "healthcare",
-    alternates: {
-      canonical: siteConfig.url,
-    },
     openGraph: {
       type: "website",
       locale: "en_PK",
@@ -111,5 +108,19 @@ export function buildPageMetadata({
       images: [ogImage],
     },
     robots: noIndex ? { index: false, follow: false } : undefined,
+  };
+}
+
+const PRIVATE_ROBOTS: Metadata["robots"] = {
+  index: false,
+  follow: false,
+  googleBot: { index: false, follow: false },
+};
+
+/** App, auth, and transactional routes — never index even if robots.txt is ignored. */
+export function buildPrivateMetadata(title?: string): Metadata {
+  return {
+    ...(title ? { title } : {}),
+    robots: PRIVATE_ROBOTS,
   };
 }

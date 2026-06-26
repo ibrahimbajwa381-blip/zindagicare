@@ -133,6 +133,7 @@ export async function submitDoctorVerification(
   profile.cnicHash = hashCnic(input.cnic);
   profile.cnicLast4 = cnicLast4(input.cnic);
   profile.medicalDegree = input.medicalDegree;
+  profile.qualifications = input.qualifications ?? [];
   profile.medicalCollege = input.medicalCollege;
   profile.graduationYear = input.graduationYear;
   profile.experienceYears = input.experienceYears;

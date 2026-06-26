@@ -5,6 +5,7 @@ export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.jpg";
 export const HOME_PHYSIO_HERO_IMAGE = "/hero/home-physio-male-pakistan.jpg";
 /** Doctor on a phone / video consult — used for urgent care hero & banners */
 export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.jpg";
+export const ONLINE_CONSULT_HERO_IMAGE = "/hero/dr-usama-riyaz.png";
 
 export type HeroService = {
   id: string;
@@ -64,7 +65,7 @@ export const heroServices: HeroService[] = [
       ],
       badge: "Male & female physios · Lahore",
       ctaLabel: "Book home physiotherapy",
-      href: `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+      href: siteConfig.links.homePhysiotherapy,
     },
     card: {
       title: "Home Physiotherapy",

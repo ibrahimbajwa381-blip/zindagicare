@@ -49,6 +49,7 @@ async function mapProfileDoc(
     experienceYears: (doc.experienceYears as number | undefined) ?? 0,
     languages: (doc.languages as string[] | undefined) ?? ["English", "Urdu"],
     medicalDegree: (doc.medicalDegree as string | undefined) ?? undefined,
+    qualifications: (doc.qualifications as string[] | undefined) ?? [],
     medicalCollege: (doc.medicalCollege as string | undefined) ?? undefined,
     graduationYear: (doc.graduationYear as number | undefined) ?? undefined,
     hospitals: mapHospitals(

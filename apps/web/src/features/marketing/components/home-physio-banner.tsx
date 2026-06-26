@@ -91,6 +91,16 @@ export function HomePhysioBanner() {
                 className="h-11 w-full rounded-xl border-brand/30 text-sm text-brand-dark hover:border-brand hover:bg-brand-muted sm:h-12 sm:w-auto sm:text-base"
                 asChild
               >
+                <Link href={siteConfig.links.homePhysiotherapy}>
+                  {copy.exploreCta}
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                className="h-11 w-full rounded-xl text-sm text-brand-dark sm:h-12 sm:w-auto sm:text-base"
+                asChild
+              >
                 <Link href={siteConfig.links.forPhysiotherapists}>
                   {copy.secondaryCta}
                 </Link>

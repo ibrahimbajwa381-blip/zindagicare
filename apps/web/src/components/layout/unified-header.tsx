@@ -77,7 +77,7 @@ export function UnifiedHeader({
     { label: t.nav.homeServices, href: siteConfig.links.homeServices },
     {
       label: t.nav.homePhysio,
-      href: `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+      href: siteConfig.links.homePhysiotherapy,
     },
     { label: t.nav.onlineConsult, href: siteConfig.links.doctors },
     {

@@ -3,6 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { cn } from "@zindagi/shared";
 import type { BrowseItem } from "../data/browse-catalog";
+import { conditionDoctorPath } from "@/lib/seo/conditions";
+import { specialtyDoctorPath } from "@/lib/seo/specialties";
 import { BrowseIconTile } from "./browse-icon-tile";
 
 const desktopColumnClasses: Record<number, string> = {
@@ -75,7 +77,11 @@ export function BrowseSectionRow({
           <BrowseIconTile
             key={item.slug}
             item={item}
-            href={`${siteConfig.links.doctors}?${queryParam}=${item.slug}`}
+            href={
+              queryParam === "specialty"
+                ? specialtyDoctorPath(item.slug)
+                : conditionDoctorPath(item.slug)
+            }
             className={
               mobileLimit != null && index >= mobileLimit ? "hidden sm:flex" : undefined
             }

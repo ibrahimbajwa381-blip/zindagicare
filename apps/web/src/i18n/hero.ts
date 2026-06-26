@@ -24,7 +24,7 @@ const heroImages = [
 ] as const;
 const heroHrefs = [
   siteConfig.links.homeServices,
-  `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+  siteConfig.links.homePhysiotherapy,
   `${siteConfig.links.urgentCare}#request`,
   siteConfig.links.doctors,
   siteConfig.links.sundayConsult,

@@ -423,6 +423,8 @@ export const en = {
     formFootnote: "Pay Rs. 2,000 to confirm — our team will assign a doctor for an in-app video consult within 10 minutes.",
     successTitle: "Request received!",
     successBody: "Stay on your dashboard — we'll notify you when your doctor is ready to join.",
+    previousConsultTitle: "Your last urgent care consult",
+    bookAgainTitle: "Need urgent care again?",
     requesting: "Sending your request…",
     waitTime: "Doctor assigned in",
     activeRequestTitle: "Your request is with our care team",
@@ -482,6 +484,7 @@ export const en = {
       completedMessage: "Your urgent video consult has ended.",
       consultEnded: "Your video consult has ended. View your prescription below when your doctor has issued it.",
       viewPrescription: "View prescription",
+      bookAgain: "Book urgent care again",
       statusConfirmed: "Doctor assigned",
       statusInProgress: "In progress",
       statusPending: "Submitted",
@@ -776,6 +779,160 @@ export const en = {
     badge: "Geo-matched across Lahore · Verified providers",
     primaryCta: "Book home physiotherapy",
     secondaryCta: "Join as physiotherapist",
+    exploreCta: "Explore home physiotherapy",
+    page: {
+      heroHeadline: "Physiotherapy at",
+      heroHeadlineHighlight: "your home",
+      body:
+        "Verified male or female physiotherapists visit you in Lahore. Tell us your preference when you book — rehab, mobility, and pain relief with upfront pricing and geo-tracked dispatch.",
+      highlights: [
+        {
+          title: "Male or female physio",
+          desc: "Request your preferred physiotherapist when you book — we match accordingly",
+        },
+        {
+          title: "Verified providers",
+          desc: "Licensed physiotherapists with credentials reviewed before home visits",
+        },
+        {
+          title: "Transparent pricing",
+          desc: "Rs. 2,800 per session shown before you confirm — no hidden fees",
+        },
+      ],
+      stats: [
+        { value: "45–60", label: "Min per session" },
+        { value: "15 km", label: "Matching radius" },
+        { value: "Rs. 2,800", label: "From per visit" },
+      ],
+      tertiaryCta: "How it works",
+      trackVisitsCta: "Track my visits",
+      booking: {
+        eyebrow: "Book now",
+        title: "Ready to start rehab at home?",
+        description:
+          "One session includes assessment, guided exercises, and a recovery plan tailored to your condition. Pick your address, time, and provider preference on the next step.",
+        durationLabel: "Typical session",
+        duration: "45–60 min",
+        includesLabel: "Includes",
+        includes:
+          "Assessment, guided rehab exercises, and recovery guidance at your doorstep",
+        priceNote: "Fixed rate · Lahore only · Male or female on request",
+        bookCta: "Book a home physio session",
+        providerCta: "I'm a physiotherapist",
+      },
+      conditions: {
+        eyebrow: "What we treat",
+        title: "Recovery & rehab at your doorstep",
+        description:
+          "Home physiotherapy helps when travel to a clinic is difficult — or when consistent rehab at home speeds recovery.",
+        items: [
+          {
+            title: "Post-surgery rehab",
+            desc: "Guided recovery after orthopaedic or general surgery",
+          },
+          {
+            title: "Back & neck pain",
+            desc: "Assessment, mobility work, and pain-relief exercises",
+          },
+          {
+            title: "Sports injuries",
+            desc: "Sprains, strains, and return-to-activity rehab",
+          },
+          {
+            title: "Stroke recovery",
+            desc: "Mobility, balance, and strength rebuilding at home",
+          },
+          {
+            title: "Arthritis & joints",
+            desc: "Joint mobility, stiffness relief, and daily function",
+          },
+          {
+            title: "Balance & mobility",
+            desc: "Fall prevention and confidence walking at home",
+          },
+        ],
+      },
+      howItWorks: {
+        eyebrow: "Simple process",
+        title: "How home physiotherapy works",
+        description: "From booking to your first session in four clear steps.",
+        steps: [
+          {
+            title: "Request a session",
+            desc: "Enter your address, preferred time, and male/female physiotherapist preference in the notes.",
+          },
+          {
+            title: "Physio assigned",
+            desc: "We match the nearest verified physiotherapist to your location — usually within minutes.",
+          },
+          {
+            title: "Rehab at home",
+            desc: "Track status from assigned → en route → arrived. Your physio brings the session plan to you.",
+          },
+          {
+            title: "Recovery plan",
+            desc: "After the visit, receive notes and guidance you can follow between sessions.",
+          },
+        ],
+      },
+      trust: {
+        eyebrow: "Why ZindagiCare",
+        title: "Professional physio care you can trust",
+        description:
+          "Built for Lahore patients who want expert rehabilitation without the clinic commute.",
+        points: [
+          {
+            title: "Licensed physiotherapists",
+            desc: "Every provider is verified before they can accept home visit requests.",
+          },
+          {
+            title: "Gender preference",
+            desc: "Request a male or female physiotherapist — noted in your booking for matching.",
+          },
+          {
+            title: "Geo-matched dispatch",
+            desc: "Nearest available physio assigned within a 15 km radius of your address.",
+          },
+          {
+            title: "Visit reports",
+            desc: "Session notes stored in your patient account after each completed visit.",
+          },
+        ],
+      },
+      faq: {
+        eyebrow: "Questions",
+        title: "Home physiotherapy FAQ",
+        items: [
+          {
+            q: "Can I request a male or female physiotherapist?",
+            a: "Yes. Add your preference in the notes field when you book. We match verified physiotherapists according to your request when possible.",
+          },
+          {
+            q: "How much does a home physio session cost?",
+            a: "Home physiotherapy sessions start at Rs. 2,800. The full price is shown before you confirm your booking.",
+          },
+          {
+            q: "How long is each session?",
+            a: "Typical sessions run 45–60 minutes, including assessment, guided exercises, and recovery guidance.",
+          },
+          {
+            q: "Which areas of Lahore do you cover?",
+            a: "We serve all major Lahore neighborhoods including DHA, Gulberg, Model Town, Johar Town, Bahria Town, Cantt, and surrounding areas.",
+          },
+          {
+            q: "Do I need a doctor's referral?",
+            a: "A referral is helpful but not always required. Describe your condition in the notes so your physiotherapist can prepare appropriately.",
+          },
+        ],
+      },
+      cta: {
+        title: "Ready for physio at home?",
+        description:
+          "Book a verified physiotherapist in under two minutes. Sign in to track your visit and view session notes.",
+        primary: "Book home physiotherapy",
+        secondary: "Track my visits",
+      },
+    },
   },
   homeCare: {
     requestTitle: "Request in-house care",
@@ -873,14 +1030,128 @@ export const en = {
       description:
         "Browse PMDC-verified specialists in Lahore. View profiles, compare fees, and book a secure video slot.",
       listTitle: "Browse doctors",
+      listDescription:
+        "PMDC-verified specialists with open video slots. Tap a profile to view details and book.",
       loading: "Loading doctors…",
       slotsOpen: "{count} slots available",
       noSlots: "Fully booked",
+      bookCta: "View profile & book",
       emptyTitle: "No doctors available yet",
       emptyBeforeLink:
         "Doctors with open video slots will appear here soon. You can still book a",
       emptyLink: "free Sunday consult",
       emptyAfterLink: "in the meantime.",
+      imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
+      hero: {
+        badge: "PMDC verified · Secure video call",
+        headline: "Talk to PMDC doctors via",
+        headlineHighlight: "secure video",
+        subheadline: "Book a video slot with verified specialists in Lahore",
+        body:
+          "Compare profiles, see fees upfront, and join a private video consultation from home. Digital prescriptions included when clinically appropriate.",
+        highlights: [
+          {
+            title: "PMDC verified",
+            desc: "Licensed specialists with credentials reviewed before listing",
+          },
+          {
+            title: "Secure video",
+            desc: "Private, encrypted video rooms — join from phone or laptop",
+          },
+          {
+            title: "E-prescriptions",
+            desc: "Digital prescriptions issued after your consult when needed",
+          },
+        ],
+        stats: [
+          { value: "Video", label: "Consult from home" },
+          { value: "PMDC", label: "Verified doctors" },
+          { value: "Rs. 0", label: "Hidden fees" },
+        ],
+        primaryCta: "Browse doctors",
+        secondaryCta: "How it works",
+        tertiaryCta: "Free Sunday consult",
+      },
+      howItWorks: {
+        eyebrow: "Simple process",
+        title: "How online consultation works",
+        description: "From choosing a doctor to your video call in four clear steps.",
+        steps: [
+          {
+            title: "Choose a doctor",
+            desc: "Browse PMDC-verified profiles, specialties, ratings, and consultation fees.",
+          },
+          {
+            title: "Pick a time slot",
+            desc: "Select an open video slot that fits your schedule — same-day options when available.",
+          },
+          {
+            title: "Pay & confirm",
+            desc: "Review the total upfront, pay securely, and receive booking confirmation instantly.",
+          },
+          {
+            title: "Join your video call",
+            desc: "Open the secure video room at your slot time. Camera and mic access required.",
+          },
+        ],
+      },
+      trust: {
+        eyebrow: "Why ZindagiCare",
+        title: "Telemedicine you can trust",
+        description:
+          "Built for patients in Lahore who want specialist care without the clinic visit.",
+        points: [
+          {
+            title: "Verified credentials",
+            desc: "Every listed doctor is PMDC-verified before they can accept bookings.",
+          },
+          {
+            title: "Transparent pricing",
+            desc: "Consultation fee shown on each profile — no surprise charges at checkout.",
+          },
+          {
+            title: "Digital records",
+            desc: "Visit notes and prescriptions stored securely in your patient account.",
+          },
+          {
+            title: "Flexible scheduling",
+            desc: "Book ahead or grab the next open slot when your schedule allows.",
+          },
+        ],
+      },
+      faq: {
+        eyebrow: "Questions",
+        title: "Online consultation FAQ",
+        items: [
+          {
+            q: "How do I join my video consultation?",
+            a: "After booking, open your appointment from the dashboard or confirmation email. When your slot opens, tap Join video — allow camera and microphone access in your browser.",
+          },
+          {
+            q: "Do I get a prescription after the call?",
+            a: "If clinically appropriate, your doctor can issue a digital e-prescription after the consultation. It appears in your patient account.",
+          },
+          {
+            q: "What if no doctors have open slots?",
+            a: "Availability changes throughout the day. You can also book a free 10-minute Sunday consult or use Urgent Care for faster access.",
+          },
+          {
+            q: "Is online consultation available outside Lahore?",
+            a: "Doctors on ZindagiCare primarily serve patients in Lahore and across Pakistan via video. You can join from anywhere with a stable internet connection.",
+          },
+          {
+            q: "How do I pay?",
+            a: "Pay online when you confirm your slot. The full consultation fee is shown before you complete booking.",
+          },
+        ],
+      },
+      cta: {
+        title: "Ready to consult a doctor online?",
+        description:
+          "Browse verified specialists, pick a slot, and connect by secure video from home.",
+        primary: "Browse doctors",
+        secondary: "Free Sunday consult",
+      },
     },
   },
   doctorProfile: {

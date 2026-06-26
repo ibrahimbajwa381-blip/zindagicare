@@ -27,6 +27,11 @@ const CORE_SERVICES = [
     path: "/home-services",
   },
   {
+    name: "Home Physiotherapy",
+    description: marketingPageSeo.homePhysiotherapy.description,
+    path: "/home-physiotherapy",
+  },
+  {
     name: "Urgent Care",
     description: marketingPageSeo.urgentCare.description,
     path: "/urgent-care",
@@ -96,6 +101,14 @@ export function SiteJsonLd() {
     url: baseUrl,
     publisher: { "@id": `${baseUrl}/#organization` },
     inLanguage: ["en-PK", "ur-PK"],
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${baseUrl}/doctors/specialty/{search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
   };
 
   const homePage = {

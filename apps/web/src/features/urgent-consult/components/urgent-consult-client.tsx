@@ -34,7 +34,6 @@ export function UrgentConsultClient() {
   const [patientPhone, setPatientPhone] = useState("");
   const [patientNotes, setPatientNotes] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jazzcashRedirect, setJazzcashRedirect] = useState<
     UrgentCheckoutResult["jazzcash"] | null
@@ -46,7 +45,6 @@ export function UrgentConsultClient() {
     const json = await res.json();
     if (json.success && json.data) {
       setRequest(json.data as UrgentPatientRequestDto);
-      setSubmitted(true);
     } else {
       setRequest(null);
     }
@@ -130,11 +128,18 @@ export function UrgentConsultClient() {
     }
   };
 
-  const showForm = !request && !submitted;
   const b = u.booking;
+  const hasActiveRequest =
+    request?.status === UrgentCareRequestStatuses.REQUESTED ||
+    request?.status === UrgentCareRequestStatuses.ASSIGNED;
+  const hasPastRequest =
+    request?.status === UrgentCareRequestStatuses.COMPLETED ||
+    request?.status === UrgentCareRequestStatuses.CANCELLED;
+  const showForm = !hasActiveRequest && !jazzcashRedirect;
   const isMatching =
-    submitted &&
-    (!request || (request.status === UrgentCareRequestStatuses.REQUESTED && !request.doctor));
+    hasActiveRequest &&
+    request.status === UrgentCareRequestStatuses.REQUESTED &&
+    !request.doctor;
 
   return (
     <PageSection id="request" variant="neutral" spacing="default" flipBlur>
@@ -167,9 +172,23 @@ export function UrgentConsultClient() {
           />
         )}
 
-        {showForm && !jazzcashRedirect ? (
-          <Card className="mt-6 overflow-hidden border-brand-light/40 shadow-premium">
+        {hasPastRequest && request ? (
+          <div className="mt-6 space-y-3">
+            <p className="text-sm font-semibold text-slate-700">{u.previousConsultTitle}</p>
+            <PatientUrgentRequestCard request={request} variant="page" hideMatchingBanner />
+          </div>
+        ) : null}
+
+        {showForm ? (
+          <Card
+            className={`overflow-hidden border-brand-light/40 shadow-premium ${hasPastRequest ? "mt-4" : "mt-6"}`}
+          >
             <CardContent className="p-5 sm:p-6">
+              {hasPastRequest ? (
+                <h2 className="mb-4 font-display text-lg font-semibold text-foreground">
+                  {u.bookAgainTitle}
+                </h2>
+              ) : null}
               <form onSubmit={submitRequest} className="space-y-5">
                 <div>
                   <label htmlFor="urgent-phone" className="block text-sm font-semibold text-slate-800">
@@ -238,7 +257,7 @@ export function UrgentConsultClient() {
               </form>
             </CardContent>
           </Card>
-        ) : (
+        ) : hasActiveRequest && request ? (
           <div className="mt-6 space-y-4">
             {isMatching ? (
               <div className="rounded-2xl border-2 border-brand/40 bg-gradient-to-b from-brand-muted/80 to-white px-6 py-8 text-center shadow-premium">
@@ -268,9 +287,7 @@ export function UrgentConsultClient() {
               </div>
             )}
 
-            {request ? (
-              <PatientUrgentRequestCard request={request} variant="page" hideMatchingBanner />
-            ) : null}
+            <PatientUrgentRequestCard request={request} variant="page" hideMatchingBanner />
 
             {session?.user ? (
               <div className="text-center">
@@ -280,7 +297,7 @@ export function UrgentConsultClient() {
               </div>
             ) : null}
           </div>
-        )}
+        ) : null}
 
         <div className="mt-8 rounded-2xl border border-brand-light/35 bg-brand-muted/25 p-5 sm:p-6">
           <h2 className="text-base font-semibold text-brand-dark">{u.howItWorksTitle}</h2>

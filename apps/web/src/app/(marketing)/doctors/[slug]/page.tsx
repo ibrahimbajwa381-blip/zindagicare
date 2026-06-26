@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { PageSection } from "@/components/layout/page-section";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
+import { DoctorJsonLd } from "@/components/seo/doctor-json-ld";
 import { DoctorProfileView } from "@/features/marketing/components/doctor-profile-view";
 import { getDictionary } from "@/i18n";
 import { getLocale } from "@/i18n/server";
@@ -20,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const specialty = doctor.specialties[0] ?? "Specialist";
+  const canonicalSlug = doctor.slug;
   const description =
     doctor.bio?.slice(0, 155) ??
     `Book online doctor consultation with ${doctor.name}, ${specialty} in Lahore, Pakistan on ZindagiCare. PMDC-verified, secure video consult from home.`;
@@ -27,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return buildPageMetadata({
     title: `${doctor.name} — ${specialty} | Online Consult Lahore`,
     description,
-    path: `/doctors/${slug}`,
+    path: `/doctors/${canonicalSlug}`,
   });
 }
 
@@ -35,6 +38,10 @@ export default async function DoctorProfilePage({ params }: PageProps) {
   const { slug } = await params;
   const doctor = await PublicDoctorService.getPublicDoctor(slug);
   if (!doctor) notFound();
+
+  if (/^[a-f0-9]{24}$/i.test(slug) && doctor.slug !== slug) {
+    permanentRedirect(`/doctors/${doctor.slug}`);
+  }
 
   const [{ reviews, total }, locale] = await Promise.all([
     ReviewService.listDoctorReviews(doctor.doctorId, { limit: 20 }),
@@ -44,26 +51,36 @@ export default async function DoctorProfilePage({ params }: PageProps) {
   const p = t.doctorProfile;
 
   return (
-    <PageSection variant="brand" spacing="default" flipBlur>
-      <DoctorProfileView
-        doctor={doctor}
-        reviews={reviews}
-        reviewTotal={total}
-        copy={{
-          backToDoctors: p.backToDoctors,
-          about: p.about,
-          education: p.education,
-          practicesAt: p.practicesAt,
-          languages: p.languages,
-          experience: p.experience,
-          yearsExperience: p.yearsExperience,
-          reviews: p.reviews,
-          reviewsEmpty: p.reviewsEmpty,
-          pmdcVerified: t.common.pmdc,
-          videoConsult: p.videoConsult,
-          perConsultation: p.perConsultation,
-        }}
+    <>
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", path: "/" },
+          { name: "Doctors", path: "/doctors" },
+          { name: doctor.name, path: `/doctors/${doctor.slug}` },
+        ]}
       />
-    </PageSection>
+      <DoctorJsonLd doctor={doctor} />
+      <PageSection variant="brand" spacing="default" flipBlur>
+        <DoctorProfileView
+          doctor={doctor}
+          reviews={reviews}
+          reviewTotal={total}
+          copy={{
+            backToDoctors: p.backToDoctors,
+            about: p.about,
+            education: p.education,
+            practicesAt: p.practicesAt,
+            languages: p.languages,
+            experience: p.experience,
+            yearsExperience: p.yearsExperience,
+            reviews: p.reviews,
+            reviewsEmpty: p.reviewsEmpty,
+            pmdcVerified: t.common.pmdc,
+            videoConsult: p.videoConsult,
+            perConsultation: p.perConsultation,
+          }}
+        />
+      </PageSection>
+    </>
   );
 }

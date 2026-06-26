@@ -2,6 +2,10 @@ import { SiteLogo } from "@/components/layout/site-logo";
 import { PageSection } from "@/components/layout/page-section";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata();
+
 export default function AuthLayout({
   children,
 }: {

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { siteConfig } from "@/config/site";
+import { FaqJsonLd } from "@/components/seo/faq-json-ld";
 import { buildRootMetadata, getSiteUrl } from "@/lib/seo/metadata";
+import { getDictionary } from "@/i18n";
+import { getLocale } from "@/i18n/server";
 import { FaqSection } from "@/features/marketing/components/faq-section";
 import { HeroSection } from "@/features/marketing/components/hero-section";
 import { HomeServicesPreview } from "@/features/marketing/components/home-services-preview";
@@ -18,10 +20,13 @@ export const metadata: Metadata = buildRootMetadata({
   alternates: { canonical: getSiteUrl() },
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  const locale = await getLocale();
+  const faqItems = getDictionary(locale).faq.items;
+
   return (
     <>
-      <h1 className="sr-only">{siteConfig.seo.defaultTitle}</h1>
+      <FaqJsonLd items={faqItems} />
       <HeroSection />
       <TrustBar />
       <HomeServicesPreview />

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Stethoscope, Syringe } from "lucide-react";
+import { Activity, ArrowRight, Stethoscope, Syringe } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
@@ -33,6 +33,15 @@ export function ProviderOnboardingPreview() {
       cta: preview.nurseCard.cta,
       iconClassName: "bg-emerald-500/10 text-emerald-700",
     },
+    {
+      href: siteConfig.links.forPhysiotherapists,
+      icon: Activity,
+      image: PROVIDER_ONBOARDING_IMAGES.physiotherapist.preview,
+      title: t.providerOnboarding.physiotherapist.eyebrow,
+      description: t.providerOnboarding.physiotherapist.body,
+      cta: preview.doctorCard.cta,
+      iconClassName: "bg-violet-500/10 text-violet-700",
+    },
   ] as const;
 
   return (
@@ -44,7 +53,7 @@ export function ProviderOnboardingPreview() {
         align="center"
         className="mx-auto"
       />
-      <div className="mt-8 grid gap-5 sm:mt-10 lg:grid-cols-2 lg:gap-6">
+      <div className="mt-8 grid gap-5 sm:mt-10 lg:grid-cols-3 lg:gap-6">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

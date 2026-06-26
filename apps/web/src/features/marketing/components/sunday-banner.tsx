@@ -47,10 +47,10 @@ export function SundayBanner() {
               {sunday.shortName}
             </p>
 
-            <h2 className="mt-2 font-display text-[1.65rem] font-semibold leading-[1.15] tracking-tight text-white sm:mt-3 sm:text-4xl lg:text-[2.75rem]">
+            <p className="mt-2 font-display text-[1.65rem] font-semibold leading-[1.15] tracking-tight text-white sm:mt-3 sm:text-4xl lg:text-[2.75rem]">
               {sunday.heroHeadline}{" "}
               <span className="text-gradient-hero">{sunday.heroHeadlineHighlight}</span>
-            </h2>
+            </p>
 
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/75 sm:text-base">
               {sunday.tagline}

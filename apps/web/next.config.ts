@@ -41,6 +41,7 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/**",
       },
     ],
+    formats: ["image/avif", "image/webp"],
   },
 };
 

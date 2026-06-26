@@ -39,6 +39,7 @@ export function TrustBar() {
       icon: ShieldCheck,
       label: t.trustBar.pmdcVerified,
       description: t.trustBar.pmdcVerifiedDesc,
+      href: siteConfig.links.doctors,
     },
     {
       icon: Gift,
@@ -50,11 +51,13 @@ export function TrustBar() {
       icon: Lock,
       label: t.trustBar.secureVideo,
       description: t.trustBar.secureVideoDesc,
+      href: siteConfig.links.doctors,
     },
     {
       icon: Star,
       label: t.trustBar.homeCare,
       description: t.trustBar.homeCareDesc,
+      href: siteConfig.links.homeServices,
     },
   ];
 

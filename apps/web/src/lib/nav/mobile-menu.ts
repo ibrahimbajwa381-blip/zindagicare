@@ -63,7 +63,7 @@ export function buildMarketingMobileNav(
   const links: MobileNavLink[] = [
     { href: siteConfig.links.homeServices, label: labels.homeServices },
     {
-      href: `${siteConfig.links.homeCareRequest}?service=physiotherapy`,
+      href: siteConfig.links.homePhysiotherapy,
       label: labels.homePhysio,
     },
     { href: siteConfig.links.doctors, label: labels.onlineConsult },

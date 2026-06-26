@@ -5,6 +5,10 @@ import { connectDatabase, StaffProfileModel } from "@zindagi/database";
 import { NurseShell } from "@/features/nurse/components/nurse-shell";
 import { mongoFilter } from "@/lib/mongo/query";
 
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata();
+
 export default async function NurseLayout({
   children,
 }: {

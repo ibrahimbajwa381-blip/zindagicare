@@ -14,6 +14,7 @@ export type PublicDoctorProfile = {
   experienceYears: number;
   languages: string[];
   medicalDegree?: string;
+  qualifications: string[];
   medicalCollege?: string;
   graduationYear?: number;
   hospitals: PublicDoctorHospital[];

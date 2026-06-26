@@ -6,12 +6,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/", "/doctors", "/doctors/"],
         disallow: [
+          "/admin",
           "/admin/",
           "/dashboard",
+          "/doctor",
           "/doctor/",
+          "/nurse",
           "/nurse/",
+          "/physiotherapist",
           "/physiotherapist/",
           "/login",
           "/register",
@@ -26,6 +30,7 @@ export default function robots(): MetadataRoute.Robots {
           "/urgent-care/pay",
           "/urgent-care/success",
           "/urgent-care/failed",
+          "/~offline",
         ],
       },
     ],

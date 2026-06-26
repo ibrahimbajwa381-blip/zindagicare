@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DoctorProfileModel, connectDatabase } from "@zindagi/database";
 import { DOCTOR_ACCOUNTABILITY_CONFIG, VerificationStatuses } from "@zindagi/shared";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 import {
   DoctorShell,
   type DoctorAccountabilityBanner,
@@ -64,6 +65,8 @@ function buildAccountabilityBanner(
     removalThreshold,
   };
 }
+
+export const metadata = buildPrivateMetadata();
 
 export default async function DoctorLayout({
   children,

@@ -1,3 +1,4 @@
+import { SPECIALTIES } from "@zindagi/shared";
 import { z } from "zod";
 import {
   isValidPakistaniMobile,
@@ -98,6 +99,11 @@ export const doctorVerificationSchema = z.object({
     .string()
     .regex(/^[0-9]{5}-[0-9]{7}-[0-9]$/, "CNIC must be XXXXX-XXXXXXX-X"),
   medicalDegree: z.string().min(2, "Medical degree is required"),
+  qualifications: z
+    .array(z.string().trim().min(2).max(80))
+    .max(12, "Add up to 12 additional qualifications")
+    .optional()
+    .default([]),
   medicalCollege: z.string().min(2, "Medical college is required"),
   graduationYear: z.coerce
     .number()
@@ -105,7 +111,10 @@ export const doctorVerificationSchema = z.object({
     .min(1950)
     .max(new Date().getFullYear()),
   experienceYears: z.coerce.number().int().min(0).max(60),
-  specialties: z.array(z.string().min(2)).min(1, "Select at least one specialty"),
+  specialties: z
+    .array(z.enum(SPECIALTIES))
+    .min(1, "Select your specialization category")
+    .max(3, "Select up to three specialties"),
   avatarUrl: z.string().min(1, "Profile photo is required"),
   bio: z.string().max(2000).optional(),
   consultationFee: z.coerce.number().min(0).optional(),

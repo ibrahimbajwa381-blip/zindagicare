@@ -191,8 +191,12 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900">Professional details</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <InfoBlock label="Specialties" value={profile.specialties.join(", ")} />
-          <InfoBlock label="Medical degree" value={profile.medicalDegree ?? "—"} />
+          <InfoBlock label="Specialization category" value={profile.specialties.join(", ")} />
+          <InfoBlock label="Primary degree" value={profile.medicalDegree ?? "—"} />
+          <InfoBlock
+            label="Additional qualifications"
+            value={profile.qualifications.length ? profile.qualifications.join(", ") : "—"}
+          />
           <InfoBlock label="Medical college" value={profile.medicalCollege ?? "—"} />
           <InfoBlock label="Graduation year" value={String(profile.graduationYear ?? "—")} />
           <InfoBlock label="Experience" value={`${profile.experienceYears} years`} />

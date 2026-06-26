@@ -8,6 +8,7 @@ import { DoctorEarningsSummaryCard } from "@/features/doctor/components/doctor-e
 import { DOCTOR_OVERVIEW_ACTIONS } from "@/features/doctor/data/doctor-workspace-nav";
 import { formatDayOfWeek, type DoctorProfileDto } from "@/features/doctor/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 
 type Props = {
@@ -35,6 +36,10 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
   const isPending = profile.verificationStatus === VerificationStatuses.PENDING;
   const specialty = profile.specialties.join(", ") || "General physician";
+  const credentials = formatQualificationsList(
+    profile.medicalDegree,
+    profile.qualifications,
+  );
   const avatarSrc = resolveDoctorPortrait(profile.user.name, profile.user.avatarUrl);
 
   return (
@@ -62,6 +67,11 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
                     PMDC verified
                   </Badge>
                 )}
+                {credentials.map((credential) => (
+                  <Badge key={credential} variant="outline">
+                    {credential}
+                  </Badge>
+                ))}
                 {profile.sundayConsult.enabled && (
                   <Badge variant="secondary">Sunday consult</Badge>
                 )}
@@ -173,7 +183,14 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
             </h2>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
-                { label: "Degree", value: profile.medicalDegree ?? "—" },
+                { label: "Specialization", value: profile.specialties.join(", ") || "—" },
+                { label: "Primary degree", value: profile.medicalDegree ?? "—" },
+                {
+                  label: "Other qualifications",
+                  value: profile.qualifications.length
+                    ? profile.qualifications.join(", ")
+                    : "—",
+                },
                 { label: "College", value: profile.medicalCollege ?? "—" },
                 { label: "Experience", value: `${profile.experienceYears} years` },
                 { label: "Consultation fee", value: `PKR ${profile.consultationFee}` },

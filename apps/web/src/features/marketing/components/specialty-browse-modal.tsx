@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { siteConfig } from "@/config/site";
+import { specialtyDoctorPath } from "@/lib/seo/specialties";
 import { Input } from "@/components/ui/input";
 import { allSpecialties } from "../data/browse-catalog";
 import { BrowseIconTile } from "./browse-icon-tile";
@@ -114,7 +115,7 @@ export function SpecialtyBrowseModal({
                   <BrowseIconTile
                     key={item.slug}
                     item={item}
-                    href={`${siteConfig.links.doctors}?specialty=${item.slug}`}
+                    href={specialtyDoctorPath(item.slug)}
                     onNavigate={() => onOpenChange(false)}
                   />
                 ))}

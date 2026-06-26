@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,8 +12,8 @@ import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { Button } from "@/components/ui/button";
-import { surfaceCard, surfaceInset } from "@/lib/ui/surfaces";
 import { getServerTranslations } from "@/i18n/server";
+import { HOME_SERVICES_HERO_IMAGE } from "@/features/marketing/data/hero-services";
 
 const highlightIcons = [ShieldCheck, MapPin, Stethoscope] as const;
 
@@ -28,106 +29,135 @@ const SCENARIO_SERVICE = {
 export async function HomeServicesHero() {
   const { t } = await getServerTranslations();
   const h = t.homeServices.hero;
+  const copy = t.homeServices;
 
   return (
-    <PageSection id="home-care" spacing="tall" variant="brand">
-      <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:gap-16">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white sm:text-sm">
-            <Home className="h-4 w-4" />
-            {h.badge}
-          </p>
+    <PageSection id="home-care" spacing="tall" variant="brand" innerClassName="py-8 sm:py-12 lg:py-16">
+      <div className="overflow-hidden rounded-2xl border border-brand-light/30 bg-white shadow-premium-lg sm:rounded-3xl">
+        <div className="flex flex-col lg:flex-row">
+          <div className="relative order-1 flex flex-1 flex-col justify-center px-5 py-6 sm:px-8 sm:py-8 lg:order-none lg:px-10 lg:py-12 xl:px-12">
+            <p className="inline-flex w-fit items-center gap-2 rounded-full border border-brand/20 bg-brand-muted px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-dark sm:text-sm">
+              <Home className="h-4 w-4" />
+              {h.badge}
+            </p>
 
-          <h1 className="mt-5 font-display text-3xl font-semibold leading-[1.12] tracking-tight text-foreground sm:mt-8 sm:text-5xl lg:text-6xl">
-            {h.headline}
-          </h1>
-          <p className="mt-3 text-lg font-semibold text-brand-dark sm:text-xl lg:text-2xl">
-            {h.subheadline}
-          </p>
+            <h1 className="mt-5 font-display text-[1.75rem] font-semibold leading-[1.12] tracking-tight text-foreground sm:mt-6 sm:text-4xl lg:text-5xl xl:text-[3.25rem]">
+              {copy.hero.heroHeadline}{" "}
+              <span className="text-gradient-premium">{copy.hero.heroHeadlineHighlight}</span>
+            </h1>
 
-          <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:flex-wrap">
-            <Button size="lg" className="h-12 rounded-xl shadow-premium sm:h-14" asChild>
-              <Link href="#choose-service">
-                {h.primaryCta}
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-12 rounded-xl sm:h-14"
-              asChild
-            >
-              <Link href={siteConfig.links.homeCareVisits}>{h.secondaryCta}</Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="h-12 rounded-xl text-brand-dark sm:h-14"
-              asChild
-            >
-              <Link href="#how-home-care-works">{h.tertiaryCta}</Link>
-            </Button>
+            <p className="mt-3 max-w-xl text-base font-medium text-brand-dark sm:text-lg lg:text-xl">
+              {h.subheadline}
+            </p>
+
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
+              {h.body}
+            </p>
+
+            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+              <Button
+                size="lg"
+                className="group h-12 w-full rounded-xl shadow-premium sm:w-auto"
+                asChild
+              >
+                <Link href="#choose-service">
+                  {h.primaryCta}
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-xl border-brand/25"
+                asChild
+              >
+                <Link href={siteConfig.links.homeCareRequest}>{h.secondaryCta}</Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                className="h-12 rounded-xl text-brand-dark"
+                asChild
+              >
+                <Link href="#how-home-care-works">{h.tertiaryCta}</Link>
+              </Button>
+            </div>
+
+            <div className="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+              {t.homeServices.picker.scenarios.map((scenario) => (
+                <Link
+                  key={scenario.key}
+                  href={`#service-${SCENARIO_SERVICE[scenario.key as keyof typeof SCENARIO_SERVICE]}`}
+                  className="shrink-0 rounded-full border border-brand/15 bg-brand-muted/60 px-3.5 py-1.5 text-xs font-medium text-brand-dark transition hover:border-brand/35 hover:bg-brand-muted sm:text-sm"
+                >
+                  {scenario.label}
+                </Link>
+              ))}
+            </div>
+
+            <ul className="mt-8 grid gap-3 sm:grid-cols-3 sm:gap-4">
+              {h.highlights.map((item, index) => {
+                const Icon = highlightIcons[index];
+                return (
+                  <li
+                    key={item.title}
+                    className="flex items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3 sm:flex-col sm:items-start sm:gap-2"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-dark to-brand text-white shadow-sm">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 text-sm leading-snug">
+                      <strong className="block font-semibold text-foreground">{item.title}</strong>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-slate-600 sm:text-sm">
+                        {item.desc}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
-          <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-            {t.homeServices.picker.scenarios.map((scenario) => (
-              <Link
-                key={scenario.key}
-                href={`#service-${SCENARIO_SERVICE[scenario.key as keyof typeof SCENARIO_SERVICE]}`}
-                className="shrink-0 rounded-full border border-brand/20 bg-white/80 px-3 py-1.5 text-xs font-medium text-brand-dark sm:text-sm"
-              >
-                {scenario.label}
-              </Link>
-            ))}
-          </div>
+          <div className="relative order-0 h-52 shrink-0 sm:h-64 lg:order-none lg:h-auto lg:w-[42%] xl:w-[40%]">
+            <Image
+              src={HOME_SERVICES_HERO_IMAGE}
+              alt="Pakistani doctor and nurse providing in-house patient care at home"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 40vw"
+              className="object-cover object-[center_20%]"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-t from-brand-dark/60 via-brand-dark/10 to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-transparent lg:to-white/95"
+            />
 
-          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-700 sm:mt-6 sm:text-lg">
-            {h.body}
-          </p>
-
-          <ul className="mt-8 space-y-4 sm:mt-10">
-            {h.highlights.map((item, index) => {
-              const Icon = highlightIcons[index];
-              return (
-                <li key={item.title} className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="pt-0.5 text-sm sm:text-base">
-                    <strong className="font-semibold text-foreground">
-                      {item.title}
-                    </strong>
-                    <span className="text-slate-600"> — {item.desc}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div className={`p-6 sm:p-8 ${surfaceCard}`}>
-          <p className="text-xs font-bold uppercase tracking-wider text-brand-dark">
-            {t.homeServices.eyebrow}
-          </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            {h.stats.map((stat) => (
-              <div
-                key={stat.label}
-                className={`rounded-xl p-4 text-center lg:text-left ${surfaceInset}`}
-              >
-                <p className="font-display text-2xl font-semibold text-brand-dark sm:text-3xl">
-                  {stat.value}
+            <div className="absolute inset-x-4 bottom-4 sm:inset-x-5 sm:bottom-5 lg:inset-x-6 lg:bottom-6">
+              <div className="glass-card rounded-2xl p-4 sm:p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brand-dark">
+                  {copy.eyebrow}
                 </p>
-                <p className="mt-1 text-xs font-medium text-slate-600 sm:text-sm">
-                  {stat.label}
-                </p>
+                <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+                  {h.stats.map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="rounded-xl border border-white/60 bg-white/70 px-2 py-2.5 text-center backdrop-blur-sm sm:px-3"
+                    >
+                      <p className="font-display text-lg font-semibold text-brand-dark sm:text-xl">
+                        {stat.value}
+                      </p>
+                      <p className="mt-0.5 text-[10px] font-medium leading-tight text-slate-600 sm:text-xs">
+                        {stat.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2 rounded-xl border border-brand/10 bg-brand-muted/40 px-3 py-2.5 text-xs text-slate-700 sm:text-sm">
+                  <Clock className="h-4 w-4 shrink-0 text-brand" />
+                  <span>{t.homeServices.pricing.description}</span>
+                </div>
               </div>
-            ))}
-          </div>
-          <div className="mt-6 flex items-center gap-2 rounded-xl border border-brand/15 bg-brand-muted/50 px-4 py-3 text-sm text-slate-700">
-            <Clock className="h-4 w-4 shrink-0 text-brand" />
-            <span>{t.homeServices.pricing.description}</span>
+            </div>
           </div>
         </div>
       </div>

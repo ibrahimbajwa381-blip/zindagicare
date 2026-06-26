@@ -15,6 +15,11 @@ export const marketingPageSeo = {
     description:
       "In-house medical services in Lahore: verified doctors, nurses, and physiotherapists visit your home. IV therapy, injections, wound care, physiotherapy, and more — geo-tracked visits on ZindagiCare.",
   },
+  homePhysiotherapy: {
+    title: "Home Physiotherapy Lahore — Male or Female Physio at Your Doorstep",
+    description:
+      "Book home physiotherapy in Lahore with verified male or female physiotherapists on ZindagiCare. Post-injury rehab, back pain, sports recovery, and mobility sessions from Rs. 2,800 — geo-tracked home visits.",
+  },
   sundayConsult: {
     title: "Free Sunday Online Doctor Consultation — Pakistan",
     description:
@@ -44,5 +49,10 @@ export const marketingPageSeo = {
     title: "Join ZindagiCare as a Physiotherapist — Home Physio Lahore",
     description:
       "Verified physiotherapists in Lahore: offer home physiotherapy sessions on ZindagiCare. Rehabilitation, pain relief, and post-injury recovery at patients' homes.",
+  },
+  homeCareRequest: {
+    title: "Book In-House Medical Visit — Doctor or Nurse at Home Lahore",
+    description:
+      "Request an in-house medical visit in Lahore on ZindagiCare. Book doctor home visits, nursing, IV therapy, injections, wound care, or physiotherapy at your doorstep.",
   },
 } as const;

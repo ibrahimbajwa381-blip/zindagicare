@@ -118,6 +118,7 @@ export function SiteFooter() {
   const providerLinks: FooterLinkItem[] = [
     { href: siteConfig.links.forDoctors, label: t.providerOnboarding.doctor.eyebrow, icon: Stethoscope },
     { href: siteConfig.links.forNurses, label: t.providerOnboarding.nurse.eyebrow, icon: HeartPulse },
+    { href: siteConfig.links.forPhysiotherapists, label: t.providerOnboarding.physiotherapist.eyebrow, icon: HeartPulse },
     { href: siteConfig.links.registerDoctor, label: t.auth.registerDoctor, icon: UserPlus },
     { href: siteConfig.links.registerNurse, label: t.auth.registerNurse, icon: UserPlus },
   ];
@@ -139,6 +140,11 @@ export function SiteFooter() {
   ];
 
   const getAppLinks: FooterLinkItem[] = [
+    {
+      href: siteConfig.links.getApp,
+      label: t.footer.getApp,
+      icon: Smartphone,
+    },
     {
       href: siteConfig.links.getAppAndroid,
       label: t.footer.getAppAndroid,

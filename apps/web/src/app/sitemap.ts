@@ -1,14 +1,17 @@
 import type { MetadataRoute } from "next";
-import { siteConfig } from "@/config/site";
 import { getSiteUrl } from "@/lib/seo/metadata";
+import { getAllConditionSlugs, conditionDoctorPath } from "@/lib/seo/conditions";
+import { getAllSpecialtySlugs, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
 
 const MARKETING_ROUTES = [
   "/",
   "/doctors",
+  "/doctors/lahore",
   "/sunday-consult",
   "/urgent-care",
   "/home-services",
+  "/home-physiotherapy",
   "/home-care/request",
   "/for-doctors",
   "/for-nurses",
@@ -30,6 +33,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "/" ? 1 : path === "/doctors" ? 0.9 : 0.7,
   }));
 
+  const specialtyEntries: MetadataRoute.Sitemap = getAllSpecialtySlugs().map((slug) => ({
+    url: getSiteUrl(specialtyDoctorPath(slug)),
+    lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.75,
+  }));
+
+  const conditionEntries: MetadataRoute.Sitemap = getAllConditionSlugs().map((slug) => ({
+    url: getSiteUrl(conditionDoctorPath(slug)),
+    lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
   let doctorEntries: MetadataRoute.Sitemap = [];
   try {
     const slugs = await PublicDoctorService.listPublicDoctorSlugs();
@@ -43,5 +60,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sitemap still works without DB (e.g. local build without MongoDB).
   }
 
-  return [...staticEntries, ...doctorEntries];
+  return [...staticEntries, ...specialtyEntries, ...conditionEntries, ...doctorEntries];
 }

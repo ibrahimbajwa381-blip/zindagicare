@@ -1,10 +1,9 @@
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { VideoConsultClient } from "@/features/consult/components/video-consult-client";
 
-export const metadata = {
-  title: "Video consultation | ZindagiCare",
-};
+export const metadata = buildPrivateMetadata("Video consultation");
 
 type PageProps = {
   params: Promise<{ appointmentId: string }>;

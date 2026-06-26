@@ -16,6 +16,7 @@ import type {
   PublicDoctorProfile,
 } from "@/features/marketing/types/doctor-public";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
 import { surfaceCard, surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { cn } from "@zindagi/shared";
@@ -68,6 +69,10 @@ function RatingStars({ rating }: { rating: number }) {
 export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props) {
   const avatarSrc = resolveDoctorPortrait(doctor.name, doctor.avatarUrl);
   const callbackUrl = doctorProfilePath(doctor.slug, doctor.doctorId);
+  const credentialBadges = formatQualificationsList(
+    doctor.medicalDegree,
+    doctor.qualifications,
+  );
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-start">
@@ -117,6 +122,15 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
                       {copy.pmdcVerified}
                     </Badge>
                   )}
+                  {credentialBadges.map((credential) => (
+                    <Badge
+                      key={credential}
+                      variant="outline"
+                      className="border-slate-200 bg-white/80 text-slate-700"
+                    >
+                      {credential}
+                    </Badge>
+                  ))}
                 </div>
 
                 <p className="mt-1 text-base text-brand/90">
@@ -164,14 +178,16 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
           </section>
         )}
 
-        {(doctor.medicalDegree || doctor.medicalCollege) && (
+        {(credentialBadges.length > 0 || doctor.medicalCollege) && (
           <section className={`p-6 ${surfaceCard}`}>
             <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
               <GraduationCap className="h-5 w-5 text-brand" />
               {copy.education}
             </h2>
             <ul className="mt-3 space-y-1 text-sm text-slate-600">
-              {doctor.medicalDegree && <li>{doctor.medicalDegree}</li>}
+              {credentialBadges.map((credential) => (
+                <li key={credential}>{credential}</li>
+              ))}
               {doctor.medicalCollege && (
                 <li>
                   {doctor.medicalCollege}

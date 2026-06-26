@@ -22,6 +22,8 @@ const doctorProfileSchema = new Schema(
     cnicHash: { type: String, select: false },
     cnicLast4: { type: String },
     medicalDegree: { type: String, trim: true },
+    /** Postgraduate and fellowship qualifications, e.g. FCPS, MCPS, MRCP. */
+    qualifications: { type: [String], default: [] },
     medicalCollege: { type: String, trim: true },
     graduationYear: { type: Number, min: 1950 },
     verificationDocuments: {

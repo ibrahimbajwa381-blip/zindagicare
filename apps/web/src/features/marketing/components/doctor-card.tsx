@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, Star } from "lucide-react";
+import { ArrowRight, BadgeCheck, Star } from "lucide-react";
+import { cn } from "@zindagi/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
@@ -16,6 +17,11 @@ type DoctorCardProps = {
   imageUrl?: string;
   pmdcLabel?: string;
   href?: string;
+  availableSlots?: number;
+  isFull?: boolean;
+  slotsOpenLabel?: string;
+  noSlotsLabel?: string;
+  bookLabel?: string;
 };
 
 function initials(name: string) {
@@ -38,11 +44,25 @@ export function DoctorCard({
   imageUrl,
   pmdcLabel = "PMDC",
   href,
+  availableSlots,
+  isFull,
+  slotsOpenLabel,
+  noSlotsLabel,
+  bookLabel,
 }: DoctorCardProps) {
+  const showSlots = slotsOpenLabel !== undefined || noSlotsLabel !== undefined;
   const card = (
     <Card
-      className={`group h-full overflow-hidden duration-300 hover:-translate-y-1 ${surfaceCardInteractive} ${href ? "cursor-pointer" : ""}`}
+      className={cn(
+        "group relative h-full overflow-hidden duration-300 hover:-translate-y-1",
+        surfaceCardInteractive,
+        href && "cursor-pointer",
+      )}
     >
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-dark to-brand-light"
+      />
       <CardHeader className="pb-3">
         <div className="flex items-start gap-4">
           {imageUrl ? (
@@ -80,7 +100,7 @@ export function DoctorCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-slate-600">{hospital}</p>
+        {hospital ? <p className="text-sm text-slate-600">{hospital}</p> : null}
         <div className="flex items-center justify-between border-t border-slate-100 pt-4">
           <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
             <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -91,6 +111,27 @@ export function DoctorCard({
             Rs. {fee.toLocaleString()}
           </span>
         </div>
+        {showSlots && (
+          <div className="flex items-center justify-between gap-3">
+            <Badge
+              variant="outline"
+              className={cn(
+                "border-brand/20 text-xs font-medium",
+                isFull
+                  ? "bg-slate-50 text-slate-500"
+                  : "border-brand/30 bg-brand-muted/40 text-brand-dark",
+              )}
+            >
+              {isFull ? noSlotsLabel : slotsOpenLabel}
+            </Badge>
+            {bookLabel && href && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-dark transition group-hover:gap-1.5">
+                {bookLabel}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

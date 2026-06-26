@@ -117,12 +117,24 @@ export function HeroCarousel({
                 <p className="text-xs font-semibold uppercase tracking-wide text-white/95 sm:text-sm">
                   {service.carousel.eyebrow}
                 </p>
-                <h2 className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]">
-                  {service.carousel.title}{" "}
-                  <span className="text-hero-highlight drop-shadow-sm">
-                    {service.carousel.titleHighlight}
-                  </span>
-                </h2>
+                {isActive ? (
+                  <h1 className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]">
+                    {service.carousel.title}{" "}
+                    <span className="text-hero-highlight drop-shadow-sm">
+                      {service.carousel.titleHighlight}
+                    </span>
+                  </h1>
+                ) : (
+                  <p
+                    aria-hidden
+                    className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]"
+                  >
+                    {service.carousel.title}{" "}
+                    <span className="text-hero-highlight drop-shadow-sm">
+                      {service.carousel.titleHighlight}
+                    </span>
+                  </p>
+                )}
                 <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-2 text-sm font-medium leading-snug text-white backdrop-blur-sm sm:mt-4 sm:px-4 sm:py-2.5 sm:text-base">
                   <BadgeCheck className="h-4 w-4 shrink-0 text-brand-lighter sm:h-5 sm:w-5" />
                   <span>{service.carousel.badge}</span>
