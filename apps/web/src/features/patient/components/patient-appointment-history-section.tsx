@@ -33,6 +33,7 @@ type Props = {
     cancel: string;
   };
   viewPrescriptionLabel: string;
+  onReviewSubmitted?: () => void;
 };
 
 function statusBadgeClass(status: string, isMissed: boolean) {
@@ -76,6 +77,7 @@ export function PatientAppointmentHistorySection({
   statusLabels,
   reviewCopy,
   viewPrescriptionLabel,
+  onReviewSubmitted,
 }: Props) {
   return (
     <Card className={cn(surfaceCardInteractive, "max-md:overflow-visible md:overflow-hidden")}>
@@ -158,6 +160,7 @@ export function PatientAppointmentHistorySection({
                       copy={reviewCopy}
                       initialReview={item.review}
                       canReview={item.canReview}
+                      onSubmitted={onReviewSubmitted}
                     />
                   ) : null}
                 </li>

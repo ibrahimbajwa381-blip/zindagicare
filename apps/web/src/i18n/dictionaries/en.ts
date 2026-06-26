@@ -425,6 +425,14 @@ export const en = {
     successBody: "Stay on your dashboard — we'll notify you when your doctor is ready to join.",
     previousConsultTitle: "Your last urgent care consult",
     bookAgainTitle: "Need urgent care again?",
+    history: {
+      title: "Your urgent care history",
+      description:
+        "Past urgent care video consults and any feedback you shared with your doctor.",
+      consultsTitle: "Past urgent care consults",
+      empty: "No past urgent care consults yet. Completed consults will appear here.",
+      loadingConsults: "Loading your urgent care history…",
+    },
     requesting: "Sending your request…",
     waitTime: "Doctor assigned in",
     activeRequestTitle: "Your request is with our care team",

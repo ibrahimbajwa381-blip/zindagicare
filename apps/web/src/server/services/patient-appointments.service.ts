@@ -16,7 +16,7 @@ import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types
 
 export type PatientAppointmentHistoryItem = {
   appointmentId: string;
-  type: "online" | "sunday_free";
+  type: "online" | "sunday_free" | "urgent_online";
   typeLabel: string;
   scheduledStart: string;
   scheduledEnd: string;
@@ -59,6 +59,7 @@ function mapDoctor(
 
 function typeLabel(type: string) {
   if (type === AppointmentTypes.SUNDAY_FREE) return "Sunday Free Consult";
+  if (type === AppointmentTypes.URGENT_ONLINE) return "Urgent care";
   if (type === AppointmentTypes.ONLINE) return "Online consultation";
   return "Consultation";
 }
@@ -67,7 +68,7 @@ function resolveHistoryFlags(
   status: string,
   scheduledStart: Date,
   scheduledEnd: Date,
-  type: "online" | "sunday_free",
+  type: "online" | "sunday_free" | "urgent_online",
 ) {
   const now = new Date();
   const { joinClosesAt, canJoin: withinJoinWindow } = getVideoJoinWindow(
@@ -109,9 +110,14 @@ export class PatientAppointmentsService {
   /** Recent and past appointments for the patient dashboard history list. */
   static async listHistory(
     patientId: string,
-    limit = 20,
+    options: { limit?: number; types?: string[] } = {},
   ): Promise<PatientAppointmentHistoryItem[]> {
     await PatientAppointmentsService.ensureConnected();
+
+    const limit = options.limit ?? 20;
+    const types =
+      options.types ??
+      [AppointmentTypes.ONLINE, AppointmentTypes.SUNDAY_FREE];
 
     const now = new Date();
     const graceAfterEndMs = 2 * 60 * 60 * 1000;
@@ -120,7 +126,7 @@ export class PatientAppointmentsService {
     const appointments = await AppointmentModel.find(
       mongoFilter({
         patientId,
-        type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.SUNDAY_FREE] },
+        type: { $in: types },
         deletedAt: null,
         $or: [
           {
@@ -173,7 +179,9 @@ export class PatientAppointmentsService {
       const type =
         appointment.type === AppointmentTypes.SUNDAY_FREE
           ? ("sunday_free" as const)
-          : ("online" as const);
+          : appointment.type === AppointmentTypes.URGENT_ONLINE
+            ? ("urgent_online" as const)
+            : ("online" as const);
       const { isMissed, canJoin } = resolveHistoryFlags(
         appointment.status,
         appointment.scheduledStart,
@@ -201,7 +209,8 @@ export class PatientAppointmentsService {
         scheduledEnd: appointment.scheduledEnd.toISOString(),
         status: appointment.status,
         consultationFee:
-          appointment.type === AppointmentTypes.ONLINE
+          appointment.type === AppointmentTypes.ONLINE ||
+          appointment.type === AppointmentTypes.URGENT_ONLINE
             ? payment?.amount
             : 0,
         doctor,

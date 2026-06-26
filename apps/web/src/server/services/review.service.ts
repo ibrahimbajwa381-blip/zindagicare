@@ -81,7 +81,8 @@ function isAppointmentReviewEligible(
 
   if (
     appointment.type !== AppointmentTypes.ONLINE &&
-    appointment.type !== AppointmentTypes.SUNDAY_FREE
+    appointment.type !== AppointmentTypes.SUNDAY_FREE &&
+    appointment.type !== AppointmentTypes.URGENT_ONLINE
   ) {
     return false;
   }

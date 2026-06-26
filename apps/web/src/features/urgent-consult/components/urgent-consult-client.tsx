@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { URGENT_CONSULT_CONFIG, UrgentCareRequestStatuses } from "@zindagi/shared";
 import { PatientUrgentRequestCard } from "./patient-urgent-booking-card";
+import { PatientUrgentCareHistory } from "./patient-consult-visits-history";
 import { useUrgentRealtime } from "../hooks/use-urgent-realtime";
 import type { UrgentCheckoutResult, UrgentPatientRequestDto } from "../types";
 
@@ -172,19 +173,12 @@ export function UrgentConsultClient() {
           />
         )}
 
-        {hasPastRequest && request ? (
-          <div className="mt-6 space-y-3">
-            <p className="text-sm font-semibold text-slate-700">{u.previousConsultTitle}</p>
-            <PatientUrgentRequestCard request={request} variant="page" hideMatchingBanner />
-          </div>
-        ) : null}
-
         {showForm ? (
           <Card
             className={`overflow-hidden border-brand-light/40 shadow-premium ${hasPastRequest ? "mt-4" : "mt-6"}`}
           >
             <CardContent className="p-5 sm:p-6">
-              {hasPastRequest ? (
+              {hasPastRequest || status === "authenticated" ? (
                 <h2 className="mb-4 font-display text-lg font-semibold text-foreground">
                   {u.bookAgainTitle}
                 </h2>
@@ -298,6 +292,8 @@ export function UrgentConsultClient() {
             ) : null}
           </div>
         ) : null}
+
+        {status === "authenticated" ? <PatientUrgentCareHistory /> : null}
 
         <div className="mt-8 rounded-2xl border border-brand-light/35 bg-brand-muted/25 p-5 sm:p-6">
           <h2 className="text-base font-semibold text-brand-dark">{u.howItWorksTitle}</h2>
