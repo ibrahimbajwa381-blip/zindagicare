@@ -78,6 +78,22 @@ export const en = {
     creatingAccount: "Creating account…",
     alreadyHaveAccount: "Already have an account?",
     accountExists: "An account with this email or phone already exists",
+    emailTakenSignInForStaff:
+      "This email is already registered. Sign in with Google or your password, then add a doctor profile from the same account.",
+    addDoctorProfileTitle: "Add doctor profile",
+    addDoctorProfileDescription:
+      "You are signed in as a patient. Add a doctor profile to your existing account — no new signup needed.",
+    addDoctorProfileButton: "Continue to verification",
+    addNurseProfileTitle: "Add nurse profile",
+    addNurseProfileDescription:
+      "You are signed in. Add a nurse profile to your existing account to start verification.",
+    addNurseProfileButton: "Continue to verification",
+    addPhysiotherapistProfileTitle: "Add physiotherapist profile",
+    addPhysiotherapistProfileDescription:
+      "You are signed in. Add a physiotherapist profile to your existing account to start verification.",
+    addPhysiotherapistProfileButton: "Continue to verification",
+    addingProfile: "Setting up profile…",
+    signedInAs: "Signed in as",
     signInAfterRegisterFailed:
       "Account created but sign-in failed. Please log in with your email and password.",
     sendOtp: "Send OTP",

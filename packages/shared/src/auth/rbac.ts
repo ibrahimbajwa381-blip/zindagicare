@@ -1,4 +1,5 @@
 import { Roles, type Role } from "../types/enums";
+import type { Workspace } from "./workspace";
 
 /** Ordered from least to most privileged (for hierarchy checks). */
 export const ROLE_RANK: Record<Role, number> = {
@@ -55,6 +56,17 @@ export function isPatientOnly(userRoles: Role[] | undefined): boolean {
   return roles.includes(Roles.PATIENT) && !isStaff(roles);
 }
 
+/** Patient dashboard when the user has the patient role and is in the patient workspace. */
+export function canUsePatientWorkspace(
+  userRoles: Role[] | undefined,
+  activeWorkspace?: Workspace,
+): boolean {
+  const roles = userRoles ?? [];
+  if (!roles.includes(Roles.PATIENT)) return false;
+  if (!isStaff(roles)) return true;
+  return activeWorkspace === "patient";
+}
+
 export function highestRole(userRoles: Role[] | undefined): Role {
   const roles = userRoles ?? [Roles.PATIENT];
   return roles.reduce(
@@ -66,7 +78,7 @@ export function highestRole(userRoles: Role[] | undefined): Role {
 /** Fine-grained permissions keyed by action. */
 export const Permissions = {
   "admin.users.read": [Roles.ADMIN, Roles.SUPER_ADMIN],
-  "admin.users.write": [Roles.SUPER_ADMIN],
+  "admin.users.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.doctors.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "doctor.profile.manage": [Roles.DOCTOR],
   "doctor.sunday.manage": [Roles.DOCTOR],

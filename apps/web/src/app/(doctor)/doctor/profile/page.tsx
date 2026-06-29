@@ -3,6 +3,7 @@ import { VerificationStatuses } from "@zindagi/shared";
 import { redirect } from "next/navigation";
 import { DoctorProfileOverview } from "@/features/doctor/components/doctor-profile-overview";
 import { DoctorProfileSection } from "@/features/doctor/components/doctor-profile-section";
+import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
 import { getDoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 
@@ -40,6 +41,8 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
+      <WorkspaceSwitcher current="doctor" />
+
       {submitted === "1" && isPending && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
           <p className="font-semibold">Application submitted successfully</p>

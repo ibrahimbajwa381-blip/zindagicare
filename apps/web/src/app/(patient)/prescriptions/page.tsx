@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { isStaff } from "@zindagi/shared";
+import { canUsePatientWorkspace } from "@zindagi/shared";
 import { resolvePostAuthPath } from "@/lib/auth/routes";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
@@ -21,7 +21,7 @@ export default async function PatientPrescriptionsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/prescriptions");
 
-  if (isStaff(session.user.roles)) {
+  if (!canUsePatientWorkspace(session.user.roles, session.user.activeWorkspace)) {
     redirect(resolvePostAuthPath(session.user));
   }
 

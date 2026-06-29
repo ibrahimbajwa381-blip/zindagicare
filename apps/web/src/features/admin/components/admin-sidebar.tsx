@@ -15,6 +15,7 @@ import {
   HeartPulse,
   Home,
   LayoutDashboard,
+  ShieldCheck,
   Stethoscope,
   Star,
   Sun,
@@ -49,6 +50,7 @@ const NAV = [
     countKey: "physiotherapists" as const,
   },
   { href: "/admin/patients", label: "Patients", icon: Users },
+  { href: "/admin/admins", label: "Admin users", icon: ShieldCheck },
   {
     href: "/admin/reviews",
     label: "Patient reviews",
@@ -128,6 +130,9 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
       return pathname === item.href || pathname.startsWith(`${item.href}/`);
     }
     if (item.href === "/admin/patients") {
+      return pathname === item.href || pathname.startsWith(`${item.href}/`);
+    }
+    if (item.href === "/admin/admins") {
       return pathname === item.href || pathname.startsWith(`${item.href}/`);
     }
     return pathname === item.href || pathname.startsWith(`${item.href}/`);

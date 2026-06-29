@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConsultReviewPaymentModal } from "@/features/consult/components/consult-review-payment-modal";
 import { JazzCashRedirectForm } from "@/features/consult/components/jazzcash-redirect-form";
 import type { CheckoutResult } from "@/features/consult/types";
 import type { PublicDoctorProfile } from "@/features/marketing/types/doctor-public";
@@ -18,8 +19,6 @@ import { getConsultSlotDateKey } from "@/lib/consult/slot-utils";
 import { formatKarachiDate } from "@/lib/format/datetime";
 import { useMounted } from "@/hooks/use-mounted";
 import { useLocale } from "@/i18n/locale-provider";
-
-type Step = "choose" | "review" | "pay";
 
 type Props = {
   doctor: PublicDoctorProfile;
@@ -56,7 +55,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [patientNotes, setPatientNotes] = useState("");
-  const [step, setStep] = useState<Step>("choose");
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [jazzcashRedirect, setJazzcashRedirect] = useState<CheckoutResult["jazzcash"] | null>(
     null,
   );
@@ -105,7 +104,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
       window.location.href = `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
       return;
     }
-    setStep("review");
+    setReviewOpen(true);
     setError(null);
   };
 
@@ -132,7 +131,6 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
       }
 
       const checkout = json.data as CheckoutResult;
-      setStep("pay");
 
       if (checkout.testMode && checkout.testPayment?.completeUrl) {
         window.location.href = checkout.testPayment.completeUrl;
@@ -146,7 +144,6 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Checkout failed");
-      setStep("review");
     } finally {
       setLoading(false);
     }
@@ -161,16 +158,31 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
         />
       )}
 
+      <ConsultReviewPaymentModal
+        open={reviewOpen}
+        onOpenChange={(open) => {
+          setReviewOpen(open);
+          if (!open) setError(null);
+        }}
+        doctorName={doctor.name}
+        doctorSpecialty={doctor.specialties[0]}
+        doctorAvatarUrl={doctor.avatarUrl}
+        consultationFee={doctor.consultationFee}
+        slotStartAt={selectedSlot?.startAt}
+        slotFormatted={mounted}
+        patientNotes={patientNotes}
+        onPatientNotesChange={setPatientNotes}
+        loading={loading}
+        error={error}
+        onPay={startCheckout}
+      />
+
       <Card className={`sticky top-24 ${surfaceCardInteractive}`}>
         <CardHeader>
-          <CardTitle className="text-base">
-            {step === "review" ? "Review & pay" : "Book video consultation"}
-          </CardTitle>
+          <CardTitle className="text-base">Book video consultation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {step === "choose" && (
-            <>
-              <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
                 <DoctorAvatar name={doctor.name} avatarUrl={doctor.avatarUrl} />
                 <div className="min-w-0">
                   <p className="font-semibold">{doctor.name}</p>
@@ -226,8 +238,6 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
                 emptyMessage="No open slots in the next two weeks."
               />
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
-
               <Button
                 variant="default"
                 className="w-full bg-brand text-white hover:bg-brand-dark"
@@ -249,70 +259,6 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
                   to book paid online consultations.
                 </p>
               )}
-            </>
-          )}
-
-          {step === "review" && (
-            <>
-              <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Doctor</span>
-                  <span className="font-medium">{doctor.name}</span>
-                </div>
-                {selectedSlot && mounted && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Date & time</span>
-                    <span className="font-medium text-right">
-                      {formatKarachiDate(selectedSlot.startAt)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between border-t border-slate-200 pt-3">
-                  <span className="font-medium">Consultation fee</span>
-                  <span className="font-semibold text-brand-dark">
-                    Rs. {doctor.consultationFee.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              <label className="block space-y-1.5">
-                <span className="text-sm font-medium">Symptoms or notes (optional)</span>
-                <textarea
-                  value={patientNotes}
-                  onChange={(e) => setPatientNotes(e.target.value)}
-                  maxLength={500}
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
-                  placeholder="Briefly describe your concern…"
-                />
-              </label>
-
-              {error && <p className="text-sm text-red-600">{error}</p>}
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  disabled={loading}
-                  onClick={() => setStep("choose")}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="default"
-                  className="flex-1 bg-brand text-white hover:bg-brand-dark"
-                  disabled={loading}
-                  onClick={startCheckout}
-                >
-                  {loading ? "Starting…" : `Pay Rs. ${doctor.consultationFee.toLocaleString()}`}
-                </Button>
-              </div>
-            </>
-          )}
-
-          {step === "pay" && loading && (
-            <p className="text-center text-sm text-slate-500">Opening payment…</p>
-          )}
         </CardContent>
       </Card>
     </>

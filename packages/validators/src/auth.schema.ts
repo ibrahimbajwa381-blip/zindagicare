@@ -31,6 +31,15 @@ export const loginSchema = z.object({
 export const accountTypes = ["patient", "doctor", "nurse", "physiotherapist"] as const;
 export type AccountType = (typeof accountTypes)[number];
 
+export const staffAccountTypes = ["doctor", "nurse", "physiotherapist"] as const;
+export type StaffAccountType = (typeof staffAccountTypes)[number];
+
+/** Add a staff role to an existing logged-in account (keeps patient role). */
+export const addStaffRoleSchema = z.object({
+  accountType: z.enum(staffAccountTypes),
+  city: z.string().trim().min(2, "City is required"),
+});
+
 export const registerSchema = z
   .object({
     name: z.string().min(2, "Name is required"),

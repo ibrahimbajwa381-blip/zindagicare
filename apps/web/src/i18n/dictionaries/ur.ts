@@ -78,6 +78,22 @@ export const ur: Dictionary = {
     creatingAccount: "اکاؤنٹ بن رہا ہے…",
     alreadyHaveAccount: "پہلے سے اکاؤنٹ ہے؟",
     accountExists: "اس ای میل یا فون سے پہلے ہی اکاؤنٹ موجود ہے",
+    emailTakenSignInForStaff:
+      "یہ ای میل پہلے سے رجسٹرڈ ہے۔ گوگل یا پاس ورڈ سے سائن ان کریں، پھر اسی اکاؤنٹ میں ڈاکٹر پروفائل شامل کریں۔",
+    addDoctorProfileTitle: "ڈاکٹر پروفائل شامل کریں",
+    addDoctorProfileDescription:
+      "آپ مریض کے طور پر سائن ان ہیں۔ اپنے موجودہ اکاؤنٹ میں ڈاکٹر پروفائل شامل کریں — نیا اکاؤنٹ بنانے کی ضرورت نہیں۔",
+    addDoctorProfileButton: "تصدیق کی طرف جائیں",
+    addNurseProfileTitle: "نرس پروفائل شامل کریں",
+    addNurseProfileDescription:
+      "آپ سائن ان ہیں۔ تصدیق شروع کرنے کے لیے اپنے موجودہ اکاؤنٹ میں نرس پروفائل شامل کریں۔",
+    addNurseProfileButton: "تصدیق کی طرف جائیں",
+    addPhysiotherapistProfileTitle: "فزیوتھیراپسٹ پروفائل شامل کریں",
+    addPhysiotherapistProfileDescription:
+      "آپ سائن ان ہیں۔ تصدیق شروع کرنے کے لیے اپنے موجودہ اکاؤنٹ میں فزیوتھیراپسٹ پروفائل شامل کریں۔",
+    addPhysiotherapistProfileButton: "تصدیق کی طرف جائیں",
+    addingProfile: "پروفائل تیار ہو رہی ہے…",
+    signedInAs: "سائن ان بطور",
     signInAfterRegisterFailed:
       "اکاؤنٹ بن گیا مگر سائن ان نہیں ہوا۔ براہ کرم ای میل اور پاس ورڈ سے لاگ ان کریں۔",
     sendOtp: "او ٹی پی بھیجیں",

@@ -81,3 +81,16 @@ export const adminUpdatePatientSchema = z.object({
   /** Reset no-show counter */
   resetNoShowCount: z.boolean().optional(),
 });
+
+export const adminGrantSchema = z
+  .object({
+    email: z.string().email().optional(),
+    userId: z.string().min(1).optional(),
+  })
+  .refine((data) => Boolean(data.email || data.userId), {
+    message: "Provide an email or userId",
+  });
+
+export const adminRevokeSchema = z.object({
+  userId: z.string().min(1),
+});

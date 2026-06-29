@@ -10,15 +10,16 @@ import {
 import {
   AppError,
   Roles,
-  STAFF_ROLES,
   VerificationStatuses,
   LAHORE_GEO,
+  resolveDefaultWorkspace,
   type Role,
   emailLookupHash,
   phoneLookupHash,
 } from "@zindagi/shared";
-import type { AccountType } from "@zindagi/validators";
+import type { AccountType, StaffAccountType } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { syncAdminRoleFromAllowlist } from "@/lib/auth/admin-allowlist";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 
@@ -209,6 +210,53 @@ export async function registerWithCredentials(input: {
   return user;
 }
 
+const STAFF_ROLE_BY_ACCOUNT_TYPE: Record<StaffAccountType, Role> = {
+  doctor: Roles.DOCTOR,
+  nurse: Roles.NURSE,
+  physiotherapist: Roles.PHYSIOTHERAPIST,
+};
+
+/** Add a staff role to an existing user (keeps patient and other roles). */
+export async function addStaffRoleToUser(
+  userId: string,
+  accountType: StaffAccountType,
+  city: string,
+) {
+  await connectDatabase();
+  const user = await UserModel.findById(userId);
+  if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
+
+  const role = STAFF_ROLE_BY_ACCOUNT_TYPE[accountType];
+  if (user.roles.includes(role)) {
+    throw new AppError("You already have this profile", "CONFLICT", 409);
+  }
+
+  const cityValue = city.trim() || user.metadata?.city || "Lahore";
+  user.roles.push(role);
+  user.metadata = {
+    ...user.metadata,
+    city: user.metadata?.city ?? cityValue,
+    locale: user.metadata?.locale ?? "en",
+  };
+  await user.save();
+
+  try {
+    if (accountType === "doctor") {
+      await ensureDoctorProfile(user._id, cityValue);
+    } else if (accountType === "nurse") {
+      await ensureNurseProfile(user._id, cityValue);
+    } else {
+      await ensurePhysiotherapistProfile(user._id, cityValue);
+    }
+  } catch (error) {
+    user.roles = user.roles.filter((r) => r !== role);
+    await user.save();
+    throw error;
+  }
+
+  return loadAuthUserPayload(userId);
+}
+
 export async function findOrCreatePhoneUser(phone: string, name?: string) {
   await connectDatabase();
   const normalized = normalizePakistaniPhone(phone);
@@ -283,8 +331,12 @@ export async function loadAuthUserPayload(userId: string) {
     return null;
   }
 
+  const id = user._id.toString();
+  let roles = (user.roles ?? [Roles.PATIENT]) as Role[];
+  roles = await syncAdminRoleFromAllowlist(id, user.email, roles);
+
   let doctorVerificationStatus: string | undefined;
-  if (user.roles?.includes(Roles.DOCTOR)) {
+  if (roles.includes(Roles.DOCTOR)) {
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }))
       .select("verificationStatus isListed")
       .lean();
@@ -292,7 +344,7 @@ export async function loadAuthUserPayload(userId: string) {
   }
 
   let nurseVerificationStatus: string | undefined;
-  if (user.roles?.includes(Roles.NURSE)) {
+  if (roles.includes(Roles.NURSE)) {
     const staff = await StaffProfileModel.findOne(
       mongoFilter({ userId: user._id, staffType: Roles.NURSE }),
     )
@@ -302,7 +354,7 @@ export async function loadAuthUserPayload(userId: string) {
   }
 
   let physiotherapistVerificationStatus: string | undefined;
-  if (user.roles?.includes(Roles.PHYSIOTHERAPIST)) {
+  if (roles.includes(Roles.PHYSIOTHERAPIST)) {
     const staff = await StaffProfileModel.findOne(
       mongoFilter({ userId: user._id, staffType: Roles.PHYSIOTHERAPIST }),
     )
@@ -312,11 +364,12 @@ export async function loadAuthUserPayload(userId: string) {
   }
 
   return {
-    id: user._id.toString(),
+    id,
     email: user.email ?? undefined,
     name: user.name,
     image: user.avatarUrl ?? undefined,
-    roles: (user.roles ?? [Roles.PATIENT]) as Role[],
+    roles,
+    activeWorkspace: resolveDefaultWorkspace(roles),
     onboardingCompleted: user.onboardingCompleted ?? false,
     doctorVerificationStatus,
     nurseVerificationStatus,
@@ -337,7 +390,7 @@ export async function completeOnboarding(
   const user = await UserModel.findById(userId);
   if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
 
-  if (!user.roles.includes(Roles.PATIENT) || STAFF_ROLES.some((role) => user.roles.includes(role))) {
+  if (!user.roles.includes(Roles.PATIENT)) {
     throw new AppError("Onboarding is only for patient accounts", "FORBIDDEN", 403);
   }
 

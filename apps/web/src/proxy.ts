@@ -1,6 +1,11 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import { isStaff, Roles, VerificationStatuses } from "@zindagi/shared";
+import {
+  Roles,
+  VerificationStatuses,
+  canUsePatientWorkspace,
+  workspaceMatchesRoute,
+} from "@zindagi/shared";
 import { authConfig } from "@/lib/auth/auth.config";
 import {
   AUTH_ROUTES,
@@ -34,6 +39,7 @@ export default auth((req) => {
 
   const user = session!.user;
   const roles = user.roles ?? [];
+  const activeWorkspace = user.activeWorkspace;
 
   if (
     !user.onboardingCompleted &&
@@ -46,7 +52,10 @@ export default auth((req) => {
     }
   }
 
-  if (isPatientDashboardPath(pathname) && isStaff(roles)) {
+  if (
+    isPatientDashboardPath(pathname) &&
+    !canUsePatientWorkspace(roles, activeWorkspace)
+  ) {
     const destination = resolvePostAuthPath(user);
     if (pathname !== destination) {
       return NextResponse.redirect(
@@ -106,8 +115,9 @@ export default auth((req) => {
 
   for (const rule of ROLE_ROUTE_RULES) {
     if (pathname.startsWith(rule.prefix)) {
-      const allowed = rule.roles.some((r) => roles.includes(r));
-      if (!allowed) {
+      const hasRole = rule.roles.some((r) => roles.includes(r));
+      const inWorkspace = workspaceMatchesRoute(activeWorkspace, rule.prefix);
+      if (!hasRole || !inWorkspace) {
         return NextResponse.redirect(
           new URL(resolvePostAuthPath(user), req.nextUrl.origin),
         );

@@ -1,4 +1,4 @@
-import { isAdmin, Roles, VerificationStatuses, type Role } from "@zindagi/shared";
+import { isAdmin, resolveDefaultWorkspace, Roles, VerificationStatuses, type Role, type Workspace } from "@zindagi/shared";
 
 export const AUTH_ROUTES = {
   login: "/login",
@@ -124,6 +124,7 @@ export const PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES = [
 
 export type PostAuthUser = {
   roles?: Role[];
+  activeWorkspace?: Workspace;
   onboardingCompleted?: boolean;
   doctorVerificationStatus?: string;
   nurseVerificationStatus?: string;
@@ -153,7 +154,39 @@ export function resolveLoginRedirectPath(
 
 export function resolvePostAuthPath(user: PostAuthUser): string {
   const roles = user.roles ?? [];
+  const workspace =
+    user.activeWorkspace ?? resolveDefaultWorkspace(roles);
 
+  if (workspace === "admin" && isAdmin(roles)) {
+    return AUTH_ROUTES.adminDashboard;
+  }
+
+  if (workspace === "doctor" && roles.includes(Roles.DOCTOR)) {
+    if (user.doctorVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.doctorProfile;
+    }
+    return AUTH_ROUTES.doctorVerification;
+  }
+
+  if (workspace === "nurse" && roles.includes(Roles.NURSE)) {
+    if (user.nurseVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.nurseDashboard;
+    }
+    return AUTH_ROUTES.nurseVerification;
+  }
+
+  if (workspace === "physiotherapist" && roles.includes(Roles.PHYSIOTHERAPIST)) {
+    if (user.physiotherapistVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.physiotherapistDashboard;
+    }
+    return AUTH_ROUTES.physiotherapistVerification;
+  }
+
+  if (workspace === "rider" && roles.includes(Roles.RIDER)) {
+    return "/rider";
+  }
+
+  // Fallback when active workspace is stale or mismatched
   if (isAdmin(roles)) {
     return AUTH_ROUTES.adminDashboard;
   }

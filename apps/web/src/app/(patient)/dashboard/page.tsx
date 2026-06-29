@@ -2,7 +2,8 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { resolvePostAuthPath } from "@/lib/auth/routes";
 import { redirect } from "next/navigation";
-import { isStaff } from "@zindagi/shared";
+import { canUsePatientWorkspace, getAvailableWorkspaces, cn } from "@zindagi/shared";
+import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
 import { siteConfig } from "@/config/site";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
@@ -27,7 +28,6 @@ import { PrescriptionService } from "@/server/services/prescription.service";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
 import { loadPatientOnlineBooking } from "@/features/consult/components/patient-online-booking-section";
 import { PatientOnlineBookingSection } from "@/features/consult/components/patient-online-booking-section";
-import { cn } from "@zindagi/shared";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 export const metadata = { title: "Dashboard" };
@@ -38,7 +38,7 @@ export default async function PatientDashboardPage() {
     redirect("/login");
   }
 
-  if (isStaff(session.user.roles)) {
+  if (!canUsePatientWorkspace(session.user.roles, session.user.activeWorkspace)) {
     redirect(resolvePostAuthPath(session.user));
   }
 
@@ -55,10 +55,15 @@ export default async function PatientDashboardPage() {
       AppointmentReminderService.processDueReminders().catch(() => null),
     ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
+  const showWorkspaceSwitcher =
+    getAvailableWorkspaces(session.user.roles).length > 1;
 
   return (
     <PageShell variant="brand" spacing="default">
       <WelcomeTour userId={session.user.id} />
+      {showWorkspaceSwitcher ? (
+        <WorkspaceSwitcher current="patient" className="mb-6" />
+      ) : null}
       <PageTitle
         eyebrow={t.dashboard.eyebrow}
         title={t.dashboard.pageTitle}

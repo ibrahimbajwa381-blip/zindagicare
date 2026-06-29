@@ -21,7 +21,7 @@ export type RegisterFormState = {
 };
 import { registerWithCredentials } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
-import { loginSchema, otpVerifySchema, registerSchema } from "@zindagi/validators";
+import { loginSchema, otpVerifySchema, registerSchema, type AccountType } from "@zindagi/validators";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
 import { AUTH_ROUTES, resolveLoginRedirectPath } from "@/lib/auth/routes";
 
@@ -113,12 +113,21 @@ export async function registerAction(
     return { fieldErrors: fieldErrorsFromZodIssues(locale, parsed.error.issues) };
   }
 
+  const accountType = (formData.get("accountType") ?? "patient") as AccountType;
+
   try {
     await registerWithCredentials(parsed.data);
     redirect(AUTH_ROUTES.login);
   } catch (e) {
     if (isRedirectError(e)) throw e;
-    if (e instanceof AppError && e.code === "CONFLICT" && e.field) {
+    if (e instanceof AppError && e.code === "CONFLICT" && e.field === "email") {
+      if (accountType !== "patient") {
+        return {
+          fieldErrors: {
+            email: getDictionary(locale).auth.emailTakenSignInForStaff,
+          },
+        };
+      }
       return { fieldErrors: conflictFieldError(locale, e.field) };
     }
     if (e instanceof AppError && e.code === "CONFLICT") {
