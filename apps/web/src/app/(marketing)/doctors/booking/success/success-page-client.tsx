@@ -52,6 +52,7 @@ export default function ConsultBookingSuccessPage() {
           scheduledEnd: confirmed.scheduledEnd,
           consultationFee: confirmed.consultationFee,
           type: "online",
+          appointmentId: confirmed.appointmentId,
         });
         setConfirmationOpen(true);
         setLoading(false);

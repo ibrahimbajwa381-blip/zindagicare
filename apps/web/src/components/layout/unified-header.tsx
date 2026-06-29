@@ -68,6 +68,8 @@ export function UnifiedHeader({
     freeBadge: t.nav.freeBadge,
     urgentBadge: t.nav.urgentBadge,
     myDashboard: t.dashboard.header.myDashboard,
+    doctorDashboard: t.dashboard.header.doctorDashboard,
+    adminDashboard: t.dashboard.header.adminDashboard,
     signOut: t.dashboard.header.signOut,
     login: t.auth.login,
     createAccount: t.auth.createAccount,

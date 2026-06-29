@@ -1,19 +1,11 @@
-import { Roles } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
-import { AUTH_ROUTES } from "@/lib/auth/routes";
+import { resolveDashboardMenuLinks } from "@/lib/nav/header-actions";
 import type { MobileNavLink, MobileNavSection } from "@/components/layout/mobile-nav";
-
-export function dashboardHref(roles?: string[]) {
-  if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorProfile;
-  if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
-    return AUTH_ROUTES.adminDoctors;
-  }
-  if (roles?.includes(Roles.NURSE)) return AUTH_ROUTES.nurseDashboard;
-  return siteConfig.links.dashboard;
-}
 
 type AccountSectionLabels = {
   myDashboard: string;
+  doctorDashboard: string;
+  adminDashboard: string;
   signOut: string;
   login: string;
   createAccount: string;
@@ -32,13 +24,20 @@ export function buildAccountMobileSection(
     };
   }
 
+  const dashboardLinks = resolveDashboardMenuLinks(session.user.roles, {
+    myDashboard: labels.myDashboard,
+    doctorDashboard: labels.doctorDashboard,
+    adminDashboard: labels.adminDashboard,
+  });
+
   return {
     links: [
-      {
-        href: dashboardHref(session.user.roles),
-        label: labels.myDashboard,
-      },
-      { label: labels.signOut, action: "sign-out" },
+      ...dashboardLinks.map((link) => ({
+        href: link.href,
+        label: link.label,
+        workspace: link.workspace,
+      })),
+      { label: labels.signOut, action: "sign-out" as const },
     ],
   };
 }
@@ -55,6 +54,8 @@ export function buildMarketingMobileNav(
     freeBadge: string;
     urgentBadge: string;
     myDashboard: string;
+    doctorDashboard: string;
+    adminDashboard: string;
     signOut: string;
     login: string;
     createAccount: string;
@@ -81,6 +82,8 @@ export function buildMarketingMobileNav(
 
   const accountSection = buildAccountMobileSection(session, {
     myDashboard: labels.myDashboard,
+    doctorDashboard: labels.doctorDashboard,
+    adminDashboard: labels.adminDashboard,
     signOut: labels.signOut,
     login: labels.login,
     createAccount: labels.createAccount,

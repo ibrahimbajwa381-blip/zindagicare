@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AppUserMenu } from "@/components/layout/app-user-menu";
 import {
-  dashboardHref,
+  resolveDashboardMenuLinks,
   resolveHeaderAccountType,
 } from "@/lib/nav/header-actions";
+import { useTranslations } from "@/i18n/locale-provider";
 
 type AppHeaderUserProps = {
   className?: string;
@@ -22,6 +23,7 @@ export function AppHeaderUser({
   variant = "header",
 }: AppHeaderUserProps) {
   const { data: session } = useSession();
+  const t = useTranslations();
   const pathname = usePathname();
   const [profile, setProfile] = useState<{
     email?: string;
@@ -79,7 +81,12 @@ export function AppHeaderUser({
   if (!user) return null;
 
   const name = user.name?.trim() || "Account";
-  const href = dashboardHref(user.roles);
+  const headerLabels = t.dashboard.header;
+  const dashboardLinks = resolveDashboardMenuLinks(user.roles, {
+    myDashboard: headerLabels.myDashboard,
+    doctorDashboard: headerLabels.doctorDashboard,
+    adminDashboard: headerLabels.adminDashboard,
+  });
 
   return (
     <AppUserMenu
@@ -88,7 +95,7 @@ export function AppHeaderUser({
       phone={profile?.phone}
       city={profile?.city}
       image={profile?.avatarUrl ?? user.image ?? undefined}
-      dashboardHref={href}
+      dashboardLinks={dashboardLinks}
       accountType={resolveHeaderAccountType(user.roles)}
       className={className}
       variant={variant}

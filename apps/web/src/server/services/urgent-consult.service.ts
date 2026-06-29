@@ -295,6 +295,7 @@ export class UrgentConsultService {
       amount,
       currency: "PKR",
       idempotencyKey,
+      externalTransactionId: useDummy ? dummyPreview.txnRefNo : txnRefNo,
       metadata: {
         kind: URGENT_PAYMENT_KIND,
         patientPhone: input.patientPhone,

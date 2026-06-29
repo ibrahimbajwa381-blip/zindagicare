@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquare, Search } from "lucide-react";
@@ -98,6 +98,7 @@ export function PatientDashboardMessagesSection() {
   const [search, setSearch] = useState("");
   const [contacts, setContacts] = useState<MergedContact[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoadDone = useRef(false);
 
   const load = useCallback(async (q?: string) => {
     setLoading(true);
@@ -113,8 +114,15 @@ export function PatientDashboardMessagesSection() {
   }, []);
 
   useEffect(() => {
+    const query = search.trim() || undefined;
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      void load(query);
+      return;
+    }
+
     const timer = setTimeout(() => {
-      void load(search.trim() || undefined);
+      void load(query);
     }, 250);
     return () => clearTimeout(timer);
   }, [load, search]);

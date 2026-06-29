@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { Calendar, CheckCircle2, Clock, X } from "lucide-react";
+import { Calendar, CheckCircle2, ClipboardList, Clock, X } from "lucide-react";
+import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime";
@@ -59,37 +60,41 @@ export function AppointmentConfirmationModal({ open, onOpenChange, details }: Pr
         if (e.target === dialogRef.current) onOpenChange(false);
       }}
     >
-      <div className="flex h-full items-end justify-center p-0 sm:items-center sm:p-4">
+      <div className="flex h-full min-h-0 items-end justify-center p-0 sm:items-center sm:p-4">
         <div
-          className={`flex w-full flex-col overflow-hidden rounded-t-3xl shadow-premium-lg sm:max-w-md sm:rounded-3xl ${surfaceCard}`}
+          className={cn(
+            "flex max-h-[min(92dvh,100%)] w-full flex-col overflow-hidden rounded-t-3xl shadow-premium-lg sm:max-h-[90dvh] sm:max-w-md sm:rounded-3xl",
+            surfaceCard,
+          )}
           onClick={(e) => e.stopPropagation()}
           role="document"
         >
-          <div className="relative px-6 pb-2 pt-8 text-center">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="relative px-4 pb-2 pt-6 text-center sm:px-6 sm:pt-8">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95 sm:right-4 sm:top-4 sm:h-10 sm:w-10"
               aria-label={t.common.closeMenu}
             >
               <X className="h-5 w-5" />
             </button>
 
-            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-              <CheckCircle2 className="h-8 w-8" aria-hidden />
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 sm:h-14 sm:w-14">
+              <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden />
             </span>
-            <h2 className="mt-4 font-display text-xl font-semibold text-foreground sm:text-2xl">
+            <h2 className="mt-3 font-display text-lg font-semibold text-foreground sm:mt-4 sm:text-xl md:text-2xl">
               {copy.title}
             </h2>
-            <p className="mt-2 text-sm text-slate-600">{copy.subtitle}</p>
+            <p className="mt-2 px-1 text-sm text-slate-600">{copy.subtitle}</p>
           </div>
 
-          <div className="space-y-4 px-6 py-5">
-            <div className="rounded-xl border border-brand-light/30 bg-brand-muted/40 px-4 py-3 text-center">
+          <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="rounded-xl border border-brand-light/30 bg-brand-muted/40 px-3 py-3 text-center sm:px-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 {copy.doctor}
               </p>
-              <p className="mt-1 font-display text-lg font-semibold text-foreground">
+              <p className="mt-1 break-words font-display text-base font-semibold text-foreground sm:text-lg">
                 {details.doctorName}
               </p>
               {details.doctorSpecialty && (
@@ -97,14 +102,14 @@ export function AppointmentConfirmationModal({ open, onOpenChange, details }: Pr
               )}
             </div>
 
-            <dl className="grid gap-3 sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               <div className="flex gap-3 rounded-xl border border-slate-200/70 bg-white/80 p-3">
                 <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
                 <div>
                   <dt className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                     {copy.dateTime}
                   </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-800">
+                  <dd className="mt-1 break-words text-sm font-medium text-slate-800">
                     {formatKarachiDateTime(details.scheduledStart)}
                   </dd>
                 </div>
@@ -136,13 +141,32 @@ export function AppointmentConfirmationModal({ open, onOpenChange, details }: Pr
             )}
 
             <p className="text-center text-xs text-slate-500">{copy.reminder}</p>
+
+            {details.appointmentId && (
+              <div className="rounded-2xl border border-brand-light/40 bg-gradient-to-br from-brand-muted/60 via-white to-accent-muted/30 p-4 text-left">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
+                    <ClipboardList className="h-5 w-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {t.intake.wizard.heroTagline}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {t.intake.wizard.heroSubtitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           </div>
 
-          <div className="flex flex-col gap-2 border-t border-slate-100 px-6 py-4 sm:flex-row">
-            {isSunday && details.appointmentId ? (
+          <div className="flex shrink-0 flex-col gap-2 border-t border-slate-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:px-6 sm:py-4">
+            {details.appointmentId ? (
               <Button
                 asChild
-                className="flex-1 bg-brand text-white hover:bg-brand-dark"
+                className="h-auto min-h-11 w-full whitespace-normal bg-brand px-3 py-2.5 text-center leading-snug text-white hover:bg-brand-dark sm:flex-1"
                 onClick={() => onOpenChange(false)}
               >
                 <Link href={`/intake/${details.appointmentId}`}>
@@ -152,7 +176,7 @@ export function AppointmentConfirmationModal({ open, onOpenChange, details }: Pr
             ) : (
               <Button
                 asChild
-                className="flex-1 bg-brand text-white hover:bg-brand-dark"
+                className="h-auto min-h-11 w-full whitespace-normal bg-brand px-3 py-2.5 text-center leading-snug text-white hover:bg-brand-dark sm:flex-1"
                 onClick={() => onOpenChange(false)}
               >
                 <Link href={siteConfig.links.dashboard}>{copy.viewDashboard}</Link>
@@ -160,7 +184,7 @@ export function AppointmentConfirmationModal({ open, onOpenChange, details }: Pr
             )}
             <Button
               variant="outline"
-              className="flex-1"
+              className="h-auto min-h-11 w-full whitespace-normal px-3 py-2.5 leading-snug sm:flex-1"
               onClick={() => onOpenChange(false)}
             >
               {copy.gotIt}

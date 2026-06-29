@@ -139,10 +139,10 @@ export function getReturningPatientConsultMessage(locale: IntakeLocale = "en") {
 }
 
 export const INTAKE_FORM_INVITE_MESSAGE =
-  "Assalam-o-Alaikum! Before your consultation, please fill in the short optional health form below. It helps me prepare for your visit — you may skip any question that does not apply, or skip the form entirely for now.";
+  "Assalam-o-Alaikum! Before we start your consultation, please fill out a few health details. They help me understand your case and give you better advice.";
 
 export const INTAKE_FORM_INVITE_MESSAGE_UR =
-  "السلام علیکم! مشاورت سے پہلے، نیچے دیا گیا مختصر اختیاری صحت کا فارم بھر دیں۔ اس سے میں آپ کی ملاقات کی تیاری کر سکتا ہوں — جو سوال لاگو نہ ہو اسے خالی چھوڑ سکتے ہیں، یا ابھی فارم چھوڑ بھی سکتے ہیں۔";
+  "السلام علیکم! مشاورت شروع کرنے سے پہلے، براہ کرم چند صحت کی تفصیلات بھر دیں۔ اس سے میں آپ کی صورتِ حال سمجھ کر بہتر مشورہ دے سکتا ہوں۔";
 
 export const INTAKE_FORM_SUBMITTED_MESSAGE =
   "Thank you for sharing your health information. Feel free to message me here if there is anything else you would like me to know.";
@@ -150,8 +150,20 @@ export const INTAKE_FORM_SUBMITTED_MESSAGE =
 export const INTAKE_FORM_SUBMITTED_MESSAGE_UR =
   "آپ کی صحت کی معلومات شیئر کرنے کا شکریہ۔ اگر کچھ اور بتانا چاہیں تو یہاں پیغام بھیج سکتے ہیں۔";
 
-export function getIntakeFormInviteMessage(locale: IntakeLocale = "en") {
-  return locale === "ur" ? INTAKE_FORM_INVITE_MESSAGE_UR : INTAKE_FORM_INVITE_MESSAGE;
+export function intakePagePath(appointmentId: string) {
+  return `/intake/${appointmentId}`;
+}
+
+export function getIntakeFormInviteMessage(
+  locale: IntakeLocale = "en",
+  appointmentId?: string,
+) {
+  const base =
+    locale === "ur" ? INTAKE_FORM_INVITE_MESSAGE_UR : INTAKE_FORM_INVITE_MESSAGE;
+  if (!appointmentId) return base;
+  const linkLabel =
+    locale === "ur" ? "فارم یہاں بھریں:" : "Fill out the form here:";
+  return `${base}\n\n${linkLabel} ${intakePagePath(appointmentId)}`;
 }
 
 export function getIntakeFormSubmittedMessage(locale: IntakeLocale = "en") {

@@ -1,4 +1,12 @@
-import { isAdmin, resolveDefaultWorkspace, Roles, VerificationStatuses, type Role, type Workspace } from "@zindagi/shared";
+import {
+  canUsePatientWorkspace,
+  isAdmin,
+  resolveDefaultWorkspace,
+  Roles,
+  VerificationStatuses,
+  type Role,
+  type Workspace,
+} from "@zindagi/shared";
 
 export const AUTH_ROUTES = {
   login: "/login",
@@ -184,6 +192,13 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
 
   if (workspace === "rider" && roles.includes(Roles.RIDER)) {
     return "/rider";
+  }
+
+  if (canUsePatientWorkspace(roles, workspace)) {
+    if (!user.onboardingCompleted) {
+      return AUTH_ROUTES.onboarding;
+    }
+    return AUTH_ROUTES.patientDashboard;
   }
 
   // Fallback when active workspace is stale or mismatched

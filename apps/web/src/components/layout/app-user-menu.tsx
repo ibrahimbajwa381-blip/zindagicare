@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import Link from "next/link";
-import { signOut } from "next-auth/react";
-import { ChevronDown, LayoutDashboard, LogOut } from "lucide-react";
-import { cn } from "@zindagi/shared";
+import { useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
+import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
+import {
+  workspaceForDashboardHref,
+  type DashboardMenuLink,
+} from "@/lib/nav/header-actions";
+import { cn, type Workspace } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 
@@ -17,6 +21,7 @@ export type AppUserMenuProps = {
   city?: string | null;
   image?: string | null;
   dashboardHref?: string;
+  dashboardLinks?: DashboardMenuLink[];
   accountType?: AccountType;
   className?: string;
   variant?: "header" | "drawer";
@@ -63,15 +68,28 @@ export function AppUserMenu({
   city,
   image,
   dashboardHref = siteConfig.links.dashboard,
+  dashboardLinks,
   accountType = "patient",
   className,
   variant = "header",
 }: AppUserMenuProps) {
   const t = useTranslations();
+  const router = useRouter();
+  const { data: session, update } = useSession();
   const labels = t.dashboard.header;
   const accountTypeLabel = accountLabel(labels, accountType);
+  const menuDashboardLinks: DashboardMenuLink[] =
+    dashboardLinks ??
+    [
+      {
+        href: dashboardHref,
+        label: labels.myDashboard,
+        workspace: workspaceForDashboardHref(dashboardHref),
+      },
+    ];
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [switchingDashboard, setSwitchingDashboard] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -111,6 +129,20 @@ export function AppUserMenu({
     setSigningOut(true);
     setOpen(false);
     await signOut({ callbackUrl: siteConfig.links.login });
+  }
+
+  async function handleDashboardNav(href: string, workspace: Workspace) {
+    setOpen(false);
+    setSwitchingDashboard(true);
+    try {
+      if (session?.user?.activeWorkspace !== workspace) {
+        await update({ activeWorkspace: workspace });
+      }
+      router.push(href);
+      router.refresh();
+    } finally {
+      setSwitchingDashboard(false);
+    }
   }
 
   const isDrawer = variant === "drawer";
@@ -225,15 +257,23 @@ export function AppUserMenu({
           </div>
 
           <div className="p-1.5">
-            <Link
-              href={dashboardHref}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-muted hover:text-brand-dark"
-            >
-              <LayoutDashboard className="size-4 shrink-0 text-brand" aria-hidden />
-              {labels.myDashboard}
-            </Link>
+            {menuDashboardLinks.map((link) => (
+              <button
+                key={link.href}
+                type="button"
+                role="menuitem"
+                disabled={switchingDashboard}
+                onClick={() => void handleDashboardNav(link.href, link.workspace)}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-muted hover:text-brand-dark disabled:opacity-60"
+              >
+                {link.label === labels.adminDashboard ? (
+                  <ShieldCheck className="size-4 shrink-0 text-brand" aria-hidden />
+                ) : (
+                  <LayoutDashboard className="size-4 shrink-0 text-brand" aria-hidden />
+                )}
+                {link.label}
+              </button>
+            ))}
             <button
               type="button"
               role="menuitem"

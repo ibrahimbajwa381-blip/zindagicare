@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { AlertTriangle, Menu, ShieldAlert } from "lucide-react";
 import { cn } from "@zindagi/shared";
+import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 import { UnifiedHeader } from "@/components/layout/unified-header";
 import { DoctorSidebar } from "@/features/doctor/components/doctor-sidebar";
 
@@ -94,6 +95,7 @@ export function DoctorShell({
       <div className={cn("flex min-h-[calc(100vh-4rem)] flex-col sm:min-h-[calc(100vh-4.75rem)] lg:pl-[17.5rem]")}>
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
           <div className="mx-auto w-full max-w-[100rem]">
+            <AutoBreadcrumbs variant="workspace" />
             {accountabilityBanner && (
               <AccountabilityBanner banner={accountabilityBanner} />
             )}

@@ -8,8 +8,11 @@ import type {
   FeaturedDoctorCard,
   PublicDoctorProfile,
 } from "@/features/marketing/types/doctor-public";
-import { nameToDoctorSlug } from "@/lib/doctors/profile-path";
+import { resolveDoctorSlug } from "@/lib/doctors/profile-path";
 import { mongoFilter } from "@/lib/mongo/query";
+import {
+  ensureCanonicalDoctorSlug,
+} from "@/server/services/doctor-slug.service";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
 import type { WeeklyWindow } from "@/lib/consult/slot-utils";
 
@@ -37,7 +40,11 @@ async function mapProfileDoc(
 ): Promise<PublicDoctorProfile> {
   const user = doc.userId as { name?: string; avatarUrl?: string } | null | undefined;
   const name = user?.name ?? "Doctor";
-  const slug = (doc.slug as string | undefined)?.trim() || nameToDoctorSlug(name);
+  const slug = await ensureCanonicalDoctorSlug(
+    doc._id.toString(),
+    name,
+    doc.slug as string | undefined,
+  );
 
   return {
     doctorId: doc._id.toString(),
@@ -80,7 +87,7 @@ async function queryFeaturedDoctors(limit: number): Promise<FeaturedDoctorCard[]
 
     return {
       doctorId: doc._id.toString(),
-      slug: doc.slug ?? nameToDoctorSlug(name),
+      slug: resolveDoctorSlug(doc.slug, name),
       name,
       specialty: doc.specialties?.[0] ?? "General Physician",
       hospital: doc.hospitals?.[0]?.name ?? "Lahore",
@@ -135,6 +142,27 @@ export class PublicDoctorService {
         .lean();
     }
 
+    if (!doc) {
+      const candidates = await DoctorProfileModel.find(PUBLIC_DOCTOR_FILTER)
+        .select("slug userId")
+        .populate("userId", "name")
+        .lean();
+
+      const matched = candidates.find((candidate) => {
+        const user = candidate.userId as { name?: string } | null;
+        const name = user?.name ?? "Doctor";
+        return resolveDoctorSlug(candidate.slug, name) === normalized;
+      });
+
+      if (matched) {
+        doc = await DoctorProfileModel.findOne(
+          mongoFilter({ _id: matched._id, ...PUBLIC_DOCTOR_FILTER }),
+        )
+          .populate("userId", "name avatarUrl")
+          .lean();
+      }
+    }
+
     if (!doc) return null;
 
     const weeklyAvailability = (doc.weeklyAvailability ?? []) as WeeklyWindow[];
@@ -168,7 +196,7 @@ export class PublicDoctorService {
     return doctors.map((doc) => {
       const user = doc.userId as { name?: string } | null;
       const name = user?.name ?? "Doctor";
-      return (doc.slug as string | undefined)?.trim() || nameToDoctorSlug(name);
+      return resolveDoctorSlug(doc.slug, name);
     });
   }
 }

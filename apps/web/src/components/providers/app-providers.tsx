@@ -4,6 +4,7 @@ import type { Session } from "next-auth";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { SerwistProvider } from "@/components/providers/serwist-provider";
 import { WhatsAppFloatButton } from "@/components/layout/whatsapp-float-button";
+import { NavigationLoadingProvider } from "@/components/providers/navigation-loading";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import type { Locale } from "@/i18n/config";
 import { LocaleProvider } from "@/i18n/locale-provider";
@@ -20,7 +21,9 @@ export function AppProviders({ children, session, initialLocale }: AppProvidersP
     <SerwistProvider swUrl="/serwist/sw.js">
       <LocaleProvider initialLocale={initialLocale}>
         <AuthSessionProvider session={session}>
-          {children}
+          <NavigationLoadingProvider>
+            {children}
+          </NavigationLoadingProvider>
           <WhatsAppFloatButton />
           <InstallPrompt />
         </AuthSessionProvider>

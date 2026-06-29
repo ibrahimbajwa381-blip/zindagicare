@@ -26,18 +26,18 @@ export default async function IntakePage({ params }: PageProps) {
   return (
     <PageShell
       variant="brand"
-      spacing="default"
+      spacing="sm"
       flipBlur
-      innerClassName="!max-w-3xl"
+      innerClassName="!max-w-2xl"
     >
       <PageTitle
         eyebrow={t.intake.pageTitle}
         title={t.intake.formTitle}
         description={t.intake.pageDescription}
         align="center"
-        className="mx-auto"
+        className="mx-auto max-w-full px-1"
       />
-      <div className="mt-8 sm:mt-10">
+      <div className="mt-6 w-full min-w-0 sm:mt-8">
         <IntakeForm appointmentId={appointmentId} />
       </div>
     </PageShell>

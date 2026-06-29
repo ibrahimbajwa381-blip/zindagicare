@@ -37,6 +37,7 @@ import {
   getDoctorCommissionRatesByProfileIds,
   type DoctorCommissionRates,
 } from "./commission.service";
+import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
 
 type CreateDoctorInput = z.infer<typeof adminCreateDoctorSchema>;
 type UpdateDoctorInput = z.infer<typeof adminUpdateDoctorSchema>;
@@ -62,28 +63,6 @@ function formatPhoneForDisplay(phone?: string | null): string | undefined {
   const digits = normalizePhoneDigits(phone);
   if (!digits) return undefined;
   return toPakistaniLocalPhone(digits);
-}
-
-async function generateUniqueSlug(name: string, profileId: string): Promise<string> {
-  const base =
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "doctor";
-
-  let slug = base;
-  let counter = 0;
-  while (
-    await DoctorProfileModel.findOne({
-      slug,
-      _id: { $ne: profileId },
-    } as Record<string, unknown>).lean()
-  ) {
-    counter += 1;
-    slug = `${base}-${counter}`;
-  }
-  return slug;
 }
 
 export type AdminDoctorStats = {
@@ -523,7 +502,7 @@ export async function adminCreateDoctor(
     coverageCities: ["Lahore"],
   } as Record<string, unknown>)) as DoctorProfileDocument;
 
-  const slug = await generateUniqueSlug(input.name, profile._id.toString());
+  const slug = await generateUniqueDoctorSlug(input.name, profile._id.toString());
   await DoctorProfileModel.findByIdAndUpdate(profile._id, { $set: { slug } });
 
   if (input.sundayConsultEnabled) {

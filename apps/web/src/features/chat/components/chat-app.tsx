@@ -155,11 +155,13 @@ export function ChatApp({
   useChatRealtime((event) => {
     if (event.type === "read") {
       if (event.readByUserId === currentUserId) {
-        setThreads((prev) =>
-          prev.map((thread) =>
-            thread.id === event.threadId ? { ...thread, unreadCount: 0 } : thread,
-          ),
-        );
+        setThreads((prev) => {
+          const thread = prev.find((t) => t.id === event.threadId);
+          if (!thread || thread.unreadCount === 0) return prev;
+          return prev.map((t) =>
+            t.id === event.threadId ? { ...t, unreadCount: 0 } : t,
+          );
+        });
       }
       return;
     }
@@ -197,6 +199,10 @@ export function ChatApp({
         const current = prev[threadId];
         if (!current) return prev;
 
+        const withoutPendingThankYou = current.messages.filter(
+          (message) => !message.id.startsWith("pending-thankyou-"),
+        );
+
         const incoming: ChatMessageDto = {
           id: messageId,
           threadId,
@@ -212,7 +218,7 @@ export function ChatApp({
           ...prev,
           [threadId]: {
             ...current,
-            messages: appendUniqueMessage(current.messages, incoming),
+            messages: appendUniqueMessage(withoutPendingThankYou, incoming),
           },
         };
       });
@@ -234,13 +240,15 @@ export function ChatApp({
     );
   }
 
-  function handleThreadRead(threadId: string) {
-    setThreads((prev) =>
-      prev.map((thread) =>
-        thread.id === threadId ? { ...thread, unreadCount: 0 } : thread,
-      ),
-    );
-  }
+  const handleThreadRead = useCallback((threadId: string) => {
+    setThreads((prev) => {
+      const thread = prev.find((t) => t.id === threadId);
+      if (!thread || thread.unreadCount === 0) return prev;
+      return prev.map((t) =>
+        t.id === threadId ? { ...t, unreadCount: 0 } : t,
+      );
+    });
+  }, []);
 
   function handleThreadCreated(threadId: string) {
     void loadThreads().then(() => {
@@ -262,7 +270,10 @@ export function ChatApp({
       };
     });
 
-    if (!message.id.startsWith("pending-")) {
+    if (
+      !message.id.startsWith("pending-") ||
+      message.id.startsWith("pending-thankyou-")
+    ) {
       setThreads((prev) =>
         prev
           .map((thread) =>

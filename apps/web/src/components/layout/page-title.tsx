@@ -29,7 +29,7 @@ export function PageTitle({
       )}
       <h1
         className={cn(
-          "font-display text-2xl font-semibold tracking-tight text-foreground sm:text-4xl",
+          "font-display text-xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl",
           eyebrow && "mt-3",
         )}
       >
@@ -38,7 +38,7 @@ export function PageTitle({
       {description && (
         <p
           className={cn(
-            "mt-2 text-base leading-relaxed text-slate-600 sm:mt-3 sm:text-lg",
+            "mt-2 text-sm leading-relaxed text-slate-600 sm:mt-3 sm:text-base md:text-lg",
             align === "center" && "mx-auto max-w-2xl",
             align === "left" && "max-w-2xl",
           )}

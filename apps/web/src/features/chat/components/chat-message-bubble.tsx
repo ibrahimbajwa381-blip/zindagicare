@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { cn, localizeIntakeSystemMessage, type IntakeLocale } from "@zindagi/shared";
 import type { ChatMessageDto } from "@/features/chat/types";
-import { useLocale } from "@/i18n/locale-provider";
+import { useLocale, useTranslations } from "@/i18n/locale-provider";
 
 type ChatMessageBubbleProps = {
   message: ChatMessageDto;
@@ -14,14 +15,42 @@ function formatTime(iso: string) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+const LINK_PATTERN = /(https?:\/\/[^\s]+|\/intake\/[a-f0-9]{24})/gi;
+
+function LinkifiedText({ text, intakeLinkLabel }: { text: string; intakeLinkLabel: string }) {
+  const parts = text.split(LINK_PATTERN);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.match(/^https?:\/\//i) || part.startsWith("/intake/")) {
+          const href = part.startsWith("/intake/") ? part : part;
+          return (
+            <Link
+              key={`${part}-${index}`}
+              href={href}
+              className="font-medium text-brand underline underline-offset-2 hover:text-brand-dark"
+            >
+              {part.startsWith("/intake/") ? intakeLinkLabel : part}
+            </Link>
+          );
+        }
+        return <span key={`${part}-${index}`}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function IncomingMessageBubble({
   body,
   createdAt,
   showTail,
+  intakeLinkLabel,
 }: {
   body: string;
   createdAt: string;
   showTail?: boolean;
+  intakeLinkLabel: string;
 }) {
   return (
     <div className="flex w-full justify-start">
@@ -32,7 +61,9 @@ function IncomingMessageBubble({
           showTail && "rounded-bl-sm",
         )}
       >
-        <p className="whitespace-pre-wrap break-words">{body}</p>
+        <p className="whitespace-pre-wrap break-words">
+          <LinkifiedText text={body} intakeLinkLabel={intakeLinkLabel} />
+        </p>
         <p className="mt-1 text-right text-[11px] text-slate-400">
           {formatTime(createdAt)}
         </p>
@@ -43,7 +74,9 @@ function IncomingMessageBubble({
 
 export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbleProps) {
   const { locale } = useLocale();
+  const t = useTranslations();
   const isMine = message.isMine;
+  const intakeLinkLabel = t.intake.ctaPending;
 
   if (message.kind === "system") {
     const displayBody = localizeIntakeSystemMessage(message.body, locale as IntakeLocale);
@@ -52,6 +85,7 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
         body={displayBody}
         createdAt={message.createdAt}
         showTail={showTail}
+        intakeLinkLabel={intakeLinkLabel}
       />
     );
   }
@@ -62,6 +96,7 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
         body={message.body}
         createdAt={message.createdAt}
         showTail={showTail}
+        intakeLinkLabel={intakeLinkLabel}
       />
     );
   }

@@ -39,8 +39,9 @@ export default async function DoctorProfilePage({ params }: PageProps) {
   const doctor = await PublicDoctorService.getPublicDoctor(slug);
   if (!doctor) notFound();
 
-  if (/^[a-f0-9]{24}$/i.test(slug) && doctor.slug !== slug) {
-    permanentRedirect(`/doctors/${doctor.slug}`);
+  const canonicalSlug = doctor.slug.toLowerCase();
+  if (slug.toLowerCase() !== canonicalSlug) {
+    permanentRedirect(`/doctors/${canonicalSlug}`);
   }
 
   const [{ reviews, total }, locale] = await Promise.all([

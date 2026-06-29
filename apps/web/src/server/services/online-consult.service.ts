@@ -18,7 +18,7 @@ import {
 } from "@zindagi/shared";
 import type { ConsultCheckoutInput } from "@zindagi/validators";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
-import { nameToDoctorSlug } from "@/lib/doctors/profile-path";
+import { resolveDoctorSlug } from "@/lib/doctors/profile-path";
 import {
   appointmentBlocksSlot,
   generateConsultSlots,
@@ -188,6 +188,15 @@ export class OnlineConsultService {
     if (now - lastExpireSweepAt < EXPIRE_SWEEP_INTERVAL_MS) return;
     lastExpireSweepAt = now;
 
+    await AppointmentModel.updateMany(
+      mongoFilter({
+        type: AppointmentTypes.ONLINE,
+        status: AppointmentStatuses.PENDING,
+        $or: [{ paymentId: { $exists: false } }, { paymentId: null }],
+      }),
+      { $set: { status: AppointmentStatuses.CANCELLED } },
+    );
+
     const cutoff = new Date(Date.now() - ONLINE_CONSULT_CONFIG.paymentHoldDurationMs);
 
     const stale = await AppointmentModel.find(
@@ -199,17 +208,138 @@ export class OnlineConsultService {
     ).lean();
 
     for (const appt of stale) {
-      await AppointmentModel.updateOne(
-        mongoFilter({ _id: appt._id }),
-        { $set: { status: AppointmentStatuses.CANCELLED } },
+      await OnlineConsultService.cancelPendingHold(
+        appt._id.toString(),
+        appt.paymentId?.toString(),
       );
-      if (appt.paymentId) {
-        await PaymentModel.updateOne(
-          mongoFilter({ _id: appt.paymentId }),
-          { $set: { status: PaymentStatuses.CANCELLED } },
-        );
-      }
     }
+  }
+
+  private static async cancelPendingHold(appointmentId: string, paymentId?: string) {
+    await AppointmentModel.updateOne(
+      mongoFilter({ _id: appointmentId }),
+      { $set: { status: AppointmentStatuses.CANCELLED } },
+    );
+    if (paymentId) {
+      await PaymentModel.updateOne(
+        mongoFilter({ _id: paymentId, status: PaymentStatuses.PENDING }),
+        { $set: { status: PaymentStatuses.CANCELLED } },
+      );
+    }
+  }
+
+  private static buildCheckoutResultFromPayment(
+    payment: {
+      _id: { toString(): string };
+      amount: number;
+      provider: string;
+      appointmentId?: { toString(): string } | null;
+      externalTransactionId?: string | null;
+      metadata?: Record<string, unknown>;
+    },
+    doctorName: string,
+  ): CheckoutResult {
+    const paymentId = payment._id.toString();
+    const appointmentId = payment.appointmentId!.toString();
+    const metadata = payment.metadata as { txnRefNo?: string; doctorName?: string } | undefined;
+    const txnRefNo =
+      payment.externalTransactionId ??
+      metadata?.txnRefNo?.replace(/^DUMMY-/, "") ??
+      paymentId;
+
+    if (payment.provider === PaymentProviders.DUMMY) {
+      return {
+        paymentId,
+        appointmentId,
+        amount: payment.amount,
+        testMode: true,
+        testPayment: buildTestPaymentCheckout({
+          paymentId,
+          appointmentId,
+          amountPkr: payment.amount,
+          doctorName: metadata?.doctorName ?? doctorName,
+          txnRefNo: metadata?.txnRefNo,
+        }),
+      };
+    }
+
+    if (!isJazzCashConfigured()) {
+      throw new AppError(
+        "JazzCash credentials missing. Set JAZZCASH_* env vars or keep JAZZCASH_LIVE unset for MVP test payments.",
+        ErrorCodes.VALIDATION,
+        503,
+      );
+    }
+
+    return {
+      paymentId,
+      appointmentId,
+      amount: payment.amount,
+      jazzcash: buildCheckoutForm({
+        amountPkr: payment.amount,
+        txnRefNo,
+        billReference: appointmentId.slice(-12),
+        description: `Online consult with ${metadata?.doctorName ?? doctorName}`,
+        paymentId,
+      }),
+    };
+  }
+
+  private static async reconcilePatientPendingCheckout(
+    patientId: string,
+    requestedSlotId: string,
+    doctorName: string,
+  ): Promise<CheckoutResult | null> {
+    const pendingAppointments = await AppointmentModel.find(
+      mongoFilter({
+        patientId,
+        type: AppointmentTypes.ONLINE,
+        status: AppointmentStatuses.PENDING,
+      }),
+    ).lean();
+
+    let resumable: CheckoutResult | null = null;
+
+    for (const appt of pendingAppointments) {
+      if (!appt.paymentId) {
+        await OnlineConsultService.cancelPendingHold(appt._id.toString());
+        continue;
+      }
+
+      const payment = await PaymentModel.findById(appt.paymentId).lean();
+      if (!payment || payment.status !== PaymentStatuses.PENDING) {
+        await OnlineConsultService.cancelPendingHold(
+          appt._id.toString(),
+          appt.paymentId.toString(),
+        );
+        continue;
+      }
+
+      const metadata = payment.metadata as { expiresAt?: string; slotId?: string } | undefined;
+      const expiresAtMs = metadata?.expiresAt
+        ? new Date(metadata.expiresAt).getTime()
+        : appt.createdAt.getTime() + ONLINE_CONSULT_CONFIG.paymentHoldDurationMs;
+
+      if (expiresAtMs <= Date.now()) {
+        await OnlineConsultService.cancelPendingHold(
+          appt._id.toString(),
+          payment._id.toString(),
+        );
+        continue;
+      }
+
+      if (metadata?.slotId === requestedSlotId) {
+        resumable = OnlineConsultService.buildCheckoutResultFromPayment(payment, doctorName);
+        continue;
+      }
+
+      await OnlineConsultService.cancelPendingHold(
+        appt._id.toString(),
+        payment._id.toString(),
+      );
+    }
+
+    return resumable;
   }
 
   static async listConsultDoctors(city = "Lahore", specialty?: string) {
@@ -269,7 +399,7 @@ export class OnlineConsultService {
 
       return {
         doctorId: doc._id.toString(),
-        slug: doc.slug ?? nameToDoctorSlug(name),
+        slug: resolveDoctorSlug(doc.slug, name),
         name,
         avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
         specialties: doc.specialties ?? [],
@@ -426,21 +556,12 @@ export class OnlineConsultService {
       input.slotId,
     );
 
-    const existingPending = await AppointmentModel.findOne(
-      mongoFilter({
-        patientId,
-        type: AppointmentTypes.ONLINE,
-        status: AppointmentStatuses.PENDING,
-      }),
-    ).lean();
-
-    if (existingPending) {
-      throw new AppError(
-        "You already have a pending payment. Complete or wait for it to expire.",
-        ErrorCodes.CONFLICT,
-        409,
-      );
-    }
+    const resumed = await OnlineConsultService.reconcilePatientPendingCheckout(
+      patientId,
+      input.slotId,
+      validated.doctorName,
+    );
+    if (resumed) return resumed;
 
     const txnRefNo = generateTxnRefNo();
     const idempotencyKey = randomUUID();
@@ -470,70 +591,76 @@ export class OnlineConsultService {
 
     const appointmentId = appointment._id.toString();
 
-    const payment = (await PaymentModel.create({
-      userId: patientId,
-      provider: useDummy ? PaymentProviders.DUMMY : PaymentProviders.JAZZCASH,
-      status: PaymentStatuses.PENDING,
-      amount: validated.consultationFee,
-      currency: "PKR",
-      idempotencyKey,
-      appointmentId,
-      metadata: {
-        slotId: input.slotId,
-        txnRefNo: dummyPreview.txnRefNo,
-        expiresAt: expiresAt.toISOString(),
-        doctorName: validated.doctorName,
-        integration: useDummy ? "dummy_mvp" : "jazzcash_live",
-        gatewayPreview: useDummy ? dummyPreview : undefined,
-        ...(input.locale ? { locale: input.locale } : {}),
-      },
-    } as Record<string, unknown>)) as { _id: { toString(): string } };
+    try {
+      const payment = (await PaymentModel.create({
+        userId: patientId,
+        provider: useDummy ? PaymentProviders.DUMMY : PaymentProviders.JAZZCASH,
+        status: PaymentStatuses.PENDING,
+        amount: validated.consultationFee,
+        currency: "PKR",
+        idempotencyKey,
+        externalTransactionId: useDummy ? dummyPreview.txnRefNo : txnRefNo,
+        appointmentId,
+        metadata: {
+          slotId: input.slotId,
+          txnRefNo: dummyPreview.txnRefNo,
+          expiresAt: expiresAt.toISOString(),
+          doctorName: validated.doctorName,
+          integration: useDummy ? "dummy_mvp" : "jazzcash_live",
+          gatewayPreview: useDummy ? dummyPreview : undefined,
+          ...(input.locale ? { locale: input.locale } : {}),
+        },
+      } as Record<string, unknown>)) as { _id: { toString(): string } };
 
-    await AppointmentModel.updateOne(
-      mongoFilter({ _id: appointment._id }),
-      { $set: { paymentId: payment._id } },
-    );
+      await AppointmentModel.updateOne(
+        mongoFilter({ _id: appointment._id }),
+        { $set: { paymentId: payment._id } },
+      );
 
-    const paymentId = payment._id.toString();
+      const paymentId = payment._id.toString();
 
-    if (useDummy) {
+      if (useDummy) {
+        return {
+          paymentId,
+          appointmentId,
+          amount: validated.consultationFee,
+          testMode: true,
+          testPayment: buildTestPaymentCheckout({
+            paymentId,
+            appointmentId,
+            amountPkr: validated.consultationFee,
+            doctorName: validated.doctorName,
+            txnRefNo: dummyPreview.txnRefNo,
+          }),
+        };
+      }
+
+      if (!isJazzCashConfigured()) {
+        throw new AppError(
+          "JazzCash credentials missing. Set JAZZCASH_* env vars or keep JAZZCASH_LIVE unset for MVP test payments.",
+          ErrorCodes.VALIDATION,
+          503,
+        );
+      }
+
+      const jazzcash = buildCheckoutForm({
+        amountPkr: validated.consultationFee,
+        txnRefNo,
+        billReference: appointmentId.slice(-12),
+        description: `Online consult with ${validated.doctorName}`,
+        paymentId,
+      });
+
       return {
         paymentId,
         appointmentId,
         amount: validated.consultationFee,
-        testMode: true,
-        testPayment: buildTestPaymentCheckout({
-          paymentId,
-          appointmentId,
-          amountPkr: validated.consultationFee,
-          doctorName: validated.doctorName,
-          txnRefNo: dummyPreview.txnRefNo,
-        }),
+        jazzcash,
       };
+    } catch (error) {
+      await OnlineConsultService.cancelPendingHold(appointmentId);
+      throw error;
     }
-
-    if (!isJazzCashConfigured()) {
-      throw new AppError(
-        "JazzCash credentials missing. Set JAZZCASH_* env vars or keep JAZZCASH_LIVE unset for MVP test payments.",
-        ErrorCodes.VALIDATION,
-        503,
-      );
-    }
-
-    const jazzcash = buildCheckoutForm({
-      amountPkr: validated.consultationFee,
-      txnRefNo,
-      billReference: appointmentId.slice(-12),
-      description: `Online consult with ${validated.doctorName}`,
-      paymentId,
-    });
-
-    return {
-      paymentId,
-      appointmentId,
-      amount: validated.consultationFee,
-      jazzcash,
-    };
   }
 
   static async completeTestPayment(paymentId: string, userId: string) {

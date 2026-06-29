@@ -2,8 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { cn } from "@zindagi/shared";
+import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { pageContainer } from "@/lib/ui/surfaces";
 
 const FULLSCREEN_CHAT_PATH = "/messages";
 
@@ -27,6 +29,11 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
             : "flex-1"
         }
       >
+        {!isFullscreenChat && (
+          <div className={cn(pageContainer, "pt-4")}>
+            <AutoBreadcrumbs variant="inline" />
+          </div>
+        )}
         {children}
       </main>
       {!isFullscreenChat && <SiteFooter />}

@@ -13,7 +13,6 @@ import {
   sendMessage,
 } from "@/features/chat/lib/chat-api";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
-import { ChatIntakeForm } from "@/features/intake/components/chat-intake-form";
 
 type ChatConversationProps = {
   thread: ChatThreadDto;
@@ -51,6 +50,8 @@ export function ChatConversation({
   const { locale } = useLocale();
   const listRef = useRef<HTMLDivElement>(null);
   const loadingOlderRef = useRef(false);
+  const onThreadReadRef = useRef(onThreadRead);
+  onThreadReadRef.current = onThreadRead;
   const { otherParticipant } = thread;
 
   // Scroll only the message list, never the page: scrollIntoView would also
@@ -63,13 +64,13 @@ export function ChatConversation({
 
   useEffect(() => {
     void markThreadRead(thread.id).then(() => {
-      onThreadRead?.(thread.id);
+      onThreadReadRef.current?.(thread.id);
     });
-  }, [thread.id, messages.length, onThreadRead]);
+  }, [thread.id, messages.length]);
 
   useEffect(() => {
     scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
-  }, [messages.length, scrollToBottom]);
+  }, [messages.length, messages[messages.length - 1]?.id, scrollToBottom]);
 
   async function handleLoadOlder() {
     if (!hasMore || loadingOlderRef.current || messages.length === 0) return;
@@ -134,10 +135,6 @@ export function ChatConversation({
           </p>
         </div>
       </header>
-
-      {!isDoctorView && thread.appointmentId && (
-        <ChatIntakeForm appointmentId={thread.appointmentId} />
-      )}
 
       {isDoctorView && thread.appointmentId && (
         <div className="shrink-0 border-b border-slate-200 bg-[#f0f2f5] px-3 pb-2 sm:px-4">

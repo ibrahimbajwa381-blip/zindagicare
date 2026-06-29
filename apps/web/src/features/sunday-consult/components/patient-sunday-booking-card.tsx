@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -19,6 +18,7 @@ import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime"
 import { useTranslations } from "@/i18n/locale-provider";
 import { CountdownTimer } from "./countdown-timer";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
+import { useIntakeStatus } from "@/features/intake/hooks/use-intake-status";
 import type { SundayPatientBookingDto } from "../types";
 
 type Props = {
@@ -44,27 +44,6 @@ function DoctorAvatar({ name, src }: { name: string; src?: string }) {
         .slice(0, 2)}
     </span>
   );
-}
-
-function useIntakeStatus(appointmentId: string) {
-  const [status, setStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/v1/intake/${appointmentId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!cancelled && json.success && json.data) {
-          setStatus(json.data.status as string);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [appointmentId]);
-
-  return status;
 }
 
 export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Props) {

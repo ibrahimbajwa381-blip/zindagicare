@@ -475,11 +475,11 @@ export class MedicalIntakeService {
     await intake.save();
 
     if (hasAnyAnswer) {
-      await notifyDoctorIntakeCompleted({
+      void notifyDoctorIntakeCompleted({
         doctorProfileId: intake.doctorId.toString(),
         patientId: patientUserId,
         appointmentId,
-      });
+      }).catch(() => undefined);
     }
 
     return toDto(intake.toObject() as unknown as IntakeRow);

@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { workspaceSidebarTop } from "@/lib/ui/surfaces";
+import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 import { UnifiedHeader } from "@/components/layout/unified-header";
 import {
   ChevronRight,
@@ -225,7 +226,10 @@ export function NurseShell({ children, showFullNav }: NurseShellProps) {
 
       <div className="flex min-h-[calc(100vh-4rem)] flex-col sm:min-h-[calc(100vh-4.75rem)] lg:pl-[17.5rem]">
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-          <div className="mx-auto w-full max-w-[100rem]">{children}</div>
+          <div className="mx-auto w-full max-w-[100rem]">
+            <AutoBreadcrumbs variant="workspace" />
+            {children}
+          </div>
         </main>
       </div>
     </div>

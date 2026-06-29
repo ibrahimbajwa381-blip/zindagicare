@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "@/i18n/locale-provider";
+import { formatMessage } from "@/i18n/messages";
+import { getQuestionMeta } from "../lib/question-meta";
 import type { MedicalIntakeDto } from "../types";
 
 type Props = {
@@ -25,6 +27,7 @@ export function DoctorIntakeSummary({
 }: Props) {
   const t = useTranslations();
   const copy = t.intake;
+  const wizard = copy.wizard;
 
   const [intake, setIntake] = useState<MedicalIntakeDto | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -51,34 +54,66 @@ export function DoctorIntakeSummary({
   if (!loaded || !intake) return null;
 
   const completed = intake.status === "completed";
-  const answered = intake.questions.filter((q) => !!q.answer);
+  const answered = intake.questions.filter((q) => !!q.answer?.trim());
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200/80 bg-white/90",
+        "overflow-hidden rounded-2xl border shadow-sm",
+        completed
+          ? "border-emerald-200/80 bg-gradient-to-br from-emerald-50/90 via-white to-white"
+          : "border-slate-200/80 bg-white/90",
         className,
       )}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left sm:px-5"
       >
-        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-800">
-          <ClipboardList className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-          <span className="truncate">{copy.doctorSummaryTitle}</span>
-          <Badge
-            variant={completed ? "secondary" : "outline"}
+        <span className="flex min-w-0 items-center gap-3">
+          <span
             className={cn(
-              "text-[11px]",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
               completed
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-amber-300 bg-amber-50 text-amber-700",
+                ? "bg-emerald-500 text-white"
+                : "bg-brand-muted text-brand",
             )}
           >
-            {completed ? copy.statusCompleted : copy.statusPending}
-          </Badge>
+            {completed ? (
+              <CheckCircle2 className="h-5 w-5" aria-hidden />
+            ) : (
+              <ClipboardList className="h-5 w-5" aria-hidden />
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-slate-900">
+                {copy.doctorSummaryTitle}
+              </span>
+              <Badge
+                variant={completed ? "secondary" : "outline"}
+                className={cn(
+                  "text-[11px]",
+                  completed
+                    ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                    : "border-amber-300 bg-amber-50 text-amber-700",
+                )}
+              >
+                {completed ? copy.doctorSummaryReady : copy.statusPending}
+              </Badge>
+            </span>
+            {completed && answered.length > 0 ? (
+              <span className="mt-0.5 block text-xs text-emerald-700">
+                {formatMessage(copy.doctorSummaryAnswers, { count: answered.length })}
+                <span className="text-slate-500"> · {copy.doctorSummaryPreview}</span>
+              </span>
+            ) : (
+              <span className="mt-0.5 block text-xs text-slate-500">
+                {copy.doctorSummaryPending}
+              </span>
+            )}
+          </span>
         </span>
         {open ? (
           <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
@@ -87,26 +122,72 @@ export function DoctorIntakeSummary({
         )}
       </button>
 
+      {!open && completed && answered.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-t border-emerald-100/80 px-4 py-3 sm:px-5">
+          {answered.map((question) => {
+            const meta = getQuestionMeta(question.key);
+            const Icon = meta.icon;
+            const label = wizard.categories[meta.categoryKey];
+
+            return (
+              <span
+                key={question.key}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-medium text-emerald-800"
+              >
+                <Icon className="h-3 w-3" aria-hidden />
+                {label}
+                <Check className="h-3 w-3 text-emerald-500" aria-hidden />
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {open && (
-        <div className="border-t border-slate-100 px-3.5 py-3">
+        <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
           {answered.length === 0 ? (
             <p className="text-sm text-slate-500">{copy.doctorSummaryPending}</p>
           ) : (
             <dl className="space-y-3">
-              {intake.questions.map((question, index) => (
-                <div key={question.key}>
-                  <dt className="text-xs font-semibold text-slate-500">
-                    {index + 1}. {question.text}
-                  </dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-sm text-slate-800">
-                    {question.answer || (
-                      <span className="italic text-slate-400">
-                        {copy.doctorSummaryEmpty}
-                      </span>
+              {intake.questions.map((question) => {
+                const meta = getQuestionMeta(question.key);
+                const Icon = meta.icon;
+                const label = wizard.categories[meta.categoryKey];
+                const hasAnswer = !!question.answer?.trim();
+
+                return (
+                  <div
+                    key={question.key}
+                    className={cn(
+                      "rounded-xl border px-3.5 py-3",
+                      hasAnswer
+                        ? "border-emerald-100 bg-emerald-50/40"
+                        : "border-slate-100 bg-slate-50/50",
                     )}
-                  </dd>
-                </div>
-              ))}
+                  >
+                    <dt className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-md text-white",
+                          hasAnswer ? meta.iconBg : "bg-slate-300",
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                      {label}
+                    </dt>
+                    <dd className="mt-2 whitespace-pre-wrap pl-8 text-sm text-slate-800">
+                      {hasAnswer ? (
+                        question.answer
+                      ) : (
+                        <span className="italic text-slate-400">
+                          {copy.doctorSummaryEmpty}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           )}
         </div>

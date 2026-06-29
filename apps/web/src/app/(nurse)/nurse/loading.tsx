@@ -1,5 +1,5 @@
-import { LoadingScreen } from "@/components/ui/loading-screen";
+import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 
 export default function NurseLoading() {
-  return <LoadingScreen fullScreen size="lg" />;
+  return <BrandLoadingScreen overlay />;
 }

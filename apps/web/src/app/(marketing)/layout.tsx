@@ -1,3 +1,4 @@
+import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 
@@ -9,7 +10,10 @@ export default function MarketingLayout({
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <AutoBreadcrumbs />
+        {children}
+      </main>
       <SiteFooter />
     </>
   );

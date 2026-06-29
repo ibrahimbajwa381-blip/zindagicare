@@ -321,4 +321,75 @@ html[lang="ur"] h3.font-semibold {
       animation: none;
     }
   }
+
+  @keyframes brand-loading-glow {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+  }
+
+  @keyframes brand-loading-ring {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes brand-loading-logo {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    50% {
+      transform: scale(1.03);
+      opacity: 0.94;
+    }
+  }
+
+  @keyframes brand-loading-dot {
+    0%,
+    80%,
+    100% {
+      transform: scale(0.75);
+      opacity: 0.45;
+    }
+
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .brand-loading-glow {
+    animation: brand-loading-glow 2.5s ease-in-out infinite;
+  }
+
+  .brand-loading-ring {
+    animation: brand-loading-ring 2.4s linear infinite;
+  }
+
+  .brand-loading-logo {
+    animation: brand-loading-logo 2s ease-in-out infinite;
+  }
+
+  .brand-loading-dot {
+    animation: brand-loading-dot 1.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-loading-glow,
+    .brand-loading-ring,
+    .brand-loading-logo,
+    .brand-loading-dot {
+      animation: none;
+    }
+  }
 }

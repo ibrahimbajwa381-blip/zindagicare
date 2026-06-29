@@ -1,24 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardList, X } from "lucide-react";
-import { cn } from "@zindagi/shared";
+import { ClipboardList } from "lucide-react";
+import { getIntakeFormSubmittedMessage } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useTranslations } from "@/i18n/locale-provider";
+import type { ChatMessageDto } from "@/features/chat/types";
+import { IntakeWizardPanel } from "./intake-wizard-panel";
 import type { MedicalIntakeDto } from "../types";
+
+type IntakeSubmitResponse = {
+  intake: MedicalIntakeDto;
+  thankYouMessage?: ChatMessageDto | null;
+};
 
 type ChatIntakeFormProps = {
   appointmentId: string;
-  onCompleted?: () => void;
+  threadId: string;
+  doctorUserId: string;
+  onThankYouMessage?: (message: ChatMessageDto) => void;
+  onThankYouConfirmed?: (tempId: string, message: ChatMessageDto) => void;
 };
 
-export function ChatIntakeForm({ appointmentId, onCompleted }: ChatIntakeFormProps) {
+export function ChatIntakeForm({
+  appointmentId,
+  threadId,
+  doctorUserId,
+  onThankYouMessage,
+  onThankYouConfirmed,
+}: ChatIntakeFormProps) {
   const t = useTranslations();
   const copy = t.intake.chatForm;
 
   const [intake, setIntake] = useState<MedicalIntakeDto | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +54,10 @@ export function ChatIntakeForm({ appointmentId, onCompleted }: ChatIntakeFormPro
             data.questions.map((question) => [question.key, question.answer ?? ""]),
           ),
         );
+        const firstUnanswered = data.questions.findIndex(
+          (q) => !(q.answer ?? "").trim(),
+        );
+        setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0);
       } else {
         setIntake(null);
       }
@@ -51,6 +72,20 @@ export function ChatIntakeForm({ appointmentId, onCompleted }: ChatIntakeFormPro
 
   const handleSubmit = async () => {
     if (!intake) return;
+
+    const tempId = `pending-thankyou-${Date.now()}`;
+    onThankYouMessage?.({
+      id: tempId,
+      threadId,
+      senderId: doctorUserId,
+      kind: "user",
+      body: getIntakeFormSubmittedMessage(intake.locale),
+      createdAt: new Date().toISOString(),
+      isMine: false,
+      readBy: [],
+    });
+    setIntake((prev) => (prev ? { ...prev, status: "completed" } : prev));
+
     setSubmitting(true);
     setError(null);
 
@@ -61,25 +96,33 @@ export function ChatIntakeForm({ appointmentId, onCompleted }: ChatIntakeFormPro
       })),
     };
 
-    const res = await fetch(`/api/v1/intake/${appointmentId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/v1/intake/${appointmentId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
 
-    if (json.success && json.data) {
-      setIntake(json.data as MedicalIntakeDto);
-      onCompleted?.();
-    } else {
-      setError(json.error?.message ?? copy.submitError);
+      if (json.success && json.data) {
+        const data = json.data as IntakeSubmitResponse;
+        setIntake(data.intake);
+        if (data.thankYouMessage) {
+          onThankYouConfirmed?.(tempId, data.thankYouMessage);
+        }
+      } else {
+        setError(json.error?.message ?? copy.submitError);
+      }
+    } catch {
+      setError(copy.submitError);
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   if (loading) {
     return (
-      <div className="border-b border-slate-200 bg-white/95 px-3 py-4 sm:px-4">
+      <div className="shrink-0 border-b border-brand-light/20 bg-gradient-to-b from-brand-muted/30 to-white px-3 py-5 sm:px-4">
         <LoadingScreen message={copy.loading} size="sm" />
       </div>
     );
@@ -91,12 +134,13 @@ export function ChatIntakeForm({ appointmentId, onCompleted }: ChatIntakeFormPro
 
   if (dismissed) {
     return (
-      <div className="shrink-0 border-b border-slate-200 bg-white/95 px-3 py-2 sm:px-4">
+      <div className="shrink-0 border-b border-brand-light/20 bg-gradient-to-r from-brand-muted/40 to-white px-3 py-2.5 sm:px-4">
         <button
           type="button"
           onClick={() => setDismissed(false)}
-          className="text-xs font-medium text-brand hover:text-brand-dark"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:text-brand-dark"
         >
+          <ClipboardList className="h-3.5 w-3.5" aria-hidden />
           {copy.reopen}
         </button>
       </div>
@@ -104,75 +148,32 @@ export function ChatIntakeForm({ appointmentId, onCompleted }: ChatIntakeFormPro
   }
 
   return (
-    <div className="shrink-0 border-b border-brand-light/30 bg-white/95 px-3 py-3 sm:px-4">
-      <div className="flex max-h-[min(52vh,26rem)] flex-col overflow-hidden rounded-2xl border border-brand-light/35 bg-brand-muted/20 shadow-sm">
-        <div className="shrink-0 border-b border-brand-light/20 px-4 pb-3 pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <ClipboardList className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-                {copy.title}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">{copy.subtitle}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setDismissed(true)}
-              className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-white hover:text-slate-600"
-              aria-label={copy.skip}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">{copy.optionalHint}</p>
-        </div>
-
-        <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <div className="space-y-3">
-            {intake.questions.map((question, index) => (
-              <label key={question.key} className="block">
-                <span className="text-xs font-medium text-slate-800">
-                  {index + 1}. {question.text}
-                </span>
-                <textarea
-                  value={answers[question.key] ?? ""}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({ ...prev, [question.key]: e.target.value }))
-                  }
-                  rows={2}
-                  maxLength={2000}
-                  placeholder={copy.answerPlaceholder}
-                  className={cn(
-                    "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm",
-                    "outline-none focus:border-brand-light focus:ring-2 focus:ring-brand-muted",
-                  )}
-                />
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="shrink-0 border-t border-brand-light/25 bg-white/90 px-4 py-3">
-          {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={() => void handleSubmit()}
-              disabled={submitting}
-              loading={submitting}
-            >
-              {submitting ? copy.submitting : copy.submit}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setDismissed(true)}
-              disabled={submitting}
-            >
-              {copy.skip}
-            </Button>
-          </div>
-        </div>
+    <div className="shrink-0 border-b border-brand-light/25 bg-gradient-to-b from-brand-muted/25 via-white to-white px-3 py-3 sm:px-4">
+      <IntakeWizardPanel
+        variant="chat"
+        intake={intake}
+        answers={answers}
+        onAnswerChange={(key, value) =>
+          setAnswers((prev) => ({ ...prev, [key]: value }))
+        }
+        currentIndex={currentIndex}
+        onCurrentIndexChange={setCurrentIndex}
+        onSubmit={() => void handleSubmit()}
+        submitting={submitting}
+        error={error}
+        onDismiss={() => setDismissed(true)}
+      />
+      <div className="mt-2 flex justify-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setDismissed(true)}
+          disabled={submitting}
+          className="h-7 text-xs text-slate-500"
+        >
+          {copy.skip}
+        </Button>
       </div>
     </div>
   );

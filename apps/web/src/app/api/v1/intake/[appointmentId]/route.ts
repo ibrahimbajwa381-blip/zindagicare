@@ -34,8 +34,11 @@ export async function POST(req: Request, { params }: Params) {
         session!.user!.id,
         body.answers,
       );
-      await ChatService.sendIntakeFormThankYou(appointmentId);
-      return intake;
+      const thankYouMessage = await ChatService.sendIntakeFormThankYou(
+        appointmentId,
+        intake,
+      );
+      return { intake, thankYouMessage };
     },
     { auth: true, bodySchema: submitIntakeFormSchema },
   );

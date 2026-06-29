@@ -19,6 +19,7 @@ import {
   isDoctorAvatarUrlForUser,
 } from "@/server/services/doctor-avatar.storage";
 import { mongoFilter } from "@/lib/mongo/query";
+import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
 import type { HydratedDocument } from "mongoose";
 import type { DoctorProfileDocument } from "@zindagi/database";
 
@@ -37,27 +38,6 @@ function computeMaxSlots(
     Math.floor(totalMins / slotDurationMins),
     SUNDAY_CONSULT_CONFIG.defaultMaxSlots,
   );
-}
-
-async function generateUniqueSlug(name: string, profileId: string): Promise<string> {
-  const base =
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "doctor";
-
-  let slug = base;
-  let counter = 0;
-  while (
-    await DoctorProfileModel.findOne(
-      mongoFilter({ slug, _id: { $ne: profileId } }),
-    ).lean()
-  ) {
-    counter += 1;
-    slug = `${base}-${counter}`;
-  }
-  return slug;
 }
 
 async function upsertSundayTemplateFromOnboarding(
@@ -261,7 +241,7 @@ export async function decideDoctorVerification(
     profile.verifiedBy = adminUserId as unknown as DoctorProfileDocument["verifiedBy"];
     profile.verifiedAt = new Date();
     profile.rejectionReason = undefined;
-    profile.slug = await generateUniqueSlug(user.name, profile._id.toString());
+    profile.slug = await generateUniqueDoctorSlug(user.name, profile._id.toString());
 
     const sundayTemplate = await SundaySlotTemplateModel.findOne(
       mongoFilter({ doctorId: profile._id, isActive: true }),
