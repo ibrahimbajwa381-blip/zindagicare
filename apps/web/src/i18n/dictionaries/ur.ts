@@ -1325,6 +1325,9 @@ export const ur: Dictionary = {
       missedTitle: "ملاقات چھوٹ گئی",
       missedDescription:
         "آپ مقررہ وقت پر شامل نہیں ہوئے۔ شامل ہونے کا وقت ختم ہو چکا ہے — اگر اب بھی علاج چاہیے تو دوبارہ مشاورت بک کریں۔",
+      consultationCompleted: "مشاورت مکمل ہو گئی",
+      consultationCompletedDescription:
+        "آپ اس مشاورت میں شامل ہوئے۔ تفصیلات اور نسخہ آپ کی تاریخ میں موجود ہیں۔",
     },
   },
   onboarding: {

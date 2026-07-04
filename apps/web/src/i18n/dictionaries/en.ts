@@ -1330,6 +1330,9 @@ export const en = {
       missedTitle: "Missed appointment",
       missedDescription:
         "You did not join at your scheduled time. The join window has closed — book another consult if you still need care.",
+      consultationCompleted: "Consultation completed",
+      consultationCompletedDescription:
+        "You attended this consultation. Your visit details and prescription are in your history.",
     },
   },
   onboarding: {

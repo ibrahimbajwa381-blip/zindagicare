@@ -9,8 +9,9 @@ import {
 import { listDoctorConsultRequests } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { ClipboardList, FileText, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { siteConfig } from "@/config/site";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 import { AppointmentTypes, VerificationStatuses } from "@zindagi/shared";
 
@@ -70,6 +71,22 @@ export default async function DoctorRequestsPage() {
                           scheduledEnd={request.scheduledEnd}
                           size="sm"
                         />
+                      ) : null}
+                      <Button size="sm" variant="outline" asChild className="gap-1">
+                        <Link href={`/doctor/intake/${request.id}`}>
+                          <ClipboardList className="h-3.5 w-3.5" />
+                          Patient history
+                        </Link>
+                      </Button>
+                      {request.patient.id ? (
+                        <Button size="sm" variant="outline" asChild className="gap-1">
+                          <Link
+                            href={`${siteConfig.links.doctorMessages}?patient=${request.patient.id}`}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            Message
+                          </Link>
+                        </Button>
                       ) : null}
                       <Button size="sm" variant="outline" asChild className="gap-1">
                         <Link href={`/doctor/prescriptions/new?appointmentId=${request.id}`}>

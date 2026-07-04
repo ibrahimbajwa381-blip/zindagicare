@@ -56,7 +56,10 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
     booking.scheduledStart,
     booking.scheduledEnd,
   );
-  const isMissed = !canJoin && Date.now() > joinClosesAt.getTime();
+  const isMissed =
+    booking.status === AppointmentStatuses.CONFIRMED &&
+    !canJoin &&
+    Date.now() > joinClosesAt.getTime();
 
   const statusLabel = isMissed
     ? t.dashboard.appointmentHistory.missed
@@ -152,6 +155,7 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
         <VideoSessionStatusBanner
           scheduledStart={booking.scheduledStart}
           scheduledEnd={booking.scheduledEnd}
+          appointmentStatus={booking.status}
         />
 
         {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && (

@@ -26,6 +26,7 @@ import {
   prescriptionDownloadUrl,
   savePrescriptionPdf,
 } from "@/server/services/prescription.storage";
+import { VideoSessionService } from "@/server/services/video-session.service";
 
 const ALLOWED_APPOINTMENT_STATUSES = new Set<string>([
   AppointmentStatuses.CONFIRMED,
@@ -228,6 +229,8 @@ export class PrescriptionService {
       medications: input.medications,
       notes: input.notes,
     } as Record<string, unknown>)) as { _id: { toString(): string } };
+
+    await VideoSessionService.finalizeAppointmentIfAttended(appointment._id.toString());
 
     return {
       id: prescription._id.toString(),

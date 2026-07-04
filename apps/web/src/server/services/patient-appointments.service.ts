@@ -5,12 +5,14 @@ import {
 import {
   AppointmentStatuses,
   AppointmentTypes,
+  VIDEO_CONSULT_CONFIG,
   getVideoJoinWindow,
 } from "@zindagi/shared";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { mongoFilter } from "@/lib/mongo/query";
 import { ReviewService } from "@/server/services/review.service";
 import { PrescriptionService } from "@/server/services/prescription.service";
+import { VideoSessionService } from "@/server/services/video-session.service";
 import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
 
 
@@ -84,7 +86,8 @@ function resolveHistoryFlags(
   if (
     status === AppointmentStatuses.COMPLETED ||
     status === AppointmentStatuses.CANCELLED ||
-    status === AppointmentStatuses.PENDING
+    status === AppointmentStatuses.PENDING ||
+    status === AppointmentStatuses.IN_PROGRESS
   ) {
     return { isMissed: false, canJoin: false };
   }
@@ -120,8 +123,9 @@ export class PatientAppointmentsService {
       [AppointmentTypes.ONLINE, AppointmentTypes.SUNDAY_FREE];
 
     const now = new Date();
-    const graceAfterEndMs = 2 * 60 * 60 * 1000;
-    const historyCutoff = new Date(now.getTime() - graceAfterEndMs);
+    const joinWindowClosedBefore = new Date(
+      now.getTime() - VIDEO_CONSULT_CONFIG.joinLateMinutes * 60_000,
+    );
 
     const appointments = await AppointmentModel.find(
       mongoFilter({
@@ -146,7 +150,9 @@ export class PatientAppointmentsService {
                 AppointmentStatuses.PENDING,
               ],
             },
-            scheduledEnd: { $lt: historyCutoff },
+            // Join window has closed — show as history (including recent no-shows
+            // before the accountability sweep marks them NO_SHOW).
+            scheduledEnd: { $lt: joinWindowClosedBefore },
           },
         ],
       }),
@@ -170,6 +176,13 @@ export class PatientAppointmentsService {
     const items: PatientAppointmentHistoryItem[] = [];
 
     for (const appointment of appointments) {
+      const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
+        appointment._id.toString(),
+      );
+      if (finalized) {
+        appointment.status = AppointmentStatuses.COMPLETED;
+      }
+
       const doctor = mapDoctor(
         appointment.doctorId as Parameters<typeof mapDoctor>[0],
       );

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { getVideoJoinWindow } from "@zindagi/shared";
+import { getVideoJoinWindow, AppointmentStatuses } from "@zindagi/shared";
 import { useTranslations } from "@/i18n/locale-provider";
 
 type Props = {
   scheduledStart: string;
   scheduledEnd: string;
+  appointmentStatus?: string;
 };
 
 function formatCountdown(remainingMs: number) {
@@ -22,7 +23,11 @@ function formatCountdown(remainingMs: number) {
   return parts.join(" ");
 }
 
-export function VideoSessionStatusBanner({ scheduledStart, scheduledEnd }: Props) {
+export function VideoSessionStatusBanner({
+  scheduledStart,
+  scheduledEnd,
+  appointmentStatus,
+}: Props) {
   const t = useTranslations();
   const copy = t.consult.videoSession;
   const [now, setNow] = useState<number | null>(null);
@@ -51,7 +56,12 @@ export function VideoSessionStatusBanner({ scheduledStart, scheduledEnd }: Props
     new Date(now),
   );
 
-  if (now > joinClosesAt.getTime()) {
+  const attendedPastWindow =
+    appointmentStatus === AppointmentStatuses.COMPLETED ||
+    (appointmentStatus === AppointmentStatuses.IN_PROGRESS &&
+      now > joinClosesAt.getTime());
+
+  if (now > joinClosesAt.getTime() && !attendedPastWindow) {
     return (
       <div className="rounded-xl border border-red-200/80 bg-red-50/90 px-4 py-3">
         <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
@@ -59,6 +69,17 @@ export function VideoSessionStatusBanner({ scheduledStart, scheduledEnd }: Props
           {copy.missedTitle}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-red-700">{copy.missedDescription}</p>
+      </div>
+    );
+  }
+
+  if (attendedPastWindow) {
+    return (
+      <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/60 px-4 py-3">
+        <p className="text-sm font-semibold text-emerald-800">{copy.consultationCompleted}</p>
+        <p className="mt-1 text-xs leading-relaxed text-emerald-700">
+          {copy.consultationCompletedDescription}
+        </p>
       </div>
     );
   }

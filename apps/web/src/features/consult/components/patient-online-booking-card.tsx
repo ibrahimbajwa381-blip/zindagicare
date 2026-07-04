@@ -49,15 +49,20 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
     booking.scheduledEnd,
   );
   const isProfile = variant === "profile";
-  const isMissed = !canJoin && Date.now() > joinClosesAt.getTime();
+  const isMissed =
+    booking.status === AppointmentStatuses.CONFIRMED &&
+    !canJoin &&
+    Date.now() > joinClosesAt.getTime();
 
   const statusLabel = isMissed
     ? t.dashboard.appointmentHistory.missed
-    : booking.status === AppointmentStatuses.CONFIRMED
-      ? "Confirmed"
-      : booking.status === AppointmentStatuses.IN_PROGRESS
-        ? "In progress"
-        : "Pending";
+    : booking.status === AppointmentStatuses.COMPLETED
+      ? t.dashboard.appointmentHistory.status.completed
+      : booking.status === AppointmentStatuses.CONFIRMED
+        ? "Confirmed"
+        : booking.status === AppointmentStatuses.IN_PROGRESS
+          ? "In progress"
+          : "Pending";
 
   return (
     <div
@@ -150,6 +155,7 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
         <VideoSessionStatusBanner
           scheduledStart={booking.scheduledStart}
           scheduledEnd={booking.scheduledEnd}
+          appointmentStatus={booking.status}
         />
 
         {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && (

@@ -15,6 +15,7 @@ import {
   PaymentProviders,
   PaymentStatuses,
   ONLINE_CONSULT_CONFIG,
+  getVideoJoinWindow,
 } from "@zindagi/shared";
 import type { ConsultCheckoutInput } from "@zindagi/validators";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -46,6 +47,7 @@ import { sendOnlineConsultConfirmation, sendDoctorConsultBooked } from "@/lib/no
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { ChatService } from "@/server/services/chat.service";
+import { VideoSessionService } from "@/server/services/video-session.service";
 import { randomUUID } from "crypto";
 
 const ACTIVE_STATUSES = [
@@ -857,15 +859,21 @@ export class OnlineConsultService {
     const now = new Date();
     const graceAfterEndMs = 2 * 60 * 60 * 1000;
 
-    const appointment = await AppointmentModel.findOne(
+    const appointments = await AppointmentModel.find(
       mongoFilter({
         patientId,
         type: AppointmentTypes.ONLINE,
-        status: { $in: [AppointmentStatuses.CONFIRMED, AppointmentStatuses.IN_PROGRESS] },
+        status: {
+          $in: [
+            AppointmentStatuses.CONFIRMED,
+            AppointmentStatuses.IN_PROGRESS,
+            AppointmentStatuses.COMPLETED,
+          ],
+        },
         scheduledEnd: { $gte: new Date(now.getTime() - graceAfterEndMs) },
       }),
     )
-      .sort({ scheduledStart: 1 })
+      .sort({ scheduledStart: -1 })
       .populate({
         path: "doctorId",
         select: "specialties pmdcVerified ratingAvg ratingCount consultationFee",
@@ -874,7 +882,57 @@ export class OnlineConsultService {
       .populate("paymentId", "amount status")
       .lean();
 
+    for (const appointment of appointments) {
+      const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
+        appointment._id.toString(),
+      );
+      if (finalized) {
+        appointment.status = AppointmentStatuses.COMPLETED;
+      }
+    }
+
+    const appointment = OnlineConsultService.pickPrimaryPatientBooking(appointments, now);
     return OnlineConsultService.toPatientBookingDto(appointment);
+  }
+
+  /** Surface the patient's latest online consult on the dashboard. */
+  private static pickPrimaryPatientBooking(
+    appointments: Record<string, unknown>[],
+    now = new Date(),
+  ): Record<string, unknown> | null {
+    if (!appointments.length) return null;
+
+    type Scored = {
+      appointment: Record<string, unknown>;
+      canJoin: boolean;
+      missed: boolean;
+      scheduledStart: number;
+    };
+
+    const scored: Scored[] = appointments
+      .map((appointment) => {
+        const scheduledStart = appointment.scheduledStart as Date;
+        const scheduledEnd = appointment.scheduledEnd as Date;
+        const status = appointment.status as string;
+        const { canJoin, joinClosesAt } = getVideoJoinWindow(scheduledStart, scheduledEnd, now);
+        const joinWindowClosed = now > joinClosesAt;
+        const attended =
+          status === AppointmentStatuses.IN_PROGRESS ||
+          status === AppointmentStatuses.COMPLETED;
+
+        return {
+          appointment,
+          canJoin,
+          missed: joinWindowClosed && !attended && status === AppointmentStatuses.CONFIRMED,
+          scheduledStart: scheduledStart.getTime(),
+        };
+      })
+      .sort((a, b) => b.scheduledStart - a.scheduledStart);
+
+    const joinable = scored.filter((item) => item.canJoin);
+    if (joinable.length) return joinable[0].appointment;
+
+    return scored[0]?.appointment ?? null;
   }
 
   private static async getBookingByAppointmentId(

@@ -2,6 +2,7 @@ import {
   AppointmentModel,
   connectDatabase,
   DoctorProfileModel,
+  PrescriptionModel,
   UserModel,
   VideoSessionModel,
 } from "@zindagi/database";
@@ -63,6 +64,42 @@ function meetingDurationMinutes(start: Date, end: Date) {
 export class VideoSessionService {
   private static async ensureConnected() {
     await connectDatabase();
+  }
+
+  /** Mark attended online consults complete once the patient joined or received care. */
+  static async finalizeAppointmentIfAttended(appointmentId: string): Promise<boolean> {
+    await VideoSessionService.ensureConnected();
+
+    const appointment = await AppointmentModel.findById(appointmentId).lean();
+    if (
+      !appointment ||
+      appointment.status === AppointmentStatuses.COMPLETED ||
+      appointment.status === AppointmentStatuses.CANCELLED ||
+      appointment.status === AppointmentStatuses.NO_SHOW
+    ) {
+      return false;
+    }
+
+    const [session, hasPrescription] = await Promise.all([
+      VideoSessionModel.findOne(mongoFilter({ appointmentId: appointment._id.toString() }))
+        .select("patientJoinedAt doctorJoinedAt")
+        .lean(),
+      PrescriptionModel.exists(
+        mongoFilter({ appointmentId: appointment._id, deletedAt: null }),
+      ),
+    ]);
+
+    const attended = Boolean(session?.patientJoinedAt || hasPrescription);
+    if (!attended) return false;
+
+    await AppointmentModel.updateOne(mongoFilter({ _id: appointment._id }), {
+      $set: {
+        status: AppointmentStatuses.COMPLETED,
+        completedAt: appointment.completedAt ?? new Date(),
+      },
+    });
+
+    return true;
   }
 
   private static async resolveParticipant(
@@ -340,6 +377,16 @@ export class VideoSessionService {
 
     if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
       await UrgentConsultService.tryCompleteByAppointmentId(appointment._id.toString());
+      return;
+    }
+
+    if (session.patientJoinedAt && appointment.status !== AppointmentStatuses.COMPLETED) {
+      await AppointmentModel.updateOne(mongoFilter({ _id: appointment._id }), {
+        $set: {
+          status: AppointmentStatuses.COMPLETED,
+          completedAt: endedAt,
+        },
+      });
     }
   }
 
