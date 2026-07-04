@@ -344,6 +344,7 @@ export class PrescriptionService {
         path: "doctorId",
         select: "userId",
       })
+      .populate("patientId", "name")
       .lean();
 
     if (!doc) {

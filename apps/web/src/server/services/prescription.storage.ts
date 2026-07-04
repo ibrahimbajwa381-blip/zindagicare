@@ -43,3 +43,18 @@ export async function readPrescriptionPdf(storageKey: string): Promise<Buffer> {
 export function prescriptionDownloadUrl(storageKey: string): string {
   return `/api/v1/prescriptions/files/${encodeURIComponent(storageKey)}`;
 }
+
+export function prescriptionDownloadFilename(patientName: string): string {
+  const safeName =
+    patientName
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "")
+      .trim()
+      .replace(/\s+/g, " ") || "Patient";
+  return `${safeName} ZindagiCare.pdf`;
+}
+
+export function prescriptionContentDisposition(filename: string): string {
+  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
+  const encoded = encodeURIComponent(filename);
+  return `inline; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+}

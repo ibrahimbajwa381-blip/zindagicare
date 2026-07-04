@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
     "@zindagi/validators",
   ],
   serverExternalPackages: ["mongoose", "bcryptjs", "pdfkit", "fontkit", "browserslist"],
+  turbopack: {},
   webpack: (config) => {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings ?? []),
