@@ -25,7 +25,7 @@ export default async function DoctorEarningsPage() {
       <DoctorPageHeader
         eyebrow="Revenue"
         title="Earnings"
-        description="Track your net revenue from completed paid online, clinic, and in-house visits on ZindagiCare."
+        description="Track revenue, completed consultations, commissions, and withdrawals from paid online, clinic, and in-house visits."
       />
       <DoctorEarningsPanel earnings={earnings} />
     </>

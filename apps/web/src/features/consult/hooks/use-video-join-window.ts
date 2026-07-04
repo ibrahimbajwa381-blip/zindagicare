@@ -17,7 +17,7 @@ export function useVideoJoinWindow(scheduledStart: string, scheduledEnd: string)
   useEffect(() => {
     const refresh = () => setJoinWindow(getVideoJoinWindow(scheduledStart, scheduledEnd));
     refresh();
-    const intervalId = window.setInterval(refresh, 30_000);
+    const intervalId = window.setInterval(refresh, 1_000);
     return () => window.clearInterval(intervalId);
   }, [scheduledStart, scheduledEnd]);
 

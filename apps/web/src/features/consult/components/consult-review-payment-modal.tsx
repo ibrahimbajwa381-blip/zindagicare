@@ -5,8 +5,13 @@ import Image from "next/image";
 import { Calendar, CreditCard, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import {
+  paymentProviderLabel,
+  usePaymentProviders,
+} from "@/features/consult/hooks/use-payment-providers";
 import { formatKarachiDate } from "@/lib/format/datetime";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import type { PaymentProviderInput } from "@zindagi/validators";
 
 type Props = {
   open: boolean;
@@ -21,6 +26,8 @@ type Props = {
   onPatientNotesChange: (value: string) => void;
   loading: boolean;
   error: string | null;
+  paymentProvider: PaymentProviderInput;
+  onPaymentProviderChange: (provider: PaymentProviderInput) => void;
   onPay: () => void;
 };
 
@@ -57,9 +64,13 @@ export function ConsultReviewPaymentModal({
   onPatientNotesChange,
   loading,
   error,
+  paymentProvider,
+  onPaymentProviderChange,
   onPay,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const { loading: providersLoading, livePaymentsEnabled, providers } = usePaymentProviders();
+  const showProviderChoice = livePaymentsEnabled && providers.length > 1;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -151,6 +162,33 @@ export function ConsultReviewPaymentModal({
               </div>
             </div>
 
+            {showProviderChoice && (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-slate-700">Payment method</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {providers.map((provider) => {
+                    const selected = paymentProvider === provider;
+                    return (
+                      <button
+                        key={provider}
+                        type="button"
+                        disabled={loading || providersLoading}
+                        onClick={() => onPaymentProviderChange(provider)}
+                        className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+                          selected
+                            ? "border-brand bg-brand-muted text-brand-dark"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        <span className="font-semibold">{paymentProviderLabel(provider)}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Mobile wallet</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            )}
+
             <label className="block space-y-1.5">
               <span className="text-sm font-medium">Symptoms or notes (optional)</span>
               <textarea
@@ -166,7 +204,17 @@ export function ConsultReviewPaymentModal({
 
             <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-2.5 text-xs text-emerald-800">
               <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-              <span>Secure payment via JazzCash. Your slot is held until checkout completes.</span>
+              <span>
+                {livePaymentsEnabled
+                  ? `Secure payment via ${
+                      showProviderChoice
+                        ? paymentProviderLabel(paymentProvider)
+                        : providers.length === 1
+                          ? paymentProviderLabel(providers[0]!)
+                          : "JazzCash or Easypaisa"
+                    }. Your slot is held until checkout completes.`
+                  : "Test payment — no real charge. Your slot is held until you complete checkout."}
+              </span>
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}

@@ -11,6 +11,7 @@ import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { AppHeaderUser } from "@/components/layout/app-header-user";
 import { HeaderAuthActions } from "@/components/layout/header-auth-actions";
 import { HeaderChatButton } from "@/components/layout/header-chat-button";
+import { HeaderAssistantButton } from "@/components/layout/header-assistant-button";
 import { HeaderNotificationsMenu } from "@/components/layout/header-notifications-menu";
 import { useHeaderBadges } from "@/components/layout/use-header-badges";
 import { useHideOnScroll } from "@/components/layout/use-hide-on-scroll";
@@ -70,6 +71,7 @@ export function UnifiedHeader({
     myDashboard: t.dashboard.header.myDashboard,
     doctorDashboard: t.dashboard.header.doctorDashboard,
     adminDashboard: t.dashboard.header.adminDashboard,
+    healthAssistant: t.copilot.navLabel,
     signOut: t.dashboard.header.signOut,
     login: t.auth.login,
     createAccount: t.auth.createAccount,
@@ -150,6 +152,7 @@ export function UnifiedHeader({
             <LanguageSwitcher variant="compact" size="header" />
             {isLoggedIn ? (
               <>
+                <HeaderAssistantButton label={t.header.actions.assistant} />
                 <HeaderChatButton count={chatUnread} label={t.header.actions.messages} />
                 <HeaderNotificationsMenu
                   count={notificationUnread}
@@ -170,6 +173,7 @@ export function UnifiedHeader({
           <div className="flex items-center gap-1 md:hidden">
             {isLoggedIn ? (
               <>
+                <HeaderAssistantButton label={t.header.actions.assistant} />
                 <HeaderChatButton count={chatUnread} label={t.header.actions.messages} />
                 <HeaderNotificationsMenu
                   count={notificationUnread}

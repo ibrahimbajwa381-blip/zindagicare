@@ -141,6 +141,8 @@ export const config = {
     "/physiotherapist/:path*",
     "/rider/:path*",
     "/messages/:path*",
+    "/assistant",
+    "/assistant/:path*",
     "/intake/:path*",
     "/onboarding/:path*",
     "/home-care/visits/:path*",

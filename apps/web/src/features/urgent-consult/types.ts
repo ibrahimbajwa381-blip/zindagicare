@@ -63,10 +63,9 @@ export type UrgentCheckoutResult = {
   amount: number;
   testMode?: boolean;
   testPayment?: import("@/lib/payments/dummy-payment").TestPaymentCheckout;
-  jazzcash?: {
-    actionUrl: string;
-    fields: Record<string, string>;
-  };
+  gatewayRedirect?: import("@/lib/payments/types").GatewayRedirectForm;
+  /** @deprecated use gatewayRedirect */
+  jazzcash?: import("@/lib/payments/types").GatewayRedirectForm;
 };
 
 /** @deprecated use UrgentPatientRequestDto */

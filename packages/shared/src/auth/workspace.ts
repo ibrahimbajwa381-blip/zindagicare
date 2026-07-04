@@ -23,7 +23,14 @@ export function getAvailableWorkspaces(roles: Role[] | undefined): Workspace[] {
   const list = roles ?? [];
   const workspaces: Workspace[] = [];
 
-  if (list.includes(Roles.PATIENT)) workspaces.push("patient");
+  const isStaffAccount =
+    list.includes(Roles.DOCTOR) ||
+    list.includes(Roles.NURSE) ||
+    list.includes(Roles.PHYSIOTHERAPIST) ||
+    list.includes(Roles.RIDER) ||
+    isAdmin(list);
+
+  if (list.includes(Roles.PATIENT) && !isStaffAccount) workspaces.push("patient");
   if (list.includes(Roles.DOCTOR)) workspaces.push("doctor");
   if (isAdmin(list)) workspaces.push("admin");
   if (list.includes(Roles.NURSE)) workspaces.push("nurse");

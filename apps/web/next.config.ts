@@ -25,7 +25,14 @@ const nextConfig: NextConfig = {
     "@zindagi/database",
     "@zindagi/validators",
   ],
-  serverExternalPackages: ["mongoose", "bcryptjs", "pdfkit", "fontkit"],
+  serverExternalPackages: ["mongoose", "bcryptjs", "pdfkit", "fontkit", "browserslist"],
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      { module: /node_modules[\\/]browserslist/ },
+    ];
+    return config;
+  },
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

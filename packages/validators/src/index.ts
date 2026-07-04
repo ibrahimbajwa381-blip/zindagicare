@@ -16,3 +16,4 @@ export * from "./medical-intake.schema";
 export * from "./review.schema";
 export * from "./prescription.schema";
 export * from "./push.schema";
+export * from "./copilot.schema";

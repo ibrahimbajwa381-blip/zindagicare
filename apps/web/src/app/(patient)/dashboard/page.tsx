@@ -2,13 +2,12 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { resolvePostAuthPath } from "@/lib/auth/routes";
 import { redirect } from "next/navigation";
-import { canUsePatientWorkspace, getAvailableWorkspaces, cn } from "@zindagi/shared";
+import { canUsePatientWorkspace, getAvailableWorkspaces } from "@zindagi/shared";
 import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
 import { siteConfig } from "@/config/site";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PatientDashboardMessagesSection } from "@/features/patient/components/patient-dashboard-messages-section";
 import { PatientSundayBookingSection } from "@/features/sunday-consult/components/patient-sunday-booking-section";
 import { PatientVisitsSection } from "@/features/home-care/components/patient-visits-section";
@@ -16,19 +15,20 @@ import { PatientAppointmentHistorySection } from "@/features/patient/components/
 import { PatientProfileSection } from "@/features/patient/components/patient-profile-section";
 import { PatientPrescriptionsSection } from "@/features/prescriptions/components/patient-prescriptions-section";
 import { WelcomeTour } from "@/features/patient/components/welcome-tour";
-import { AppointmentReminderService } from "@/server/services/appointment-reminder.service";
 import { PatientAppointmentsService } from "@/server/services/patient-appointments.service";
 import { getDictionary } from "@/i18n";
 import { formatMessage } from "@/i18n/messages";
 import { getLocale } from "@/i18n/server";
 import { getPatientProfile } from "@/server/services/patient-profile.service";
 import { PatientUrgentBookingSection } from "@/features/urgent-consult/components/patient-urgent-booking-section";
+import { PatientDashboardCopilotSection } from "@/features/patient/components/patient-dashboard-copilot-section";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 import { PrescriptionService } from "@/server/services/prescription.service";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
+import { ChatService } from "@/server/services/chat.service";
 import { loadPatientOnlineBooking } from "@/features/consult/components/patient-online-booking-section";
 import { PatientOnlineBookingSection } from "@/features/consult/components/patient-online-booking-section";
-import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import { PatientUpcomingAppointmentsEmpty } from "@/features/patient/components/patient-upcoming-appointments-empty";
 
 export const metadata = { title: "Dashboard" };
 
@@ -44,7 +44,7 @@ export default async function PatientDashboardPage() {
 
   const locale = await getLocale();
   const t = getDictionary(locale);
-  const [profile, sundayBooking, urgentBooking, onlineBooking, appointmentHistory, prescriptions, _reminders] =
+  const [profile, sundayBooking, urgentBooking, onlineBooking, appointmentHistory, prescriptions, messageContacts, messageThreads] =
     await Promise.all([
       getPatientProfile(session.user.id),
       SundayConsultService.getPatientBooking(session.user.id),
@@ -52,7 +52,8 @@ export default async function PatientDashboardPage() {
       loadPatientOnlineBooking(session.user.id),
       PatientAppointmentsService.listHistory(session.user.id),
       PrescriptionService.listForPatient(session.user.id),
-      AppointmentReminderService.processDueReminders().catch(() => null),
+      ChatService.listPatientContacts(session.user.id),
+      ChatService.listThreads(session.user.id),
     ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
   const showWorkspaceSwitcher =
@@ -79,21 +80,26 @@ export default async function PatientDashboardPage() {
         </div>
 
         <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:items-stretch">
-          <div className="min-w-0">
-            <PatientDashboardMessagesSection />
+          <div className="flex min-h-0 min-w-0 flex-col gap-4">
+            <PatientDashboardCopilotSection />
+            <PatientDashboardMessagesSection
+              initialContacts={messageContacts}
+              initialThreads={messageThreads}
+            />
           </div>
           <div className="min-w-0">
           {onlineBooking ? (
             <PatientOnlineBookingSection initialBooking={onlineBooking} />
           ) : (
-            <Card className={cn(surfaceCardInteractive, "flex h-full min-w-0 flex-col")}>
-              <CardHeader>
-                <CardTitle className="text-base">{t.dashboard.upcomingAppointments}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col justify-center text-sm text-slate-500">
-                {t.dashboard.noAppointments}
-              </CardContent>
-            </Card>
+            <PatientUpcomingAppointmentsEmpty
+              title={t.dashboard.upcomingAppointments}
+              emptyTitle={t.dashboard.upcomingAppointmentsEmpty.title}
+              emptyDescription={t.dashboard.upcomingAppointmentsEmpty.description}
+              bookConsultLabel={t.dashboard.upcomingAppointmentsEmpty.bookConsult}
+              bookConsultHref={siteConfig.links.doctors}
+              freeSundayLabel={t.dashboard.upcomingAppointmentsEmpty.freeSunday}
+              freeSundayHref={siteConfig.links.sundayConsult}
+            />
           )}
           </div>
         </div>

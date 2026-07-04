@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
-import { workspaceSidebarTop } from "@/lib/ui/surfaces";
 import { VerificationStatuses } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { ChevronRight, ExternalLink, ShieldCheck, X } from "lucide-react";
+import { DoctorAvatar } from "@/features/doctor/components/doctor-avatar";
 import { fetchThreads } from "@/features/chat/lib/chat-api";
 import {
   DOCTOR_APPROVED_NAV_SECTIONS,
@@ -27,7 +27,32 @@ type DoctorSidebarProps = {
   showFullNav: boolean;
   verificationStatus?: string | null;
   doctorSlug?: string | null;
+  doctorName: string;
+  doctorAvatarUrl?: string | null;
 };
+
+function NavBadge({
+  count,
+  active,
+}: {
+  count: number;
+  active: boolean;
+}) {
+  const label = count > 99 ? "99+" : String(count);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums",
+        active
+          ? "bg-white/25 text-white"
+          : "bg-brand/90 text-white shadow-sm shadow-brand/30",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
 
 export function DoctorSidebar({
   mobileOpen,
@@ -35,6 +60,8 @@ export function DoctorSidebar({
   showFullNav,
   verificationStatus,
   doctorSlug,
+  doctorName,
+  doctorAvatarUrl,
 }: DoctorSidebarProps) {
   const pathname = usePathname();
   const [navStats, setNavStats] = useState<DoctorNavStats>({
@@ -111,17 +138,28 @@ export function DoctorSidebar({
 
   const navContent = (
     <>
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
-          Dr
-        </span>
+      <div className="relative flex h-16 shrink-0 items-center gap-3 border-b border-white/8 px-5 sm:h-[4.75rem]">
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent"
+          aria-hidden
+        />
+        <DoctorAvatar
+          name={doctorName}
+          avatarUrl={doctorAvatarUrl}
+          size="md"
+          className="ring-2 ring-white/15 shadow-lg shadow-black/20"
+        />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">{siteConfig.name}</p>
-          <p className="truncate text-xs text-slate-400">Doctor workspace</p>
+          <p className="truncate text-sm font-semibold tracking-tight text-white">
+            {doctorName}
+          </p>
+          <p className="truncate text-xs text-slate-400">
+            {siteConfig.name} · Doctor workspace
+          </p>
         </div>
         <button
           type="button"
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
           onClick={onMobileClose}
           aria-label="Close menu"
         >
@@ -129,113 +167,137 @@ export function DoctorSidebar({
         </button>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-        {sections.map((section) => (
-          <div key={section.title}>
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-              {section.title}
-            </p>
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const active = isActive(item);
-                const Icon = item.icon;
-                const badge = doctorNavBadgeCount(item, navStats);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onMobileClose}
-                    className={cn(
-                      "group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors",
-                      active
-                        ? "bg-brand text-white shadow-sm"
-                        : "text-slate-300 hover:bg-white/8 hover:text-white",
-                    )}
-                  >
-                    <Icon
+      <nav className="sidebar-scroll min-h-0 flex-1 px-3 py-4">
+        <div className="space-y-6">
+          {sections.map((section) => (
+            <div key={section.title}>
+              <p className="mb-2.5 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <span className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                {section.title}
+                <span className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = isActive(item);
+                  const Icon = item.icon;
+                  const badge = doctorNavBadgeCount(item, navStats);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onMobileClose}
                       className={cn(
-                        "mt-0.5 h-4 w-4 shrink-0",
-                        active ? "opacity-100" : "opacity-80",
+                        "group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200",
+                        active
+                          ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
+                          : "text-slate-300 hover:bg-white/6 hover:text-white",
                       )}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{item.label}</span>
-                        {badge !== null && (
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                              active ? "bg-white/20" : "bg-white/10 text-slate-200",
-                            )}
-                          >
-                            {badge > 99 ? "99+" : badge}
-                          </span>
-                        )}
-                      </span>
+                    >
+                      {active && (
+                        <span
+                          className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-white/70"
+                          aria-hidden
+                        />
+                      )}
                       <span
                         className={cn(
-                          "mt-0.5 block text-xs leading-snug",
-                          active ? "text-white/80" : "text-slate-500 group-hover:text-slate-400",
+                          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                          active
+                            ? "bg-white/15 text-white"
+                            : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
                         )}
                       >
-                        {item.description}
+                        <Icon className="h-4 w-4" />
                       </span>
-                    </span>
-                    <ChevronRight
-                      className={cn(
-                        "mt-1 h-3.5 w-3.5 shrink-0 opacity-0 transition group-hover:opacity-60",
-                        active && "opacity-70",
-                      )}
-                    />
-                  </Link>
-                );
-              })}
+                      <span className="min-w-0 flex-1 py-0.5">
+                        <span className="flex items-center gap-2">
+                          <span className="text-sm font-medium leading-none">
+                            {item.label}
+                          </span>
+                          {badge !== null && (
+                            <NavBadge count={badge} active={active} />
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-1 block text-[11px] leading-snug",
+                            active
+                              ? "text-white/75"
+                              : "text-slate-500 group-hover:text-slate-400",
+                          )}
+                        >
+                          {item.description}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className={cn(
+                          "mt-2 h-3.5 w-3.5 shrink-0 transition-all duration-200",
+                          active
+                            ? "text-white/70"
+                            : "text-slate-600 opacity-0 group-hover:translate-x-0.5 group-hover:text-slate-400 group-hover:opacity-100",
+                        )}
+                      />
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {showVerificationLink && (
-          <div>
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-              Application
-            </p>
-            <Link
-              href="/doctor/verification"
-              onClick={onMobileClose}
-              className={cn(
-                "flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors",
-                pathname.startsWith("/doctor/verification")
-                  ? "bg-brand text-white shadow-sm"
-                  : "text-slate-300 hover:bg-white/8 hover:text-white",
-              )}
-            >
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 opacity-90" />
-              <span className="min-w-0 flex-1">
-                <span className="text-sm font-medium">Resubmit application</span>
-                <span className="mt-0.5 block text-xs text-slate-500">
-                  Update credentials and documents
+          {showVerificationLink && (
+            <div>
+              <p className="mb-2.5 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <span className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                Application
+                <span className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
+              </p>
+              <Link
+                href="/doctor/verification"
+                onClick={onMobileClose}
+                className={cn(
+                  "group flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200",
+                  pathname.startsWith("/doctor/verification")
+                    ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
+                    : "text-slate-300 hover:bg-white/6 hover:text-white",
+                )}
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                    pathname.startsWith("/doctor/verification")
+                      ? "bg-white/15 text-white"
+                      : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
+                  )}
+                >
+                  <ShieldCheck className="h-4 w-4" />
                 </span>
-              </span>
-            </Link>
-          </div>
-        )}
+                <span className="min-w-0 flex-1 py-0.5">
+                  <span className="text-sm font-medium">Resubmit application</span>
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    Update credentials and documents
+                  </span>
+                </span>
+              </Link>
+            </div>
+          )}
+        </div>
       </nav>
 
-      <div className="space-y-1 border-t border-white/10 p-4">
+      <div className="shrink-0 space-y-0.5 border-t border-white/8 bg-black/15 px-3 py-3">
         {publicProfileHref && (
           <Link
             href={publicProfileHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/8 hover:text-white"
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/6 hover:text-white"
           >
-            <ExternalLink className="h-3.5 w-3.5" />
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
             View public profile
           </Link>
         )}
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/8 hover:text-white"
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/6 hover:text-white"
         >
           Back to {siteConfig.name}
         </Link>
@@ -255,12 +317,15 @@ export function DoctorSidebar({
       )}
       <aside
         className={cn(
-          "fixed bottom-0 left-0 z-50 flex w-[17.5rem] flex-col bg-slate-900 transition-transform duration-200 lg:translate-x-0",
-          workspaceSidebarTop,
+          "fixed inset-y-0 left-0 z-50 flex w-[17.5rem] flex-col overflow-hidden border-r border-white/6 bg-gradient-to-b from-[#0f172a] via-[#0c1524] to-[#08111f] shadow-[4px_0_32px_rgba(0,0,0,0.18)] transition-transform duration-200 lg:z-40 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {navContent}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/8 to-transparent"
+          aria-hidden
+        />
+        <div className="relative flex min-h-0 flex-1 flex-col">{navContent}</div>
       </aside>
     </>
   );

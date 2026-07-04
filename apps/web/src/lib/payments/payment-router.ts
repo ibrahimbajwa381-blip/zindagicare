@@ -1,7 +1,8 @@
 import { connectDatabase, PaymentModel, AppointmentModel } from "@zindagi/database";
-import { AppointmentTypes } from "@zindagi/shared";
+import { AppointmentTypes, PaymentProviders } from "@zindagi/shared";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
+import { mongoFilter } from "@/lib/mongo/query";
 
 const URGENT_PAYMENT_KIND = "urgent_care";
 
@@ -24,6 +25,25 @@ async function resolveAppointmentType(paymentId: string) {
 
   const appointment = await AppointmentModel.findById(payment.appointmentId).lean();
   return appointment?.type ?? null;
+}
+
+export async function resolvePaymentIdFromGatewayCallback(params: {
+  paymentId?: string;
+  orderRef?: string;
+  provider?: string;
+}): Promise<string | null> {
+  if (params.paymentId) return params.paymentId;
+  if (!params.orderRef) return null;
+
+  await connectDatabase();
+  const payment = await PaymentModel.findOne(
+    mongoFilter({
+      externalTransactionId: params.orderRef,
+      ...(params.provider ? { provider: params.provider } : {}),
+    }),
+  ).lean();
+
+  return payment?._id.toString() ?? null;
 }
 
 export async function completePaymentAfterGateway(

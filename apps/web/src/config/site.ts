@@ -56,6 +56,7 @@ export const siteConfig = {
     telemedicineConsent: "/telemedicine-consent",
     dashboard: "/dashboard",
     messages: "/messages",
+    assistant: "/assistant",
     doctorMessages: "/doctor/messages",
     getApp: "/get-app",
     getAppAndroid: "/get-app?platform=android",

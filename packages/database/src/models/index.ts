@@ -20,3 +20,4 @@ export * from "./audit-log.model";
 export * from "./doctor-miss.model";
 export * from "./system-settings.model";
 export * from "./push-subscription.model";
+export * from "./copilot-session.model";

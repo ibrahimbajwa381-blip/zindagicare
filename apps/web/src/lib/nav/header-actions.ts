@@ -1,4 +1,4 @@
-import { isAdmin, Roles, type Workspace } from "@zindagi/shared";
+import { isAdmin, Roles, type Role, type Workspace } from "@zindagi/shared";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
 import { siteConfig } from "@/config/site";
 
@@ -33,12 +33,12 @@ export function workspaceForDashboardHref(href: string): Workspace {
   return "patient";
 }
 
-export function messagesHref(roles?: string[]) {
+export function messagesHref(roles?: Role[]) {
   if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorMessages;
   return AUTH_ROUTES.messages;
 }
 
-export function dashboardHref(roles?: string[]) {
+export function dashboardHref(roles?: Role[]) {
   if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorProfile;
   if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
     return AUTH_ROUTES.adminDashboard;
@@ -49,7 +49,7 @@ export function dashboardHref(roles?: string[]) {
 
 export type HeaderAccountType = "patient" | "doctor" | "nurse" | "admin";
 
-export function resolveHeaderAccountType(roles?: string[]): HeaderAccountType {
+export function resolveHeaderAccountType(roles?: Role[]): HeaderAccountType {
   if (roles?.includes(Roles.DOCTOR)) return "doctor";
   if (roles?.includes(Roles.NURSE)) return "nurse";
   if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
@@ -59,7 +59,7 @@ export function resolveHeaderAccountType(roles?: string[]): HeaderAccountType {
 }
 
 export function resolveDashboardMenuLinks(
-  roles: string[] | undefined,
+  roles: Role[] | undefined,
   labels: {
     myDashboard: string;
     doctorDashboard: string;

@@ -71,6 +71,7 @@ export const ur: Dictionary = {
   header: {
     actions: {
       messages: "پیغامات",
+      assistant: "ہیلتھ اسسٹنٹ",
       notifications: "اطلاعات",
       notificationsHint: "اپائنٹمنٹس اور اکاؤنٹ کی سرگرمیوں کے بارے میں اپ ڈیٹس",
       noNotifications: "ابھی کوئی نئی اطلاع نہیں۔",
@@ -830,6 +831,24 @@ export const ur: Dictionary = {
       secondary: "میری وزٹس",
     },
   },
+  agentFloat: {
+    badgeTitle: "AI ہیلتھ ایجنٹ",
+    badgeLive: "لائیو",
+    badgeHint: "بول کر دیکھ بھال بک کریں · کچھ بھی پوچھیں",
+    micLabel: "ZindagiCare ایجنٹ سے بات کریں",
+    stopListening: "سننا بند کریں",
+    panelTitle: "ZindagiCare ایجنٹ",
+    panelSubtitle: "بولیں — میں اسسٹنٹ کھول کر بکنگ کروں گا",
+    close: "بند کریں",
+    introducing: "تعارف ہو رہا ہے…",
+    intro:
+      "سلام! میں ZindagiCare ایجنٹ ہوں۔ بس بتائیں آپ کو کیا چاہیے — میں صحت کے سوالات کا جواب دے سکتا ہوں، ڈاکٹر کی اپائنٹمنٹ بک کر سکتا ہوں، اور بہت کچھ۔",
+    tapToSpeak: "اپنی درخواست بولیں — مثلاً Dr Sharma کی بکنگ",
+    listening: "سن رہا ہوں…",
+    heardYou: "اسسٹنٹ کھول رہا ہوں…",
+    tapWhenDone: "بولنے کے بعد دوبارہ مائیک دبائیں",
+    openAssistant: "ٹائپ کرنے کے لیے اسسٹنٹ کھولیں",
+  },
   homePhysio: {
     eyebrow: "گھر پر فزیوتھrapy",
     imageAlt:
@@ -1300,6 +1319,12 @@ export const ur: Dictionary = {
       participantDoctor: "ڈاکٹر: {name}",
       participantPatient: "مریض: {name}",
       joinVideo: "ویڈیو سیشن میں شامل ہوں",
+      startsIn: "شروع ہونے میں",
+      sessionOpenLabel: "سیشن کی صورتحال",
+      sessionWindowOpen: "سیشن کا وقت کھلا ہے",
+      missedTitle: "ملاقات چھوٹ گئی",
+      missedDescription:
+        "آپ مقررہ وقت پر شامل نہیں ہوئے۔ شامل ہونے کا وقت ختم ہو چکا ہے — اگر اب بھی علاج چاہیے تو دوبارہ مشاورت بک کریں۔",
     },
   },
   onboarding: {
@@ -1321,11 +1346,18 @@ export const ur: Dictionary = {
       loading: "آپ کے ڈاکٹر لوڈ ہو رہے ہیں…",
       tapToChat: "چیٹ شروع کرنے کے لیے ٹیپ کریں",
     },
+    copilot: {
+      title: "AI ہیلتھ اسسٹنٹ",
+      description:
+        "اردو یا انگریزی میں بولیں — ڈاکٹر تلاش کریں اور آواز سے اپائنٹمنٹ بک کریں۔",
+      cta: "اسسٹنٹ کھولیں",
+    },
     title: "سلام، {name}",
     description: "آپ کی اپائنٹمنٹس اور خاندانی صحت کا مرکز۔",
     nav: {
       dashboard: "ڈیش بورڈ",
       messages: "پیغامات",
+      assistant: "ہیلتھ اسسٹنٹ",
     },
     header: {
       patientAccount: "مریض اکاؤنٹ",
@@ -1341,6 +1373,13 @@ export const ur: Dictionary = {
     },
     upcomingAppointments: "آنے والی اپائنٹمنٹس",
     noAppointments: "ابھی کوئی شیڈول نہیں۔",
+    upcomingAppointmentsEmpty: {
+      title: "آپ کا کیلنڈر خالی ہے",
+      description:
+        "تصدیق شدہ ڈاکٹر سے ویڈیو مشاورت بک کریں۔ تصدیق شدہ ملاقاتیں وقت آنے پر یہاں نظر آئیں گی۔",
+      bookConsult: "ڈاکٹر تلاش کریں",
+      freeSunday: "مفت اتوار کی مشاورت",
+    },
     appointmentHistory: {
       title: "اپائنٹمنٹ کی تاریخ",
       empty: "ابھی کوئی پچھلی اپائنٹمنٹ نہیں۔ مکمل شدہ مشاورتیں یہاں نظر آئیں گی۔",
@@ -1616,6 +1655,55 @@ export const ur: Dictionary = {
     medicationCountOne: "1 دوا",
     medicationCountMany: "{count} دوائیں",
     backToDashboard: "ڈیش بورڈ پر واپس",
+  },
+  copilot: {
+    pageTitle: "ہیلتھ اسسٹنٹ",
+    pageDescription:
+      "اردو یا انگریزی میں بولیں یا لکھیں — ڈاکٹر تلاش کریں اور آواز سے اپائنٹمنٹ بک کریں۔",
+    dismissIntro: "تعارف بند کریں",
+    navLabel: "ہیلتھ اسسٹنٹ",
+    newChat: "نئی گفتگو",
+    emptyTitle: "صحت کی گفتگو",
+    emptyDescription: "اپنے ہیلتھ ایجنٹ سے آواز یا ٹیکسٹ میں بات شروع کریں۔",
+    selectChatTitle: "ZindagiCare ہیلتھ اسسٹنٹ",
+    selectChatDescription:
+      "کہیں \"مجھے ڈاکٹر refer کرو\" یا \"آج appointment book کرو\"۔ مائیک دبائیں اور اردو میں بولیں۔",
+    messagePlaceholder: "بولیں یا اپنا سوال لکھیں…",
+    disclaimer:
+      "یہ اسسٹنٹ صرف عام معلومات دیتا ہے — طبی مشورہ، تشخیص، یا ایمرجنسی علاج نہیں۔ ایمرجنسی میں 1122 پر کال کریں۔",
+    bookConsultation: "مشاورت بک کریں",
+    consultationFee: "فیس",
+    pmdcVerified: "پی ایم ڈی سی تصدیق شدہ",
+    urgentTitle: "فوری دیکھ بھال کی سفارش",
+    urgentDescription:
+      "آپ کی علامات فوری توجہ چاہ سکتی ہیں۔ ZindagiCare فوری دیکھ بھال تقریباً 10 منٹ میں ڈاکٹر سے جوڑتی ہے۔",
+    urgentCta: "فوری دیکھ بھال پر جائیں",
+    emergencyTitle: "ممکنہ ایمرجنسی",
+    emergencyBody:
+      "ان علامات کے لیے فوری ایمرجنسی علاج ضروری ہے۔ ابھی 1122 پر کال کریں یا قریبی ہسپتال کے ایمرجنسی روم جائیں۔",
+    urgentBannerTitle: "فوری دیکھ بھال پر غور کریں",
+    urgentBannerBody:
+      "اگر علامات بڑھیں یا انتظار محفوظ نہ لگے تو فوری دیکھ بھال یا ایمرجنسی خدمات استعمال کریں۔",
+    callEmergency: "1122 پر کال کریں",
+    thinking: "سوچ رہا ہے…",
+    loading: "گفتگو لوڈ ہو رہی ہے…",
+    micLabel: "بولنے کے لیے دبائیں",
+    stopMicLabel: "سننا بند کریں",
+    stopSpeakLabel: "آواز بند کریں",
+    voicePanelTitle: "اپنا سوال بولیں",
+    voicePanelSubtitle: "مائیک دبائیں اور اردو یا انگریزی میں پوچھیں۔ اسسٹنٹ آواز میں جواب دے گا۔",
+    listeningLabel: "سن رہا ہے…",
+    speakingLabel: "بول رہا ہے…",
+    tapToSpeakLabel: "بولنے کے لیے دبائیں",
+    chatPanelTitle: "یا چیٹ میں اپنا پیغام لکھیں",
+    doctorReferralTitle: "آپ کے لیے تجویز کردہ ڈاکٹر",
+    slotsAvailable: "سلاٹ",
+    bookedConfirmedTitle: "آپ کی اپائنٹمنٹ بک ہو گئی",
+    bookedPendingTitle: "اپائنٹمنٹ محفوظ — ادائیگی باقی",
+    bookedPendingDescription: "ویڈیو مشاورت کی تصدیق کے لیے ادائیگی مکمل کریں۔",
+    payNow: "ابھی ادائیگی کریں",
+    viewDashboard: "ڈیش بورڈ دیکھیں",
+    viewProfile: "پروفائل دیکھیں",
   },
   providerOnboarding: {
     preview: {

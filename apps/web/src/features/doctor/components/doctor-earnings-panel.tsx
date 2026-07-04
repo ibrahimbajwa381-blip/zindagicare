@@ -1,12 +1,24 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import {
+  ArrowDownToLine,
+  Banknote,
+  ChevronRight,
+  CircleDollarSign,
+  Percent,
+  Stethoscope,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DoctorEmptyState,
   DoctorListCard,
   formatDateTime,
 } from "@/features/doctor/components/doctor-workspace-panels";
-import type { DoctorEarningsDetail } from "@/server/services/doctor-dashboard.service";
+import type {
+  DoctorConsultCounts,
+  DoctorEarningsDetail,
+} from "@/server/services/doctor-dashboard.service";
 
 function formatCurrency(amount: number, currency = "PKR") {
   return `${currency} ${amount.toLocaleString("en-PK")}`;
@@ -18,6 +30,8 @@ function formatConsultType(type: string) {
       return "Online consult";
     case "clinic":
       return "Clinic visit";
+    case "urgent_online":
+      return "Urgent consult";
     case "doctor_visit":
       return "In-house visit";
     default:
@@ -25,11 +39,125 @@ function formatConsultType(type: string) {
   }
 }
 
+function formatWithdrawalStatus(status: string) {
+  switch (status) {
+    case "pending":
+      return "Pending";
+    case "processing":
+      return "Processing";
+    case "completed":
+      return "Completed";
+    case "failed":
+      return "Failed";
+    default:
+      return status;
+  }
+}
+
 type Props = {
   earnings: DoctorEarningsDetail;
 };
 
+type StatCardProps = {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: "default" | "emerald" | "amber" | "sky";
+};
+
+function StatCard({ label, value, hint, accent = "default" }: StatCardProps) {
+  const accentClasses = {
+    default: "border-slate-200/80 bg-white",
+    emerald: "border-emerald-200/80 bg-emerald-50/50",
+    amber: "border-amber-200/80 bg-amber-50/50",
+    sky: "border-sky-200/80 bg-sky-50/50",
+  } as const;
+
+  const labelClasses = {
+    default: "text-slate-500",
+    emerald: "text-emerald-700",
+    amber: "text-amber-700",
+    sky: "text-sky-700",
+  } as const;
+
+  const valueClasses = {
+    default: "text-slate-900",
+    emerald: "text-emerald-900",
+    amber: "text-amber-900",
+    sky: "text-sky-900",
+  } as const;
+
+  return (
+    <div className={`rounded-2xl border p-5 shadow-sm ${accentClasses[accent]}`}>
+      <p className={`text-xs font-medium uppercase tracking-wide ${labelClasses[accent]}`}>
+        {label}
+      </p>
+      <p className={`mt-2 text-2xl font-semibold ${valueClasses[accent]}`}>{value}</p>
+      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
+type SectionProps = {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+};
+
+function EarningsSection({ icon: Icon, title, description, children }: SectionProps) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-5 py-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
+            <Icon className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+          </div>
+        </div>
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function ConsultBreakdownGrid({
+  label,
+  counts,
+}: {
+  label: string;
+  counts: DoctorConsultCounts;
+}) {
+  const rows = [
+    { label: "Online", value: counts.online },
+    { label: "Clinic", value: counts.clinic },
+    { label: "Urgent", value: counts.urgent },
+    { label: "In-house", value: counts.homeVisit },
+  ];
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-slate-900">{counts.total}</p>
+      <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {rows.map((row) => (
+          <div key={row.label} className="rounded-lg bg-white px-3 py-2">
+            <dt className="text-xs text-slate-500">{row.label}</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-slate-900">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 export function DoctorEarningsPanel({ earnings }: Props) {
+  const platformOnlineFeePercent = 100 - earnings.onlineCommissionPercent;
+  const platformHomeFeePercent = 100 - earnings.homeVisitCommissionPercent;
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
@@ -37,46 +165,156 @@ export function DoctorEarningsPanel({ earnings }: Props) {
         <span className="font-semibold text-slate-900">
           {earnings.onlineCommissionPercent}%
         </span>{" "}
-        for online/clinic consults and{" "}
+        for online, clinic, and urgent consults and{" "}
         <span className="font-semibold text-slate-900">
           {earnings.homeVisitCommissionPercent}%
         </span>{" "}
-        for in-house visits. Amounts below are your net earnings after platform commission.
+        for in-house visits. Figures below separate patient payments, your net share, and
+        platform commission.
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Total earnings
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {formatCurrency(earnings.totalEarnings)}
-          </p>
+      <EarningsSection
+        icon={TrendingUp}
+        title="Revenue"
+        description="Gross patient payments and your net earnings after commission."
+      >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Gross revenue (all time)"
+            value={formatCurrency(earnings.totalGrossRevenue)}
+            hint="Total paid by patients"
+          />
+          <StatCard
+            label="Gross revenue (this month)"
+            value={formatCurrency(earnings.grossRevenueThisMonth)}
+            accent="emerald"
+          />
+          <StatCard
+            label="Your net earnings (all time)"
+            value={formatCurrency(earnings.totalEarnings)}
+            hint="Amount credited to you"
+          />
+          <StatCard
+            label="Your net earnings (this month)"
+            value={formatCurrency(earnings.earningsThisMonth)}
+            accent="emerald"
+          />
         </div>
-        <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-            This month
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-900">
-            {formatCurrency(earnings.earningsThisMonth)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Paid services
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">
-            {earnings.completedPaidConsults}
-          </p>
-        </div>
-      </div>
+      </EarningsSection>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+      <EarningsSection
+        icon={Stethoscope}
+        title="Completed consultations"
+        description="Paid services you have finished on ZindagiCare."
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ConsultBreakdownGrid label="All time" counts={earnings.completedConsults} />
+          <ConsultBreakdownGrid
+            label="This month"
+            counts={earnings.completedConsultsThisMonth}
+          />
+        </div>
+      </EarningsSection>
+
+      <EarningsSection
+        icon={Percent}
+        title="Commissions"
+        description="Platform fees deducted from gross patient payments."
+      >
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Platform commission (all time)"
+            value={formatCurrency(earnings.totalPlatformCommission)}
+            hint="Deducted from gross revenue"
+            accent="amber"
+          />
+          <StatCard
+            label="Platform commission (this month)"
+            value={formatCurrency(earnings.platformCommissionThisMonth)}
+            accent="amber"
+          />
+          <StatCard
+            label="Online / clinic / urgent share"
+            value={`${earnings.onlineCommissionPercent}%`}
+            hint={`Platform keeps ${platformOnlineFeePercent}%`}
+          />
+          <StatCard
+            label="In-house visit share"
+            value={`${earnings.homeVisitCommissionPercent}%`}
+            hint={`Platform keeps ${platformHomeFeePercent}%`}
+          />
+        </div>
+      </EarningsSection>
+
+      <EarningsSection
+        icon={Wallet}
+        title="Withdrawals"
+        description="Available balance and payout history."
+      >
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Available balance"
+            value={formatCurrency(earnings.availableBalance)}
+            hint="Ready to withdraw"
+            accent="sky"
+          />
+          <StatCard
+            label="Total withdrawn"
+            value={formatCurrency(earnings.totalWithdrawn)}
+          />
+          <StatCard
+            label="Pending withdrawal"
+            value={formatCurrency(earnings.pendingWithdrawal)}
+          />
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+          <p className="flex items-center gap-2 font-medium text-slate-800">
+            <ArrowDownToLine className="h-4 w-4 text-brand" />
+            Payout requests
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            Withdrawals are processed to your registered bank account. Contact ZindagiCare
+            support to request a payout or update your payout details.
+          </p>
+        </div>
+
+        {earnings.withdrawals.length === 0 ? (
+          <div className="mt-4">
+            <DoctorEmptyState message="No withdrawals yet. Your available balance will appear here once you request a payout." />
+          </div>
+        ) : (
+          <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100">
+            {earnings.withdrawals.map((withdrawal) => (
+              <div key={withdrawal.id} className="p-4 sm:p-5">
+                <DoctorListCard
+                  title={formatCurrency(withdrawal.amount, withdrawal.currency)}
+                  subtitle={formatWithdrawalStatus(withdrawal.status)}
+                  meta={`Requested ${formatDateTime(withdrawal.requestedAt)}${
+                    withdrawal.completedAt
+                      ? ` · Completed ${formatDateTime(withdrawal.completedAt)}`
+                      : ""
+                  }`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </EarningsSection>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-slate-900">Earning history</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Net revenue from completed paid online, clinic, and in-house visits.
-          </p>
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
+              <CircleDollarSign className="h-4.5 w-4.5" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Earning history</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Per-consult breakdown of gross payment, commission, and your net share.
+              </p>
+            </div>
+          </div>
         </div>
         {earnings.transactions.length === 0 ? (
           <DoctorEmptyState message="No paid services completed yet. Earnings appear here after patients complete bookings or home visits." />
@@ -87,14 +325,14 @@ export function DoctorEarningsPanel({ earnings }: Props) {
                 <DoctorListCard
                   title={tx.patient.name}
                   subtitle={formatConsultType(tx.type)}
-                  meta={`Completed ${formatDateTime(tx.completedAt)} · ${tx.commissionPercent}% of ${formatCurrency(tx.grossAmount, tx.currency)}`}
+                  meta={`Completed ${formatDateTime(tx.completedAt)} · Gross ${formatCurrency(tx.grossAmount, tx.currency)} · Commission ${formatCurrency(tx.commissionAmount, tx.currency)} (${100 - tx.commissionPercent}%)`}
                   badge={formatCurrency(tx.amount, tx.currency)}
                 />
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
@@ -102,11 +340,13 @@ export function DoctorEarningsPanel({ earnings }: Props) {
 type DoctorEarningsSummaryCardProps = {
   totalEarnings: number;
   earningsThisMonth: number;
+  availableBalance?: number;
 };
 
 export function DoctorEarningsSummaryCard({
   totalEarnings,
   earningsThisMonth,
+  availableBalance,
 }: DoctorEarningsSummaryCardProps) {
   return (
     <Link
@@ -115,7 +355,8 @@ export function DoctorEarningsSummaryCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            <Banknote className="h-3.5 w-3.5" />
             Earnings
           </p>
           <p className="mt-2 text-2xl font-semibold text-slate-900">
@@ -124,6 +365,11 @@ export function DoctorEarningsSummaryCard({
           <p className="mt-1 text-sm text-slate-600">
             {formatCurrency(earningsThisMonth)} this month
           </p>
+          {typeof availableBalance === "number" && (
+            <p className="mt-1 text-xs text-emerald-700">
+              {formatCurrency(availableBalance)} available to withdraw
+            </p>
+          )}
         </div>
         <Badge variant="outline" className="border-emerald-200 text-emerald-800">
           View details

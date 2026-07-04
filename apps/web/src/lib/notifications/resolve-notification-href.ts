@@ -39,11 +39,12 @@ export function resolveNotificationHref(
     case "doctor_consult_booked":
     case "doctor_appointment_reminder_24h":
     case "doctor_appointment_reminder_1h":
+    case "doctor_appointment_reminder_start_now":
     case "doctor_appointment_reminder_sunday_morning":
     case "intake_completed":
       if (!isDoctor) return null;
       return appointmentId
-        ? `/doctor/requests?appointmentId=${encodeURIComponent(appointmentId)}`
+        ? `/doctor/intake/${encodeURIComponent(appointmentId)}`
         : "/doctor/requests";
 
     case "doctor_miss_warning":
@@ -55,6 +56,7 @@ export function resolveNotificationHref(
 
     case "appointment_reminder_24h":
     case "appointment_reminder_1h":
+    case "appointment_reminder_start_now":
     case "appointment_reminder_sunday_morning":
     case "online_consult_confirmed":
     case "urgent_consult_confirmed":

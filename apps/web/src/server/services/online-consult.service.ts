@@ -19,17 +19,22 @@ import {
 import type { ConsultCheckoutInput } from "@zindagi/validators";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { resolveDoctorSlug } from "@/lib/doctors/profile-path";
+import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import {
   appointmentBlocksSlot,
   generateConsultSlots,
   parseConsultSlotId,
   type WeeklyWindow,
 } from "@/lib/consult/slot-utils";
+import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import {
-  buildCheckoutForm,
-  generateTxnRefNo,
-  isJazzCashConfigured,
-} from "@/lib/payments/jazzcash";
+  buildGatewayCheckout,
+  gatewayIntegrationLabel,
+  isGatewayConfigured,
+  resolveCheckoutProvider,
+  type GatewayRedirectForm,
+  type LivePaymentProvider,
+} from "@/lib/payments/payment-gateway";
 import {
   buildDummyPaymentPreview,
   buildTestPaymentCheckout,
@@ -101,13 +106,12 @@ export type CheckoutResult = {
   paymentId: string;
   appointmentId: string;
   amount: number;
-  /** MVP simulated checkout — real JazzCash when JAZZCASH_LIVE=true */
+  /** MVP simulated checkout — real gateways when PAYMENTS_LIVE=true */
   testMode?: boolean;
   testPayment?: TestPaymentCheckout;
-  jazzcash?: {
-    actionUrl: string;
-    fields: Record<string, string>;
-  };
+  gatewayRedirect?: GatewayRedirectForm;
+  /** @deprecated use gatewayRedirect */
+  jazzcash?: GatewayRedirectForm;
 };
 
 const EXPIRE_SWEEP_INTERVAL_MS = 60_000;
@@ -263,25 +267,38 @@ export class OnlineConsultService {
       };
     }
 
-    if (!isJazzCashConfigured()) {
+    const provider = payment.provider as LivePaymentProvider;
+    if (
+      provider !== PaymentProviders.JAZZCASH &&
+      provider !== PaymentProviders.EASYPAISA
+    ) {
+      throw new AppError("Unsupported payment provider", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (!isGatewayConfigured(provider)) {
       throw new AppError(
-        "JazzCash credentials missing. Set JAZZCASH_* env vars or keep JAZZCASH_LIVE unset for MVP test payments.",
+        provider === PaymentProviders.JAZZCASH
+          ? "JazzCash credentials missing. Set JAZZCASH_* env vars."
+          : "Easypaisa credentials missing. Set EASYPAISA_* env vars.",
         ErrorCodes.VALIDATION,
         503,
       );
     }
 
+    const gatewayRedirect = buildGatewayCheckout(provider, {
+      amountPkr: payment.amount,
+      txnRefNo,
+      billReference: appointmentId.slice(-12),
+      description: `Online consult with ${metadata?.doctorName ?? doctorName}`,
+      paymentId,
+    });
+
     return {
       paymentId,
       appointmentId,
       amount: payment.amount,
-      jazzcash: buildCheckoutForm({
-        amountPkr: payment.amount,
-        txnRefNo,
-        billReference: appointmentId.slice(-12),
-        description: `Online consult with ${metadata?.doctorName ?? doctorName}`,
-        paymentId,
-      }),
+      gatewayRedirect,
+      jazzcash: gatewayRedirect,
     };
   }
 
@@ -389,7 +406,7 @@ export class OnlineConsultService {
 
     return doctors.map((doc) => {
       const user = doc.userId as { name?: string; avatarUrl?: string } | null;
-      const name = user?.name ?? "Doctor";
+      const name = mapUserPii(user ?? {}).name;
       const weeklyAvailability = (doc.weeklyAvailability ?? []) as WeeklyWindow[];
       const doctorBooked = bookedByDoctor.get(doc._id.toString()) ?? [];
       const availableSlots = OnlineConsultService.countAvailableSlots(
@@ -540,7 +557,7 @@ export class OnlineConsultService {
       slotStart,
       slotEnd,
       consultationFee,
-      doctorName: user?.name ?? "Doctor",
+      doctorName: mapUserPii(user ?? {}).name,
     };
   }
 
@@ -576,6 +593,19 @@ export class OnlineConsultService {
     });
 
     const useDummy = isDummyPaymentMode();
+    let liveProvider: LivePaymentProvider | null = null;
+
+    if (!useDummy) {
+      try {
+        liveProvider = resolveCheckoutProvider(input.paymentProvider);
+      } catch (error) {
+        throw new AppError(
+          error instanceof Error ? error.message : "Payment gateway unavailable",
+          ErrorCodes.VALIDATION,
+          503,
+        );
+      }
+    }
 
     const appointment = (await AppointmentModel.create({
       type: AppointmentTypes.ONLINE,
@@ -594,7 +624,7 @@ export class OnlineConsultService {
     try {
       const payment = (await PaymentModel.create({
         userId: patientId,
-        provider: useDummy ? PaymentProviders.DUMMY : PaymentProviders.JAZZCASH,
+        provider: useDummy ? PaymentProviders.DUMMY : liveProvider!,
         status: PaymentStatuses.PENDING,
         amount: validated.consultationFee,
         currency: "PKR",
@@ -606,7 +636,7 @@ export class OnlineConsultService {
           txnRefNo: dummyPreview.txnRefNo,
           expiresAt: expiresAt.toISOString(),
           doctorName: validated.doctorName,
-          integration: useDummy ? "dummy_mvp" : "jazzcash_live",
+          integration: useDummy ? "dummy_mvp" : gatewayIntegrationLabel(liveProvider!),
           gatewayPreview: useDummy ? dummyPreview : undefined,
           ...(input.locale ? { locale: input.locale } : {}),
         },
@@ -635,15 +665,7 @@ export class OnlineConsultService {
         };
       }
 
-      if (!isJazzCashConfigured()) {
-        throw new AppError(
-          "JazzCash credentials missing. Set JAZZCASH_* env vars or keep JAZZCASH_LIVE unset for MVP test payments.",
-          ErrorCodes.VALIDATION,
-          503,
-        );
-      }
-
-      const jazzcash = buildCheckoutForm({
+      const gatewayRedirect = buildGatewayCheckout(liveProvider!, {
         amountPkr: validated.consultationFee,
         txnRefNo,
         billReference: appointmentId.slice(-12),
@@ -655,7 +677,8 @@ export class OnlineConsultService {
         paymentId,
         appointmentId,
         amount: validated.consultationFee,
-        jazzcash,
+        gatewayRedirect,
+        jazzcash: gatewayRedirect,
       };
     } catch (error) {
       await OnlineConsultService.cancelPendingHold(appointmentId);
@@ -734,8 +757,8 @@ export class OnlineConsultService {
 
     await sendOnlineConsultConfirmation({
       userId: appointment.patientId.toString(),
-      phone: patient?.phone ?? undefined,
-      doctorName: doctorUser?.name ?? "Doctor",
+      phone: safeDisplayText(patient?.phone) ?? undefined,
+      doctorName: mapUserPii(doctorUser ?? {}).name,
       slotStart: appointment.scheduledStart,
       amount: payment.amount,
     });
@@ -743,8 +766,8 @@ export class OnlineConsultService {
     if (doctor?.userId) {
       await sendDoctorConsultBooked({
         userId: resolveMongoRefId(doctor.userId),
-        phone: doctorUser?.phone ?? undefined,
-        patientName: patient?.name ?? "Patient",
+        phone: safeDisplayText(doctorUser?.phone) ?? undefined,
+        patientName: safeDisplayText(patient?.name) ?? "Patient",
         slotStart: appointment.scheduledStart,
         appointmentId: appointment._id.toString(),
         type: "online",
@@ -887,7 +910,7 @@ export class OnlineConsultService {
     if (!doctor?._id) return null;
 
     const user = doctor.userId;
-    const name = user?.name ?? "Doctor";
+    const name = mapUserPii(user ?? {}).name;
     const scheduledStart = appointment.scheduledStart as Date;
     const scheduledEnd = appointment.scheduledEnd as Date;
     const payment = appointment.paymentId as { amount?: number } | null;

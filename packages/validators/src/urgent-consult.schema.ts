@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { pakistaniPhoneSchema } from "./auth.schema";
+import { paymentProviderSchema } from "./payment.schema";
 
 export const urgentCareRequestSchema = z.object({
   patientPhone: pakistaniPhoneSchema,
   patientNotes: z.string().max(1000).optional(),
+  paymentProvider: paymentProviderSchema.optional(),
 });
 
 export type UrgentCareRequestInput = z.infer<typeof urgentCareRequestSchema>;

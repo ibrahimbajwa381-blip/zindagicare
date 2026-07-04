@@ -37,6 +37,7 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
         urgentCalls: 0,
         totalEarnings: 0,
         earningsThisMonth: 0,
+        availableBalance: 0,
       };
 
   return (

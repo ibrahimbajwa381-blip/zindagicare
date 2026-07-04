@@ -89,16 +89,27 @@ function mergeContactsWithThreads(
   });
 }
 
-export function PatientDashboardMessagesSection() {
+export function PatientDashboardMessagesSection({
+  initialContacts,
+  initialThreads,
+}: {
+  initialContacts?: ChatContactDto[];
+  initialThreads?: ChatThreadDto[];
+}) {
   const router = useRouter();
   const t = useTranslations();
   const m = t.dashboard.messages;
   const c = t.chat;
 
+  const hasInitialData = initialContacts != null && initialThreads != null;
   const [search, setSearch] = useState("");
-  const [contacts, setContacts] = useState<MergedContact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const initialLoadDone = useRef(false);
+  const [contacts, setContacts] = useState<MergedContact[]>(() =>
+    hasInitialData
+      ? mergeContactsWithThreads(initialContacts, initialThreads)
+      : [],
+  );
+  const [loading, setLoading] = useState(!hasInitialData);
+  const initialLoadDone = useRef(hasInitialData);
 
   const load = useCallback(async (q?: string) => {
     setLoading(true);
@@ -121,11 +132,15 @@ export function PatientDashboardMessagesSection() {
       return;
     }
 
+    if (hasInitialData && !query) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       void load(query);
     }, 250);
     return () => clearTimeout(timer);
-  }, [load, search]);
+  }, [hasInitialData, load, search]);
 
   function handleSelect(contact: MergedContact) {
     router.push(`/messages?doctor=${contact.id}`);
@@ -135,7 +150,7 @@ export function PatientDashboardMessagesSection() {
     <Card
       className={cn(
         surfaceCard,
-        "flex h-full w-full min-w-0 max-w-full flex-col overflow-x-hidden border-slate-200 p-0 shadow-sm md:overflow-hidden md:shadow-premium",
+        "flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden border-slate-200 p-0 shadow-sm md:shadow-premium",
       )}
     >
       <CardHeader className="shrink-0 space-y-3 border-b border-slate-200/80 bg-[#f0f2f5] px-3 py-3 sm:px-6 sm:py-4">

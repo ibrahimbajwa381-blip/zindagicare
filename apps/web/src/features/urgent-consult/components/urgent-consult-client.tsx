@@ -12,6 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { JazzCashRedirectForm } from "@/features/consult/components/jazzcash-redirect-form";
 import {
+  paymentProviderLabel,
+  usePaymentProviders,
+} from "@/features/consult/hooks/use-payment-providers";
+import type { PaymentProviderInput } from "@zindagi/validators";
+import {
   AlertTriangle,
   CheckCircle2,
   Clock,
@@ -36,9 +41,15 @@ export function UrgentConsultClient() {
   const [patientNotes, setPatientNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [jazzcashRedirect, setJazzcashRedirect] = useState<
-    UrgentCheckoutResult["jazzcash"] | null
+  const { defaultProvider, livePaymentsEnabled, providers } = usePaymentProviders();
+  const [paymentProvider, setPaymentProvider] = useState<PaymentProviderInput>(defaultProvider);
+  const [gatewayRedirect, setGatewayRedirect] = useState<
+    UrgentCheckoutResult["gatewayRedirect"] | null
   >(null);
+
+  useEffect(() => {
+    setPaymentProvider(defaultProvider);
+  }, [defaultProvider]);
 
   const loadMyRequest = useCallback(async () => {
     if (!session?.user) return;
@@ -93,7 +104,7 @@ export function UrgentConsultClient() {
 
     setLoading(true);
     setError(null);
-    setJazzcashRedirect(null);
+    setGatewayRedirect(null);
 
     try {
       const res = await fetch("/api/v1/urgent/checkout", {
@@ -102,6 +113,7 @@ export function UrgentConsultClient() {
         body: JSON.stringify({
           patientPhone: phone,
           patientNotes: patientNotes.trim() || undefined,
+          paymentProvider,
         }),
       });
       const json = await res.json();
@@ -116,8 +128,9 @@ export function UrgentConsultClient() {
         return;
       }
 
-      if (checkout.jazzcash) {
-        setJazzcashRedirect(checkout.jazzcash);
+      const redirect = checkout.gatewayRedirect ?? checkout.jazzcash;
+      if (redirect) {
+        setGatewayRedirect(redirect);
         return;
       }
 
@@ -136,7 +149,8 @@ export function UrgentConsultClient() {
   const hasPastRequest =
     request?.status === UrgentCareRequestStatuses.COMPLETED ||
     request?.status === UrgentCareRequestStatuses.CANCELLED;
-  const showForm = !hasActiveRequest && !jazzcashRedirect;
+  const showForm = !hasActiveRequest && !gatewayRedirect;
+  const showProviderChoice = livePaymentsEnabled && providers.length > 1;
   const isMatching =
     hasActiveRequest &&
     request.status === UrgentCareRequestStatuses.REQUESTED &&
@@ -166,10 +180,10 @@ export function UrgentConsultClient() {
           </p>
         </div>
 
-        {jazzcashRedirect && (
+        {gatewayRedirect && (
           <JazzCashRedirectForm
-            actionUrl={jazzcashRedirect.actionUrl}
-            fields={jazzcashRedirect.fields}
+            actionUrl={gatewayRedirect.actionUrl}
+            fields={gatewayRedirect.fields}
           />
         )}
 
@@ -217,6 +231,32 @@ export function UrgentConsultClient() {
                     maxLength={1000}
                   />
                 </div>
+
+                {showProviderChoice && (
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-semibold text-slate-800">Payment method</legend>
+                    <div className="grid grid-cols-2 gap-2">
+                      {providers.map((provider) => {
+                        const selected = paymentProvider === provider;
+                        return (
+                          <button
+                            key={provider}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => setPaymentProvider(provider)}
+                            className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+                              selected
+                                ? "border-brand bg-brand-muted text-brand-dark"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                            }`}
+                          >
+                            <span className="font-semibold">{paymentProviderLabel(provider)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                )}
 
                 {error && (
                   <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

@@ -70,6 +70,7 @@ export const en = {
   header: {
     actions: {
       messages: "Messages",
+      assistant: "Health Assistant",
       notifications: "Notifications",
       notificationsHint: "Updates about appointments and account activity",
       noNotifications: "You're all caught up.",
@@ -214,6 +215,24 @@ export const en = {
     whatsappChat: "Chat on WhatsApp",
     whatsappPrefill: "Hello, I have a question about ZindagiCare.",
     loadingPage: "Loading your care experience…",
+  },
+  agentFloat: {
+    badgeTitle: "AI Health Agent",
+    badgeLive: "Live",
+    badgeHint: "Speak to book care · ask anything",
+    micLabel: "Talk to ZindagiCare agent",
+    stopListening: "Stop listening",
+    panelTitle: "ZindagiCare Agent",
+    panelSubtitle: "Speak — I'll open the assistant and book for you",
+    close: "Close",
+    introducing: "Introducing myself…",
+    intro:
+      "Hello! I'm the ZindagiCare agent. Just tell me what you need — I can answer health questions, book a doctor appointment, and more.",
+    tapToSpeak: "Say your request — e.g. book Dr Sharma",
+    listening: "Listening…",
+    heardYou: "Opening assistant…",
+    tapWhenDone: "Tap mic again when you finish speaking",
+    openAssistant: "Open assistant to type instead",
   },
   pwa: {
     offlineTitle: "You're offline",
@@ -1305,6 +1324,12 @@ export const en = {
       participantDoctor: "Doctor: {name}",
       participantPatient: "Patient: {name}",
       joinVideo: "Join video session",
+      startsIn: "Starts in",
+      sessionOpenLabel: "Session status",
+      sessionWindowOpen: "Session window open",
+      missedTitle: "Missed appointment",
+      missedDescription:
+        "You did not join at your scheduled time. The join window has closed — book another consult if you still need care.",
     },
   },
   onboarding: {
@@ -1326,11 +1351,18 @@ export const en = {
       loading: "Loading your doctors…",
       tapToChat: "Tap to start chatting",
     },
+    copilot: {
+      title: "AI Health Assistant",
+      description:
+        "Speak in Urdu or English — get doctor referrals and book appointments by voice.",
+      cta: "Open assistant",
+    },
     title: "Hello, {name}",
     description: "Your appointments and family health hub.",
     nav: {
       dashboard: "Dashboard",
       messages: "Messages",
+      assistant: "Health Assistant",
     },
     header: {
       patientAccount: "Patient account",
@@ -1346,6 +1378,13 @@ export const en = {
     },
     upcomingAppointments: "Upcoming appointments",
     noAppointments: "None scheduled yet.",
+    upcomingAppointmentsEmpty: {
+      title: "Your calendar is clear",
+      description:
+        "Book a video consult with a verified doctor. Confirmed visits will show here with join links when it's time.",
+      bookConsult: "Find a doctor",
+      freeSunday: "Free Sunday consult",
+    },
     appointmentHistory: {
       title: "Appointment history",
       empty: "No past appointments yet. Completed and earlier consults will appear here.",
@@ -1622,6 +1661,55 @@ export const en = {
     medicationCountOne: "1 medication",
     medicationCountMany: "{count} medications",
     backToDashboard: "Back to dashboard",
+  },
+  copilot: {
+    pageTitle: "Health Assistant",
+    pageDescription:
+      "Speak or type in Urdu or English — get doctor referrals and book appointments by voice.",
+    dismissIntro: "Dismiss intro",
+    navLabel: "Health Assistant",
+    newChat: "New chat",
+    emptyTitle: "Health chat",
+    emptyDescription: "Start a voice or text conversation with your health agent.",
+    selectChatTitle: "ZindagiCare Health Assistant",
+    selectChatDescription:
+      "Say \"مجھے ڈاکٹر refer کرو\" or \"آج appointment book کرو\". Tap the mic and speak in Urdu.",
+    messagePlaceholder: "Speak or type your health question…",
+    disclaimer:
+      "This assistant provides general information only — not medical advice, diagnosis, or emergency care. For emergencies call 1122.",
+    bookConsultation: "Book consultation",
+    consultationFee: "Fee",
+    pmdcVerified: "PMDC verified",
+    urgentTitle: "Urgent care recommended",
+    urgentDescription:
+      "Your symptoms may need prompt attention. ZindagiCare urgent care connects you with a doctor in about 10 minutes.",
+    urgentCta: "Go to urgent care",
+    emergencyTitle: "Possible emergency",
+    emergencyBody:
+      "These symptoms need immediate emergency care. Call 1122 or go to the nearest hospital emergency room now.",
+    urgentBannerTitle: "Consider urgent care",
+    urgentBannerBody:
+      "If symptoms worsen or you feel unsafe waiting, use urgent care or emergency services.",
+    callEmergency: "Call 1122",
+    thinking: "Thinking…",
+    loading: "Loading chats…",
+    micLabel: "Tap to speak",
+    stopMicLabel: "Stop listening",
+    stopSpeakLabel: "Stop speaking",
+    voicePanelTitle: "Speak your question",
+    voicePanelSubtitle: "Tap the mic and ask in Urdu or English. The assistant will reply with voice.",
+    listeningLabel: "Listening…",
+    speakingLabel: "Speaking…",
+    tapToSpeakLabel: "Tap to speak",
+    chatPanelTitle: "Or type your message in the chat",
+    doctorReferralTitle: "Recommended doctors for you",
+    slotsAvailable: "Slots",
+    bookedConfirmedTitle: "Your appointment is booked",
+    bookedPendingTitle: "Appointment reserved — payment needed",
+    bookedPendingDescription: "Complete payment to confirm your video consultation.",
+    payNow: "Pay now",
+    viewDashboard: "View on dashboard",
+    viewProfile: "View profile",
   },
   providerOnboarding: {
     preview: {

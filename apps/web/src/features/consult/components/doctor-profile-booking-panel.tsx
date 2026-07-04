@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConsultReviewPaymentModal } from "@/features/consult/components/consult-review-payment-modal";
 import { JazzCashRedirectForm } from "@/features/consult/components/jazzcash-redirect-form";
+import {
+  usePaymentProviders,
+} from "@/features/consult/hooks/use-payment-providers";
+import type { PaymentProviderInput } from "@zindagi/validators";
 import type { CheckoutResult } from "@/features/consult/types";
 import type { PublicDoctorProfile } from "@/features/marketing/types/doctor-public";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -56,11 +60,17 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [patientNotes, setPatientNotes] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [jazzcashRedirect, setJazzcashRedirect] = useState<CheckoutResult["jazzcash"] | null>(
+  const { defaultProvider } = usePaymentProviders();
+  const [paymentProvider, setPaymentProvider] = useState<PaymentProviderInput>(defaultProvider);
+  const [gatewayRedirect, setGatewayRedirect] = useState<CheckoutResult["gatewayRedirect"] | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setPaymentProvider(defaultProvider);
+  }, [defaultProvider]);
 
   const loadSlots = useCallback(async () => {
     const res = await fetch(`/api/v1/consult/slots?doctorId=${doctor.doctorId}`);
@@ -112,7 +122,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
     if (!selectedSlotId) return;
     setLoading(true);
     setError(null);
-    setJazzcashRedirect(null);
+    setGatewayRedirect(null);
 
     try {
       const res = await fetch("/api/v1/consult/checkout", {
@@ -123,6 +133,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
           slotId: selectedSlotId,
           patientNotes: patientNotes.trim() || undefined,
           locale,
+          paymentProvider,
         }),
       });
       const json = await res.json();
@@ -137,8 +148,9 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
         return;
       }
 
-      if (checkout.jazzcash) {
-        setJazzcashRedirect(checkout.jazzcash);
+      const redirect = checkout.gatewayRedirect ?? checkout.jazzcash;
+      if (redirect) {
+        setGatewayRedirect(redirect);
       } else {
         throw new Error("Payment unavailable");
       }
@@ -151,10 +163,10 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
 
   return (
     <>
-      {jazzcashRedirect && (
+      {gatewayRedirect && (
         <JazzCashRedirectForm
-          actionUrl={jazzcashRedirect.actionUrl}
-          fields={jazzcashRedirect.fields}
+          actionUrl={gatewayRedirect.actionUrl}
+          fields={gatewayRedirect.fields}
         />
       )}
 
@@ -174,6 +186,8 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
         onPatientNotesChange={setPatientNotes}
         loading={loading}
         error={error}
+        paymentProvider={paymentProvider}
+        onPaymentProviderChange={setPaymentProvider}
         onPay={startCheckout}
       />
 

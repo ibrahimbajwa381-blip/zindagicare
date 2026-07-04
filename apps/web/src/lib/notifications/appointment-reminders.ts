@@ -177,3 +177,45 @@ export async function sendDoctorSundayMorningReminder(params: {
     },
   });
 }
+
+export async function sendAppointmentStartNow(params: {
+  userId: string;
+  phone?: string;
+  doctorName: string;
+  appointmentId: string;
+  type: "online" | "sunday_free";
+}) {
+  const label = consultLabel(params.type);
+
+  await persistReminder({
+    userId: params.userId,
+    phone: params.phone,
+    title: "Consultation starts now",
+    body: `Your ${label} with Dr. ${params.doctorName} is starting now. Join from your dashboard.`,
+    payload: {
+      type: "appointment_reminder_start_now",
+      appointmentId: params.appointmentId,
+    },
+  });
+}
+
+export async function sendDoctorAppointmentStartNow(params: {
+  userId: string;
+  phone?: string;
+  patientName: string;
+  appointmentId: string;
+  type: "online" | "clinic" | "sunday_free";
+}) {
+  const label = consultLabel(params.type);
+
+  await persistReminder({
+    userId: params.userId,
+    phone: params.phone,
+    title: "Consultation starts now",
+    body: `Your ${label} with ${params.patientName} is starting now. Open Consult requests to join.`,
+    payload: {
+      type: "doctor_appointment_reminder_start_now",
+      appointmentId: params.appointmentId,
+    },
+  });
+}

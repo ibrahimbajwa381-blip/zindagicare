@@ -1,3 +1,4 @@
+import { Roles, type Role } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { resolveDashboardMenuLinks } from "@/lib/nav/header-actions";
 import type { MobileNavLink, MobileNavSection } from "@/components/layout/mobile-nav";
@@ -6,13 +7,14 @@ type AccountSectionLabels = {
   myDashboard: string;
   doctorDashboard: string;
   adminDashboard: string;
+  healthAssistant: string;
   signOut: string;
   login: string;
   createAccount: string;
 };
 
 export function buildAccountMobileSection(
-  session: { user: { name?: string | null; roles?: string[] } } | null,
+  session: { user: { name?: string | null; roles?: Role[] } } | null,
   labels: AccountSectionLabels,
 ): MobileNavSection | null {
   if (!session?.user) {
@@ -30,8 +32,14 @@ export function buildAccountMobileSection(
     adminDashboard: labels.adminDashboard,
   });
 
+  const patientLinks =
+    session.user.roles?.includes(Roles.PATIENT) ?
+      [{ href: siteConfig.links.assistant, label: labels.healthAssistant }]
+    : [];
+
   return {
     links: [
+      ...patientLinks.map((link) => ({ href: link.href, label: link.label })),
       ...dashboardLinks.map((link) => ({
         href: link.href,
         label: link.label,
@@ -43,7 +51,7 @@ export function buildAccountMobileSection(
 }
 
 export function buildMarketingMobileNav(
-  session: { user: { roles?: string[] } } | null,
+  session: { user: { roles?: Role[] } } | null,
   labels: {
     home: string;
     onlineConsult: string;
@@ -56,6 +64,7 @@ export function buildMarketingMobileNav(
     myDashboard: string;
     doctorDashboard: string;
     adminDashboard: string;
+    healthAssistant: string;
     signOut: string;
     login: string;
     createAccount: string;
@@ -84,6 +93,7 @@ export function buildMarketingMobileNav(
     myDashboard: labels.myDashboard,
     doctorDashboard: labels.doctorDashboard,
     adminDashboard: labels.adminDashboard,
+    healthAssistant: labels.healthAssistant,
     signOut: labels.signOut,
     login: labels.login,
     createAccount: labels.createAccount,

@@ -555,6 +555,42 @@ async function toThreadDto(
   };
 }
 
+async function listEligibleThreadRowsForUser(userId: string): Promise<ThreadRow[]> {
+  await connectDatabase();
+
+  const [viewer, threads] = await Promise.all([
+    UserModel.findById(userId).select("roles").lean(),
+    ChatThreadModel.find(mongoFilter({ participantIds: userId, deletedAt: null }))
+      .sort({ lastMessageAt: -1, updatedAt: -1 })
+      .lean(),
+  ]);
+
+  if (!viewer) return [];
+
+  const viewerIsDoctor = viewer.roles.includes(Roles.DOCTOR);
+  const eligibleOtherIds = viewerIsDoctor
+    ? await buildEligiblePatientIdsForDoctor(
+        await resolveDoctorProfileId(userId),
+      )
+    : await buildEligibleDoctorUserIdsForPatient(userId);
+
+  const deduped = new Map<string, ThreadRow>();
+  for (const thread of threads) {
+    const otherId = thread.participantIds
+      .map((participant) => participant.toString())
+      .find((id) => id !== userId);
+    if (!otherId || !eligibleOtherIds.has(otherId)) continue;
+
+    const existing = deduped.get(otherId);
+    deduped.set(
+      otherId,
+      existing ? pickNewerThread(existing, thread) : thread,
+    );
+  }
+
+  return [...deduped.values()];
+}
+
 export class ChatService {
   static async ensureConnected() {
     await connectDatabase();
@@ -563,38 +599,14 @@ export class ChatService {
   static async listThreads(userId: string): Promise<ChatThreadDto[]> {
     await ChatService.ensureConnected();
 
-    const [viewer, threads] = await Promise.all([
-      UserModel.findById(userId).select("roles").lean(),
-      ChatThreadModel.find(mongoFilter({ participantIds: userId, deletedAt: null }))
-        .sort({ lastMessageAt: -1, updatedAt: -1 })
-        .lean(),
-    ]);
-
-    if (!viewer) return [];
-
-    const viewerIsDoctor = viewer.roles.includes(Roles.DOCTOR);
-    const eligibleOtherIds = viewerIsDoctor
-      ? await buildEligiblePatientIdsForDoctor(
-          await resolveDoctorProfileId(userId),
-        )
-      : await buildEligibleDoctorUserIdsForPatient(userId);
-
-    const deduped = new Map<string, ThreadRow>();
-    for (const thread of threads) {
-      const otherId = thread.participantIds
-        .map((participant) => participant.toString())
-        .find((id) => id !== userId);
-      if (!otherId || !eligibleOtherIds.has(otherId)) continue;
-
-      const existing = deduped.get(otherId);
-      deduped.set(
-        otherId,
-        existing ? pickNewerThread(existing, thread) : thread,
-      );
-    }
-
-    const threadRows = [...deduped.values()];
-    const otherIds = [...deduped.keys()];
+    const threadRows = await listEligibleThreadRowsForUser(userId);
+    const otherIds = threadRows
+      .map((thread) =>
+        thread.participantIds
+          .map((participant) => participant.toString())
+          .find((id) => id !== userId),
+      )
+      .filter((id): id is string => !!id);
     const threadIds = threadRows.map((thread) => thread._id.toString());
 
     const [participantsById, unreadByThreadId] = await Promise.all([
@@ -623,6 +635,22 @@ export class ChatService {
         otherParticipant,
       };
     });
+  }
+
+  static async totalUnreadCount(userId: string): Promise<number> {
+    await ChatService.ensureConnected();
+
+    const threadRows = await listEligibleThreadRowsForUser(userId);
+    if (threadRows.length === 0) return 0;
+
+    const threadIds = threadRows.map((thread) => thread._id.toString());
+    const unreadByThreadId = await batchCountUnread(threadIds, userId);
+
+    let total = 0;
+    for (const count of unreadByThreadId.values()) {
+      total += count;
+    }
+    return total;
   }
 
   static async getOrCreateDirectThread(

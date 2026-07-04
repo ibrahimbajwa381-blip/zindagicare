@@ -63,6 +63,7 @@ export type DoctorDashboardSummary = {
   urgentCalls: number;
   totalEarnings: number;
   earningsThisMonth: number;
+  availableBalance: number;
 };
 
 export type DoctorEarningRow = {
@@ -72,17 +73,47 @@ export type DoctorEarningRow = {
   /** Net amount credited to the doctor after commission. */
   amount: number;
   grossAmount: number;
+  commissionAmount: number;
   commissionPercent: number;
   currency: string;
   patient: { id: string; name: string };
 };
 
+export type DoctorConsultCounts = {
+  online: number;
+  clinic: number;
+  urgent: number;
+  homeVisit: number;
+  total: number;
+};
+
+export type DoctorWithdrawalRow = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  requestedAt: string;
+  completedAt?: string;
+};
+
 export type DoctorEarningsDetail = {
+  /** Gross patient payments before platform commission. */
+  totalGrossRevenue: number;
+  grossRevenueThisMonth: number;
+  /** Net amount credited to the doctor after commission. */
   totalEarnings: number;
   earningsThisMonth: number;
+  totalPlatformCommission: number;
+  platformCommissionThisMonth: number;
   completedPaidConsults: number;
+  completedConsults: DoctorConsultCounts;
+  completedConsultsThisMonth: DoctorConsultCounts;
   onlineCommissionPercent: number;
   homeVisitCommissionPercent: number;
+  availableBalance: number;
+  totalWithdrawn: number;
+  pendingWithdrawal: number;
+  withdrawals: DoctorWithdrawalRow[];
   transactions: DoctorEarningRow[];
 };
 
@@ -132,6 +163,7 @@ async function loadDoctorEarningsTotals(profileId: string, userId: string) {
   return {
     totalEarnings: detail.totalEarnings,
     earningsThisMonth: detail.earningsThisMonth,
+    availableBalance: detail.availableBalance,
   };
 }
 
@@ -163,6 +195,31 @@ async function resolveGrossAmounts(
   }
 
   return result;
+}
+
+function emptyConsultCounts(): DoctorConsultCounts {
+  return { online: 0, clinic: 0, urgent: 0, homeVisit: 0, total: 0 };
+}
+
+function incrementConsultCount(counts: DoctorConsultCounts, type: string) {
+  switch (type) {
+    case AppointmentTypes.ONLINE:
+      counts.online += 1;
+      break;
+    case AppointmentTypes.CLINIC:
+      counts.clinic += 1;
+      break;
+    case AppointmentTypes.URGENT_ONLINE:
+      counts.urgent += 1;
+      break;
+    case HomeVisitServiceTypes.DOCTOR_VISIT:
+    case AppointmentTypes.HOME_VISIT:
+      counts.homeVisit += 1;
+      break;
+    default:
+      break;
+  }
+  counts.total += 1;
 }
 
 async function buildDoctorEarningsDetail(
@@ -221,8 +278,14 @@ async function buildDoctorEarningsDetail(
 
   const paymentMap = await resolveGrossAmounts(paymentIds, paymentFallbacks);
 
+  let totalGrossRevenue = 0;
+  let grossRevenueThisMonth = 0;
   let totalEarnings = 0;
   let earningsThisMonth = 0;
+  let totalPlatformCommission = 0;
+  let platformCommissionThisMonth = 0;
+  const completedConsults = emptyConsultCounts();
+  const completedConsultsThisMonth = emptyConsultCounts();
   const transactions: DoctorEarningRow[] = [];
 
   for (const appt of completedAppts) {
@@ -236,11 +299,19 @@ async function buildDoctorEarningsDetail(
       grossAmount,
       commissionRates.online,
     );
+    const commissionAmount = grossAmount - netAmount;
+    totalGrossRevenue += grossAmount;
     totalEarnings += netAmount;
+    totalPlatformCommission += commissionAmount;
     const completedAt = appt.completedAt ?? appt.scheduledStart;
-    if (completedAt >= startOfMonth) {
+    const isThisMonth = completedAt >= startOfMonth;
+    if (isThisMonth) {
+      grossRevenueThisMonth += grossAmount;
       earningsThisMonth += netAmount;
+      platformCommissionThisMonth += commissionAmount;
+      incrementConsultCount(completedConsultsThisMonth, appt.type);
     }
+    incrementConsultCount(completedConsults, appt.type);
 
     const patient = appt.patientId as
       | { _id?: { toString(): string }; name?: string }
@@ -252,6 +323,7 @@ async function buildDoctorEarningsDetail(
       completedAt: completedAt.toISOString(),
       amount: netAmount,
       grossAmount,
+      commissionAmount,
       commissionPercent: commissionRates.online,
       currency: payment?.currency ?? "PKR",
       patient: {
@@ -271,11 +343,22 @@ async function buildDoctorEarningsDetail(
       grossAmount,
       commissionRates.homeVisit,
     );
+    const commissionAmount = grossAmount - netAmount;
+    totalGrossRevenue += grossAmount;
     totalEarnings += netAmount;
+    totalPlatformCommission += commissionAmount;
     const completedAt = visit.completedAt ?? visit.scheduledAt;
-    if (completedAt >= startOfMonth) {
+    const isThisMonth = completedAt >= startOfMonth;
+    if (isThisMonth) {
+      grossRevenueThisMonth += grossAmount;
       earningsThisMonth += netAmount;
+      platformCommissionThisMonth += commissionAmount;
+      incrementConsultCount(
+        completedConsultsThisMonth,
+        HomeVisitServiceTypes.DOCTOR_VISIT,
+      );
     }
+    incrementConsultCount(completedConsults, HomeVisitServiceTypes.DOCTOR_VISIT);
 
     const patient = visit.patientId as
       | { _id?: { toString(): string }; name?: string }
@@ -287,6 +370,7 @@ async function buildDoctorEarningsDetail(
       completedAt: completedAt.toISOString(),
       amount: netAmount,
       grossAmount,
+      commissionAmount,
       commissionPercent: commissionRates.homeVisit,
       currency: payment?.currency ?? visit.pricing?.currency ?? "PKR",
       patient: {
@@ -300,12 +384,26 @@ async function buildDoctorEarningsDetail(
     (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime(),
   );
 
+  const totalWithdrawn = 0;
+  const pendingWithdrawal = 0;
+  const withdrawals: DoctorWithdrawalRow[] = [];
+
   return {
+    totalGrossRevenue,
+    grossRevenueThisMonth,
     totalEarnings,
     earningsThisMonth,
+    totalPlatformCommission,
+    platformCommissionThisMonth,
     completedPaidConsults: transactions.length,
+    completedConsults,
+    completedConsultsThisMonth,
     onlineCommissionPercent: commissionRates.online,
     homeVisitCommissionPercent: commissionRates.homeVisit,
+    availableBalance: Math.max(0, totalEarnings - totalWithdrawn - pendingWithdrawal),
+    totalWithdrawn,
+    pendingWithdrawal,
+    withdrawals,
     transactions: transactions.slice(0, 100),
   };
 }
@@ -359,6 +457,7 @@ export async function getDoctorDashboardSummary(
     urgentCalls,
     totalEarnings: earnings.totalEarnings,
     earningsThisMonth: earnings.earningsThisMonth,
+    availableBalance: earnings.availableBalance,
   };
 }
 

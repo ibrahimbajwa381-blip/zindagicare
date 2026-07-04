@@ -1,4 +1,8 @@
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
+import {
+  getConfiguredLiveProviders,
+  isLivePaymentsEnabled,
+} from "@/lib/payments/payment-gateway";
 
 /** Dummy JazzCash-shaped fields stored on Payment.metadata during MVP testing. */
 export type DummyPaymentPreview = {
@@ -20,16 +24,11 @@ export type TestPaymentCheckout = DummyPaymentPreview & {
 };
 
 /**
- * MVP default: simulated payments until JAZZCASH_LIVE=true with real credentials.
+ * MVP default: simulated payments until PAYMENTS_LIVE=true with gateway credentials.
  */
 export function isDummyPaymentMode(): boolean {
-  if (process.env.JAZZCASH_LIVE === "true") {
-    const merchantId = process.env.JAZZCASH_MERCHANT_ID ?? "";
-    const password = process.env.JAZZCASH_PASSWORD ?? "";
-    const integritySalt = process.env.JAZZCASH_INTEGRITY_SALT ?? "";
-    return !(merchantId && password && integritySalt);
-  }
-  return true;
+  if (!isLivePaymentsEnabled()) return true;
+  return getConfiguredLiveProviders().length === 0;
 }
 
 export function buildDummyPaymentPreview(params: {

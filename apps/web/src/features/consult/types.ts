@@ -1,5 +1,7 @@
 import type { AppointmentStatus } from "@zindagi/shared";
 import type { TestPaymentCheckout } from "@/lib/payments/dummy-payment";
+import type { GatewayRedirectForm } from "@/lib/payments/types";
+import type { PaymentProviderInput } from "@zindagi/validators";
 
 export type OnlinePatientBookingDto = {
   appointmentId: string;
@@ -45,8 +47,9 @@ export type CheckoutResult = {
   amount: number;
   testMode?: boolean;
   testPayment?: TestPaymentCheckout;
-  jazzcash?: {
-    actionUrl: string;
-    fields: Record<string, string>;
-  };
+  gatewayRedirect?: GatewayRedirectForm;
+  /** @deprecated use gatewayRedirect */
+  jazzcash?: GatewayRedirectForm;
 };
+
+export type { PaymentProviderInput };

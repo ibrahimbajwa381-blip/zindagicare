@@ -84,7 +84,13 @@ export default async function DoctorLayout({
     mongoFilter({ userId: session.user.id }),
   )
     .select("slug verificationStatus accountability")
+    .populate("userId", "name avatarUrl")
     .lean();
+
+  const doctorUser = doctorProfile?.userId as
+    | { name?: string; avatarUrl?: string }
+    | null
+    | undefined;
 
   const verificationStatus =
     doctorProfile?.verificationStatus ?? session.user.doctorVerificationStatus;
@@ -105,6 +111,8 @@ export default async function DoctorLayout({
       showFullNav={showFullNav}
       verificationStatus={verificationStatus}
       doctorSlug={doctorProfile?.slug}
+      doctorName={doctorUser?.name ?? session.user.name ?? "Doctor"}
+      doctorAvatarUrl={doctorUser?.avatarUrl}
       accountabilityBanner={accountabilityBanner}
     >
       {children}

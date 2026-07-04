@@ -44,11 +44,14 @@ import {
   sendUrgentConsultConfirmation,
 } from "@/lib/notifications/consult-notifications";
 import { ChatService } from "@/server/services/chat.service";
+import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import {
-  buildCheckoutForm,
-  generateTxnRefNo,
-  isJazzCashConfigured,
-} from "@/lib/payments/jazzcash";
+  buildGatewayCheckout,
+  gatewayIntegrationLabel,
+  resolveCheckoutProvider,
+  type GatewayRedirectForm,
+  type LivePaymentProvider,
+} from "@/lib/payments/payment-gateway";
 import type {
   UrgentAvailabilityDto,
   UrgentCareRequestDto,
@@ -279,6 +282,19 @@ export class UrgentConsultService {
     const checkoutRef = randomUUID();
     const expiresAt = new Date(Date.now() + URGENT_CONSULT_CONFIG.paymentHoldDurationMs);
     const useDummy = isDummyPaymentMode();
+    let liveProvider: LivePaymentProvider | null = null;
+
+    if (!useDummy) {
+      try {
+        liveProvider = resolveCheckoutProvider(input.paymentProvider);
+      } catch (error) {
+        throw new AppError(
+          error instanceof Error ? error.message : "Payment gateway unavailable",
+          ErrorCodes.VALIDATION,
+          503,
+        );
+      }
+    }
 
     const dummyPreview = buildDummyPaymentPreview({
       paymentId: "pending",
@@ -290,7 +306,7 @@ export class UrgentConsultService {
 
     const payment = (await PaymentModel.create({
       userId: patientId,
-      provider: useDummy ? PaymentProviders.DUMMY : PaymentProviders.JAZZCASH,
+      provider: useDummy ? PaymentProviders.DUMMY : liveProvider!,
       status: PaymentStatuses.PENDING,
       amount,
       currency: "PKR",
@@ -302,7 +318,7 @@ export class UrgentConsultService {
         patientNotes: input.patientNotes,
         txnRefNo: dummyPreview.txnRefNo,
         expiresAt: expiresAt.toISOString(),
-        integration: useDummy ? "dummy_mvp" : "jazzcash_live",
+        integration: useDummy ? "dummy_mvp" : gatewayIntegrationLabel(liveProvider!),
         gatewayPreview: useDummy ? dummyPreview : undefined,
       } satisfies UrgentPaymentMetadata,
     } as Record<string, unknown>)) as { _id: { toString(): string } };
@@ -325,23 +341,16 @@ export class UrgentConsultService {
       };
     }
 
-    if (!isJazzCashConfigured()) {
-      throw new AppError(
-        "JazzCash credentials missing. Set JAZZCASH_* env vars or keep JAZZCASH_LIVE unset for MVP test payments.",
-        ErrorCodes.VALIDATION,
-        503,
-      );
-    }
-
-    const jazzcash = buildCheckoutForm({
+    const gatewayRedirect = buildGatewayCheckout(liveProvider!, {
       amountPkr: amount,
       txnRefNo,
       billReference: paymentId.slice(-12),
       description: "ZindagiCare urgent care",
       paymentId,
+      customerMobile: input.patientPhone,
     });
 
-    return { paymentId, amount, jazzcash };
+    return { paymentId, amount, gatewayRedirect, jazzcash: gatewayRedirect };
   }
 
   static async completeTestPayment(paymentId: string, userId: string) {

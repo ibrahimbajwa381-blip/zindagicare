@@ -36,6 +36,7 @@ const SEGMENT_LABELS: Record<string, { name: string; labelKey?: string }> = {
   intake: { name: "Pre-visit intake", labelKey: "breadcrumbs.intake" },
   prescriptions: { name: "Prescriptions", labelKey: "breadcrumbs.prescriptions" },
   messages: { name: "Messages", labelKey: "header.actions.messages" },
+  assistant: { name: "Health Assistant", labelKey: "copilot.navLabel" },
   dashboard: { name: "Dashboard", labelKey: "breadcrumbs.dashboard" },
   privacy: { name: "Privacy policy", labelKey: "breadcrumbs.privacy" },
   terms: { name: "Terms of service", labelKey: "breadcrumbs.terms" },

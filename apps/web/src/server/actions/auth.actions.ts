@@ -3,7 +3,7 @@
 import { CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { auth, signIn } from "@/lib/auth";
+import { signIn } from "@/lib/auth";
 import { authActionErrorMessage } from "@/lib/auth/errors";
 import { getLocale } from "@/i18n/server";
 import { getDictionary } from "@/i18n";
@@ -19,11 +19,35 @@ export type RegisterFormState = {
   fieldErrors?: Partial<Record<AuthFormField | "termsAccepted", string>>;
   error?: string;
 };
-import { registerWithCredentials } from "@/server/services/auth.service";
+import {
+  findOrCreatePhoneUser,
+  loadAuthUserPayload,
+  registerWithCredentials,
+  verifyCredentialsLogin,
+} from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
 import { loginSchema, otpVerifySchema, registerSchema, type AccountType } from "@zindagi/validators";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
-import { AUTH_ROUTES, resolveLoginRedirectPath } from "@/lib/auth/routes";
+import {
+  AUTH_ROUTES,
+  resolveLoginRedirectPath,
+  type PostAuthUser,
+} from "@/lib/auth/routes";
+
+async function resolveSignedInUser(
+  provider: "credentials" | "phone-otp",
+  fields: Record<string, string>,
+): Promise<PostAuthUser | null> {
+  if (provider === "credentials") {
+    return verifyCredentialsLogin(
+      String(fields.email).trim().toLowerCase(),
+      String(fields.password),
+    );
+  }
+
+  const user = await findOrCreatePhoneUser(String(fields.phone));
+  return loadAuthUserPayload(user._id.toString());
+}
 
 async function signInWithProvider(
   provider: "credentials" | "phone-otp",
@@ -39,15 +63,17 @@ async function signInWithProvider(
     throw new CredentialsSignin();
   }
 
-  const session = await auth();
-  if (!session?.user) {
+  // Session cookies are set by signIn above, but auth() may not see them in the
+  // same server-action request (Next.js App Router). Load the user directly instead.
+  const signedInUser = await resolveSignedInUser(provider, fields);
+  if (!signedInUser) {
     throw new CredentialsSignin();
   }
 
   const redirectTo =
     "redirectTo" in options
       ? options.redirectTo
-      : resolveLoginRedirectPath(session.user, options.callbackUrl);
+      : resolveLoginRedirectPath(signedInUser, options.callbackUrl);
 
   redirect(redirectTo);
 }

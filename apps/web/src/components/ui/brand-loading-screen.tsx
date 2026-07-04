@@ -43,22 +43,12 @@ export function BrandLoadingScreen({
       </div>
 
       <div className="relative flex flex-col items-center gap-6">
-        <div className="relative flex items-center justify-center">
-          <span
-            className="absolute size-28 rounded-full border-2 border-brand/15 sm:size-32"
-            aria-hidden
-          />
-          <span
-            className="brand-loading-ring absolute size-28 rounded-full border-2 border-transparent border-t-brand/70 sm:size-32"
-            aria-hidden
-          />
-          <SiteLogo
-            href={null}
-            size="xl"
-            priority
-            className="brand-loading-logo relative z-10"
-          />
-        </div>
+        <SiteLogo
+          href={null}
+          size="xl"
+          priority
+          className="brand-loading-logo"
+        />
 
         <div className="flex items-center gap-2" aria-hidden>
           {[0, 1, 2].map((index) => (

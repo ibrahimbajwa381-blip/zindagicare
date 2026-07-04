@@ -19,6 +19,8 @@ type DoctorShellProps = {
   showFullNav: boolean;
   verificationStatus?: string | null;
   doctorSlug?: string | null;
+  doctorName?: string;
+  doctorAvatarUrl?: string | null;
   accountabilityBanner?: DoctorAccountabilityBanner | null;
 };
 
@@ -63,26 +65,30 @@ export function DoctorShell({
   showFullNav,
   verificationStatus,
   doctorSlug,
+  doctorName = "Doctor",
+  doctorAvatarUrl,
   accountabilityBanner,
 }: DoctorShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <UnifiedHeader
-        navLinks={[]}
-        showMobileNav={false}
-        leadingSlot={
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        }
-      />
+      <div className="lg:pl-[17.5rem]">
+        <UnifiedHeader
+          navLinks={[]}
+          showMobileNav={false}
+          leadingSlot={
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          }
+        />
+      </div>
 
       <DoctorSidebar
         mobileOpen={mobileOpen}
@@ -90,6 +96,8 @@ export function DoctorShell({
         showFullNav={showFullNav}
         verificationStatus={verificationStatus}
         doctorSlug={doctorSlug}
+        doctorName={doctorName}
+        doctorAvatarUrl={doctorAvatarUrl}
       />
 
       <div className={cn("flex min-h-[calc(100vh-4rem)] flex-col sm:min-h-[calc(100vh-4.75rem)] lg:pl-[17.5rem]")}>

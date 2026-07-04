@@ -13,6 +13,14 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     theme_color: theme.brand.DEFAULT,
     background_color: theme.neutral.background,
+    shortcuts: [
+      {
+        name: "Health Assistant",
+        short_name: "Assistant",
+        url: "/assistant",
+        icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+      },
+    ],
     icons: [
       {
         src: "/icon-192.png",

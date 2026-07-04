@@ -1,27 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchThreads } from "@/features/chat/lib/chat-api";
 import { CHAT_UNREAD_EVENT } from "@/lib/chat/unread-events";
 import { useIsMountedRef } from "@/hooks/use-is-mounted-ref";
 
 type NotificationSummary = {
   unreadCount: number;
+  chatUnreadCount: number;
 };
 
 async function fetchNotificationSummary(): Promise<NotificationSummary> {
   const res = await fetch("/api/v1/notifications/summary");
-  if (!res.ok) return { unreadCount: 0 };
+  if (!res.ok) return { unreadCount: 0, chatUnreadCount: 0 };
   const json = (await res.json()) as {
     success: boolean;
-    data?: NotificationSummary;
+    data?: Partial<NotificationSummary>;
   };
-  return json.data ?? { unreadCount: 0 };
-}
-
-async function fetchChatUnreadTotal() {
-  const threads = await fetchThreads();
-  return threads.reduce((sum, thread) => sum + (thread.unreadCount ?? 0), 0);
+  const data = json.data ?? {};
+  return {
+    unreadCount: data.unreadCount ?? 0,
+    chatUnreadCount: data.chatUnreadCount ?? 0,
+  };
 }
 
 export function useHeaderBadges(enabled: boolean) {
@@ -33,14 +32,14 @@ export function useHeaderBadges(enabled: boolean) {
   const refresh = useCallback(async () => {
     if (!enabled) return;
 
-    const [chatTotal, summary] = await Promise.all([
-      fetchChatUnreadTotal().catch(() => 0),
-      fetchNotificationSummary().catch(() => ({ unreadCount: 0 })),
-    ]);
+    const summary = await fetchNotificationSummary().catch(() => ({
+      unreadCount: 0,
+      chatUnreadCount: 0,
+    }));
 
     if (!mountedRef.current) return;
 
-    setChatUnread(chatTotal);
+    setChatUnread(summary.chatUnreadCount);
     setNotificationUnread(summary.unreadCount);
     setLoading(false);
   }, [enabled, mountedRef]);

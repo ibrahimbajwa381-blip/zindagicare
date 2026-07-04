@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime";
 import { useTranslations } from "@/i18n/locale-provider";
-import { CountdownTimer } from "./countdown-timer";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
+import { VideoSessionStatusBanner } from "@/features/consult/components/video-session-status-banner";
+import { useVideoJoinWindow } from "@/features/consult/hooks/use-video-join-window";
 import { useIntakeStatus } from "@/features/intake/hooks/use-intake-status";
 import type { SundayPatientBookingDto } from "../types";
 
@@ -51,9 +52,15 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
   const b = t.dashboard.sundayBooking;
   const { doctor } = booking;
   const intakeStatus = useIntakeStatus(booking.appointmentId);
+  const { canJoin, joinClosesAt } = useVideoJoinWindow(
+    booking.scheduledStart,
+    booking.scheduledEnd,
+  );
+  const isMissed = !canJoin && Date.now() > joinClosesAt.getTime();
 
-  const statusLabel =
-    booking.status === AppointmentStatuses.CONFIRMED
+  const statusLabel = isMissed
+    ? t.dashboard.appointmentHistory.missed
+    : booking.status === AppointmentStatuses.CONFIRMED
       ? b.statusConfirmed
       : booking.status === AppointmentStatuses.IN_PROGRESS
         ? b.statusInProgress
@@ -97,7 +104,14 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
                     {t.common.pmdc}
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-xs">
+                <Badge
+                  variant="outline"
+                  className={
+                    isMissed
+                      ? "border-red-200 bg-red-50 text-xs uppercase tracking-wide text-red-700"
+                      : "text-xs"
+                  }
+                >
                   {statusLabel}
                 </Badge>
               </div>
@@ -135,10 +149,10 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
           </div>
         </dl>
 
-        <div className="rounded-xl border border-brand-light/30 bg-brand-muted/50 px-4 py-3">
-          <p className="text-xs text-slate-500">{b.startsIn}</p>
-          <CountdownTimer targetDate={booking.scheduledStart} />
-        </div>
+        <VideoSessionStatusBanner
+          scheduledStart={booking.scheduledStart}
+          scheduledEnd={booking.scheduledEnd}
+        />
 
         {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && (
           <Link

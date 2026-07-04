@@ -15,7 +15,7 @@ export const POST = withApiHandler(
 
     if (!isDummyPaymentMode()) {
       throw new AppError(
-        "Test payments are disabled when JAZZCASH_LIVE=true",
+        "Test payments are disabled when PAYMENTS_LIVE=true",
         ErrorCodes.VALIDATION,
         400,
       );

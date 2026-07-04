@@ -10,8 +10,10 @@ import {
 import {
   sendAppointmentReminder1h,
   sendAppointmentReminder24h,
+  sendAppointmentStartNow,
   sendDoctorAppointmentReminder1h,
   sendDoctorAppointmentReminder24h,
+  sendDoctorAppointmentStartNow,
   sendDoctorSundayMorningReminder,
   sendSundayMorningReminder,
 } from "@/lib/notifications/appointment-reminders";
@@ -22,6 +24,8 @@ import { safeDisplayText } from "@/server/lib/decrypt-pii";
 
 const MS_HOUR = 60 * 60 * 1000;
 const MS_DAY = 24 * MS_HOUR;
+/** Grace window after scheduledStart to still deliver "starts now" if cron/page load is slightly late. */
+const MS_START_GRACE = 15 * 60 * 1000;
 
 const ACTIVE_STATUSES = [
   AppointmentStatuses.CONFIRMED,
@@ -58,7 +62,7 @@ export class AppointmentReminderService {
     const appointments = await AppointmentModel.find(
       mongoFilter({
         status: { $in: ACTIVE_STATUSES },
-        scheduledStart: { $gt: now },
+        scheduledStart: { $gte: new Date(now.getTime() - MS_START_GRACE) },
         deletedAt: null,
         type: {
           $in: [
@@ -80,9 +84,11 @@ export class AppointmentReminderService {
       scanned: appointments.length,
       sent24h: 0,
       sent1h: 0,
+      sentStartNow: 0,
       sentSundayMorning: 0,
       sentDoctor24h: 0,
       sentDoctor1h: 0,
+      sentDoctorStartNow: 0,
       sentDoctorSundayMorning: 0,
     };
 
@@ -112,9 +118,11 @@ export class AppointmentReminderService {
       const remindersSent = appointment.remindersSent ?? {
         h24: false,
         h1: false,
+        startNow: false,
         sundayMorning: false,
         doctorH24: false,
         doctorH1: false,
+        doctorStartNow: false,
         doctorSundayMorning: false,
       };
 
@@ -124,7 +132,7 @@ export class AppointmentReminderService {
       const patientReminderType =
         appointment.type === AppointmentTypes.SUNDAY_FREE ? "sunday_free" : "online";
 
-      if (isPatientReminderType && msUntil <= MS_DAY && !remindersSent.h24) {
+      if (isPatientReminderType && msUntil > 0 && msUntil <= MS_DAY && !remindersSent.h24) {
         await sendAppointmentReminder24h({
           userId: patientId,
           phone: patientDoc?.phone ?? undefined,
@@ -140,7 +148,7 @@ export class AppointmentReminderService {
         results.sent24h += 1;
       }
 
-      if (isPatientReminderType && msUntil <= MS_HOUR && !remindersSent.h1) {
+      if (isPatientReminderType && msUntil > 0 && msUntil <= MS_HOUR && !remindersSent.h1) {
         await sendAppointmentReminder1h({
           userId: patientId,
           phone: patientDoc?.phone ?? undefined,
@@ -154,6 +162,26 @@ export class AppointmentReminderService {
           { $set: { "remindersSent.h1": true } },
         );
         results.sent1h += 1;
+      }
+
+      if (
+        isPatientReminderType &&
+        msUntil <= 0 &&
+        msUntil >= -MS_START_GRACE &&
+        !remindersSent.startNow
+      ) {
+        await sendAppointmentStartNow({
+          userId: patientId,
+          phone: patientDoc?.phone ?? undefined,
+          doctorName,
+          appointmentId,
+          type: patientReminderType,
+        });
+        await AppointmentModel.updateOne(
+          mongoFilter({ _id: appointment._id }),
+          { $set: { "remindersSent.startNow": true } },
+        );
+        results.sentStartNow += 1;
       }
 
       if (
@@ -177,7 +205,7 @@ export class AppointmentReminderService {
         results.sentSundayMorning += 1;
       }
 
-      if (doctorUserId && msUntil <= MS_DAY && !remindersSent.doctorH24) {
+      if (doctorUserId && msUntil > 0 && msUntil <= MS_DAY && !remindersSent.doctorH24) {
         await sendDoctorAppointmentReminder24h({
           userId: doctorUserId,
           phone: doctorUser?.phone ?? undefined,
@@ -193,7 +221,7 @@ export class AppointmentReminderService {
         results.sentDoctor24h += 1;
       }
 
-      if (doctorUserId && msUntil <= MS_HOUR && !remindersSent.doctorH1) {
+      if (doctorUserId && msUntil > 0 && msUntil <= MS_HOUR && !remindersSent.doctorH1) {
         await sendDoctorAppointmentReminder1h({
           userId: doctorUserId,
           phone: doctorUser?.phone ?? undefined,
@@ -207,6 +235,26 @@ export class AppointmentReminderService {
           { $set: { "remindersSent.doctorH1": true } },
         );
         results.sentDoctor1h += 1;
+      }
+
+      if (
+        doctorUserId &&
+        msUntil <= 0 &&
+        msUntil >= -MS_START_GRACE &&
+        !remindersSent.doctorStartNow
+      ) {
+        await sendDoctorAppointmentStartNow({
+          userId: doctorUserId,
+          phone: doctorUser?.phone ?? undefined,
+          patientName,
+          appointmentId,
+          type: reminderType,
+        });
+        await AppointmentModel.updateOne(
+          mongoFilter({ _id: appointment._id }),
+          { $set: { "remindersSent.doctorStartNow": true } },
+        );
+        results.sentDoctorStartNow += 1;
       }
 
       if (

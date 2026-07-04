@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AppUserMenu } from "@/components/layout/app-user-menu";
 import {
@@ -24,7 +23,6 @@ export function AppHeaderUser({
 }: AppHeaderUserProps) {
   const { data: session } = useSession();
   const t = useTranslations();
-  const pathname = usePathname();
   const [profile, setProfile] = useState<{
     email?: string;
     phone?: string;
@@ -76,7 +74,7 @@ export function AppHeaderUser({
     return () => {
       cancelled = true;
     };
-  }, [enrichFromProfile, isPatient, isDoctor, user?.id, pathname]);
+  }, [enrichFromProfile, isPatient, isDoctor, user?.id]);
 
   if (!user) return null;
 

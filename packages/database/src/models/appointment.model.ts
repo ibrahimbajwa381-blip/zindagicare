@@ -72,9 +72,11 @@ const appointmentSchema = new Schema(
     remindersSent: {
       h24: { type: Boolean, default: false },
       h1: { type: Boolean, default: false },
+      startNow: { type: Boolean, default: false },
       sundayMorning: { type: Boolean, default: false },
       doctorH24: { type: Boolean, default: false },
       doctorH1: { type: Boolean, default: false },
+      doctorStartNow: { type: Boolean, default: false },
       doctorSundayMorning: { type: Boolean, default: false },
     },
     completedAt: { type: Date },

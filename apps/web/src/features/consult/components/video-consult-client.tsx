@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Clock,
@@ -135,7 +136,6 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
       setInCall(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : copy.couldNotJoin);
-      joinAttemptedRef.current = false;
     } finally {
       setJoining(false);
     }
@@ -373,6 +373,39 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   }
 
   if (!sessionStatus.canJoin) {
+    const joinWindowClosed = Date.now() > new Date(sessionStatus.joinClosesAt).getTime();
+
+    if (joinWindowClosed) {
+      return (
+        <div className="mx-auto max-w-xl space-y-6 px-4 py-8">
+          <Link
+            href={dashboardHref}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-dark"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {copy.back}
+          </Link>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700">
+                <AlertCircle className="h-5 w-5" />
+              </span>
+              <div>
+                <h1 className="font-display text-xl font-semibold text-red-900">{copy.missedTitle}</h1>
+                <p className="mt-1 text-sm text-red-800">{copy.missedDescription}</p>
+                <p className="mt-2 text-sm text-red-700">
+                  {formatKarachiDateTime(sessionStatus.scheduledStart)}
+                </p>
+              </div>
+            </div>
+            <Button asChild className="mt-6">
+              <Link href={dashboardHref}>{videoLeftCopy.backToDashboard}</Link>
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-xl space-y-6 px-4 py-8">
         <Link
@@ -423,7 +456,14 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     <div className="mx-auto max-w-lg space-y-4 px-4 py-8 text-center">
       <p className="text-sm text-red-600">{error ?? copy.couldNotStart}</p>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <Button onClick={() => void startCall()}>{copy.tryAgain}</Button>
+        <Button
+          onClick={() => {
+            joinAttemptedRef.current = false;
+            void startCall();
+          }}
+        >
+          {copy.tryAgain}
+        </Button>
         <Button asChild variant="outline">
           <Link href={dashboardHref}>{videoLeftCopy.backToDashboard}</Link>
         </Button>
