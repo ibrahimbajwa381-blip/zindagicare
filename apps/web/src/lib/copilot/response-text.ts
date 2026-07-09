@@ -66,14 +66,29 @@ export function buildCopilotResponseText(
   }
 
   if (metadata?.bookingSuggestion) {
-    const { doctorName, specialty } = metadata.bookingSuggestion;
+    const { doctorName, specialty, slotStartAt } = metadata.bookingSuggestion;
+    const when = slotStartAt
+      ? new Date(slotStartAt).toLocaleString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : "";
     if (language === "ur-script") {
-      return `${doctorName}، ${specialty} — مشاورت کے لیے سلاٹ دستیاب ہے۔`;
+      return when
+        ? `${doctorName}، ${specialty} — ${when} پر سلاٹ دستیاب ہے۔`
+        : `${doctorName}، ${specialty} — مشاورت کے لیے سلاٹ دستیاب ہے۔`;
     }
     if (language === "ur-roman") {
-      return `${doctorName}, ${specialty} — consultation ke liye slot available hai.`;
+      return when
+        ? `${doctorName}, ${specialty} — ${when} par slot available hai.`
+        : `${doctorName}, ${specialty} — consultation ke liye slot available hai.`;
     }
-    return `${doctorName}, ${specialty}, has an available consultation slot.`;
+    return when
+      ? `${doctorName}, ${specialty}, has a slot on ${when}.`
+      : `${doctorName}, ${specialty}, has an available consultation slot.`;
   }
 
   if (metadata?.appointmentPreviews?.length) {

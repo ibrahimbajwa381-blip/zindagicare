@@ -41,6 +41,12 @@ import {
   sanitizeCopilotDisplayText,
   sanitizeToolResultForModel,
 } from "@/lib/copilot/response-text";
+import { decryptField, isEncrypted } from "@zindagi/shared/crypto/field-encryption";
+import {
+  bookingIntentToolArgs,
+  formatBookingIntentForPrompt,
+  parseBookingIntent,
+} from "@/lib/copilot/parse-booking-intent";
 
 export type CopilotSessionDto = {
   id: string;
@@ -161,6 +167,7 @@ function buildSystemPrompt(
     allergies: string[];
     chronicConditions: string[];
   },
+  intentHint = "",
 ): string {
   const allergyLine =
     patientContext.allergies.length > 0
@@ -186,22 +193,27 @@ function buildSystemPrompt(
     "- Refuse hacking, prescriptions for others, or non-health malicious requests.",
     "",
     "AGENT WORKFLOWS:",
-    "1) DOCTOR REFERRAL: refer_doctors with specialty (cardiologist, skin, fever, etc.).",
-    "2) BOOK APPOINTMENT: book_appointment with specialty OR doctorName — e.g. 'cardiologist appointment book kro' → specialty: Cardiologist. Payment is always required before the appointment is confirmed — tell the patient to complete payment.",
-    "3) SYMPTOMS: assess_symptoms then refer or book.",
-    "4) URGENT: suggest_urgent_care for same-day non-ER needs.",
-    "5) SUNDAY FREE: suggest_sunday_consult.",
-    "6) HOME VISITS: suggest_home_care.",
-    "7) MY APPOINTMENTS: list_my_appointments.",
-    "8) PRESCRIPTIONS: list_my_prescriptions.",
-    "9) HEALTH FILE: get_patient_health_summary for allergies/conditions.",
-    "10) NAVIGATION: get_service_links for dashboard, messages, browse doctors.",
+    "1) FIND DOCTOR: refer_doctors — supports specialty + time (within next hour, tomorrow morning/evening) + highest-rated.",
+    "2) BOOK APPOINTMENT: book_appointment — same filters. Examples:",
+    "   • 'skin specialist within the next hour' → refer_doctors, specialty Dermatologist, withinNextHour true",
+    "   • 'highest-rated cardiologist tomorrow evening' → book_appointment, specialty Cardiologist, preferTomorrow + preferEvening + preferHighestRated",
+    "   • 'Kal subah kisi achhe general physician ki appointment' → book_appointment, specialty General Physician, preferTomorrow + preferMorning + preferHighestRated",
+    "3) NEVER say you cannot filter by rating or time — the platform supports all of these via tools.",
+    "4) SYMPTOMS: assess_symptoms then refer or book.",
+    "5) URGENT: suggest_urgent_care for same-day non-ER needs.",
+    "6) SUNDAY FREE: suggest_sunday_consult.",
+    "7) HOME VISITS: suggest_home_care.",
+    "8) MY APPOINTMENTS: list_my_appointments.",
+    "9) PRESCRIPTIONS: list_my_prescriptions.",
+    "10) HEALTH FILE: get_patient_health_summary for allergies/conditions.",
+    "11) NAVIGATION: get_service_links for dashboard, messages, browse doctors.",
     "",
     "TOOLS: refer_doctors, book_appointment, search_doctors, get_doctor_slots, suggest_booking,",
     "assess_symptoms, suggest_urgent_care, suggest_sunday_consult, suggest_home_care,",
     "list_my_appointments, list_my_prescriptions, get_patient_health_summary, get_service_links.",
     "",
-    "Roman Urdu: cardiologist/dil→Cardiologist, dl/jild→Dermatologist, bukhar→General Physician, book kro→book_appointment.",
+    "Roman Urdu: cardiologist/dil→Cardiologist, skin specialist/dl/jild→Dermatologist, bukhar→General Physician, kal subah→preferTomorrow+preferMorning, shaam→preferEvening, aacha/achha→preferHighestRated, aglay ghantay→withinNextHour.",
+    intentHint,
     `Patient city: ${patientContext.city}. ${allergyLine} ${chronicLine}`,
     "Services: online video consult (paid), urgent care Rs.2000, free Sunday consult, home visits.",
   ].join("\n");
@@ -233,14 +245,53 @@ function toMessageDto(doc: {
   metadata?: CopilotMessageMetadata;
   createdAt?: Date;
 }): CopilotMessageDto {
+  const rawContent = doc.content ?? "";
+  const content =
+    typeof rawContent === "string" && isEncrypted(rawContent)
+      ? decryptField(rawContent)
+      : rawContent;
+
   return {
     id: doc._id.toString(),
     sessionId: doc.sessionId.toString(),
     role: doc.role as CopilotMessageDto["role"],
-    content: doc.content ?? "",
+    content,
     metadata: doc.metadata as CopilotMessageMetadata | undefined,
     createdAt: doc.createdAt?.toISOString() ?? new Date().toISOString(),
   };
+}
+
+function metadataFromToolState(toolState: CopilotToolState): CopilotMessageMetadata {
+  const metadata: CopilotMessageMetadata = {};
+  if (toolState.triageLevel) metadata.triageLevel = toolState.triageLevel;
+  if (toolState.bookingSuggestion) metadata.bookingSuggestion = toolState.bookingSuggestion;
+  if (toolState.doctorReferrals?.length) {
+    metadata.doctorReferrals = toolState.doctorReferrals;
+  }
+  if (toolState.bookedAppointment) {
+    metadata.bookedAppointment = toolState.bookedAppointment;
+  }
+  if (toolState.urgentCareSuggestion) {
+    metadata.urgentCareSuggestion = toolState.urgentCareSuggestion;
+  }
+  if (toolState.actionLinks?.length) {
+    metadata.actionLinks = toolState.actionLinks;
+  }
+  if (toolState.appointmentPreviews?.length) {
+    metadata.appointmentPreviews = toolState.appointmentPreviews;
+  }
+  if (toolState.prescriptionPreviews?.length) {
+    metadata.prescriptionPreviews = toolState.prescriptionPreviews;
+  }
+  return metadata;
+}
+
+function toolStateHasBookingResult(toolState: CopilotToolState): boolean {
+  return Boolean(
+    toolState.bookedAppointment ||
+      toolState.doctorReferrals?.length ||
+      toolState.bookingSuggestion,
+  );
 }
 
 export class CopilotService {
@@ -410,14 +461,59 @@ export class CopilotService {
       locale,
     };
 
+    const parsedIntent = parseBookingIntent(trimmed);
+    const intentHint = formatBookingIntentForPrompt(parsedIntent);
+
+    if (parsedIntent.confidence === "high" && parsedIntent.specialty && parsedIntent.action) {
+      const fastToolState: CopilotToolState = {};
+      const toolName = parsedIntent.action === "book" ? "book_appointment" : "refer_doctors";
+      await executeCopilotTool(
+        toolName,
+        JSON.stringify(bookingIntentToolArgs(parsedIntent)),
+        toolCtx,
+        fastToolState,
+      );
+
+      if (toolStateHasBookingResult(fastToolState)) {
+        const metadata = metadataFromToolState(fastToolState);
+        const responseText =
+          buildCopilotResponseText("", metadata, replyLanguage) ||
+          (replyLanguage === "ur-script"
+            ? "یہ رہی آپ کی معلومات۔"
+            : replyLanguage === "ur-roman"
+              ? "Yeh rahi aap ki maloomat."
+              : "Here is what I found for you.");
+
+        for (const char of responseText) {
+          onEvent({ type: "token", text: char });
+        }
+        if (Object.keys(metadata).length > 0) {
+          onEvent({ type: "metadata", metadata });
+        }
+        const assistantMsg = await CopilotService.saveMessage(
+          sessionId,
+          CopilotMessageRoles.ASSISTANT,
+          responseText,
+          metadata,
+        );
+        await CopilotService.touchSession(sessionId, responseText.slice(0, 120));
+        onEvent({ type: "done", message: assistantMsg });
+        return;
+      }
+    }
+
     const llmMessages: LlmMessage[] = [
       {
         role: "system",
-        content: buildSystemPrompt(replyLanguage, {
-          city: toolCtx.city,
-          allergies: profile.profile.allergies,
-          chronicConditions: profile.profile.chronicConditions,
-        }),
+        content: buildSystemPrompt(
+          replyLanguage,
+          {
+            city: toolCtx.city,
+            allergies: profile.profile.allergies,
+            chronicConditions: profile.profile.chronicConditions,
+          },
+          intentHint,
+        ),
       },
       ...history,
       { role: "user", content: trimmed },
@@ -458,27 +554,7 @@ export class CopilotService {
       break;
     }
 
-    const metadata: CopilotMessageMetadata = {};
-    if (toolState.triageLevel) metadata.triageLevel = toolState.triageLevel;
-    if (toolState.bookingSuggestion) metadata.bookingSuggestion = toolState.bookingSuggestion;
-    if (toolState.doctorReferrals?.length) {
-      metadata.doctorReferrals = toolState.doctorReferrals;
-    }
-    if (toolState.bookedAppointment) {
-      metadata.bookedAppointment = toolState.bookedAppointment;
-    }
-    if (toolState.urgentCareSuggestion) {
-      metadata.urgentCareSuggestion = toolState.urgentCareSuggestion;
-    }
-    if (toolState.actionLinks?.length) {
-      metadata.actionLinks = toolState.actionLinks;
-    }
-    if (toolState.appointmentPreviews?.length) {
-      metadata.appointmentPreviews = toolState.appointmentPreviews;
-    }
-    if (toolState.prescriptionPreviews?.length) {
-      metadata.prescriptionPreviews = toolState.prescriptionPreviews;
-    }
+    const metadata = metadataFromToolState(toolState);
 
     let fullText = "";
     const lastAssistant = [...llmMessages].reverse().find((m) => m.role === "assistant");

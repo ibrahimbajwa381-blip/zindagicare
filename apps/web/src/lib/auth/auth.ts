@@ -6,8 +6,8 @@ import { authConfig } from "./auth.config";
 import { isGoogleAuthConfigured } from "./google";
 import {
   findOrCreateGoogleUser,
-  findOrCreatePhoneUser,
   loadAuthUserPayload,
+  signInWithPhoneOtp,
   verifyCredentialsLogin,
 } from "@/server/services/auth.service";
 import { otpService } from "@/server/services/otp.service";
@@ -64,9 +64,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await findOrCreatePhoneUser(phone);
-        const payload = await loadAuthUserPayload(user._id.toString());
-        return payload;
+        const user = await signInWithPhoneOtp(phone);
+        if (!user) return null;
+        return user;
       },
     }),
   ],

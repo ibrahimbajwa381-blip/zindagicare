@@ -20,9 +20,9 @@ export type RegisterFormState = {
   error?: string;
 };
 import {
-  findOrCreatePhoneUser,
   loadAuthUserPayload,
   registerWithCredentials,
+  signInWithPhoneOtp,
   verifyCredentialsLogin,
 } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
@@ -45,8 +45,8 @@ async function resolveSignedInUser(
     );
   }
 
-  const user = await findOrCreatePhoneUser(String(fields.phone));
-  return loadAuthUserPayload(user._id.toString());
+  const user = await signInWithPhoneOtp(String(fields.phone));
+  return user;
 }
 
 async function signInWithProvider(

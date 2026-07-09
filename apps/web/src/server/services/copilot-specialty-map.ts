@@ -4,6 +4,9 @@ import { SPECIALTIES } from "@zindagi/shared";
 const URDU_SPECIALTY_HINTS: Record<string, string> = {
   dl: "Dermatologist",
   skin: "Dermatologist",
+  "skin specialist": "Dermatologist",
+  dermatologist: "Dermatologist",
+  dermatology: "Dermatologist",
   jild: "Dermatologist",
   جلد: "Dermatologist",
   daane: "Dermatologist",
@@ -13,6 +16,8 @@ const URDU_SPECIALTY_HINTS: Record<string, string> = {
   khansi: "General Physician",
   bukhar: "General Physician",
   fever: "General Physician",
+  "general physician": "General Physician",
+  gp: "General Physician",
   بخار: "General Physician",
   gala: "ENT Specialist",
   throat: "ENT Specialist",

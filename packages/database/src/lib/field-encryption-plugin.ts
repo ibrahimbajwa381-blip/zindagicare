@@ -317,6 +317,16 @@ export function applyFieldEncryption(
     );
   });
 
+  // Keep in-memory documents decrypted after save/create so API responses are readable.
+  schema.post("save", function () {
+    applyToDocument(
+      this as PlainObject & { set: (p: string, v: unknown) => void },
+      decryptFields,
+      [],
+      "decrypt",
+    );
+  });
+
   schema.post("validate", function () {
     applyToDocument(
       this as PlainObject & { set: (p: string, v: unknown) => void },

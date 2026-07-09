@@ -17,6 +17,15 @@ import {
   isAllowedCopilotTool,
   sanitizeToolArguments,
 } from "@/lib/copilot/security";
+import {
+  describeSlotPreference,
+  filterSlotsByPreference,
+  pickPreferredSlot,
+  SLOT_PREFERENCE_TOOL_PROPERTIES,
+  slotPreferenceFromToolArgs,
+  type ConsultSlot,
+  type SlotPreference,
+} from "@/server/services/copilot-slot-match";
 
 export type CopilotToolContext = {
   userId: string;
@@ -47,29 +56,15 @@ export type CopilotToolState = {
   }>;
 };
 
-const KARACHI_TZ = "Asia/Karachi";
+type ConsultDoctor = Awaited<ReturnType<typeof OnlineConsultService.listConsultDoctors>>[number];
 
-function isSlotToday(iso: string): boolean {
-  const slotDate = new Date(iso).toLocaleDateString("en-CA", { timeZone: KARACHI_TZ });
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: KARACHI_TZ });
-  return slotDate === today;
-}
-
-async function findBestSlot(
+async function resolveDoctorsForRequest(
   city: string,
-  specialtyHint?: string,
-  preferToday = true,
+  resolvedSpecialty?: string,
   doctorName?: string,
   doctorId?: string,
-): Promise<{
-  doctor: Awaited<ReturnType<typeof OnlineConsultService.listConsultDoctors>>[number];
-  slot: { slotId: string; startAt: string; endAt: string };
-} | null> {
-  const resolvedSpecialty = specialtyHint
-    ? resolveSpecialtyFromText(specialtyHint) ?? specialtyHint
-    : undefined;
-
-  let doctors: Awaited<ReturnType<typeof OnlineConsultService.listConsultDoctors>>;
+): Promise<ConsultDoctor[]> {
+  let doctors: ConsultDoctor[];
 
   if (doctorId) {
     doctors = (await OnlineConsultService.listConsultDoctors(city)).filter(
@@ -93,9 +88,36 @@ async function findBestSlot(
     doctors = await OnlineConsultService.listConsultDoctors(city);
   }
 
-  doctors = doctors.filter((d) => !d.isFull);
+  return doctors.filter((d) => !d.isFull);
+}
 
-  for (const doctor of doctors.slice(0, 8)) {
+async function findDoctorsWithMatchingSlots(
+  city: string,
+  preference: SlotPreference,
+  resolvedSpecialty?: string,
+  doctorName?: string,
+  doctorId?: string,
+  limit = 5,
+): Promise<
+  Array<{
+    doctor: ConsultDoctor;
+    slot: ConsultSlot;
+    matchedPreference: boolean;
+  }>
+> {
+  const doctors = await resolveDoctorsForRequest(
+    city,
+    resolvedSpecialty,
+    doctorName,
+    doctorId,
+  );
+  const matches: Array<{
+    doctor: ConsultDoctor;
+    slot: ConsultSlot;
+    matchedPreference: boolean;
+  }> = [];
+
+  for (const doctor of doctors.slice(0, 12)) {
     if (
       resolvedSpecialty &&
       !doctorId &&
@@ -109,13 +131,67 @@ async function findBestSlot(
     const available = slots.filter((s) => s.status === SlotStatuses.AVAILABLE);
     if (!available.length) continue;
 
-    const todaySlots = preferToday ? available.filter((s) => isSlotToday(s.startAt)) : [];
-    const pick = todaySlots[0] ?? available[0];
-    if (pick) return { doctor, slot: pick };
+    const strict = filterSlotsByPreference(available, preference);
+    const slot = strict[0] ?? pickPreferredSlot(available, preference);
+    if (!slot) continue;
+
+    matches.push({
+      doctor,
+      slot,
+      matchedPreference: strict.length > 0,
+    });
+
+    if (matches.length >= limit) break;
   }
 
-  return null;
+  return matches;
 }
+
+async function findBestSlot(
+  city: string,
+  specialtyHint?: string,
+  preference: SlotPreference = {},
+  doctorName?: string,
+  doctorId?: string,
+): Promise<{
+  doctor: ConsultDoctor;
+  slot: ConsultSlot;
+  matchedPreference: boolean;
+} | null> {
+  const resolvedSpecialty = specialtyHint
+    ? resolveSpecialtyFromText(specialtyHint) ?? specialtyHint
+    : undefined;
+
+  const matches = await findDoctorsWithMatchingSlots(
+    city,
+    preference,
+    resolvedSpecialty,
+    doctorName,
+    doctorId,
+    1,
+  );
+
+  return matches[0] ?? null;
+}
+
+function doctorToReferral(doctor: ConsultDoctor): DoctorReferralPayload {
+  return {
+    doctorId: doctor.doctorId,
+    slug: doctor.slug,
+    name: doctor.name,
+    avatarUrl: doctor.avatarUrl,
+    specialties: doctor.specialties,
+    consultationFee: doctor.consultationFee,
+    availableSlots: doctor.availableSlots,
+    pmdcVerified: doctor.pmdcVerified,
+    ratingAvg: doctor.ratingAvg,
+    ratingCount: doctor.ratingCount,
+  };
+}
+
+const SLOT_TOOL_PROPERTIES = {
+  ...SLOT_PREFERENCE_TOOL_PROPERTIES,
+} as const;
 
 export const COPILOT_TOOLS: LlmTool[] = [
   {
@@ -143,16 +219,17 @@ export const COPILOT_TOOLS: LlmTool[] = [
     function: {
       name: "refer_doctors",
       description:
-        "Show a list of available doctors for a medical specialty. Use when patient asks for doctor referral (e.g. skin/dermatology, heart, fever). Understand Roman Urdu: dl=jild=skin=Dermatologist.",
+        "Find and show doctors matching specialty AND time preferences (next hour, tomorrow morning/evening, highest-rated). Use for 'find me a skin specialist within the next hour'. Doctors are sorted by rating. Never say you cannot filter — pass the time/rating parameters.",
       parameters: {
         type: "object",
         properties: {
           specialty: {
             type: "string",
             description:
-              "Specialty or problem in Urdu/English e.g. Dermatologist, skin, jild, dl, General Physician, bukhar",
+              "Specialty or problem in Urdu/English e.g. Dermatologist, skin specialist, Cardiologist, General Physician, jild, dl, dil",
           },
           reason: { type: "string", description: "Why these doctors are recommended" },
+          ...SLOT_TOOL_PROPERTIES,
         },
         required: ["specialty"],
       },
@@ -207,14 +284,14 @@ export const COPILOT_TOOLS: LlmTool[] = [
     function: {
       name: "book_appointment",
       description:
-        "Reserve a video consultation slot and start checkout. Payment must be completed before the appointment is confirmed. Use when patient asks to book (appointment book kro). Pass specialty for 'cardiologist', 'skin doctor', etc. Pass doctorName for a named doctor. Picks earliest slot.",
+        "Book a video consultation and start checkout. Supports specialty, highest-rated doctor, and time filters (next hour, tomorrow morning/evening, kal subah). Always call this when patient asks to book — never say you cannot filter by rating or time.",
       parameters: {
         type: "object",
         properties: {
           specialty: {
             type: "string",
             description:
-              "Required when booking by type: Cardiologist, Dermatologist, General Physician, etc.",
+              "Required when booking by type: Cardiologist, Dermatologist, General Physician, skin specialist, etc.",
           },
           patientNotes: {
             type: "string",
@@ -228,10 +305,7 @@ export const COPILOT_TOOLS: LlmTool[] = [
             type: "string",
             description: "Doctor ID from refer_doctors",
           },
-          preferToday: {
-            type: "boolean",
-            description: "Prefer today's earliest slot (default true)",
-          },
+          ...SLOT_TOOL_PROPERTIES,
         },
       },
     },
@@ -350,34 +424,60 @@ export async function executeCopilotTool(
     case "refer_doctors": {
       const specialtyInput = String(args.specialty ?? "");
       const resolved = resolveSpecialtyFromText(specialtyInput) ?? specialtyInput;
-      let doctors = await OnlineConsultService.listConsultDoctors(ctx.city, resolved);
-      doctors = doctors.filter((d) => !d.isFull);
+      const preference = slotPreferenceFromToolArgs(args);
+      const matches = await findDoctorsWithMatchingSlots(
+        ctx.city,
+        preference,
+        resolved,
+        undefined,
+        undefined,
+        5,
+      );
 
-      if (!doctors.length) {
-        doctors = (await OnlineConsultService.listConsultDoctors(ctx.city)).filter((d) => !d.isFull);
+      let referrals: DoctorReferralPayload[] = matches.map((match) =>
+        doctorToReferral(match.doctor),
+      );
+
+      if (!referrals.length) {
+        const doctors = await resolveDoctorsForRequest(ctx.city, resolved);
+        referrals = doctors.slice(0, 5).map(doctorToReferral);
       }
-
-      const referrals: DoctorReferralPayload[] = doctors.slice(0, 5).map((d) => ({
-        doctorId: d.doctorId,
-        slug: d.slug,
-        name: d.name,
-        avatarUrl: d.avatarUrl,
-        specialties: d.specialties,
-        consultationFee: d.consultationFee,
-        availableSlots: d.availableSlots,
-        pmdcVerified: d.pmdcVerified,
-        ratingAvg: d.ratingAvg,
-        ratingCount: d.ratingCount,
-      }));
 
       state.doctorReferrals = referrals;
       state.triageLevel = state.triageLevel ?? "book_consult";
+
+      const topMatch = matches[0];
+      if (topMatch) {
+        state.bookingSuggestion = {
+          doctorId: topMatch.doctor.doctorId,
+          doctorSlug: topMatch.doctor.slug,
+          doctorName: topMatch.doctor.name,
+          doctorAvatarUrl: topMatch.doctor.avatarUrl,
+          specialty: topMatch.doctor.specialties[0] ?? resolved,
+          consultationFee: topMatch.doctor.consultationFee,
+          slotId: topMatch.slot.slotId,
+          slotStartAt: topMatch.slot.startAt,
+          slotEndAt: topMatch.slot.endAt,
+          pmdcVerified: topMatch.doctor.pmdcVerified,
+          ratingAvg: topMatch.doctor.ratingAvg,
+          ratingCount: topMatch.doctor.ratingCount,
+        };
+      }
 
       return JSON.stringify({
         ok: true,
         specialty: resolved,
         reason: args.reason,
+        preference: describeSlotPreference(preference),
+        matchedExactPreference: matches.some((match) => match.matchedPreference),
         doctors: referrals,
+        suggestedSlot: topMatch
+          ? {
+              doctorName: topMatch.doctor.name,
+              startAt: topMatch.slot.startAt,
+              ratingAvg: topMatch.doctor.ratingAvg,
+            }
+          : null,
       });
     }
 
@@ -474,11 +574,11 @@ export async function executeCopilotTool(
         }
       }
 
-      const preferToday = args.preferToday !== false;
+      const preference = slotPreferenceFromToolArgs(args);
       const match = await findBestSlot(
         ctx.city,
         resolvedSpecialty ?? resolveSpecialtyFromText(patientNotes),
-        preferToday,
+        preference,
         doctorName,
         doctorId,
       );
@@ -487,13 +587,16 @@ export async function executeCopilotTool(
         if (resolvedSpecialty || doctorName) {
           const referrals = await executeCopilotTool(
             "refer_doctors",
-            JSON.stringify({ specialty: resolvedSpecialty ?? specialtyInput ?? doctorName }),
+            JSON.stringify({
+              specialty: resolvedSpecialty ?? specialtyInput ?? doctorName,
+              ...args,
+            }),
             ctx,
             state,
           );
           return JSON.stringify({
             error: "no_slots",
-            message: "No slots available right now. Showing available doctors instead.",
+            message: `No slots for ${describeSlotPreference(preference)}. Showing available doctors instead.`,
             referDoctorsResult: JSON.parse(referrals),
           });
         }

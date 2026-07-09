@@ -169,6 +169,7 @@ export function resolveLoginRedirectPath(
 
 export function resolvePostAuthPath(user: PostAuthUser): string {
   const roles = user.roles ?? [];
+  // Staff roles take priority over patient (doctor > nurse > physio > … > patient).
   const workspace =
     user.activeWorkspace ?? resolveDefaultWorkspace(roles);
 
