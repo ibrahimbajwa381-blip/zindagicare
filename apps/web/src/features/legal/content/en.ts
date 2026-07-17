@@ -1,7 +1,7 @@
 import type { LegalDocument, LegalDocumentSlug } from "@/features/legal/types";
 
 const CONTACT = "support@zindagicare.pk";
-const LAST_UPDATED = "Last updated: 14 June 2026";
+const LAST_UPDATED = "Last updated: 17 July 2026";
 
 const privacy: LegalDocument = {
   title: "Privacy Policy",
@@ -175,8 +175,17 @@ const terms: LegalDocument = {
       ],
     },
     {
+      id: "home-visit-environment",
+      title: "8. Home visit environment and allergies",
+      paragraphs: [
+        "When you book an in-house (home) medical visit, you are responsible for ensuring that the visit location is reasonably safe for the attending doctor or care provider, and for disclosing any known environmental risks that may affect them. This includes, without limitation, pets, dust, mould, smoke, strong chemicals, fragrances, food allergens, or other substances that may trigger an allergic reaction or sensitivity.",
+        "ZindagiCare is a technology platform that coordinates visits between patients and independent providers. To the fullest extent permitted by law, ZindagiCare is not responsible for any allergic reaction, sensitivity, illness, or related harm that a doctor, nurse, or other care provider may experience as a result of allergens or environmental conditions present at your home or any other visit location you arrange.",
+        "Any such risk arising from the premises remains with the patient (or the household occupying the premises) and the independent provider, not with ZindagiCare. If you are aware of significant allergen exposure at the visit location, you should inform the assigned provider in advance so they may take appropriate precautions or reschedule where necessary.",
+      ],
+    },
+    {
       id: "acceptable-use",
-      title: "8. Acceptable use",
+      title: "9. Acceptable use",
       paragraphs: ["You agree not to:"],
       bullets: [
         "Harass providers, staff, or other users.",
@@ -188,14 +197,14 @@ const terms: LegalDocument = {
     },
     {
       id: "intellectual-property",
-      title: "9. Intellectual property",
+      title: "10. Intellectual property",
       paragraphs: [
         "ZindagiCare branding, software, and content are owned by us or our licensors. You receive a limited, non-exclusive licence to use the platform for personal healthcare coordination. Provider content remains theirs subject to licences needed to operate the service.",
       ],
     },
     {
       id: "disclaimers",
-      title: "10. Disclaimers",
+      title: "11. Disclaimers",
       paragraphs: [
         "The platform is provided “as is” to the fullest extent permitted by law. We do not warrant uninterrupted access, error-free operation, or that any provider will be available at a specific time.",
         "To the extent permitted by law, ZindagiCare is not liable for indirect, incidental, or consequential damages arising from use of the platform or provider services.",
@@ -203,7 +212,7 @@ const terms: LegalDocument = {
     },
     {
       id: "limitation",
-      title: "11. Limitation of liability",
+      title: "12. Limitation of liability",
       paragraphs: [
         "Our total liability to you for claims relating to the platform (excluding liability that cannot be excluded under Pakistani law) is limited to the fees you paid to ZindagiCare for the specific booking giving rise to the claim in the three months before the claim.",
         "Nothing in these Terms limits liability for fraud, wilful misconduct, or death or personal injury caused by our negligence where such limitation is prohibited by law.",
@@ -211,28 +220,28 @@ const terms: LegalDocument = {
     },
     {
       id: "termination",
-      title: "12. Suspension and termination",
+      title: "13. Suspension and termination",
       paragraphs: [
         "We may suspend or terminate accounts that violate these Terms, pose a safety risk, or are required by law. You may close your account by contacting support. Provisions that by nature should survive (payment obligations, disclaimers, dispute resolution) will survive termination.",
       ],
     },
     {
       id: "governing-law",
-      title: "13. Governing law and disputes",
+      title: "14. Governing law and disputes",
       paragraphs: [
         "These Terms are governed by the laws of Pakistan. Disputes should first be raised with us at support. If unresolved, disputes shall be subject to the exclusive jurisdiction of the courts of Lahore, Pakistan, unless mandatory consumer protection law provides otherwise.",
       ],
     },
     {
       id: "changes",
-      title: "14. Changes to Terms",
+      title: "15. Changes to Terms",
       paragraphs: [
         "We may update these Terms. Continued use after the effective date of changes constitutes acceptance. Material changes will be communicated via the platform or email where appropriate.",
       ],
     },
     {
       id: "contact",
-      title: "15. Contact",
+      title: "16. Contact",
       paragraphs: [`Questions about these Terms: ${CONTACT}.`],
     },
   ],
