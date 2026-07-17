@@ -6,6 +6,7 @@ export type StorageNamespace =
   | "nurse-verification"
   | "physiotherapist-verification"
   | "home-visit-reports"
+  | "payment-receipts"
   | "prescriptions";
 
 type StorageConfig = {

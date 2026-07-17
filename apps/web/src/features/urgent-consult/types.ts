@@ -61,7 +61,10 @@ export type UrgentPatientRequestDto = {
 export type UrgentCheckoutResult = {
   paymentId: string;
   amount: number;
+  manualTransfer?: import("@/lib/payments/manual-payment").ManualTransferCheckout;
+  /** @deprecated use manualTransfer */
   testMode?: boolean;
+  /** @deprecated use manualTransfer */
   testPayment?: import("@/lib/payments/dummy-payment").TestPaymentCheckout;
   gatewayRedirect?: import("@/lib/payments/types").GatewayRedirectForm;
   /** @deprecated use gatewayRedirect */

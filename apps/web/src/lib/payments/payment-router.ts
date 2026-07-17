@@ -65,6 +65,23 @@ export async function completeTestPayment(paymentId: string, userId: string) {
   return OnlineConsultService.completeTestPayment(paymentId, userId);
 }
 
+export async function submitManualPaymentReceipt(
+  paymentId: string,
+  userId: string,
+  receipt: {
+    storageKey: string;
+    url: string;
+    originalName: string;
+    mimeType: string;
+  },
+) {
+  const kind = await resolvePaymentKind(paymentId);
+  if (kind === "urgent_care") {
+    return UrgentConsultService.submitManualReceipt(paymentId, userId, receipt);
+  }
+  return OnlineConsultService.submitManualReceipt(paymentId, userId, receipt);
+}
+
 export async function failPayment(paymentId: string, reason?: string) {
   const kind = await resolvePaymentKind(paymentId);
   if (kind === "urgent_care") {

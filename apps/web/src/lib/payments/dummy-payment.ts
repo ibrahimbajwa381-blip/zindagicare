@@ -1,8 +1,5 @@
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
-import {
-  getConfiguredLiveProviders,
-  isLivePaymentsEnabled,
-} from "@/lib/payments/payment-gateway";
+import { isManualTransferMode } from "@/lib/payments/manual-payment";
 
 /** Dummy JazzCash-shaped fields stored on Payment.metadata during MVP testing. */
 export type DummyPaymentPreview = {
@@ -24,11 +21,10 @@ export type TestPaymentCheckout = DummyPaymentPreview & {
 };
 
 /**
- * MVP default: simulated payments until PAYMENTS_LIVE=true with gateway credentials.
+ * @deprecated Prefer isManualTransferMode — same condition (no live gateway).
  */
 export function isDummyPaymentMode(): boolean {
-  if (!isLivePaymentsEnabled()) return true;
-  return getConfiguredLiveProviders().length === 0;
+  return isManualTransferMode();
 }
 
 export function buildDummyPaymentPreview(params: {

@@ -4,14 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
-import { workspaceSidebarTop } from "@/lib/ui/surfaces";
 import { siteConfig } from "@/config/site";
 import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
+import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   Bell,
   Banknote,
   CalendarDays,
+  ChevronRight,
   HeartPulse,
   Home,
   LayoutDashboard,
@@ -24,55 +25,134 @@ import {
   X,
 } from "lucide-react";
 
-const NAV = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+type AdminNavCountKey = keyof AdminNavCounts;
+
+type AdminNavItem = {
+  href: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  countKey?: AdminNavCountKey;
+};
+
+type AdminNavSection = {
+  title: string;
+  items: AdminNavItem[];
+};
+
+const NAV_SECTIONS: AdminNavSection[] = [
   {
-    href: "/admin/doctors",
-    label: "Doctor verifications",
-    icon: UserCheck,
-    countKey: "doctors" as const,
+    title: "Overview",
+    items: [
+      {
+        href: "/admin",
+        label: "Overview",
+        description: "Platform health and queues",
+        icon: LayoutDashboard,
+        exact: true,
+      },
+    ],
   },
   {
-    href: "/admin/doctors/manage",
-    label: "Doctor management",
-    icon: Stethoscope,
+    title: "Verifications",
+    items: [
+      {
+        href: "/admin/doctors",
+        label: "Doctor verifications",
+        description: "Review pending doctor applications",
+        icon: UserCheck,
+        countKey: "doctors",
+      },
+      {
+        href: "/admin/nurses",
+        label: "Nurse verifications",
+        description: "Review pending nurse applications",
+        icon: HeartPulse,
+        countKey: "nurses",
+      },
+      {
+        href: "/admin/physiotherapists",
+        label: "Physiotherapist verifications",
+        description: "Review pending physio applications",
+        icon: Activity,
+        countKey: "physiotherapists",
+      },
+    ],
   },
   {
-    href: "/admin/nurses",
-    label: "Nurse verifications",
-    icon: HeartPulse,
-    countKey: "nurses" as const,
+    title: "Directory",
+    items: [
+      {
+        href: "/admin/doctors/manage",
+        label: "Doctor management",
+        description: "Manage approved doctors",
+        icon: Stethoscope,
+      },
+      {
+        href: "/admin/patients",
+        label: "Patients",
+        description: "Patient accounts and activity",
+        icon: Users,
+      },
+      {
+        href: "/admin/admins",
+        label: "Admin users",
+        description: "Operations team access",
+        icon: ShieldCheck,
+      },
+      {
+        href: "/admin/reviews",
+        label: "Patient reviews",
+        description: "Moderate submitted reviews",
+        icon: Star,
+        countKey: "reviews",
+      },
+    ],
   },
   {
-    href: "/admin/physiotherapists",
-    label: "Physiotherapist verifications",
-    icon: Activity,
-    countKey: "physiotherapists" as const,
+    title: "Operations",
+    items: [
+      {
+        href: "/admin/appointments",
+        label: "Appointments",
+        description: "Schedule and reassign visits",
+        icon: CalendarDays,
+      },
+      {
+        href: "/admin/finances",
+        label: "Finances",
+        description: "Payments and payouts",
+        icon: Banknote,
+      },
+      {
+        href: "/admin/sunday-consult",
+        label: "Sunday consult",
+        description: "Free Sunday consult queue",
+        icon: Sun,
+      },
+      {
+        href: "/admin/urgent-care",
+        label: "Urgent care",
+        description: "Assign urgent video consults",
+        icon: Activity,
+        countKey: "urgentCare",
+      },
+      {
+        href: "/admin/home-visits",
+        label: "Home care",
+        description: "In-home visit requests",
+        icon: Home,
+        countKey: "homeVisits",
+      },
+      {
+        href: "/admin/notifications",
+        label: "Notifications",
+        description: "System alerts and broadcasts",
+        icon: Bell,
+      },
+    ],
   },
-  { href: "/admin/patients", label: "Patients", icon: Users },
-  { href: "/admin/admins", label: "Admin users", icon: ShieldCheck },
-  {
-    href: "/admin/reviews",
-    label: "Patient reviews",
-    icon: Star,
-    countKey: "reviews" as const,
-  },
-  { href: "/admin/appointments", label: "Appointments", icon: CalendarDays },
-  { href: "/admin/finances", label: "Finances", icon: Banknote },
-  { href: "/admin/sunday-consult", label: "Sunday consult", icon: Sun },
-  {
-    href: "/admin/urgent-care",
-    label: "Urgent care",
-    icon: Activity,
-    countKey: "urgentCare" as const,
-  },
-  {
-    href: "/admin/home-visits",
-    label: "Home care",
-    icon: Home,
-    countKey: "homeVisits" as const,
-  },
-  { href: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 
 const NAV_POLL_MS = 30_000;
@@ -85,8 +165,10 @@ function NavCountBadge({ count, active }: { count: number; active: boolean }) {
   return (
     <span
       className={cn(
-        "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums",
-        active ? "bg-white/20 text-white" : "bg-amber-500 text-white",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums",
+        active
+          ? "bg-white/25 text-white"
+          : "bg-brand/90 text-white shadow-sm shadow-brand/30",
       )}
       aria-label={`${label} pending`}
     >
@@ -118,7 +200,7 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
     return () => clearInterval(interval);
   }, [loadCounts]);
 
-  function isActive(item: (typeof NAV)[number]) {
+  function isActive(item: AdminNavItem) {
     if (item.exact) return pathname === item.href;
     if (item.href === "/admin/doctors") {
       return (
@@ -140,17 +222,23 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
 
   const navContent = (
     <>
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
+      <div className="relative flex h-16 shrink-0 items-center gap-3 border-b border-white/8 px-5 sm:h-[4.75rem]">
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent"
+          aria-hidden
+        />
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-sm font-bold text-white shadow-lg shadow-brand/30 ring-2 ring-white/15">
           ZC
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">{siteConfig.name}</p>
+          <p className="truncate text-sm font-semibold tracking-tight text-white">
+            {siteConfig.name}
+          </p>
           <p className="truncate text-xs text-slate-400">Operations console</p>
         </div>
         <button
           type="button"
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
           onClick={onMobileClose}
           aria-label="Close menu"
         >
@@ -158,45 +246,93 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          Operations
-        </p>
-        {NAV.map((item) => {
-          const active = isActive(item);
-          const Icon = item.icon;
-          const count =
-            item.countKey && counts ? counts[item.countKey] : 0;
+      <nav className="sidebar-scroll min-h-0 flex-1 px-3 py-4">
+        <div className="space-y-6">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <p className="mb-2.5 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <span className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                {section.title}
+                <span className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = isActive(item);
+                  const Icon = item.icon;
+                  const count =
+                    item.countKey && counts ? counts[item.countKey] : 0;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch={false}
-              onClick={onMobileClose}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-brand text-white shadow-sm"
-                  : "text-slate-300 hover:bg-white/8 hover:text-white",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0 opacity-90" />
-              <span className="min-w-0 flex-1 truncate">{item.label}</span>
-              <NavCountBadge count={count} active={active} />
-            </Link>
-          );
-        })}
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch={false}
+                      onClick={onMobileClose}
+                      className={cn(
+                        "group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200",
+                        active
+                          ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
+                          : "text-slate-300 hover:bg-white/6 hover:text-white",
+                      )}
+                    >
+                      {active && (
+                        <span
+                          className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-white/70"
+                          aria-hidden
+                        />
+                      )}
+                      <span
+                        className={cn(
+                          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                          active
+                            ? "bg-white/15 text-white"
+                            : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1 py-0.5">
+                        <span className="flex items-center gap-2">
+                          <span className="text-sm font-medium leading-none">
+                            {item.label}
+                          </span>
+                          <NavCountBadge count={count} active={active} />
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-1 block text-[11px] leading-snug",
+                            active
+                              ? "text-white/75"
+                              : "text-slate-500 group-hover:text-slate-400",
+                          )}
+                        >
+                          {item.description}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className={cn(
+                          "mt-2 h-3.5 w-3.5 shrink-0 transition-all duration-200",
+                          active
+                            ? "text-white/70"
+                            : "text-slate-600 opacity-0 group-hover:translate-x-0.5 group-hover:text-slate-400 group-hover:opacity-100",
+                        )}
+                      />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       </nav>
 
-      <div className="border-t border-white/10 p-4">
+      <div className="shrink-0 space-y-0.5 border-t border-white/8 bg-black/15 px-3 py-3">
         <Link
           href="/"
           prefetch={false}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/8 hover:text-white"
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/6 hover:text-white"
         >
-          <Activity className="h-3.5 w-3.5" />
-          Back to public site
+          Back to {siteConfig.name}
         </Link>
       </div>
     </>
@@ -215,12 +351,15 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
 
       <aside
         className={cn(
-          "fixed bottom-0 left-0 z-50 flex w-[17.5rem] flex-col bg-slate-900 transition-transform duration-200 lg:translate-x-0",
-          workspaceSidebarTop,
+          "fixed inset-y-0 left-0 z-50 flex w-[17.5rem] flex-col overflow-hidden border-r border-white/6 bg-gradient-to-b from-[#0f172a] via-[#0c1524] to-[#08111f] shadow-[4px_0_32px_rgba(0,0,0,0.18)] transition-transform duration-200 lg:z-40 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        {navContent}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/8 to-transparent"
+          aria-hidden
+        />
+        <div className="relative flex min-h-0 flex-1 flex-col">{navContent}</div>
       </aside>
     </>
   );

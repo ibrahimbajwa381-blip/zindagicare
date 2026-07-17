@@ -213,7 +213,7 @@ export function ConsultReviewPaymentModal({
                           ? paymentProviderLabel(providers[0]!)
                           : "JazzCash or Easypaisa"
                     }. Your slot is held until checkout completes.`
-                  : "Test payment — no real charge. Your slot is held until you complete checkout."}
+                  : "Transfer the fee via JazzCash and upload your receipt on the next step. Your slot is held until payment is confirmed."}
               </span>
             </div>
 

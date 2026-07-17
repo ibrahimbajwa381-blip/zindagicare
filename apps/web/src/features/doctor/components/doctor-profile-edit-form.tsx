@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { CalendarHeart, Clock, Home, Plus, Trash2 } from "lucide-react";
-import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, isKnownSpecialty, SPECIALTIES } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
@@ -75,6 +75,12 @@ export function DoctorProfileEditForm({ profile }: Props) {
   const [phone, setPhone] = useState(profile.user.phone ?? "");
   const [avatarUrl, setAvatarUrl] = useState(profile.user.avatarUrl ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
+  const [specialty, setSpecialty] = useState(
+    profile.specialties[0] ??
+      SPECIALTIES.find((item) => item === "General Physician") ??
+      SPECIALTIES[0] ??
+      "",
+  );
   const [consultationFee, setConsultationFee] = useState(
     String(profile.consultationFee ?? 0),
   );
@@ -178,6 +184,12 @@ export function DoctorProfileEditForm({ profile }: Props) {
       return;
     }
 
+    if (!specialty.trim() || !isKnownSpecialty(specialty)) {
+      setError("Select your specialization category.");
+      setPending(false);
+      return;
+    }
+
     if (homeVisitEnabled) {
       if (homeVisitArea.trim().length < 2) {
         setError("Add your service area for in-house visits (e.g. DHA Phase 5, Gulberg).");
@@ -199,6 +211,7 @@ export function DoctorProfileEditForm({ profile }: Props) {
         : {}),
       bio: bio.trim() || null,
       consultationFee: Number(consultationFee) || 0,
+      specialties: [specialty],
       languages: languageList,
       hospitals: cleanedHospitals,
       weeklyAvailability,
@@ -251,9 +264,6 @@ export function DoctorProfileEditForm({ profile }: Props) {
           PMDC ({profile.pmdcNumber ?? "—"}), degree, and verification documents cannot
           be changed here. Contact support if your credentials need updating.
         </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Specialty: {profile.specialties.join(", ") || "—"}
-        </p>
       </section>
 
       <section className="space-y-4">
@@ -289,6 +299,31 @@ export function DoctorProfileEditForm({ profile }: Props) {
               <FieldError message="This phone number is already registered." />
             )}
           </div>
+        </div>
+        <div>
+          <Label htmlFor="specialty">Specialty</Label>
+          <select
+            id="specialty"
+            value={specialty}
+            onChange={(e) => setSpecialty(e.target.value)}
+            required
+            className="mt-1 flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+          >
+            <option value="" disabled>
+              Select your specialty
+            </option>
+            {!isKnownSpecialty(specialty) && specialty && (
+              <option value={specialty}>{specialty}</option>
+            )}
+            {SPECIALTIES.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            Patients browse doctors by this category on the homepage and consult pages.
+          </p>
         </div>
         <div>
           <Label htmlFor="bio">Professional bio</Label>

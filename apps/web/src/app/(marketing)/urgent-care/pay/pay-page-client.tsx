@@ -1,24 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
-import { Button } from "@/components/ui/button";
-import { LoadingInline } from "@/components/ui/loading-screen";
 import { siteConfig } from "@/config/site";
-import type { TestPaymentCheckout } from "@/lib/payments/dummy-payment";
-import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import {
+  ManualTransferPayForm,
+  type ManualTransferPayCopy,
+} from "@/features/payments/components/manual-transfer-pay-form";
+import type { ManualTransferCheckout } from "@/lib/payments/manual-payment";
 import { useTranslations } from "@/i18n/locale-provider";
 
 export default function UrgentPayPageClient() {
   const t = useTranslations();
-  const u = t.urgentCare;
+  const u = t.urgentCare.payment;
+  const p = t.payment.manual;
   const searchParams = useSearchParams();
   const router = useRouter();
   const paymentId = searchParams.get("paymentId");
-  const [testPayment, setTestPayment] = useState<TestPaymentCheckout | null>(null);
+  const [manualTransfer, setManualTransfer] = useState<ManualTransferCheckout | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +28,7 @@ export default function UrgentPayPageClient() {
   useEffect(() => {
     if (!paymentId) {
       setLoading(false);
-      setError("Missing payment reference.");
+      setError(p.missingPayment);
       return;
     }
 
@@ -40,7 +41,7 @@ export default function UrgentPayPageClient() {
       if (cancelled) return;
 
       if (!json.success) {
-        setError(json.error?.message ?? "Could not load payment");
+        setError(json.error?.message ?? p.loadError);
         setLoading(false);
         return;
       }
@@ -51,88 +52,78 @@ export default function UrgentPayPageClient() {
       }
 
       setAmount(json.data?.amount ?? null);
-      setTestPayment(json.data?.testPayment ?? null);
+      setManualTransfer(json.data?.manualTransfer ?? null);
+      if (!json.data?.manualTransfer) {
+        setError(p.loadError);
+      }
       setLoading(false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [paymentId, router]);
+  }, [paymentId, router, p.missingPayment, p.loadError]);
 
-  const completeTestPayment = async () => {
+  const submitReceipt = async (file: File) => {
     if (!paymentId) return;
     setSubmitting(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/v1/payments/test/complete?paymentId=${paymentId}`, {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/v1/payments/${paymentId}/receipt`, {
         method: "POST",
+        body: formData,
       });
       const json = await res.json();
       if (!json.success) {
-        throw new Error(json.error?.message ?? "Could not complete test payment");
+        throw new Error(json.error?.message ?? p.submitError);
       }
       router.push(`/urgent-care/success?paymentId=${paymentId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Payment failed");
+      setError(e instanceof Error ? e.message : p.submitError);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const copy: ManualTransferPayCopy = {
+    title: u.title,
+    description: p.description,
+    loading: u.loading,
+    accountTitleLabel: p.accountTitle,
+    accountNumberLabel: p.accountNumber,
+    amountLabel: p.amount,
+    instructions: p.instructions,
+    copyNumber: p.copyNumber,
+    copied: p.copied,
+    uploadLabel: p.uploadReceipt,
+    uploadHint: p.uploadHint,
+    submit: p.submit,
+    submitting: p.submitting,
+    cancel: u.backToUrgent,
+    missingPayment: p.missingPayment,
+    loadError: p.loadError,
+  };
+
   return (
     <>
       <PageSection variant="soft" spacing="default" innerClassName="!py-12 sm:!py-16">
-        <PageTitle
-          title={u.payment.title}
-          description={u.payment.description}
-        />
+        <PageTitle title={u.title} description={p.description} />
       </PageSection>
       <PageSection variant="brand" spacing="lg">
-        <div className={`mx-auto max-w-xl space-y-6 p-6 ${surfaceCardInteractive}`}>
-          {loading && <LoadingInline message={u.payment.loading} />}
-          {!loading && testPayment && (
-            <>
-              <div className="rounded-xl border border-brand-light/50 bg-brand-muted/60 px-4 py-3 text-sm text-brand-dark">
-                {u.payment.completeTest} — dummy gateway, no real charge.
-              </div>
-              <dl className="space-y-3 text-sm">
-                {[
-                  ["Provider", testPayment.provider],
-                  ["Transaction ref", testPayment.txnRefNo],
-                  ["Amount (PKR)", `Rs. ${testPayment.amountPkr.toLocaleString()}`],
-                  ["Description", testPayment.description],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex flex-col gap-0.5 border-b border-slate-100 pb-2 sm:flex-row sm:justify-between"
-                  >
-                    <dt className="text-slate-500">{label}</dt>
-                    <dd className="font-mono text-xs font-medium text-slate-800">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              {amount != null && (
-                <p className="text-center text-lg font-semibold text-brand-dark">
-                  Total: Rs. {amount.toLocaleString()}
-                </p>
-              )}
-              <Button
-                className="w-full bg-brand hover:bg-brand-dark"
-                size="lg"
-                onClick={completeTestPayment}
-                disabled={submitting}
-              >
-                {submitting ? u.payment.processing : u.payment.completeTest}
-              </Button>
-            </>
-          )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button asChild variant="outline">
-            <Link href={siteConfig.links.urgentCare}>{u.payment.backToUrgent}</Link>
-          </Button>
-        </div>
+        <ManualTransferPayForm
+          paymentId={paymentId}
+          amount={amount}
+          manualTransfer={manualTransfer}
+          loading={loading}
+          error={error}
+          copy={copy}
+          cancelHref={siteConfig.links.urgentCare}
+          onSubmitReceipt={submitReceipt}
+          submitting={submitting}
+        />
       </PageSection>
     </>
   );

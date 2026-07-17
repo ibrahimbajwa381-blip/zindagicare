@@ -48,7 +48,9 @@ export const PaymentProviders = {
   STRIPE: "stripe",
   JAZZCASH: "jazzcash",
   EASYPAISA: "easypaisa",
-  /** MVP placeholder — swap to jazzcash when JAZZCASH_LIVE=true */
+  /** Patient sends JazzCash P2P transfer and uploads receipt (no gateway). */
+  MANUAL_JAZZCASH: "manual_jazzcash",
+  /** @deprecated Use MANUAL_JAZZCASH — kept for legacy pending payments */
   DUMMY: "dummy",
 } as const;
 

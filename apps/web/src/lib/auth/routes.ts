@@ -14,7 +14,9 @@ export const AUTH_ROUTES = {
   registerDoctor: "/register/doctor",
   registerNurse: "/register/nurse",
   registerPhysiotherapist: "/register/physiotherapist",
-  phoneLogin: "/login/phone",
+  forgotPassword: "/login/forgot-password",
+  /** @deprecated Use forgotPassword — kept for old links */
+  phoneLogin: "/login/forgot-password",
   onboarding: "/onboarding",
   doctorVerification: "/doctor/verification",
   doctorProfile: "/doctor/profile",
@@ -51,7 +53,8 @@ export const PUBLIC_PATH_PREFIXES = [
   AUTH_ROUTES.registerDoctor,
   AUTH_ROUTES.registerNurse,
   AUTH_ROUTES.registerPhysiotherapist,
-  AUTH_ROUTES.phoneLogin,
+  AUTH_ROUTES.forgotPassword,
+  "/login/phone",
   "/api/auth",
   "/api/v1/sunday/doctors",
   "/api/v1/sunday/slots",
@@ -141,10 +144,19 @@ export type PostAuthUser = {
   roles?: Role[];
   activeWorkspace?: Workspace;
   onboardingCompleted?: boolean;
+  /** False when account has no WhatsApp/mobile yet (e.g. Google signup). */
+  hasPhone?: boolean;
   doctorVerificationStatus?: string;
   nurseVerificationStatus?: string;
   physiotherapistVerificationStatus?: string;
 };
+
+/** Patient profile incomplete until city/locale onboarding and a WhatsApp number exist. */
+export function needsPatientProfileCompletion(user: PostAuthUser): boolean {
+  if (!user.onboardingCompleted) return true;
+  // Only gate when we know phone is missing (legacy JWTs may omit hasPhone).
+  return user.hasPhone === false;
+}
 
 export function isPatientDashboardPath(pathname: string) {
   return (
@@ -203,7 +215,7 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
   }
 
   if (canUsePatientWorkspace(roles, workspace)) {
-    if (!user.onboardingCompleted) {
+    if (needsPatientProfileCompletion(user)) {
       return AUTH_ROUTES.onboarding;
     }
     return AUTH_ROUTES.patientDashboard;
@@ -235,7 +247,7 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
     return AUTH_ROUTES.physiotherapistVerification;
   }
 
-  if (!user.onboardingCompleted) {
+  if (needsPatientProfileCompletion(user)) {
     return AUTH_ROUTES.onboarding;
   }
 

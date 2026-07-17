@@ -500,6 +500,7 @@ export class HomeVisitService {
       }
     } else {
       filter.patientId = userId;
+      sort = { scheduledAt: -1 };
     }
 
     const visits = await HomeVisitModel.find(filter)

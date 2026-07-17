@@ -16,20 +16,22 @@ export function AdminShell({ children }: AdminShellProps) {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <UnifiedHeader
-        navLinks={[]}
-        showMobileNav={false}
-        leadingSlot={
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        }
-      />
+      <div className="lg:pl-[17.5rem]">
+        <UnifiedHeader
+          navLinks={[]}
+          showMobileNav={false}
+          leadingSlot={
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          }
+        />
+      </div>
 
       <AdminSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
 

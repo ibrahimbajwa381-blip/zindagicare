@@ -288,6 +288,9 @@ export async function updateDoctorProfile(
   if (data.consultationFee !== undefined) {
     profile.consultationFee = data.consultationFee;
   }
+  if (data.specialties !== undefined) {
+    profile.specialties = data.specialties;
+  }
   if (data.languages !== undefined) {
     profile.languages = data.languages;
   }

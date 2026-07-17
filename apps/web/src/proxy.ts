@@ -17,6 +17,7 @@ import {
   isPatientDashboardPath,
   ONBOARDING_EXEMPT_PREFIXES,
   ROLE_ROUTE_RULES,
+  needsPatientProfileCompletion,
   resolvePostAuthPath,
 } from "@/lib/auth/routes";
 
@@ -42,7 +43,7 @@ export default auth((req) => {
   const activeWorkspace = user.activeWorkspace;
 
   if (
-    !user.onboardingCompleted &&
+    needsPatientProfileCompletion(user) &&
     !matchesPrefix(pathname, ONBOARDING_EXEMPT_PREFIXES)
   ) {
     const destination = resolvePostAuthPath(user);

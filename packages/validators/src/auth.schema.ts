@@ -82,6 +82,8 @@ export const onboardingSchema = z.object({
     .union([z.enum(["male", "female", "other"]), z.literal("")])
     .optional()
     .transform((value) => (value === "" ? undefined : value)),
+  /** Required when the account has no phone yet (e.g. Google signup). */
+  phone: pakistaniPhone.optional(),
 });
 
 const timeLocalSchema = z

@@ -33,6 +33,12 @@ export const siteConfig = {
   supportEmail: "support@zindagicare.pk",
   supportWhatsApp: "923074583567",
   supportWhatsAppDisplay: "0307 458 3567",
+  /** JazzCash wallet for manual patient transfers (no payment gateway yet). */
+  jazzCash: {
+    number: "03074583567",
+    numberDisplay: "0307 458 3567",
+    accountTitle: "Ibrahim Aslam",
+  },
   url: process.env.NEXT_PUBLIC_APP_URL ?? PRODUCTION_URL,
   links: {
     doctors: "/doctors",

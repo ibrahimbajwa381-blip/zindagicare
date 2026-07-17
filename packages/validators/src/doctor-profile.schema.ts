@@ -1,3 +1,4 @@
+import { SPECIALTIES } from "@zindagi/shared";
 import { z } from "zod";
 import { pakistaniPhoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
 import { geoPointInputSchema } from "./geo.schema";
@@ -42,6 +43,11 @@ export const updateDoctorProfileSchema = z.object({
   avatarUrl: z.string().min(1, "Invalid profile photo URL").optional(),
   bio: z.string().max(2000).optional().nullable(),
   consultationFee: z.coerce.number().min(0).optional(),
+  specialties: z
+    .array(z.enum(SPECIALTIES))
+    .min(1, "Select your specialization category")
+    .max(3, "Select up to three specialties")
+    .optional(),
   languages: z.array(z.string().trim().min(1)).min(1, "Add at least one language").optional(),
   hospitals: z.array(hospitalSchema).min(1, "Add at least one practice location").optional(),
   weeklyAvailability: z

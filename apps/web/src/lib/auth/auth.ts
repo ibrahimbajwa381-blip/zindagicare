@@ -93,6 +93,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.activeWorkspace =
           user.activeWorkspace ?? resolveDefaultWorkspace(roles);
         token.onboardingCompleted = user.onboardingCompleted ?? false;
+        token.hasPhone = user.hasPhone ?? false;
         token.doctorVerificationStatus = user.doctorVerificationStatus;
         token.nurseVerificationStatus = user.nurseVerificationStatus;
         token.physiotherapistVerificationStatus = user.physiotherapistVerificationStatus;
@@ -104,6 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           roles?: string[];
           activeWorkspace?: Workspace;
           onboardingCompleted?: boolean;
+          hasPhone?: boolean;
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
           physiotherapistVerificationStatus?: string;
@@ -125,6 +127,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         if (typeof patch.onboardingCompleted === "boolean") {
           token.onboardingCompleted = patch.onboardingCompleted;
+        }
+        if (typeof patch.hasPhone === "boolean") {
+          token.hasPhone = patch.hasPhone;
         }
         if (patch.doctorVerificationStatus) {
           token.doctorVerificationStatus = patch.doctorVerificationStatus;

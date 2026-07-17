@@ -102,7 +102,7 @@ export function PhoneOtpForm({ callbackUrl }: { callbackUrl?: string }) {
         </Button>
         <p className="text-center text-sm text-slate-600">
           <Link href={loginHref} className="font-medium text-brand">
-            {t.auth.backToEmailLogin}
+            {t.auth.backToSignIn}
           </Link>
         </p>
       </div>

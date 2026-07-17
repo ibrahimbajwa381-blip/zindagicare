@@ -400,6 +400,7 @@ export async function loadAuthUserPayload(userId: string) {
     roles,
     activeWorkspace: resolveDefaultWorkspace(roles),
     onboardingCompleted: user.onboardingCompleted ?? false,
+    hasPhone: Boolean(user.phone),
     doctorVerificationStatus,
     nurseVerificationStatus,
     physiotherapistVerificationStatus,
@@ -413,6 +414,7 @@ export async function completeOnboarding(
     locale: "en" | "ur";
     dateOfBirth?: string;
     gender?: "male" | "female" | "other";
+    phone?: string;
   },
 ) {
   await connectDatabase();
@@ -421,6 +423,36 @@ export async function completeOnboarding(
 
   if (!user.roles.includes(Roles.PATIENT)) {
     throw new AppError("Onboarding is only for patient accounts", "FORBIDDEN", 403);
+  }
+
+  if (data.phone) {
+    const phone = normalizePakistaniPhone(data.phone);
+    const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(data.phone));
+    const existingByPhone = await UserModel.findOne({
+      _id: { $ne: user._id },
+      $or: [
+        { phoneLookup: phoneLookupHash(phone) },
+        { phoneLookup: phoneLookupHash(phoneLocal) },
+      ],
+    });
+    if (existingByPhone) {
+      throw new AppError(
+        "This mobile number is already registered",
+        "CONFLICT",
+        409,
+        "phone",
+      );
+    }
+    user.phone = phone;
+  }
+
+  if (!user.phone) {
+    throw new AppError(
+      "WhatsApp number is required",
+      "VALIDATION",
+      400,
+      "phone",
+    );
   }
 
   user.metadata = {

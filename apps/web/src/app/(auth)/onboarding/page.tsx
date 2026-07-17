@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { connectDatabase, UserModel } from "@zindagi/database";
 import { Roles } from "@zindagi/shared";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/features/auth/components/onboarding-form";
@@ -16,18 +17,31 @@ export default async function OnboardingPage() {
     redirect(resolvePostAuthPath(session.user));
   }
 
-  if (session.user.onboardingCompleted) {
+  await connectDatabase();
+  const dbUser = await UserModel.findById(session.user.id)
+    .select("phone onboardingCompleted")
+    .lean();
+  const hasPhone = Boolean(dbUser?.phone);
+  const onboardingCompleted = Boolean(dbUser?.onboardingCompleted);
+
+  if (onboardingCompleted && hasPhone) {
     redirect(AUTH_ROUTES.patientDashboard);
   }
+
+  const needsPhone = !hasPhone;
 
   return (
     <Card className="w-full max-w-lg shadow-premium">
       <CardHeader>
         <CardTitle>Welcome, {session.user.name}</CardTitle>
-        <CardDescription>Complete your patient profile to start booking care.</CardDescription>
+        <CardDescription>
+          {needsPhone
+            ? "Add your WhatsApp number and finish your profile to start booking care."
+            : "Complete your patient profile to start booking care."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <OnboardingForm />
+        <OnboardingForm needsPhone={needsPhone} />
       </CardContent>
     </Card>
   );

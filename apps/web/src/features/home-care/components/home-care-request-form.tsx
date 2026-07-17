@@ -38,12 +38,6 @@ function toDateTimeLocalValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function defaultScheduledAt(): string {
-  const d = new Date();
-  d.setHours(d.getHours() + 4, 0, 0, 0);
-  return toDateTimeLocalValue(d);
-}
-
 function minScheduledAt(): string {
   const d = new Date();
   d.setMinutes(d.getMinutes() + 60, 0, 0);
@@ -81,7 +75,7 @@ export function HomeCareRequestForm() {
     resolveInitialService(searchParams.get("service")),
   );
   const [addressLine, setAddressLine] = useState("");
-  const [scheduledAt, setScheduledAt] = useState(defaultScheduledAt);
+  const [scheduledAt, setScheduledAt] = useState("");
   const [patientNotes, setPatientNotes] = useState("");
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [pending, setPending] = useState(false);
@@ -111,6 +105,11 @@ export function HomeCareRequestForm() {
 
     if (!geo) {
       setError(h.locationRequired);
+      return;
+    }
+
+    if (!scheduledAt.trim()) {
+      setError(h.scheduledRequired);
       return;
     }
 
@@ -209,7 +208,7 @@ export function HomeCareRequestForm() {
           />
 
           <div>
-            <Label htmlFor="scheduled">{h.scheduledAt}</Label>
+            <Label htmlFor="scheduled">{h.scheduledAt} *</Label>
             <Input
               id="scheduled"
               name="scheduledAt"

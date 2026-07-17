@@ -96,12 +96,17 @@ export const en = {
     googleSignupHint: "Create your account in one tap — no password needed",
     googleSignInHint: "Sign in instantly with your Google account",
     preferPhone: "Forgot password?",
-    signInOtp: "Sign in with OTP",
-    phoneLoginTitle: "Sign in with phone",
+    signInOtp: "Use your phone",
+    forgotPassword: "Forgot password?",
+    forgotPasswordTitle: "Forgot your password?",
+    forgotPasswordDescription:
+      "Enter your registered mobile number. We'll text you a one-time code to sign in — no email required.",
+    phoneLoginTitle: "Forgot your password?",
     phoneLoginDescription:
-      "Enter the mobile number on your account. We'll text you a one-time code to sign in.",
-    phoneLoginHint: "Use the same number you registered with.",
-    useEmailInstead: "Use email instead",
+      "Enter your registered mobile number. We'll text you a one-time code to sign in — no email required.",
+    phoneLoginHint: "Use the same mobile number you registered with.",
+    backToSignIn: "Back to sign in",
+    useEmailInstead: "Back to sign in",
     sendingOtp: "Sending code…",
     resendOtp: "Resend code",
     otpResent: "A new code has been sent.",
@@ -128,8 +133,8 @@ export const en = {
     patientInstead: "Need a patient account instead?",
     fullName: "Full name",
     fullNameHint: "As on your CNIC or WhatsApp",
-    mobileNumber: "Mobile number",
-    phoneHint: "Start with 03 — for example 03001234567 (11 digits)",
+    mobileNumber: "WhatsApp number",
+    phoneHint: "Your WhatsApp mobile — start with 03, e.g. 03001234567 (11 digits)",
     phonePlaceholder: "03001234567",
     passwordHint: "At least 6 characters — tap the eye icon to show or hide",
     showPassword: "Show password",
@@ -161,7 +166,6 @@ export const en = {
     verifySignIn: "Verify & sign in",
     verifying: "Verifying…",
     changeNumber: "Change number",
-    backToEmailLogin: "Back to email login",
     validation: {
       generic: "Please check the form and try again",
       phone: "Enter a valid Pakistani mobile number (11 digits, starting with 03)",
@@ -593,7 +597,7 @@ export const en = {
     },
     payment: {
       title: "Complete urgent care payment",
-      description: "Confirm payment to assign your on-call doctor.",
+      description: "Transfer via JazzCash and upload your receipt to assign your on-call doctor.",
       loading: "Loading payment…",
       completeTest: "Complete test payment",
       processing: "Processing…",
@@ -660,7 +664,7 @@ export const en = {
       },
       {
         q: "How do I pay for in-house medical services?",
-        a: "Pay securely via JazzCash, EasyPaisa, or card. You'll see the total before confirming your in-house visit.",
+        a: "Transfer the total via JazzCash to our account and upload your receipt. You'll see the amount before confirming your in-house visit.",
       },
     ],
   },
@@ -825,7 +829,7 @@ export const en = {
         },
         {
           title: "Flexible payment",
-          desc: "JazzCash, EasyPaisa, or card — total shown before booking.",
+          desc: "JazzCash transfer — total shown before booking.",
         },
         {
           title: "Live status updates",
@@ -855,7 +859,7 @@ export const en = {
         },
         {
           q: "How do I pay?",
-          a: "You'll see the full price before confirming. Pay via JazzCash, EasyPaisa, or card when payment integration is enabled on your account.",
+          a: "You'll see the full price before confirming. Transfer via JazzCash to our account and upload your payment receipt.",
         },
       ],
     },
@@ -1064,6 +1068,7 @@ export const en = {
     submit: "Request home visit",
     submitting: "Submitting…",
     requestError: "Could not submit request. Please try again.",
+    scheduledRequired: "Please choose your preferred visit time.",
     scheduledInPast: "Please choose a visit time at least 1 hour from now.",
     addressRequired: "Please enter your home address.",
     locationRequired:
@@ -1349,6 +1354,9 @@ export const en = {
   onboarding: {
     city: "City",
     language: "Language",
+    whatsappNumber: "WhatsApp number",
+    whatsappHint:
+      "Required for care updates. Use your WhatsApp mobile — start with 03, e.g. 03001234567.",
     submit: "Continue",
     submitting: "Saving…",
   },
@@ -1917,6 +1925,29 @@ export const en = {
         "Create your physiotherapist account and complete verification — home sessions unlock after admin approval.",
       primaryCta: "Register as physiotherapist",
       secondaryCta: "Log in",
+    },
+  },
+  payment: {
+    manual: {
+      title: "Pay via JazzCash",
+      description:
+        "Transfer the exact amount to our JazzCash account, then upload your payment receipt to confirm.",
+      loading: "Loading payment details…",
+      instructions:
+        "Open JazzCash and send money to the account below. Use the exact amount shown. Then upload a screenshot or PDF of your transfer receipt.",
+      accountTitle: "Account title",
+      accountNumber: "JazzCash number",
+      amount: "Amount to transfer",
+      copyNumber: "Copy",
+      copied: "Copied",
+      uploadReceipt: "Upload transfer receipt",
+      uploadHint: "JPG, PNG, WebP, or PDF · max 5 MB",
+      submit: "I've transferred — submit receipt",
+      submitting: "Confirming payment…",
+      backToDoctors: "Back to doctors",
+      missingPayment: "Missing payment reference.",
+      loadError: "Could not load payment details.",
+      submitError: "Could not submit receipt. Please try again.",
     },
   },
 };

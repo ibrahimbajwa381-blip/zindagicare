@@ -143,8 +143,10 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
 
       const checkout = json.data as CheckoutResult;
 
-      if (checkout.testMode && checkout.testPayment?.completeUrl) {
-        window.location.href = checkout.testPayment.completeUrl;
+      const payUrl =
+        checkout.manualTransfer?.payUrl ?? checkout.testPayment?.completeUrl;
+      if (payUrl) {
+        window.location.href = payUrl;
         return;
       }
 

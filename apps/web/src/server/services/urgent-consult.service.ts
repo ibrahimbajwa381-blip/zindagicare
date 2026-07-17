@@ -32,13 +32,17 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { randomUUID } from "crypto";
 import {
-  buildDummyPaymentPreview,
   buildTestPaymentCheckout,
   dummyExternalTransactionId,
-  isDummyPaymentMode,
   type DummyPaymentPreview,
   type TestPaymentCheckout,
 } from "@/lib/payments/dummy-payment";
+import {
+  buildManualTransferCheckout,
+  isManualTransferMode,
+  manualExternalTransactionId,
+  type ManualTransferCheckout,
+} from "@/lib/payments/manual-payment";
 import {
   sendDoctorConsultBooked,
   sendUrgentConsultConfirmation,
@@ -78,6 +82,13 @@ type UrgentPaymentMetadata = {
   expiresAt?: string;
   integration?: string;
   gatewayPreview?: DummyPaymentPreview;
+  receipt?: {
+    storageKey: string;
+    url: string;
+    originalName: string;
+    mimeType: string;
+    uploadedAt?: string;
+  };
 };
 
 const EXPIRE_SWEEP_INTERVAL_MS = 60_000;
@@ -281,10 +292,10 @@ export class UrgentConsultService {
     const idempotencyKey = randomUUID();
     const checkoutRef = randomUUID();
     const expiresAt = new Date(Date.now() + URGENT_CONSULT_CONFIG.paymentHoldDurationMs);
-    const useDummy = isDummyPaymentMode();
+    const useManual = isManualTransferMode();
     let liveProvider: LivePaymentProvider | null = null;
 
-    if (!useDummy) {
+    if (!useManual) {
       try {
         liveProvider = resolveCheckoutProvider(input.paymentProvider);
       } catch (error) {
@@ -296,46 +307,46 @@ export class UrgentConsultService {
       }
     }
 
-    const dummyPreview = buildDummyPaymentPreview({
-      paymentId: "pending",
-      appointmentId: checkoutRef,
-      amountPkr: amount,
-      description: "Urgent care — video consult within 10 minutes",
-      txnRefNo: `DUMMY-${txnRefNo}`,
-    });
-
     const payment = (await PaymentModel.create({
       userId: patientId,
-      provider: useDummy ? PaymentProviders.DUMMY : liveProvider!,
+      provider: useManual ? PaymentProviders.MANUAL_JAZZCASH : liveProvider!,
       status: PaymentStatuses.PENDING,
       amount,
       currency: "PKR",
       idempotencyKey,
-      externalTransactionId: useDummy ? dummyPreview.txnRefNo : txnRefNo,
+      externalTransactionId: txnRefNo,
       metadata: {
         kind: URGENT_PAYMENT_KIND,
         patientPhone: input.patientPhone,
         patientNotes: input.patientNotes,
-        txnRefNo: dummyPreview.txnRefNo,
+        txnRefNo,
         expiresAt: expiresAt.toISOString(),
-        integration: useDummy ? "dummy_mvp" : gatewayIntegrationLabel(liveProvider!),
-        gatewayPreview: useDummy ? dummyPreview : undefined,
+        integration: useManual
+          ? "manual_jazzcash"
+          : gatewayIntegrationLabel(liveProvider!),
       } satisfies UrgentPaymentMetadata,
     } as Record<string, unknown>)) as { _id: { toString(): string } };
 
     const paymentId = payment._id.toString();
 
-    if (useDummy) {
+    if (useManual) {
+      const manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: amount,
+        description: "Urgent care — video consult within 10 minutes",
+        payPath: `/urgent-care/pay?paymentId=${paymentId}`,
+      });
       return {
         paymentId,
         amount,
+        manualTransfer,
         testMode: true,
         testPayment: buildTestPaymentCheckout({
           paymentId,
           appointmentId: checkoutRef,
           amountPkr: amount,
           description: "Urgent care — video consult within 10 minutes",
-          txnRefNo: dummyPreview.txnRefNo,
+          txnRefNo,
           payPath: `/urgent-care/pay?paymentId=${paymentId}`,
         }),
       };
@@ -375,6 +386,56 @@ export class UrgentConsultService {
     return UrgentConsultService.confirmAfterPayment(
       paymentId,
       dummyExternalTransactionId(txnRefNo),
+    );
+  }
+
+  static async submitManualReceipt(
+    paymentId: string,
+    userId: string,
+    receipt: {
+      storageKey: string;
+      url: string;
+      originalName: string;
+      mimeType: string;
+    },
+  ) {
+    await UrgentConsultService.ensureConnected();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment || payment.userId.toString() !== userId) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if ((payment.metadata as UrgentPaymentMetadata | undefined)?.kind !== URGENT_PAYMENT_KIND) {
+      throw new AppError("Not an urgent care payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (
+      payment.provider !== PaymentProviders.MANUAL_JAZZCASH &&
+      payment.provider !== PaymentProviders.DUMMY
+    ) {
+      throw new AppError("Not a manual JazzCash payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (payment.status !== PaymentStatuses.PENDING) {
+      throw new AppError("Payment is not pending", ErrorCodes.VALIDATION, 400);
+    }
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          "metadata.receipt": {
+            ...receipt,
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      },
+    );
+
+    return UrgentConsultService.confirmAfterPayment(
+      paymentId,
+      manualExternalTransactionId(paymentId),
     );
   }
 
@@ -473,11 +534,19 @@ export class UrgentConsultService {
 
     const metadata = payment.metadata as UrgentPaymentMetadata;
 
+    const isManual =
+      payment.provider === PaymentProviders.MANUAL_JAZZCASH ||
+      payment.provider === PaymentProviders.DUMMY;
+
+    let manualTransfer: ManualTransferCheckout | null = null;
     let testPayment: TestPaymentCheckout | null = null;
-    if (
-      payment.provider === PaymentProviders.DUMMY &&
-      payment.status === PaymentStatuses.PENDING
-    ) {
+    if (isManual && payment.status === PaymentStatuses.PENDING) {
+      manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: payment.amount,
+        description: "Urgent care — video consult within 10 minutes",
+        payPath: `/urgent-care/pay?paymentId=${paymentId}`,
+      });
       testPayment = buildTestPaymentCheckout({
         paymentId,
         appointmentId: paymentId,
@@ -515,8 +584,10 @@ export class UrgentConsultService {
       status: payment.status,
       provider: payment.provider,
       amount: payment.amount,
-      testMode: payment.provider === PaymentProviders.DUMMY,
+      manualTransfer,
+      testMode: isManual,
       testPayment,
+      receiptUploaded: Boolean(metadata.receipt),
       booking,
     };
   }

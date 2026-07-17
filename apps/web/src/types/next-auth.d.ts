@@ -6,6 +6,7 @@ declare module "next-auth" {
     roles?: Role[];
     activeWorkspace?: Workspace;
     onboardingCompleted?: boolean;
+    hasPhone?: boolean;
     doctorVerificationStatus?: VerificationStatus | string;
     nurseVerificationStatus?: VerificationStatus | string;
     physiotherapistVerificationStatus?: VerificationStatus | string;
@@ -20,6 +21,7 @@ declare module "next-auth" {
       roles?: Role[];
       activeWorkspace?: Workspace;
       onboardingCompleted?: boolean;
+      hasPhone?: boolean;
       doctorVerificationStatus?: VerificationStatus | string;
       nurseVerificationStatus?: VerificationStatus | string;
       physiotherapistVerificationStatus?: VerificationStatus | string;
@@ -32,6 +34,7 @@ declare module "next-auth/jwt" {
     roles?: Role[];
     activeWorkspace?: Workspace;
     onboardingCompleted?: boolean;
+    hasPhone?: boolean;
     doctorVerificationStatus?: VerificationStatus | string;
     nurseVerificationStatus?: VerificationStatus | string;
     physiotherapistVerificationStatus?: VerificationStatus | string;

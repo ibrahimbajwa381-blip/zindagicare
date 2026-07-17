@@ -1,5 +1,6 @@
 import type { AppointmentStatus } from "@zindagi/shared";
 import type { TestPaymentCheckout } from "@/lib/payments/dummy-payment";
+import type { ManualTransferCheckout } from "@/lib/payments/manual-payment";
 import type { GatewayRedirectForm } from "@/lib/payments/types";
 import type { PaymentProviderInput } from "@zindagi/validators";
 
@@ -45,7 +46,10 @@ export type CheckoutResult = {
   paymentId: string;
   appointmentId: string;
   amount: number;
+  manualTransfer?: ManualTransferCheckout;
+  /** @deprecated use manualTransfer */
   testMode?: boolean;
+  /** @deprecated use manualTransfer */
   testPayment?: TestPaymentCheckout;
   gatewayRedirect?: GatewayRedirectForm;
   /** @deprecated use gatewayRedirect */

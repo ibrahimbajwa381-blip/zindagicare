@@ -37,12 +37,16 @@ import {
   type LivePaymentProvider,
 } from "@/lib/payments/payment-gateway";
 import {
-  buildDummyPaymentPreview,
   buildTestPaymentCheckout,
   dummyExternalTransactionId,
-  isDummyPaymentMode,
   type TestPaymentCheckout,
 } from "@/lib/payments/dummy-payment";
+import {
+  buildManualTransferCheckout,
+  isManualTransferMode,
+  manualExternalTransactionId,
+  type ManualTransferCheckout,
+} from "@/lib/payments/manual-payment";
 import { sendOnlineConsultConfirmation, sendDoctorConsultBooked } from "@/lib/notifications/consult-notifications";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
@@ -108,8 +112,11 @@ export type CheckoutResult = {
   paymentId: string;
   appointmentId: string;
   amount: number;
-  /** MVP simulated checkout — real gateways when PAYMENTS_LIVE=true */
+  /** Manual JazzCash transfer + receipt upload (default until gateways are live). */
+  manualTransfer?: ManualTransferCheckout;
+  /** @deprecated use manualTransfer */
   testMode?: boolean;
+  /** @deprecated use manualTransfer */
   testPayment?: TestPaymentCheckout;
   gatewayRedirect?: GatewayRedirectForm;
   /** @deprecated use gatewayRedirect */
@@ -253,11 +260,20 @@ export class OnlineConsultService {
       metadata?.txnRefNo?.replace(/^DUMMY-/, "") ??
       paymentId;
 
-    if (payment.provider === PaymentProviders.DUMMY) {
+    if (
+      payment.provider === PaymentProviders.MANUAL_JAZZCASH ||
+      payment.provider === PaymentProviders.DUMMY
+    ) {
+      const manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: payment.amount,
+        description: `Online consult with ${metadata?.doctorName ?? doctorName}`,
+      });
       return {
         paymentId,
         appointmentId,
         amount: payment.amount,
+        manualTransfer,
         testMode: true,
         testPayment: buildTestPaymentCheckout({
           paymentId,
@@ -586,18 +602,10 @@ export class OnlineConsultService {
     const idempotencyKey = randomUUID();
     const expiresAt = new Date(Date.now() + ONLINE_CONSULT_CONFIG.paymentHoldDurationMs);
 
-    const dummyPreview = buildDummyPaymentPreview({
-      paymentId: "pending",
-      appointmentId: "pending",
-      amountPkr: validated.consultationFee,
-      doctorName: validated.doctorName,
-      txnRefNo: `DUMMY-${txnRefNo}`,
-    });
-
-    const useDummy = isDummyPaymentMode();
+    const useManual = isManualTransferMode();
     let liveProvider: LivePaymentProvider | null = null;
 
-    if (!useDummy) {
+    if (!useManual) {
       try {
         liveProvider = resolveCheckoutProvider(input.paymentProvider);
       } catch (error) {
@@ -626,20 +634,21 @@ export class OnlineConsultService {
     try {
       const payment = (await PaymentModel.create({
         userId: patientId,
-        provider: useDummy ? PaymentProviders.DUMMY : liveProvider!,
+        provider: useManual ? PaymentProviders.MANUAL_JAZZCASH : liveProvider!,
         status: PaymentStatuses.PENDING,
         amount: validated.consultationFee,
         currency: "PKR",
         idempotencyKey,
-        externalTransactionId: useDummy ? dummyPreview.txnRefNo : txnRefNo,
+        externalTransactionId: txnRefNo,
         appointmentId,
         metadata: {
           slotId: input.slotId,
-          txnRefNo: dummyPreview.txnRefNo,
+          txnRefNo,
           expiresAt: expiresAt.toISOString(),
           doctorName: validated.doctorName,
-          integration: useDummy ? "dummy_mvp" : gatewayIntegrationLabel(liveProvider!),
-          gatewayPreview: useDummy ? dummyPreview : undefined,
+          integration: useManual
+            ? "manual_jazzcash"
+            : gatewayIntegrationLabel(liveProvider!),
           ...(input.locale ? { locale: input.locale } : {}),
         },
       } as Record<string, unknown>)) as { _id: { toString(): string } };
@@ -651,18 +660,24 @@ export class OnlineConsultService {
 
       const paymentId = payment._id.toString();
 
-      if (useDummy) {
+      if (useManual) {
+        const manualTransfer = buildManualTransferCheckout({
+          paymentId,
+          amountPkr: validated.consultationFee,
+          description: `Online consult with ${validated.doctorName}`,
+        });
         return {
           paymentId,
           appointmentId,
           amount: validated.consultationFee,
+          manualTransfer,
           testMode: true,
           testPayment: buildTestPaymentCheckout({
             paymentId,
             appointmentId,
             amountPkr: validated.consultationFee,
             doctorName: validated.doctorName,
-            txnRefNo: dummyPreview.txnRefNo,
+            txnRefNo,
           }),
         };
       }
@@ -706,6 +721,52 @@ export class OnlineConsultService {
     return OnlineConsultService.confirmAfterPayment(
       paymentId,
       dummyExternalTransactionId(txnRefNo),
+    );
+  }
+
+  static async submitManualReceipt(
+    paymentId: string,
+    userId: string,
+    receipt: {
+      storageKey: string;
+      url: string;
+      originalName: string;
+      mimeType: string;
+    },
+  ) {
+    await OnlineConsultService.ensureConnected();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment || payment.userId.toString() !== userId) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if (
+      payment.provider !== PaymentProviders.MANUAL_JAZZCASH &&
+      payment.provider !== PaymentProviders.DUMMY
+    ) {
+      throw new AppError("Not a manual JazzCash payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (payment.status !== PaymentStatuses.PENDING) {
+      throw new AppError("Payment is not pending", ErrorCodes.VALIDATION, 400);
+    }
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          "metadata.receipt": {
+            ...receipt,
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      },
+    );
+
+    return OnlineConsultService.confirmAfterPayment(
+      paymentId,
+      manualExternalTransactionId(paymentId),
     );
   }
 
@@ -820,14 +881,27 @@ export class OnlineConsultService {
       gatewayPreview?: TestPaymentCheckout;
       doctorName?: string;
       txnRefNo?: string;
+      receipt?: {
+        storageKey: string;
+        url: string;
+        originalName: string;
+        mimeType: string;
+        uploadedAt?: string;
+      };
     } | undefined;
 
+    const isManual =
+      payment.provider === PaymentProviders.MANUAL_JAZZCASH ||
+      payment.provider === PaymentProviders.DUMMY;
+
+    let manualTransfer: ManualTransferCheckout | null = null;
     let testPayment: TestPaymentCheckout | null = null;
-    if (
-      payment.provider === PaymentProviders.DUMMY &&
-      payment.status === PaymentStatuses.PENDING &&
-      payment.appointmentId
-    ) {
+    if (isManual && payment.status === PaymentStatuses.PENDING && payment.appointmentId) {
+      manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: payment.amount,
+        description: `Online consult with ${metadata?.doctorName ?? "Doctor"}`,
+      });
       testPayment = buildTestPaymentCheckout({
         paymentId,
         appointmentId: payment.appointmentId.toString(),
@@ -844,8 +918,10 @@ export class OnlineConsultService {
       amount: payment.amount,
       appointmentId: payment.appointmentId?.toString(),
       appointmentStatus: appointment?.status,
-      testMode: payment.provider === PaymentProviders.DUMMY,
+      manualTransfer,
+      testMode: isManual,
       testPayment,
+      receiptUploaded: Boolean(metadata?.receipt),
       booking:
         payment.status === PaymentStatuses.PAID && appointment
           ? await OnlineConsultService.getBookingByAppointmentId(appointment._id.toString())

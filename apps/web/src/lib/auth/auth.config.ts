@@ -35,6 +35,7 @@ export const authConfig = {
           resolveDefaultWorkspace(roles);
         token.onboardingCompleted =
           (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
+        token.hasPhone = (user as { hasPhone?: boolean }).hasPhone ?? false;
         token.doctorVerificationStatus = (
           user as { doctorVerificationStatus?: string }
         ).doctorVerificationStatus;
@@ -52,6 +53,7 @@ export const authConfig = {
           roles?: string[];
           activeWorkspace?: Workspace;
           onboardingCompleted?: boolean;
+          hasPhone?: boolean;
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
           physiotherapistVerificationStatus?: string;
@@ -73,6 +75,9 @@ export const authConfig = {
         }
         if (typeof patch.onboardingCompleted === "boolean") {
           token.onboardingCompleted = patch.onboardingCompleted;
+        }
+        if (typeof patch.hasPhone === "boolean") {
+          token.hasPhone = patch.hasPhone;
         }
         if (patch.doctorVerificationStatus) {
           token.doctorVerificationStatus = patch.doctorVerificationStatus;
@@ -97,6 +102,7 @@ export const authConfig = {
           resolveDefaultWorkspace(session.user.roles);
         session.user.onboardingCompleted =
           (token.onboardingCompleted as boolean) ?? false;
+        session.user.hasPhone = token.hasPhone as boolean | undefined;
         session.user.doctorVerificationStatus = token.doctorVerificationStatus as
           | string
           | undefined;

@@ -97,12 +97,17 @@ export const ur: Dictionary = {
     googleSignupHint: "ایک کلک میں اکاؤنٹ بنائیں — پاس ورڈ کی ضرورت نہیں",
     googleSignInHint: "اپنے گوگل اکاؤنٹ سے فوری سائن ان کریں",
     preferPhone: "پاس ورڈ بھول گئے؟",
-    signInOtp: "او ٹی پی سے سائن ان",
-    phoneLoginTitle: "فون سے سائن ان",
+    signInOtp: "فون استعمال کریں",
+    forgotPassword: "پاس ورڈ بھول گئے؟",
+    forgotPasswordTitle: "پاس ورڈ بھول گئے؟",
+    forgotPasswordDescription:
+      "رجسٹرڈ موبائل نمبر درج کریں۔ ہم آپ کو سائن ان کے لیے ایک بار کا کوڈ بھیجیں گے — ای میل کی ضرورت نہیں۔",
+    phoneLoginTitle: "پاس ورڈ بھول گئے؟",
     phoneLoginDescription:
-      "اپنے اکاؤنٹ کا موبائل نمبر درج کریں۔ ہم آپ کو سائن ان کے لیے ایک بار کا کوڈ بھیجیں گے۔",
-    phoneLoginHint: "وہی نمبر استعمال کریں جو رجسٹریشن کے وقت دیا تھا۔",
-    useEmailInstead: "ای میل سے سائن ان کریں",
+      "رجسٹرڈ موبائل نمبر درج کریں۔ ہم آپ کو سائن ان کے لیے ایک بار کا کوڈ بھیجیں گے — ای میل کی ضرورت نہیں۔",
+    phoneLoginHint: "وہی موبائل نمبر استعمال کریں جو رجسٹریشن کے وقت دیا تھا۔",
+    backToSignIn: "سائن ان پر واپس",
+    useEmailInstead: "سائن ان پر واپس",
     sendingOtp: "کوڈ بھیجا جا رہا ہے…",
     resendOtp: "کوڈ دوبارہ بھیجیں",
     otpResent: "نیا کوڈ بھیج دیا گیا ہے۔",
@@ -128,8 +133,8 @@ export const ur: Dictionary = {
     patientInstead: "مریض اکاؤنٹ چاہیے؟",
     fullName: "پورا نام",
     fullNameHint: "جیسا شناختی کارڈ یا واٹس ایپ پر لکھا ہو",
-    mobileNumber: "موبائل نمبر",
-    phoneHint: "03 سے شروع کریں — مثال: 03001234567 (11 ہندسے)",
+    mobileNumber: "واٹس ایپ نمبر",
+    phoneHint: "آپ کا واٹس ایپ موبائل — 03 سے شروع، مثلاً 03001234567 (11 ہندسے)",
     phonePlaceholder: "03001234567",
     passwordHint: "کم از کم 6 حروف — دکھانے یا چھپانے کے لیے آنکھ والے بٹن کو دبائیں",
     showPassword: "پاس ورڈ دکھائیں",
@@ -161,7 +166,6 @@ export const ur: Dictionary = {
     verifySignIn: "تصدیق کریں اور سائن ان کریں",
     verifying: "تصدیق ہو رہی ہے…",
     changeNumber: "نمبر بدلیں",
-    backToEmailLogin: "ای میل لاگ ان پر واپس",
     validation: {
       generic: "براہ کرم فارم چیک کریں اور دوبارہ کوشش کریں",
       phone: "درست پاکستانی موبائل نمبر درج کریں (03 سے شروع، 11 ہندسے)",
@@ -568,7 +572,8 @@ export const ur: Dictionary = {
     },
     payment: {
       title: "فوری دیکھ بھال کی ادائیگی",
-      description: "اپنے آن کال ڈاکٹر کو تفویض کرنے کے لیے ادائیگی کی تصدیق کریں۔",
+      description:
+        "JazzCash پر رقم بھیجیں اور رسید اپ لوڈ کریں تاکہ آپ کا آن کال ڈاکٹر تفویض ہو۔",
       loading: "ادائیگی لوڈ ہو رہی ہے…",
       completeTest: "ٹیسٹ ادائیگی مکمل کریں",
       processing: "پروسیس ہو رہا ہے…",
@@ -1056,6 +1061,7 @@ export const ur: Dictionary = {
     submit: "گھر پر وزٹ کی درخواست",
     submitting: "جمع ہو رہا ہے…",
     requestError: "درخواست جمع نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
+    scheduledRequired: "براہ کرم وزٹ کا ترجیحی وقت منتخب کریں۔",
     scheduledInPast: "براہ کرم کم از کم 1 گھنٹے بعد کا وقت منتخب کریں۔",
     addressRequired: "براہ کرم اپنا گھر کا پتہ درج کریں۔",
     locationRequired:
@@ -1344,6 +1350,9 @@ export const ur: Dictionary = {
   onboarding: {
     city: "شہر",
     language: "زبان",
+    whatsappNumber: "واٹس ایپ نمبر",
+    whatsappHint:
+      "دیکھ بھال کی اپڈیٹس کے لیے ضروری ہے۔ اپنا واٹس ایپ موبائل درج کریں — 03 سے شروع، مثلاً 03001234567۔",
     submit: "جاری رکھیں",
     submitting: "محفوظ ہو رہا ہے…",
   },
@@ -1884,6 +1893,29 @@ export const ur: Dictionary = {
         "اپنا فزیوتھrapist اکاؤنٹ بنائیں اور تصدیق مکمل کریں — ایڈمن منظوری کے بعد سیشن کھل جائیں گے۔",
       primaryCta: "فزیوتھrapist کے طور پر رجسٹر",
       secondaryCta: "لاگ ان",
+    },
+  },
+  payment: {
+    manual: {
+      title: "JazzCash سے ادائیگی کریں",
+      description:
+        "ہماری JazzCash اکاؤنٹ پر درست رقم بھیجیں، پھر تصدیق کے لیے ادائیگی کی رسید اپ لوڈ کریں۔",
+      loading: "ادائیگی کی تفصیلات لوڈ ہو رہی ہیں…",
+      instructions:
+        "JazzCash کھولیں اور نیچے دیے گئے اکاؤنٹ پر رقم بھیجیں۔ دکھائی گئی درست رقم استعمال کریں۔ پھر اپنی ٹرانسفر رسید کا اسکرین شاٹ یا PDF اپ لوڈ کریں۔",
+      accountTitle: "اکاؤنٹ ٹائٹل",
+      accountNumber: "JazzCash نمبر",
+      amount: "بھیجنے کی رقم",
+      copyNumber: "کاپی",
+      copied: "کاپی ہو گیا",
+      uploadReceipt: "ٹرانسفر رسید اپ لوڈ کریں",
+      uploadHint: "JPG، PNG، WebP، یا PDF · زیادہ سے زیادہ 5 MB",
+      submit: "میں نے رقم بھیج دی — رسید جمع کروائیں",
+      submitting: "ادائیگی کی تصدیق ہو رہی ہے…",
+      backToDoctors: "ڈاکٹرز پر واپس",
+      missingPayment: "ادائیگی کا حوالہ موجود نہیں۔",
+      loadError: "ادائیگی کی تفصیلات لوڈ نہیں ہو سکیں۔",
+      submitError: "رسید جمع نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
     },
   },
 };
