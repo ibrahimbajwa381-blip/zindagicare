@@ -102,6 +102,7 @@ export function UnifiedHeader({
 
   return (
     <header
+      dir="ltr"
       className={cn(
         appHeaderShell,
         hidden &&

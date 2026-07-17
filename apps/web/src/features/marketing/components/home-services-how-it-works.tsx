@@ -67,13 +67,13 @@ export async function HomeServicesHowItWorks() {
                   <div
                     aria-hidden
                     className={cn(
-                      "pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full blur-2xl",
+                      "pointer-events-none absolute -end-4 -top-4 h-20 w-20 rounded-full blur-2xl",
                       accent.glow,
                     )}
                   />
                   <span
                     aria-hidden
-                    className="pointer-events-none absolute right-3 top-2 font-display text-4xl font-semibold leading-none text-brand/10 sm:right-4 sm:top-3 sm:text-5xl"
+                    className="pointer-events-none absolute end-3 top-2 font-display text-4xl font-semibold leading-none text-brand/10 sm:end-4 sm:top-3 sm:text-5xl"
                   >
                     {stepNumbers[index]}
                   </span>
