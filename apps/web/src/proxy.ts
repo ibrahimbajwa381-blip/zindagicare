@@ -42,7 +42,11 @@ export default auth((req) => {
   const roles = user.roles ?? [];
   const activeWorkspace = user.activeWorkspace;
 
+  // Patient onboarding only applies to patient-only accounts. Staff/admin users
+  // often have onboardingCompleted=false but must still reach their workspaces
+  // (e.g. /admin/doctors) — otherwise middleware traps them on /admin.
   if (
+    canUsePatientWorkspace(roles, activeWorkspace) &&
     needsPatientProfileCompletion(user) &&
     !matchesPrefix(pathname, ONBOARDING_EXEMPT_PREFIXES)
   ) {
@@ -136,15 +140,22 @@ export const config = {
     "/dashboard/:path*",
     "/prescriptions",
     "/prescriptions/:path*",
+    "/doctor",
     "/doctor/:path*",
+    "/admin",
     "/admin/:path*",
+    "/nurse",
     "/nurse/:path*",
+    "/physiotherapist",
     "/physiotherapist/:path*",
+    "/rider",
     "/rider/:path*",
+    "/messages",
     "/messages/:path*",
     "/assistant",
     "/assistant/:path*",
     "/intake/:path*",
+    "/onboarding",
     "/onboarding/:path*",
     "/home-care/visits/:path*",
     "/logout",

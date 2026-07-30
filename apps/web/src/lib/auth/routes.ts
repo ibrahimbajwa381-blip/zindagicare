@@ -78,6 +78,7 @@ export const ONBOARDING_EXEMPT_PREFIXES = [
   AUTH_ROUTES.doctorVerification,
   AUTH_ROUTES.doctorProfile,
   AUTH_ROUTES.nurseVerification,
+  AUTH_ROUTES.adminDashboard,
   "/nurse/profile",
   "/doctor/patients",
   "/doctor/requests",
