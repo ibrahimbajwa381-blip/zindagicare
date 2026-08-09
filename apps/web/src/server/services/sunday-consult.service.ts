@@ -5,7 +5,9 @@ import {
   DoctorProfileModel,
   SundaySlotTemplateModel,
   SundaySlotInstanceModel,
+  SundayFreeRequestModel,
   AppointmentModel,
+  NotificationModel,
   type EmbeddedSlot,
 } from "@zindagi/database";
 import {
@@ -14,14 +16,20 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   IntakeSources,
+  NotificationChannels,
+  Roles,
   SlotStatuses,
+  SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
+  VerificationStatuses,
 } from "@zindagi/shared";
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import {
   canBookNow,
+  canRequestSundayNow,
   formatSundayDateKey,
   generateSlotTimes,
+  getActiveOrNextSundayDate,
   getNextSundayDate,
   parseSundayDateKey,
 } from "@/lib/sunday/date-utils";
@@ -31,13 +39,25 @@ import { sendDoctorConsultBooked } from "@/lib/notifications/consult-notificatio
 import { isSundayConsultGloballyEnabled } from "./system-settings.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
+  SundayAdminRequestDto,
   SundayConfirmBookingResult,
   SundayPatientBookingDto,
+  SundayPatientRequestDto,
+  SundayTeamDoctorOption,
 } from "@/features/sunday-consult/types";
+import type {
+  SundayFreeAssignInput,
+  SundayFreeRequestInput,
+} from "@zindagi/validators";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import type { HydratedDocument } from "mongoose";
 import type { AppointmentDocument } from "@zindagi/database";
+
+const ACTIVE_REQUEST_STATUSES = [
+  SundayFreeRequestStatuses.REQUESTED,
+  SundayFreeRequestStatuses.ASSIGNED,
+] as const;
 
 type CreatedAppointmentRow = {
   _id: { toString(): string };
@@ -646,8 +666,26 @@ export class SundayConsultService {
     if (status === "completed") {
       appointment.status = AppointmentStatuses.COMPLETED;
       appointment.completedAt = new Date();
+      await SundayFreeRequestModel.updateOne(
+        mongoFilter({ appointmentId: appointment._id }),
+        {
+          $set: {
+            status: SundayFreeRequestStatuses.COMPLETED,
+            completedAt: new Date(),
+          },
+        },
+      );
     } else if (status === "cancelled") {
       appointment.status = AppointmentStatuses.CANCELLED;
+      await SundayFreeRequestModel.updateOne(
+        mongoFilter({ appointmentId: appointment._id }),
+        {
+          $set: {
+            status: SundayFreeRequestStatuses.CANCELLED,
+            cancelledAt: new Date(),
+          },
+        },
+      );
     } else if (status === "no_show") {
       appointment.status = AppointmentStatuses.NO_SHOW;
       appointment.noShowMarkedAt = new Date();
@@ -697,6 +735,12 @@ export class SundayConsultService {
     dateKey?: string,
   ): Promise<SundayPatientBookingDto | null> {
     await SundayConsultService.ensureConnected();
+
+    const request = await SundayConsultService.getPatientRequest(patientId, dateKey);
+    if (request) {
+      return SundayConsultService.requestToBookingDto(request);
+    }
+
     const now = new Date();
     const graceAfterEndMs = 2 * 60 * 60 * 1000;
 
@@ -727,6 +771,500 @@ export class SundayConsultService {
     return SundayConsultService.toPatientBookingDto(appointment);
   }
 
+  /** Lightweight patient request path — no slot materialization / doctor list. */
+  static async submitRequest(
+    patientId: string,
+    input: SundayFreeRequestInput,
+  ): Promise<SundayPatientRequestDto> {
+    await connectDatabase();
+
+    const globallyEnabled = await isSundayConsultGloballyEnabled();
+    if (!globallyEnabled) {
+      throw new AppError(
+        "Sunday free consult is currently disabled",
+        ErrorCodes.FORBIDDEN,
+        403,
+      );
+    }
+
+    const user = await UserModel.findById(patientId);
+    if (!user) {
+      throw new AppError("User not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if (user.sundayBannedUntil && user.sundayBannedUntil > new Date()) {
+      throw new AppError(
+        "You are temporarily banned from Sunday free consults",
+        ErrorCodes.USER_BANNED,
+        403,
+      );
+    }
+
+    if (user.bannedUntil && user.bannedUntil > new Date()) {
+      throw new AppError("Account suspended", ErrorCodes.USER_BANNED, 403);
+    }
+
+    const sundayDate = getActiveOrNextSundayDate();
+    const sundayDateKey = formatSundayDateKey(sundayDate);
+
+    if (!canRequestSundayNow(sundayDate, user.earlyAccessSunday ?? false)) {
+      throw new AppError(
+        "Sunday free consult requests are not open yet",
+        ErrorCodes.FORBIDDEN,
+        403,
+      );
+    }
+
+    const existingRequest = await SundayFreeRequestModel.findOne(
+      mongoFilter({
+        patientId,
+        sundayDateKey,
+        status: { $in: [...ACTIVE_REQUEST_STATUSES] },
+      }),
+    ).lean();
+
+    if (existingRequest) {
+      return SundayConsultService.mapPatientRequest(
+        existingRequest as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
+      );
+    }
+
+    const existingAppointment = await AppointmentModel.findOne(
+      mongoFilter({
+        patientId,
+        type: AppointmentTypes.SUNDAY_FREE,
+        sundayDateKey,
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+      }),
+    ).lean();
+
+    if (existingAppointment) {
+      throw new AppError(
+        "You already have your free consultation for this week. One request per patient — first come, first served.",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
+    const doc = await SundayFreeRequestModel.create({
+      patientId,
+      patientPhone: input.patientPhone,
+      patientNotes: input.patientNotes,
+      sundayDateKey,
+      status: SundayFreeRequestStatuses.REQUESTED,
+    });
+
+    const requestId = doc._id.toString();
+    await SundayConsultService.notifyAdmins(
+      "New Sunday free consult request",
+      `${user.name ?? "A patient"} requested a free Sunday consult — assign a doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
+      { type: "sunday_free_requested", requestId, sundayDateKey },
+    ).catch((err) => {
+      console.error("[sunday-consult] admin notification failed", err);
+    });
+
+    publishSundayEvent({
+      type: "instance_updated",
+      doctorId: "queue",
+      sundayDateKey,
+      instanceId: requestId,
+    });
+
+    return SundayConsultService.mapPatientRequest(doc.toObject());
+  }
+
+  static async getPatientRequest(
+    patientId: string,
+    dateKey?: string,
+  ): Promise<SundayPatientRequestDto | null> {
+    await connectDatabase();
+
+    const sundayDateKey = dateKey ?? formatSundayDateKey(getActiveOrNextSundayDate());
+
+    const doc = await SundayFreeRequestModel.findOne(
+      mongoFilter({
+        patientId,
+        sundayDateKey,
+        status: { $in: [...ACTIVE_REQUEST_STATUSES] },
+      }),
+    )
+      .sort({ createdAt: -1 })
+      .populate("appointmentId", "scheduledStart scheduledEnd status")
+      .populate({
+        path: "assignedDoctorId",
+        select: "specialties pmdcVerified ratingAvg ratingCount",
+        populate: { path: "userId", select: "name avatarUrl" },
+      })
+      .lean();
+
+    if (!doc) return null;
+    return SundayConsultService.mapPatientRequest(
+      doc as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
+    );
+  }
+
+  static async listAdminRequests(dateKey?: string): Promise<SundayAdminRequestDto[]> {
+    await connectDatabase();
+    const sundayDateKey = dateKey ?? formatSundayDateKey(getActiveOrNextSundayDate());
+
+    const docs = await SundayFreeRequestModel.find(
+      mongoFilter({
+        sundayDateKey,
+        status: { $in: [...ACTIVE_REQUEST_STATUSES] },
+      }),
+    )
+      .sort({ createdAt: 1 })
+      .populate("patientId", "name phone")
+      .populate("appointmentId", "scheduledStart scheduledEnd")
+      .populate({
+        path: "assignedDoctorId",
+        select: "specialties pmdcVerified",
+        populate: { path: "userId", select: "name" },
+      })
+      .lean();
+
+    return docs.map((doc) => {
+      const patient = doc.patientId as { name?: string; phone?: string } | null;
+      const mapped = SundayConsultService.mapPatientRequest(
+        doc as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
+      );
+      return {
+        requestId: mapped.requestId,
+        status: mapped.status,
+        sundayDateKey: mapped.sundayDateKey,
+        patientName: patient?.name ?? "Patient",
+        patientPhone: mapped.patientPhone,
+        patientNotes: mapped.patientNotes,
+        createdAt: mapped.createdAt,
+        assignedAt: mapped.assignedAt,
+        appointmentId: mapped.appointmentId,
+        scheduledStart: mapped.scheduledStart,
+        scheduledEnd: mapped.scheduledEnd,
+        doctor: mapped.doctor
+          ? {
+              doctorId: mapped.doctor.doctorId,
+              name: mapped.doctor.name,
+              specialty: mapped.doctor.specialty,
+              pmdcVerified: mapped.doctor.pmdcVerified,
+            }
+          : undefined,
+      };
+    });
+  }
+
+  static async listSundayTeamDoctors(): Promise<SundayTeamDoctorOption[]> {
+    await connectDatabase();
+
+    const doctors = await DoctorProfileModel.find({
+      sundayConsultEnabled: true,
+      isListed: true,
+      verificationStatus: VerificationStatuses.APPROVED,
+    })
+      .populate("userId", "name")
+      .sort({ ratingAvg: -1, ratingCount: -1 })
+      .lean();
+
+    return doctors.map((doc) => {
+      const user = doc.userId as { name?: string } | null;
+      return {
+        doctorId: doc._id.toString(),
+        name: user?.name ?? "Doctor",
+        specialties: doc.specialties ?? [],
+        pmdcVerified: doc.pmdcVerified ?? false,
+      };
+    });
+  }
+
+  static async assignDoctor(
+    requestId: string,
+    adminUserId: string,
+    input: SundayFreeAssignInput,
+    locale?: "en" | "ur",
+  ): Promise<SundayAdminRequestDto> {
+    await connectDatabase();
+
+    const request = await SundayFreeRequestModel.findById(requestId);
+    if (
+      !request ||
+      !ACTIVE_REQUEST_STATUSES.includes(
+        request.status as (typeof ACTIVE_REQUEST_STATUSES)[number],
+      )
+    ) {
+      throw new AppError("Request not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const doctor = await DoctorProfileModel.findById(input.doctorId)
+      .populate("userId", "name phone")
+      .lean();
+    if (
+      !doctor?.isListed ||
+      doctor.verificationStatus !== VerificationStatuses.APPROVED ||
+      !doctor.sundayConsultEnabled
+    ) {
+      throw new AppError(
+        "Doctor is not available for Sunday free consult",
+        ErrorCodes.NOT_FOUND,
+        404,
+      );
+    }
+
+    const assignedAt = new Date();
+    const scheduledStart = assignedAt;
+    const scheduledEnd = new Date(
+      assignedAt.getTime() + SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+    );
+
+    let appointmentId = request.appointmentId?.toString();
+
+    if (!appointmentId) {
+      const appointment = (await AppointmentModel.create({
+        type: AppointmentTypes.SUNDAY_FREE,
+        status: AppointmentStatuses.CONFIRMED,
+        patientId: request.patientId,
+        doctorId: doctor._id,
+        scheduledStart,
+        scheduledEnd,
+        timezone: SUNDAY_CONSULT_CONFIG.timezone,
+        sundayDateKey: request.sundayDateKey,
+        isOnline: true,
+        patientNotes: request.patientNotes,
+      } as Record<string, unknown>)) as { _id: { toString(): string } };
+
+      appointmentId = appointment._id.toString();
+      request.appointmentId = appointment._id as unknown as typeof request.appointmentId;
+
+      await MedicalIntakeService.createForAppointment(
+        appointmentId,
+        IntakeSources.FORM,
+        locale,
+      );
+    } else {
+      await AppointmentModel.updateOne(
+        mongoFilter({ _id: appointmentId }),
+        {
+          $set: {
+            doctorId: doctor._id,
+            scheduledStart,
+            scheduledEnd,
+            status: AppointmentStatuses.CONFIRMED,
+          },
+        },
+      );
+    }
+
+    request.status = SundayFreeRequestStatuses.ASSIGNED;
+    request.assignedDoctorId = doctor._id as unknown as typeof request.assignedDoctorId;
+    request.assignedBy = adminUserId as unknown as typeof request.assignedBy;
+    request.assignedAt = assignedAt;
+    if (input.adminNotes) {
+      request.adminNotes = input.adminNotes;
+    }
+    await request.save();
+
+    const patient = await UserModel.findById(request.patientId).lean();
+    const doctorUser = doctor.userId as {
+      _id?: { toString(): string };
+      name?: string;
+      phone?: string;
+    } | null;
+    const doctorName = doctorUser?.name ?? "Doctor";
+
+    await sendBookingConfirmation({
+      userId: request.patientId.toString(),
+      phone: patient?.phone ?? request.patientPhone,
+      doctorName,
+      slotStart: scheduledStart,
+    }).catch((err) => {
+      console.error("[sunday-consult] patient notification failed", err);
+    });
+
+    if (doctorUser?._id) {
+      await sendDoctorConsultBooked({
+        userId: doctorUser._id.toString(),
+        phone: doctorUser.phone ?? undefined,
+        patientName: patient?.name ?? "Patient",
+        slotStart: scheduledStart,
+        appointmentId,
+        type: "sunday_free",
+      }).catch((err) => {
+        console.error("[sunday-consult] doctor notification failed", err);
+      });
+    }
+
+    publishSundayEvent({
+      type: "instance_updated",
+      doctorId: doctor._id.toString(),
+      sundayDateKey: request.sundayDateKey,
+      instanceId: requestId,
+    });
+
+    const rows = await SundayConsultService.listAdminRequests(request.sundayDateKey);
+    const row = rows.find((r) => r.requestId === requestId);
+    if (!row) {
+      throw new AppError("Assigned request not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    return row;
+  }
+
+  private static async notifyAdmins(
+    title: string,
+    body: string,
+    payload: Record<string, unknown>,
+  ) {
+    const admins = await UserModel.find({
+      roles: { $in: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+      isActive: { $ne: false },
+      deletedAt: null,
+    })
+      .select("_id")
+      .lean();
+
+    for (const admin of admins) {
+      await NotificationModel.create({
+        userId: admin._id.toString(),
+        channel: NotificationChannels.IN_APP,
+        title,
+        body,
+        payload,
+        sentAt: new Date(),
+      });
+    }
+  }
+
+  private static mapPatientRequest(doc: {
+    _id: { toString(): string };
+    patientPhone: string;
+    patientNotes?: string | null;
+    status: string;
+    sundayDateKey: string;
+    createdAt?: Date;
+    assignedAt?: Date | null;
+    appointmentId?:
+      | { toString(): string }
+      | null
+      | {
+          _id?: { toString(): string };
+          scheduledStart?: Date;
+          scheduledEnd?: Date;
+        };
+    assignedDoctorId?:
+      | { toString(): string }
+      | null
+      | {
+          _id?: { toString(): string };
+          specialties?: string[];
+          pmdcVerified?: boolean;
+          ratingAvg?: number;
+          ratingCount?: number;
+          userId?: { name?: string; avatarUrl?: string } | null;
+        };
+  }): SundayPatientRequestDto {
+    let doctor: SundayPatientRequestDto["doctor"];
+    const assigned = doc.assignedDoctorId;
+    if (assigned && typeof assigned === "object" && "userId" in assigned) {
+      const user = assigned.userId;
+      const name = user?.name ?? "Doctor";
+      doctor = {
+        doctorId: assigned._id?.toString() ?? "",
+        name,
+        avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+        specialty: assigned.specialties?.[0] ?? "General Physician",
+        pmdcVerified: Boolean(assigned.pmdcVerified),
+        ratingAvg: assigned.ratingAvg ?? 0,
+        ratingCount: assigned.ratingCount ?? 0,
+      };
+    }
+
+    let appointmentId: string | undefined;
+    let scheduledStart: string | undefined;
+    let scheduledEnd: string | undefined;
+    const appointment = doc.appointmentId;
+    if (appointment && typeof appointment === "object") {
+      if ("scheduledStart" in appointment) {
+        appointmentId = appointment._id?.toString();
+        scheduledStart = appointment.scheduledStart?.toISOString();
+        scheduledEnd = appointment.scheduledEnd?.toISOString();
+      } else if ("toString" in appointment) {
+        appointmentId = appointment.toString();
+      }
+    }
+
+    return {
+      requestId: doc._id.toString(),
+      status: doc.status as SundayPatientRequestDto["status"],
+      sundayDateKey: doc.sundayDateKey,
+      patientPhone: doc.patientPhone,
+      patientNotes: doc.patientNotes ?? undefined,
+      createdAt: (doc.createdAt ?? new Date()).toISOString(),
+      assignedAt: doc.assignedAt?.toISOString(),
+      appointmentId,
+      scheduledStart,
+      scheduledEnd,
+      doctor,
+    };
+  }
+
+  private static requestToBookingDto(
+    request: SundayPatientRequestDto,
+  ): SundayPatientBookingDto | null {
+    if (request.status === SundayFreeRequestStatuses.REQUESTED) {
+      return {
+        appointmentId: request.requestId,
+        scheduledStart: request.createdAt,
+        scheduledEnd: new Date(
+          new Date(request.createdAt).getTime() +
+            SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
+        ).toISOString(),
+        status: AppointmentStatuses.PENDING,
+        sundayDateKey: request.sundayDateKey,
+        doctor: {
+          doctorId: "",
+          name: "Matching doctor…",
+          specialty: "Sunday Free Consult",
+          pmdcVerified: true,
+          ratingAvg: 0,
+          ratingCount: 0,
+        },
+        requestId: request.requestId,
+        requestStatus: request.status,
+      };
+    }
+
+    if (!request.appointmentId || !request.scheduledStart || !request.scheduledEnd || !request.doctor) {
+      return {
+        appointmentId: request.requestId,
+        scheduledStart: request.assignedAt ?? request.createdAt,
+        scheduledEnd: new Date(
+          new Date(request.assignedAt ?? request.createdAt).getTime() +
+            SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+        ).toISOString(),
+        status: AppointmentStatuses.CONFIRMED,
+        sundayDateKey: request.sundayDateKey,
+        doctor: request.doctor ?? {
+          doctorId: "",
+          name: "Doctor",
+          specialty: "General Physician",
+          pmdcVerified: true,
+          ratingAvg: 0,
+          ratingCount: 0,
+        },
+        requestId: request.requestId,
+        requestStatus: request.status,
+      };
+    }
+
+    return {
+      appointmentId: request.appointmentId,
+      scheduledStart: request.scheduledStart,
+      scheduledEnd: request.scheduledEnd,
+      status: AppointmentStatuses.CONFIRMED,
+      sundayDateKey: request.sundayDateKey,
+      doctor: request.doctor,
+      requestId: request.requestId,
+      requestStatus: request.status,
+    };
+  }
+
   private static toPatientBookingDto(
     appointment: Record<string, unknown> | null,
   ): SundayPatientBookingDto | null {
@@ -753,7 +1291,9 @@ export class SundayConsultService {
       scheduledStart: scheduledStart.toISOString(),
       scheduledEnd: scheduledEnd.toISOString(),
       status: appointment.status as SundayPatientBookingDto["status"],
-      sundayDateKey: formatSundayDateKey(scheduledStart),
+      sundayDateKey:
+        (appointment.sundayDateKey as string | undefined) ??
+        formatSundayDateKey(scheduledStart),
       doctor: {
         doctorId: doctor._id.toString(),
         name,

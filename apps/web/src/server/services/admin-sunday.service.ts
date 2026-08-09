@@ -16,6 +16,7 @@ import {
 import {
   formatSundayDateKey,
   generateSlotTimes,
+  getActiveOrNextSundayDate,
   getNextSundayDate,
   parseSundayDateKey,
 } from "@/lib/sunday/date-utils";
@@ -51,7 +52,7 @@ export async function getAdminSundayOverview(
 ): Promise<AdminSundayOverview> {
   await connectDatabase();
 
-  const sundayDate = dateKey ? parseSundayDateKey(dateKey) : getNextSundayDate();
+  const sundayDate = dateKey ? parseSundayDateKey(dateKey) : getActiveOrNextSundayDate();
   const key = formatSundayDateKey(sundayDate);
   const settings = await getSystemSettings();
 

@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ArrowRight, Calendar, Gift } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
@@ -13,12 +16,30 @@ import { PageSection } from "@/components/layout/page-section";
 import { useTranslations } from "@/i18n/locale-provider";
 import { SUNDAY_FREE_CONSULT_HERO_IMAGE } from "@/features/marketing/data/hero-services";
 
+const REQUEST_PATH = `${siteConfig.links.sundayConsult}#request`;
+const LOGIN_HREF = `/login?callbackUrl=${encodeURIComponent(REQUEST_PATH)}`;
+
 export function SundayBanner() {
   const t = useTranslations();
   const sunday = t.sunday;
-  const nextSunday = formatNextSundayLong();
-  const bookingOpen = isSundayBookingOpenNow();
-  const bookHref = `${siteConfig.links.sundayConsult}#how-it-works`;
+  const pathname = usePathname();
+  const { status } = useSession();
+  const [nextSunday, setNextSunday] = useState(() => formatNextSundayLong());
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const onSundayPage = pathname === siteConfig.links.sundayConsult;
+
+  // Guests go straight to login; signed-in users go to the form.
+  const bookHref =
+    status === "unauthenticated" ? LOGIN_HREF : REQUEST_PATH;
+
+  useEffect(() => {
+    setNextSunday(formatNextSundayLong());
+    setBookingOpen(isSundayBookingOpenNow());
+  }, []);
+
+  const scrollToForm = () => {
+    document.getElementById("request")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <PageSection
@@ -76,18 +97,34 @@ export function SundayBanner() {
             </div>
 
             <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:items-center">
-              <Button
-                size="lg"
-                className="group h-11 w-full rounded-xl bg-white px-6 text-sm font-semibold text-brand-dark shadow-premium hover:bg-brand-muted sm:h-12 sm:w-auto sm:text-base"
-                asChild
-              >
-                <Link href={bookHref}>
+              {onSundayPage ? (
+                <Button
+                  type="button"
+                  size="lg"
+                  className="group h-11 w-full rounded-xl bg-white px-6 text-sm font-semibold text-brand-dark shadow-premium hover:bg-brand-muted sm:h-12 sm:w-auto sm:text-base"
+                  onClick={scrollToForm}
+                >
                   {sunday.bookCta}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="group h-11 w-full rounded-xl bg-white px-6 text-sm font-semibold text-brand-dark shadow-premium hover:bg-brand-muted sm:h-12 sm:w-auto sm:text-base"
+                  asChild
+                >
+                  <Link href={bookHref}>
+                    {status === "unauthenticated" ? sunday.loginToRequest : sunday.bookCta}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </Button>
+              )}
               <Link
-                href={bookHref}
+                href={
+                  onSundayPage
+                    ? "#how-it-works"
+                    : `${siteConfig.links.sundayConsult}#how-it-works`
+                }
                 className="text-center text-sm font-medium text-white/70 transition-colors hover:text-white sm:text-left"
               >
                 {sunday.howItWorks} →

@@ -125,8 +125,8 @@ export const heroServices: HeroService[] = [
         "Free 10-minute video consult with a PMDC-verified doctor.",
       highlights: ["Completely free · Rs. 0", "Every Sunday online"],
       badge: "Free · Rs. 0 · Every Sunday",
-      ctaLabel: "Book free Sunday slot",
-      href: siteConfig.links.sundayConsult,
+      ctaLabel: "Request free Sunday consult",
+      href: `${siteConfig.links.sundayConsult}#request`,
     },
     card: {
       title: "Sunday Free Consult",

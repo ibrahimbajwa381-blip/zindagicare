@@ -33,6 +33,60 @@ async function ensurePatientProfile(userId: { toString(): string }) {
   );
 }
 
+/** Doctors/nurses/physios can also use the patient dashboard on the same account. */
+async function ensureClinicalStaffPatientAccess(
+  userId: string,
+  roles: Role[],
+  opts: { phone?: string | null; onboardingCompleted?: boolean },
+): Promise<{ roles: Role[]; onboardingCompleted: boolean }> {
+  const isClinical =
+    roles.includes(Roles.DOCTOR) ||
+    roles.includes(Roles.NURSE) ||
+    roles.includes(Roles.PHYSIOTHERAPIST);
+
+  if (!isClinical) {
+    return {
+      roles,
+      onboardingCompleted: opts.onboardingCompleted ?? false,
+    };
+  }
+
+  const needsPatientRole = !roles.includes(Roles.PATIENT);
+  const canCompleteOnboarding =
+    !(opts.onboardingCompleted ?? false) && Boolean(opts.phone);
+
+  if (!needsPatientRole && !canCompleteOnboarding) {
+    await ensurePatientProfile({ toString: () => userId });
+    return {
+      roles,
+      onboardingCompleted: opts.onboardingCompleted ?? false,
+    };
+  }
+
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    return {
+      roles,
+      onboardingCompleted: opts.onboardingCompleted ?? false,
+    };
+  }
+
+  if (!user.roles.includes(Roles.PATIENT)) {
+    user.roles.push(Roles.PATIENT);
+  }
+  // Staff already collected phone at signup — don't force patient onboarding.
+  if (!user.onboardingCompleted && user.phone) {
+    user.onboardingCompleted = true;
+  }
+  await user.save();
+  await ensurePatientProfile(user._id);
+
+  return {
+    roles: user.roles as Role[],
+    onboardingCompleted: user.onboardingCompleted ?? false,
+  };
+}
+
 async function ensureDoctorProfile(userId: { toString(): string }, city: string) {
   await DoctorProfileModel.findOneAndUpdate(
     mongoFilter({ userId: userId.toString() }),
@@ -200,9 +254,10 @@ export async function registerWithCredentials(input: {
 
   const roleByAccountType: Record<AccountType, Role[]> = {
     patient: [Roles.PATIENT],
-    doctor: [Roles.DOCTOR],
-    nurse: [Roles.NURSE],
-    physiotherapist: [Roles.PHYSIOTHERAPIST],
+    // Clinical staff can also book care as patients on the same account.
+    doctor: [Roles.PATIENT, Roles.DOCTOR],
+    nurse: [Roles.PATIENT, Roles.NURSE],
+    physiotherapist: [Roles.PATIENT, Roles.PHYSIOTHERAPIST],
   };
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -214,7 +269,8 @@ export async function registerWithCredentials(input: {
     roles: roleByAccountType[accountType],
     authProviders: ["credentials"],
     emailVerified: new Date(),
-    onboardingCompleted: false,
+    // Staff already provide phone + city at signup; skip patient onboarding gate.
+    onboardingCompleted: accountType !== "patient",
     isActive: true,
     ...(accountType !== "patient"
       ? { metadata: { city, locale: "en" as const } }
@@ -225,10 +281,13 @@ export async function registerWithCredentials(input: {
     if (accountType === "patient") {
       await ensurePatientProfile(user._id);
     } else if (accountType === "doctor") {
+      await ensurePatientProfile(user._id);
       await ensureDoctorProfile(user._id, city);
     } else if (accountType === "nurse") {
+      await ensurePatientProfile(user._id);
       await ensureNurseProfile(user._id, city);
     } else {
+      await ensurePatientProfile(user._id);
       await ensurePhysiotherapistProfile(user._id, city);
     }
   } catch (error) {
@@ -364,6 +423,13 @@ export async function loadAuthUserPayload(userId: string) {
   let roles = (user.roles ?? [Roles.PATIENT]) as Role[];
   roles = await syncAdminRoleFromAllowlist(id, user.email, roles);
 
+  const patientAccess = await ensureClinicalStaffPatientAccess(id, roles, {
+    phone: user.phone,
+    onboardingCompleted: user.onboardingCompleted ?? false,
+  });
+  roles = patientAccess.roles;
+  const onboardingCompleted = patientAccess.onboardingCompleted;
+
   let doctorVerificationStatus: string | undefined;
   if (roles.includes(Roles.DOCTOR)) {
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }))
@@ -399,11 +465,25 @@ export async function loadAuthUserPayload(userId: string) {
     image: user.avatarUrl ?? undefined,
     roles,
     activeWorkspace: resolveDefaultWorkspace(roles),
-    onboardingCompleted: user.onboardingCompleted ?? false,
+    onboardingCompleted,
     hasPhone: Boolean(user.phone),
     doctorVerificationStatus,
     nurseVerificationStatus,
     physiotherapistVerificationStatus,
+  };
+}
+
+/** Refresh roles for an existing session without resetting activeWorkspace. */
+export async function syncSessionRoles(userId: string) {
+  const payload = await loadAuthUserPayload(userId);
+  if (!payload) return null;
+  return {
+    roles: payload.roles,
+    onboardingCompleted: payload.onboardingCompleted,
+    hasPhone: payload.hasPhone,
+    doctorVerificationStatus: payload.doctorVerificationStatus,
+    nurseVerificationStatus: payload.nurseVerificationStatus,
+    physiotherapistVerificationStatus: payload.physiotherapistVerificationStatus,
   };
 }
 

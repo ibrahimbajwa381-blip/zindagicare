@@ -27,7 +27,7 @@ const heroHrefs = [
   siteConfig.links.homePhysiotherapy,
   `${siteConfig.links.urgentCare}#request`,
   siteConfig.links.doctors,
-  siteConfig.links.sundayConsult,
+  `${siteConfig.links.sundayConsult}#request`,
 ] as const;
 
 export function getHeroServices(t: Dictionary["hero"]): HeroService[] {

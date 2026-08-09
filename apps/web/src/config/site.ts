@@ -33,6 +33,11 @@ export const siteConfig = {
   supportEmail: "support@zindagicare.pk",
   supportWhatsApp: "923074583567",
   supportWhatsAppDisplay: "0307 458 3567",
+  /** Direct call numbers shown after Sunday free-consult requests. */
+  supportPhones: [
+    { display: "0307 458 3567", tel: "03074583567" },
+    { display: "0336 7000304", tel: "03367000304" },
+  ] as const,
   /** JazzCash wallet for manual patient transfers (no payment gateway yet). */
   jazzCash: {
     number: "03074583567",

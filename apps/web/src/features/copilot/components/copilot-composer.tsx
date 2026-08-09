@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Mic, MicOff, Send } from "lucide-react";
+// Mic temporarily disabled — restore later
+// import { Mic, MicOff, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@zindagi/shared";
 
@@ -9,21 +11,23 @@ type CopilotComposerProps = {
   onSend: (body: string) => Promise<void>;
   placeholder: string;
   disabled?: boolean;
+  // Mic temporarily disabled — restore later
   listening?: boolean;
   onMicClick?: () => void;
   micLabel?: string;
   stopMicLabel?: string;
 };
 
-/** Voice-first composer — type a message or tap mic when the input is empty. */
+/** Text-first composer (mic temporarily disabled — restore later). */
 export function CopilotComposer({
   onSend,
   placeholder,
   disabled,
-  listening = false,
-  onMicClick,
-  micLabel = "Voice message",
-  stopMicLabel = "Stop recording",
+  // Mic temporarily disabled — restore later
+  // listening = false,
+  // onMicClick,
+  // micLabel = "Voice message",
+  // stopMicLabel = "Stop recording",
 }: CopilotComposerProps) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -49,9 +53,11 @@ export function CopilotComposer({
         <div
           className={cn(
             "flex min-h-[46px] flex-1 items-end rounded-2xl border bg-white shadow-sm transition-shadow",
-            listening
-              ? "border-red-300 ring-2 ring-red-100"
-              : "border-slate-200 focus-within:border-brand-light focus-within:ring-2 focus-within:ring-brand-muted",
+            // Mic temporarily disabled — restore listening styles later
+            // listening
+            //   ? "border-red-300 ring-2 ring-red-100"
+            //   : "border-slate-200 focus-within:border-brand-light focus-within:ring-2 focus-within:ring-brand-muted",
+            "border-slate-200 focus-within:border-brand-light focus-within:ring-2 focus-within:ring-brand-muted",
           )}
         >
           <textarea
@@ -59,7 +65,8 @@ export function CopilotComposer({
             onChange={(e) => setText(e.target.value)}
             placeholder={placeholder}
             rows={1}
-            disabled={disabled || sending || listening}
+            // Mic temporarily disabled — restore `|| listening` later
+            disabled={disabled || sending}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -73,6 +80,7 @@ export function CopilotComposer({
           />
         </div>
 
+        {/* Mic temporarily disabled — restore empty-state mic button later
         {hasText ? (
           <Button
             type="submit"
@@ -110,6 +118,16 @@ export function CopilotComposer({
             )}
           </Button>
         )}
+        */}
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!hasText || sending || disabled}
+          className="h-11 w-11 shrink-0 rounded-full bg-brand shadow-md shadow-brand/25 hover:bg-brand-dark"
+          aria-label="Send message"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
       </form>
     </div>
   );

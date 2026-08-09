@@ -1,4 +1,19 @@
 import { z } from "zod";
+import { pakistaniPhoneSchema } from "./auth.schema";
+
+export const sundayFreeRequestSchema = z.object({
+  patientPhone: pakistaniPhoneSchema,
+  patientNotes: z.string().max(1000).optional(),
+});
+
+export type SundayFreeRequestInput = z.infer<typeof sundayFreeRequestSchema>;
+
+export const sundayFreeAssignSchema = z.object({
+  doctorId: z.string().min(1),
+  adminNotes: z.string().max(2000).optional(),
+});
+
+export type SundayFreeAssignInput = z.infer<typeof sundayFreeAssignSchema>;
 
 export const reserveSlotSchema = z.object({
   doctorId: z.string().min(1),

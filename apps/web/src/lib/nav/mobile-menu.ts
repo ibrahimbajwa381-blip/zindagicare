@@ -5,6 +5,7 @@ import type { MobileNavLink, MobileNavSection } from "@/components/layout/mobile
 
 type AccountSectionLabels = {
   myDashboard: string;
+  patientDashboard: string;
   doctorDashboard: string;
   adminDashboard: string;
   healthAssistant: string;
@@ -28,6 +29,7 @@ export function buildAccountMobileSection(
 
   const dashboardLinks = resolveDashboardMenuLinks(session.user.roles, {
     myDashboard: labels.myDashboard,
+    patientDashboard: labels.patientDashboard,
     doctorDashboard: labels.doctorDashboard,
     adminDashboard: labels.adminDashboard,
   });
@@ -62,6 +64,7 @@ export function buildMarketingMobileNav(
     freeBadge: string;
     urgentBadge: string;
     myDashboard: string;
+    patientDashboard: string;
     doctorDashboard: string;
     adminDashboard: string;
     healthAssistant: string;
@@ -91,6 +94,7 @@ export function buildMarketingMobileNav(
 
   const accountSection = buildAccountMobileSection(session, {
     myDashboard: labels.myDashboard,
+    patientDashboard: labels.patientDashboard,
     doctorDashboard: labels.doctorDashboard,
     adminDashboard: labels.adminDashboard,
     healthAssistant: labels.healthAssistant,

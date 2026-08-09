@@ -3,9 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
+import { siteConfig } from "@/config/site";
+import { useTranslations } from "@/i18n/locale-provider";
 import {
   HERO_CAROUSEL_HEIGHT,
   HERO_USAMA_CAROUSEL_IMAGE_CLASS,
@@ -13,6 +16,13 @@ import {
   URGENT_CARE_HERO_IMAGE_CLASS,
   type HeroService,
 } from "@/features/marketing/data/hero-services";
+
+function resolveHeroCtaHref(service: HeroService, isGuest: boolean): string {
+  if (service.id === "sunday-consult" && isGuest) {
+    return `/login?callbackUrl=${encodeURIComponent(`${siteConfig.links.sundayConsult}#request`)}`;
+  }
+  return service.carousel.href;
+}
 
 const AUTO_ADVANCE_MS = 3000;
 
@@ -36,7 +46,11 @@ export function HeroCarousel({
   onIndexChange,
   labels,
 }: HeroCarouselProps) {
+  const { status } = useSession();
+  const t = useTranslations();
+  const isGuest = status === "unauthenticated";
   const [isPaused, setIsPaused] = useState(false);
+  const [autoplayReady, setAutoplayReady] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const goTo = useCallback(
@@ -52,10 +66,16 @@ export function HeroCarousel({
   const goPrev = useCallback(() => goTo(activeIndex - 1), [activeIndex, goTo]);
 
   useEffect(() => {
-    if (isPaused) return;
+    // Wait one frame after mount so hydration finishes before DOM churn.
+    const ready = window.requestAnimationFrame(() => setAutoplayReady(true));
+    return () => window.cancelAnimationFrame(ready);
+  }, []);
+
+  useEffect(() => {
+    if (!autoplayReady || isPaused) return;
     const timer = window.setInterval(goNext, AUTO_ADVANCE_MS);
     return () => window.clearInterval(timer);
-  }, [goNext, isPaused]);
+  }, [goNext, isPaused, autoplayReady]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -75,12 +95,15 @@ export function HeroCarousel({
     else goPrev();
   };
 
+  const active = services[activeIndex] ?? services[0];
+
   return (
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl sm:rounded-3xl",
         HERO_CAROUSEL_HEIGHT,
       )}
+      translate="no"
       aria-roledescription="carousel"
       aria-live="polite"
       onMouseEnter={() => setIsPaused(true)}
@@ -90,6 +113,13 @@ export function HeroCarousel({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {active ? (
+        <h1 className="sr-only">
+          <span>
+            {active.carousel.title} {active.carousel.titleHighlight}
+          </span>
+        </h1>
+      ) : null}
       {services.map((service, index) => {
         const isActive = index === activeIndex;
 
@@ -115,26 +145,23 @@ export function HeroCarousel({
             <div className="relative flex h-full flex-col overflow-hidden lg:flex-row">
               <div className="flex shrink-0 flex-col p-5 pr-12 sm:p-7 sm:pr-8 lg:w-[38%] lg:max-w-xl lg:shrink-0 lg:justify-center lg:p-10 xl:w-[36%]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-white/95 sm:text-sm">
-                  {service.carousel.eyebrow}
+                  <span>{service.carousel.eyebrow}</span>
                 </p>
-                {isActive ? (
-                  <h1 className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]">
-                    {service.carousel.title}{" "}
-                    <span className="text-hero-highlight drop-shadow-sm">
-                      {service.carousel.titleHighlight}
-                    </span>
-                  </h1>
-                ) : (
-                  <p
-                    aria-hidden
-                    className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]"
-                  >
-                    {service.carousel.title}{" "}
-                    <span className="text-hero-highlight drop-shadow-sm">
-                      {service.carousel.titleHighlight}
-                    </span>
-                  </p>
-                )}
+                {/*
+                  Keep a stable element type across slides. Swapping <h1> ↔ <p>
+                  on auto-advance makes React call removeChild on nodes the
+                  browser may have already moved (extensions / translate),
+                  which throws NotFoundError in the client.
+                */}
+                <p
+                  aria-hidden={!isActive}
+                  className="mt-2 font-display text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white drop-shadow-sm sm:mt-2.5 sm:text-4xl lg:text-[2.75rem]"
+                >
+                  <span>{service.carousel.title} </span>
+                  <span className="text-hero-highlight drop-shadow-sm">
+                    {service.carousel.titleHighlight}
+                  </span>
+                </p>
                 <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-2 text-sm font-medium leading-snug text-white backdrop-blur-sm sm:mt-4 sm:px-4 sm:py-2.5 sm:text-base">
                   <BadgeCheck className="h-4 w-4 shrink-0 text-brand-lighter sm:h-5 sm:w-5" />
                   <span>{service.carousel.badge}</span>
@@ -145,8 +172,12 @@ export function HeroCarousel({
                     className="shadow-premium h-14 w-full rounded-xl px-6 text-base font-semibold shadow-brand-dark/25 sm:h-12 sm:w-auto sm:text-lg"
                     asChild
                   >
-                    <Link href={service.carousel.href}>
-                      {service.carousel.ctaLabel}
+                    <Link href={resolveHeroCtaHref(service, isGuest)}>
+                      <span>
+                        {service.id === "sunday-consult" && isGuest
+                          ? t.sunday.loginToRequest
+                          : service.carousel.ctaLabel}
+                      </span>
                     </Link>
                   </Button>
                 </div>

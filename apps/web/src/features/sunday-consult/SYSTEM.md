@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Weekly free 10-minute consultations on Sundays (Asia/Karachi). Core differentiator: atomic slot booking, one free slot per patient per week (first come, first served), no-show bans, realtime availability.
+Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a request (no doctor picker); ops assigns an available doctor within 60 minutes. One free request per patient per week, no-show bans. Legacy slot templates remain for doctor capacity/admin tooling.
 
 ## 2. Data model
 

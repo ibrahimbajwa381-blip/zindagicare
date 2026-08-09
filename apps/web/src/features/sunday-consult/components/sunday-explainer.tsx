@@ -58,7 +58,7 @@ export function SundayExplainer({
           </div>
           {showCta && (
             <Button size="sm" className="shrink-0" asChild>
-              <Link href={siteConfig.links.sundayConsult}>{ex.bookFreeSlot}</Link>
+              <Link href={`${siteConfig.links.sundayConsult}#request`}>{ex.bookFreeSlot}</Link>
             </Button>
           )}
         </div>
@@ -151,7 +151,7 @@ export function SundayExplainer({
       {showCta && (
         <div className="mt-8 flex flex-wrap gap-3">
           <Button size="lg" asChild>
-            <Link href={siteConfig.links.sundayConsult}>{ex.bookYourSlot}</Link>
+            <Link href={`${siteConfig.links.sundayConsult}#request`}>{ex.bookYourSlot}</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
             <Link href={siteConfig.links.register}>{ex.createAccount}</Link>

@@ -1,0 +1,210 @@
+================================================================================
+ZINDAGICARE — AI PROJECT CONTEXT (token-efficient)
+Verified: 2026-08-09 | Product: Lahore-first healthcare marketplace (PKR, Asia/Karachi)
+================================================================================
+Read this before exploring the repo. Prefer these paths over broad searches.
+
+
+--------------------------------------------------------------------------------
+1. PRODUCT (1 paragraph)
+--------------------------------------------------------------------------------
+ZindagiCare connects patients with PMDC-verified doctors in Pakistan.
+Core services: paid online video consults, free Sunday consults, urgent online
+care, Lahore home visits (doctor/nurse/physio/IV/etc.), chat, e-prescriptions,
+Gemini Health Assistant. UI: English + Urdu. Currency: PKR. TZ: Asia/Karachi.
+
+
+--------------------------------------------------------------------------------
+2. MONOREPO
+--------------------------------------------------------------------------------
+Tool: npm workspaces (apps/*, packages/*). No Turbo/Nx.
+Root scripts → web: npm run dev|build|lint|start
+
+apps/web              Next.js App Router product (ONLY app)
+packages/shared       @zindagi/shared — roles, RBAC, workspaces, constants, AppError
+packages/database     @zindagi/database — Mongoose models + connect
+packages/validators   @zindagi/validators — Zod schemas
+
+Also: docs/, scripts/, .env.example, vercel.json
+Web UI features: apps/web/src/features/<domain>/
+Web API + domain logic: apps/web/src/server/
+App Router: apps/web/src/app/
+
+
+--------------------------------------------------------------------------------
+3. STACK
+--------------------------------------------------------------------------------
+Next.js 16.2.6 App Router + React 19.2 + TypeScript
+Auth.js / next-auth v5 beta (credentials, Google, phone OTP)
+MongoDB + Mongoose 9
+Tailwind CSS v4, Radix Slot, CVA, lucide-react, RHF + Zod
+i18n: custom en/ur (cookie zc_locale) — dictionaries in apps/web/src/i18n/
+Uploads: Supabase private bucket
+Optional: Upstash Redis, JazzCash/EasyPaisa/Stripe, Zoom Meeting SDK + S2S OAuth,
+  Gemini (copilot), web-push + Serwist PWA
+
+IMPORTANT (AGENTS.md): Next 16 APIs differ from older Next — check
+node_modules/next/dist/docs/ before assuming conventions.
+Route protection uses apps/web/src/proxy.ts (NOT middleware.ts).
+
+
+--------------------------------------------------------------------------------
+4. ROLES & WORKSPACES (critical)
+--------------------------------------------------------------------------------
+Roles (packages/shared/src/types/enums.ts):
+  patient | doctor | nurse | physiotherapist | rider | admin | super_admin
+
+Workspaces → home paths (packages/shared/src/auth/workspace.ts):
+  patient → /dashboard
+  doctor → /doctor
+  admin → /admin
+  nurse → /nurse
+  physiotherapist → /physiotherapist
+  rider → /rider   (role/proxy exist; NO rider app pages yet)
+
+Dual-role rules (do not break):
+- Clinical signup = patient + staff role (auth.service.ts roleByAccountType)
+- canUsePatientWorkspace(roles, activeWorkspace): staff may use patient UI ONLY
+  when activeWorkspace === "patient" (packages/shared/src/auth/rbac.ts)
+- getAvailableWorkspaces includes patient for anyone with patient role (incl. staff)
+- Default workspace prefers clinical staff over admin (resolveDefaultWorkspace)
+- Switch: session.update({ activeWorkspace }) then navigate
+  (app-user-menu.tsx, workspace-switcher.tsx)
+- Legacy clinical users without patient: POST /api/v1/auth/sync-session
+  (triggered from app-header-user.tsx)
+- Health Assistant: any account with patient role (canAccessHealthAssistant)
+
+Key auth files:
+  apps/web/src/lib/auth/auth.config.ts   edge-safe Auth.js config
+  apps/web/src/lib/auth/auth.ts          Node providers + jwt
+  apps/web/src/lib/auth/routes.ts        public paths, post-auth redirects
+  apps/web/src/proxy.ts                 role + workspace + verification gates
+  packages/shared/src/auth/rbac.ts
+  packages/shared/src/auth/workspace.ts
+  apps/web/src/server/services/auth.service.ts
+  ADMIN_ALLOWLIST_EMAILS → admin-allowlist.ts
+
+
+--------------------------------------------------------------------------------
+5. APP ROUTER GROUPS (apps/web/src/app)
+--------------------------------------------------------------------------------
+(marketing)   /  /doctors  /sunday-consult  /urgent-care  /home-services
+              /home-care/request  /home-physiotherapy  /for-*  legal pages
+(auth)        /login  /register  /register/{doctor,nurse,physiotherapist}
+              /onboarding
+(patient)     /dashboard  /messages  /prescriptions  /assistant
+              /intake/[id]  /home-care/visits
+(doctor)      /doctor/*  verification profile requests sunday home-visits
+              messages prescriptions urgent-calls earnings intake patients
+(admin)       /admin/*  doctors nurses physios patients appointments sunday
+              home-visits urgent-care reviews finances notifications admins
+(nurse)       /nurse/*  dashboard visits profile verification
+(physiotherapist) /physiotherapist/*  same pattern
+consult/      /consult/video/[appointmentId]  Zoom room
+api/v1/*      REST by domain
+~offline/     PWA offline page
+
+
+--------------------------------------------------------------------------------
+6. FEATURE DOMAINS → WHERE TO EDIT
+--------------------------------------------------------------------------------
+Domain              features/                 main service(s)
+consult (paid)      features/consult/         online-consult.service.ts
+sunday free         features/sunday-consult/  sunday-consult.service.ts
+urgent online       features/urgent-consult/  urgent-consult.service.ts
+home care           features/home-care/       home-visit.service.ts
+prescriptions       features/prescriptions/   prescription.service.ts + prescription-pdf.ts
+chat                features/chat/            chat.service.ts
+copilot (AI)        features/copilot/         copilot.service.ts gemini.service.ts
+intake              features/intake/           medical-intake.service.ts
+doctor              features/doctor/          doctor-*.service.ts
+nurse               features/nurse/           nurse.service.ts
+physiotherapist     features/physiotherapist/ physiotherapist.service.ts
+patient             features/patient/         patient-*.service.ts
+admin               features/admin/           admin-*.service.ts
+payments            features/consult/ + API   (JazzCash/manual/etc.)
+auth UI             features/auth/            auth.service.ts
+marketing/legal     features/marketing|legal/
+pwa/push            features/pwa/             push.service.ts
+
+AppointmentTypes: clinic | online | sunday_free | home_visit | urgent_online
+PaymentProviders: stripe | jazzcash | easypaisa | manual_jazzcash | dummy(legacy)
+VerificationStatuses: pending | approved | rejected | restricted
+
+
+--------------------------------------------------------------------------------
+7. API & CODE CONVENTIONS
+--------------------------------------------------------------------------------
+- API routes: withApiHandler (apps/web/src/server/api/with-api-handler.ts)
+  options: auth, roles, bodySchema, public
+- Responses: apiSuccess / apiError; throw AppError from @zindagi/shared
+- Domain logic in server/services/*.service.ts (+ *.storage.ts for uploads)
+- Import: @zindagi/shared | @zindagi/database | @zindagi/validators
+- Path alias: @/ → apps/web/src
+- i18n strings: apps/web/src/i18n/dictionaries/en.ts + ur.ts (keep in sync)
+- Nav/workspace menu: apps/web/src/lib/nav/header-actions.ts
+- Site links: apps/web/src/config/site.ts
+
+
+--------------------------------------------------------------------------------
+8. ENV (no secrets — names only)
+--------------------------------------------------------------------------------
+Required file for Next: apps/web/.env.local
+Template: repo-root .env.example (copy into apps/web/.env.local)
+
+Core: AUTH_SECRET / NEXTAUTH_SECRET, NEXTAUTH_URL, NEXT_PUBLIC_APP_URL,
+  MONGODB_URI, ADMIN_ALLOWLIST_EMAILS, FIELD_ENCRYPTION_KEY
+Auth: GOOGLE_CLIENT_ID/SECRET, SMS_API_KEY
+Storage: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_STORAGE_BUCKET
+Redis: UPSTASH_REDIS_REST_URL/TOKEN
+Pay: PAYMENTS_LIVE, JAZZCASH_*, EASYPAISA_*, STRIPE_*
+Video: ZOOM_ACCOUNT_ID, ZOOM_CLIENT_*, ZOOM_SDK_*, NEXT_PUBLIC_ZOOM_SDK_KEY
+AI: GEMINI_API_KEY, GEMINI_MODEL, COPILOT_ENABLED, COPILOT_RATE_LIMIT
+Push: NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+Maps: GOOGLE_MAPS_API_KEY, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+
+
+--------------------------------------------------------------------------------
+9. AGENT RULES (product + architecture)
+--------------------------------------------------------------------------------
+1. Gate patient surfaces with canUsePatientWorkspace(roles, activeWorkspace),
+   not bare Roles.PATIENT — dual-role staff must switch workspace first.
+2. New clinical accounts always get patient role + PatientProfile.
+3. Workspace switch = update activeWorkspace THEN navigate.
+4. proxy.ts enforces role + workspace match on /doctor|/admin|/nurse|
+   /physiotherapist|/rider and staff verification redirects.
+5. Patient onboarding gate runs only when canUsePatientWorkspace is true
+   (so doctors are not trapped on /onboarding while in doctor workspace).
+6. Prefer editing existing feature/service files; do not invent parallel stacks.
+7. Keep en + ur dictionary keys aligned when adding UI copy.
+8. Do not commit .env / secrets. Do not force-push main.
+
+
+--------------------------------------------------------------------------------
+10. LOCAL DEV
+--------------------------------------------------------------------------------
+npm install
+cp .env.example apps/web/.env.local   # fill AUTH_SECRET, MONGODB_URI, URLs
+npm run dev                           # http://localhost:3000
+
+
+--------------------------------------------------------------------------------
+11. BUILD STATUS (compressed — for planning, not exhaustive)
+--------------------------------------------------------------------------------
+DONE: doctor/patient/nurse/physio auth+verification, paid online booking,
+  Sunday free queue, urgent care, home visits Lahore, Zoom video wiring,
+  intake (EN/UR), chat after paid consults, e-prescriptions (doctor write +
+  patient view/PDF), reviews (submit + admin), doctor earnings UI, admin
+  console, EN/UR patient+marketing, Health Assistant (Gemini), PWA/web-push,
+  manual JazzCash receipt flow, dual-role patient↔doctor workspace switch.
+
+PARTIAL / NEEDS LIVE CREDENTIALS: JazzCash/EasyPaisa gateway live mode,
+  Zoom production apps, SMS/WhatsApp providers, Redis for OTP/holds at scale.
+
+NOT BUILT / THIN: rider delivery app UI, pharmacy catalog, multi-city beyond
+  Lahore, automated PMDC registry check, clinic in-person patient booking UI.
+
+
+================================================================================
+END — keep this file short; put deep docs in code comments or docs/
+================================================================================

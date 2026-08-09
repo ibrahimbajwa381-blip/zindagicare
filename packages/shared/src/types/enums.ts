@@ -115,6 +115,16 @@ export const UrgentCareRequestStatuses = {
 export type UrgentCareRequestStatus =
   (typeof UrgentCareRequestStatuses)[keyof typeof UrgentCareRequestStatuses];
 
+export const SundayFreeRequestStatuses = {
+  REQUESTED: "requested",
+  ASSIGNED: "assigned",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+} as const;
+
+export type SundayFreeRequestStatus =
+  (typeof SundayFreeRequestStatuses)[keyof typeof SundayFreeRequestStatuses];
+
 export const OrderStatuses = {
   DRAFT: "draft",
   PENDING_PAYMENT: "pending_payment",

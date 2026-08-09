@@ -69,6 +69,7 @@ export function UnifiedHeader({
     freeBadge: t.nav.freeBadge,
     urgentBadge: t.nav.urgentBadge,
     myDashboard: t.dashboard.header.myDashboard,
+    patientDashboard: t.dashboard.header.patientDashboard,
     doctorDashboard: t.dashboard.header.doctorDashboard,
     adminDashboard: t.dashboard.header.adminDashboard,
     healthAssistant: t.copilot.navLabel,

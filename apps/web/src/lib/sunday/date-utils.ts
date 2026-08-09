@@ -18,6 +18,39 @@ export function getNextSundayDate(from = new Date()): Date {
   );
 }
 
+/**
+ * Sunday of the current Karachi week if today is Sunday; otherwise the upcoming Sunday.
+ * Used for same-day free-consult requests (match within 60 minutes).
+ */
+export function getActiveOrNextSundayDate(from = new Date()): Date {
+  const zoned = toZonedTime(from, TZ);
+  const weekStart = startOfWeek(zoned, { weekStartsOn: SUNDAY_CONSULT_CONFIG.dayOfWeek as 0 });
+  if (format(weekStart, "yyyy-MM-dd") === format(zoned, "yyyy-MM-dd")) {
+    return fromZonedTime(
+      new Date(format(weekStart, "yyyy-MM-dd") + "T00:00:00"),
+      TZ,
+    );
+  }
+  return getNextSundayDate(from);
+}
+
+/** End of the given Sunday (Karachi) as UTC */
+export function getSundayEndDate(sundayDate: Date): Date {
+  return addDays(sundayDate, 1);
+}
+
+/** Requests open in the pre-Sunday window, or all day on that Sunday. */
+export function canRequestSundayNow(
+  sundayDate: Date,
+  earlyAccess: boolean,
+  now = new Date(),
+): boolean {
+  if (now >= sundayDate && now < getSundayEndDate(sundayDate)) {
+    return true;
+  }
+  return canBookNow(sundayDate, earlyAccess, now);
+}
+
 export function getSundayDateForOffset(weekOffset: number, from = new Date()): Date {
   const next = getNextSundayDate(from);
   return addDays(next, weekOffset * 7);

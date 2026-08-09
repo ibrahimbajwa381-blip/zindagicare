@@ -49,7 +49,23 @@ export function dashboardHref(roles?: Role[]) {
 
 export type HeaderAccountType = "patient" | "doctor" | "nurse" | "admin";
 
-export function resolveHeaderAccountType(roles?: Role[]): HeaderAccountType {
+export function resolveHeaderAccountType(
+  roles?: Role[],
+  activeWorkspace?: Workspace,
+): HeaderAccountType {
+  if (activeWorkspace === "patient" && roles?.includes(Roles.PATIENT)) {
+    return "patient";
+  }
+  if (activeWorkspace === "doctor" && roles?.includes(Roles.DOCTOR)) {
+    return "doctor";
+  }
+  if (activeWorkspace === "nurse" && roles?.includes(Roles.NURSE)) {
+    return "nurse";
+  }
+  if (activeWorkspace === "admin" && isAdmin(roles)) {
+    return "admin";
+  }
+
   if (roles?.includes(Roles.DOCTOR)) return "doctor";
   if (roles?.includes(Roles.NURSE)) return "nurse";
   if (roles?.includes(Roles.ADMIN) || roles?.includes(Roles.SUPER_ADMIN)) {
@@ -62,34 +78,61 @@ export function resolveDashboardMenuLinks(
   roles: Role[] | undefined,
   labels: {
     myDashboard: string;
+    patientDashboard: string;
     doctorDashboard: string;
     adminDashboard: string;
   },
 ): DashboardMenuLink[] {
+  const hasPatient = roles?.includes(Roles.PATIENT) ?? false;
   const hasDoctor = roles?.includes(Roles.DOCTOR) ?? false;
+  const hasNurse = roles?.includes(Roles.NURSE) ?? false;
   const hasAdminRole = isAdmin(roles);
 
-  if (hasDoctor && hasAdminRole) {
+  const links: DashboardMenuLink[] = [];
+
+  if (hasPatient) {
+    links.push({
+      href: AUTH_ROUTES.patientDashboard,
+      label: labels.patientDashboard,
+      workspace: "patient",
+    });
+  }
+  if (hasDoctor) {
+    links.push({
+      href: AUTH_ROUTES.doctorProfile,
+      label: labels.doctorDashboard,
+      workspace: "doctor",
+    });
+  }
+  if (hasNurse) {
+    links.push({
+      href: AUTH_ROUTES.nurseDashboard,
+      label: labels.myDashboard,
+      workspace: "nurse",
+    });
+  }
+  if (hasAdminRole) {
+    links.push({
+      href: AUTH_ROUTES.adminDashboard,
+      label: labels.adminDashboard,
+      workspace: "admin",
+    });
+  }
+
+  if (links.length === 0) {
+    const href = dashboardHref(roles);
     return [
       {
-        href: AUTH_ROUTES.doctorProfile,
-        label: labels.doctorDashboard,
-        workspace: "doctor",
-      },
-      {
-        href: AUTH_ROUTES.adminDashboard,
-        label: labels.adminDashboard,
-        workspace: "admin",
+        href,
+        label: labels.myDashboard,
+        workspace: workspaceForDashboardHref(href),
       },
     ];
   }
 
-  const href = dashboardHref(roles);
-  return [
-    {
-      href,
-      label: labels.myDashboard,
-      workspace: workspaceForDashboardHref(href),
-    },
-  ];
+  if (links.length === 1) {
+    return [{ ...links[0]!, label: labels.myDashboard }];
+  }
+
+  return links;
 }

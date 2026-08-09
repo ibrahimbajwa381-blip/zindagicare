@@ -56,14 +56,19 @@ export function isPatientOnly(userRoles: Role[] | undefined): boolean {
   return roles.includes(Roles.PATIENT) && !isStaff(roles);
 }
 
-/** Patient dashboard — staff accounts (doctors, nurses, etc.) use their own workspace only. */
+/**
+ * Patient dashboard access.
+ * Dual-role staff (doctor + patient, etc.) may use it only while activeWorkspace is "patient",
+ * so doctor/admin routes are not redirected into patient onboarding.
+ */
 export function canUsePatientWorkspace(
   userRoles: Role[] | undefined,
-  _activeWorkspace?: Workspace,
+  activeWorkspace?: Workspace,
 ): boolean {
   const roles = userRoles ?? [];
   if (!roles.includes(Roles.PATIENT)) return false;
-  return !isStaff(roles);
+  if (!isStaff(roles)) return true;
+  return activeWorkspace === "patient";
 }
 
 /** Health Assistant is available to any account with the patient role, even in another workspace. */

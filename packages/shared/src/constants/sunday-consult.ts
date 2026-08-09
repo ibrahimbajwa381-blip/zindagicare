@@ -8,4 +8,6 @@ export const SUNDAY_CONSULT_CONFIG = {
   noShowBanThreshold: 3,
   noShowBanWeeks: 4,
   bookingOpensDaysBefore: 7,
+  /** Target window: connect an available doctor after the patient requests */
+  matchWithinMinutes: 60,
 } as const;

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { SundayConsultClient } from "@/features/sunday-consult/components/sunday-consult-client";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { marketingPageSeo } from "@/lib/seo/pages";
@@ -13,10 +12,5 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 export default function SundayConsultPage() {
-  return (
-    <>
-      <SundayBanner />
-      <SundayConsultClient />
-    </>
-  );
+  return <SundayConsultClient />;
 }

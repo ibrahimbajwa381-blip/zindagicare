@@ -1,165 +1,157 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { Clock, Gift, Video } from "lucide-react";
+import {
+  AppointmentStatuses,
+  SundayFreeRequestStatuses,
+  SUNDAY_CONSULT_CONFIG,
+} from "@zindagi/shared";
 import { PageSection } from "@/components/layout/page-section";
-import { surfaceCardInteractive, surfaceInset, surfaceMuted } from "@/lib/ui/surfaces";
 import { SundayExplainer } from "./sunday-explainer";
-import { formatNextSundayLong } from "@/lib/sunday/display";
-import { useLocale, useTranslations } from "@/i18n/locale-provider";
+import { formatNextSundayLong, isSundayBookingOpenNow } from "@/lib/sunday/display";
+import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { siteConfig } from "@/config/site";
-import { SlotPicker } from "./slot-picker";
-import { useSundayRealtime } from "../hooks/use-sunday-realtime";
-import { useMounted } from "@/hooks/use-mounted";
-import { Star } from "lucide-react";
-import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
-import type { SundayPatientBookingDto } from "../types";
+import { SundayMatchingStatus } from "./sunday-matching-status";
+import type { SundayPatientBookingDto, SundayPatientRequestDto } from "../types";
 import {
   AppointmentConfirmationModal,
   type AppointmentConfirmationDetails,
 } from "@/features/consult/components/appointment-confirmation-modal";
 
-function DoctorAvatar({
-  name,
-  avatarUrl,
-  size = "md",
-}: {
-  name: string;
-  avatarUrl?: string;
-  size?: "md" | "lg";
-}) {
-  const src = resolveDoctorPortrait(name, avatarUrl);
-  const box = size === "lg" ? "h-16 w-16 rounded-2xl" : "h-12 w-12 rounded-xl";
-  const text = size === "lg" ? "text-base" : "text-sm";
+const REQUEST_CALLBACK = `${siteConfig.links.sundayConsult}#request`;
+const LOGIN_HREF = `/login?callbackUrl=${encodeURIComponent(REQUEST_CALLBACK)}`;
+const REGISTER_HREF = `${siteConfig.links.register}?callbackUrl=${encodeURIComponent(REQUEST_CALLBACK)}`;
 
-  if (src) {
-    return (
-      <span className={`relative shrink-0 overflow-hidden ring-1 ring-slate-200 ${box}`}>
-        <Image src={src} alt={name} fill className="object-cover object-top" sizes={size === "lg" ? "64px" : "48px"} />
-      </span>
-    );
+function requestToBooking(request: SundayPatientRequestDto): SundayPatientBookingDto {
+  if (request.status === SundayFreeRequestStatuses.REQUESTED || !request.doctor) {
+    return {
+      appointmentId: request.appointmentId ?? request.requestId,
+      scheduledStart: request.createdAt,
+      scheduledEnd: new Date(
+        new Date(request.createdAt).getTime() +
+          SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
+      ).toISOString(),
+      status: AppointmentStatuses.PENDING,
+      sundayDateKey: request.sundayDateKey,
+      doctor: {
+        doctorId: "",
+        name: "Matching doctor…",
+        specialty: "Sunday Free Consult",
+        pmdcVerified: true,
+        ratingAvg: 0,
+        ratingCount: 0,
+      },
+      requestId: request.requestId,
+      requestStatus: request.status,
+    };
   }
 
-  return (
-    <span
-      className={`flex shrink-0 items-center justify-center bg-slate-100 font-semibold text-slate-600 ${box} ${text}`}
-    >
-      {name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)}
-    </span>
-  );
+  return {
+    appointmentId: request.appointmentId ?? request.requestId,
+    scheduledStart: request.scheduledStart ?? request.assignedAt ?? request.createdAt,
+    scheduledEnd:
+      request.scheduledEnd ??
+      new Date(
+        new Date(request.scheduledStart ?? request.assignedAt ?? request.createdAt).getTime() +
+          SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+      ).toISOString(),
+    status: AppointmentStatuses.CONFIRMED,
+    sundayDateKey: request.sundayDateKey,
+    doctor: request.doctor,
+    requestId: request.requestId,
+    requestStatus: request.status,
+  };
 }
 
-type DoctorRow = {
-  doctorId: string;
-  name: string;
-  avatarUrl?: string;
-  specialties: string[];
-  ratingAvg: number;
-  ratingCount: number;
-  pmdcVerified: boolean;
-  sundayDateKey: string;
-  instanceId?: string;
-  availableSlots: number;
-  totalSlots: number;
-  isFull: boolean;
-};
+function scrollToRequest() {
+  document.getElementById("request")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 export function SundayConsultClient() {
-  const mounted = useMounted();
   const { sunday: sundayCopy, dashboard: dashboardCopy } = useTranslations();
-  const { locale } = useLocale();
   const { data: session, status } = useSession();
-  const [doctors, setDoctors] = useState<DoctorRow[]>([]);
-  const [selectedDoctor, setSelectedDoctor] = useState<DoctorRow | null>(null);
-  const [slots, setSlots] = useState<
-    { slotId: string; startAt: string; endAt: string; status: string }[]
-  >([]);
-  const [instanceId, setInstanceId] = useState<string | null>(null);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [holdToken, setHoldToken] = useState<string | null>(null);
   const [booking, setBooking] = useState<SundayPatientBookingDto | null>(null);
+  const [patientPhone, setPatientPhone] = useState("");
+  const [patientNotes, setPatientNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [confirmationDetails, setConfirmationDetails] =
     useState<AppointmentConfirmationDetails | null>(null);
 
-  const loadDoctors = useCallback(async () => {
-    const res = await fetch("/api/v1/sunday/doctors");
-    const json = await res.json();
-    if (json.success) {
-      setDoctors(json.data ?? []);
-    }
-  }, []);
+  const bookingOpen = isSundayBookingOpenNow();
+  const isAuthenticated = status === "authenticated";
+  const isGuest = status === "unauthenticated";
 
-  const loadSlots = useCallback(async (doctor: DoctorRow) => {
-    const res = await fetch(
-      `/api/v1/sunday/slots?doctorId=${doctor.doctorId}&date=${doctor.sundayDateKey}`,
-    );
-    const json = await res.json();
-    if (json.success) {
-      setSlots(json.data.slots);
-      setInstanceId(json.data.instanceId);
-    }
-  }, []);
-
-  const loadMyBooking = useCallback(async () => {
+  const loadMyRequest = useCallback(async () => {
     if (!session?.user) return;
-    const res = await fetch("/api/v1/sunday/my-booking");
+    const res = await fetch("/api/v1/sunday/request");
     const json = await res.json();
     if (json.success && json.data) {
-      setBooking(json.data as SundayPatientBookingDto);
+      setBooking(requestToBooking(json.data as SundayPatientRequestDto));
+    } else {
+      const fallback = await fetch("/api/v1/sunday/my-booking");
+      const fallbackJson = await fallback.json();
+      if (fallbackJson.success && fallbackJson.data) {
+        setBooking(fallbackJson.data as SundayPatientBookingDto);
+      }
+    }
+  }, [session?.user]);
+
+  const loadProfilePhone = useCallback(async () => {
+    if (!session?.user) return;
+    const res = await fetch("/api/v1/patient/profile");
+    const json = await res.json();
+    if (json.success && json.data?.user?.phone) {
+      setPatientPhone((prev) => prev || json.data.user.phone);
     }
   }, [session?.user]);
 
   useEffect(() => {
-    loadDoctors();
-  }, [loadDoctors]);
-
-  useEffect(() => {
     if (status !== "authenticated") return;
-    loadMyBooking();
-  }, [loadMyBooking, status]);
+    loadMyRequest();
+    loadProfilePhone();
+  }, [loadMyRequest, loadProfilePhone, status]);
 
   useEffect(() => {
-    if (booking) {
-      setSelectedDoctor(null);
-      setSelectedSlotId(null);
-      setHoldToken(null);
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (hash === "#request" || hash === "#how-it-works") {
+      // Wait a tick so the form card is painted after auth status settles.
+      const timer = window.setTimeout(scrollToRequest, 50);
+      return () => window.clearTimeout(timer);
     }
-  }, [booking]);
+  }, [status]);
 
-  useSundayRealtime(
-    selectedDoctor?.doctorId ?? null,
-    selectedDoctor?.sundayDateKey ?? null,
-    () => {
-      if (selectedDoctor) loadSlots(selectedDoctor);
-      loadDoctors();
-    },
-  );
+  useEffect(() => {
+    if (!booking?.requestId || booking.requestStatus !== SundayFreeRequestStatuses.REQUESTED) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      loadMyRequest();
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [booking?.requestId, booking?.requestStatus, loadMyRequest]);
 
-  const selectDoctor = async (doctor: DoctorRow) => {
-    setSelectedDoctor(doctor);
-    setSelectedSlotId(null);
-    setHoldToken(null);
-    setError(null);
-    await loadSlots(doctor);
-  };
+  const submitRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const reserveAndConfirm = async () => {
-    if (!selectedDoctor || !selectedSlotId || !instanceId) return;
-    if (status !== "authenticated") {
-      window.location.href = `/login?callbackUrl=/sunday-consult`;
+    if (!isAuthenticated) {
+      window.location.href = LOGIN_HREF;
+      return;
+    }
+
+    const phone = patientPhone.trim();
+    if (!phone) {
+      setError(sundayCopy.errors.phoneRequired);
       return;
     }
 
@@ -167,65 +159,49 @@ export function SundayConsultClient() {
     setError(null);
 
     try {
-      const reserveRes = await fetch("/api/v1/sunday/reserve", {
+      const res = await fetch("/api/v1/sunday/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          doctorId: selectedDoctor.doctorId,
-          instanceId,
-          slotId: selectedSlotId,
+          patientPhone: phone,
+          patientNotes: patientNotes.trim() || undefined,
         }),
       });
-      const reserveJson = await reserveRes.json();
-      if (!reserveJson.success) {
-        throw new Error(reserveJson.error?.message ?? "Could not reserve slot");
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message ?? sundayCopy.errors.requestFailed);
       }
 
-      const token = reserveJson.data.holdToken;
-      setHoldToken(token);
+      const request = json.data as SundayPatientRequestDto;
+      const nextBooking = requestToBooking(request);
+      setBooking(nextBooking);
 
-      const confirmRes = await fetch("/api/v1/sunday/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doctorId: selectedDoctor.doctorId,
-          instanceId,
-          slotId: selectedSlotId,
-          holdToken: token,
-          locale,
-        }),
-      });
-      const confirmJson = await confirmRes.json();
-      if (!confirmJson.success) {
-        throw new Error(confirmJson.error?.message ?? "Could not confirm booking");
+      if (request.status === SundayFreeRequestStatuses.ASSIGNED && request.doctor) {
+        setConfirmationDetails({
+          doctorName: request.doctor.name,
+          doctorSpecialty: request.doctor.specialty,
+          scheduledStart: request.scheduledStart ?? request.assignedAt ?? request.createdAt,
+          scheduledEnd:
+            request.scheduledEnd ??
+            new Date(
+              new Date(request.scheduledStart ?? request.createdAt).getTime() +
+                SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+            ).toISOString(),
+          type: "sunday",
+          appointmentId: request.appointmentId ?? request.requestId,
+        });
+        setConfirmationOpen(true);
       }
-
-      const confirmed = confirmJson.data as {
-        appointmentId: string;
-        scheduledStart: string;
-        scheduledEnd: string;
-      };
-
-      setConfirmationDetails({
-        doctorName: selectedDoctor.name,
-        doctorSpecialty: selectedDoctor.specialties[0],
-        scheduledStart: confirmed.scheduledStart,
-        scheduledEnd: confirmed.scheduledEnd,
-        type: "sunday",
-        appointmentId: confirmed.appointmentId,
-      });
-      setConfirmationOpen(true);
-
-      await loadMyBooking();
-      setSelectedSlotId(null);
-      await loadDoctors();
-      if (selectedDoctor) await loadSlots(selectedDoctor);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Booking failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : sundayCopy.errors.requestFailed);
     } finally {
       setLoading(false);
     }
   };
+
+  const isMatching =
+    booking?.requestStatus === SundayFreeRequestStatuses.REQUESTED ||
+    (booking?.status === AppointmentStatuses.PENDING && !booking.doctor?.doctorId);
 
   return (
     <>
@@ -234,154 +210,134 @@ export function SundayConsultClient() {
         onOpenChange={setConfirmationOpen}
         details={confirmationDetails}
       />
-      <PageSection id="how-it-works" variant="neutral" spacing="default" flipBlur>
-        <div className="mb-8 sm:mb-10">
-          <SundayExplainer showCta={false} hideIntro />
-        </div>
-        {booking && (
-          <Card className="mb-8 border-brand-light/40 bg-brand-muted/60 shadow-premium">
-            <CardHeader>
-              <CardTitle className="text-lg">{dashboardCopy.sundayBooking.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PatientSundayBookingCard booking={booking} variant="dashboard" />
-            </CardContent>
-          </Card>
-        )}
-
-        {booking ? (
-          <div className={`rounded-2xl border border-brand-light/40 bg-brand-muted/50 p-6 sm:p-8 ${surfaceMuted}`}>
-            <h1 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-              {sundayCopy.alreadyBookedTitle}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
-              {sundayCopy.alreadyBookedMessage}
+      <PageSection id="request" variant="neutral" spacing="default" flipBlur>
+        <div className="mx-auto max-w-xl">
+          <div className="text-center">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-dark">
+              <Gift className="h-4 w-4" aria-hidden />
+              {sundayCopy.shortName}
             </p>
-            <p className="mt-2 max-w-2xl text-sm text-slate-500">{sundayCopy.alreadyBookedHint}</p>
+            <h1 className="mt-2 font-display text-2xl font-semibold text-foreground sm:text-3xl">
+              {sundayCopy.requestTitle}
+            </h1>
+            <p className="mt-3 text-sm text-slate-600 sm:text-base">
+              {sundayCopy.requestDescription}
+            </p>
+            <p className="mt-2 text-sm font-medium text-slate-700">
+              {formatNextSundayLong()}
+            </p>
+            <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-500">
+              <Clock className="h-4 w-4 text-brand" aria-hidden />
+              {sundayCopy.waitBadge.replace(
+                "{minutes}",
+                String(SUNDAY_CONSULT_CONFIG.matchWithinMinutes),
+              )}
+            </p>
           </div>
-        ) : (
-          <>
-            <h1 className="font-display text-xl font-semibold text-foreground sm:text-3xl">
-              Book your free slot
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-              Choose a doctor below for{" "}
-              <strong className="font-medium text-slate-800">
-                {formatNextSundayLong()}
-              </strong>
-              . {sundayCopy.priceLabel} · {sundayCopy.durationLabel} · {sundayCopy.modality}.
-            </p>
-            <p className="mt-1 max-w-2xl text-xs text-slate-500">{sundayCopy.oneSlotDesc}</p>
 
-            <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-2 lg:gap-4">
-              <div className="space-y-3">
-                {doctors.map((doc) => (
-                  <button
-                    key={doc.doctorId}
-                    type="button"
-                    onClick={() => selectDoctor(doc)}
-                    className={`w-full rounded-xl border p-4 text-left backdrop-blur-sm transition-all active:scale-[0.99] ${
-                      selectedDoctor?.doctorId === doc.doctorId
-                        ? "border-brand bg-brand-muted/90 shadow-sm"
-                        : `${surfaceInset} hover:border-brand-light/50 hover:bg-white hover:shadow-premium`
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <DoctorAvatar name={doc.name} avatarUrl={doc.avatarUrl} />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold">{doc.name}</p>
-                        <p className="text-sm text-slate-500">{doc.specialties[0]}</p>
-                        <p className="mt-1 flex items-center gap-1 text-sm">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                          {doc.ratingAvg} ({doc.ratingCount})
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        {doc.pmdcVerified && <Badge variant="secondary">PMDC</Badge>}
-                        <p className="mt-2 text-xs text-slate-500">
-                          {doc.isFull ? "Full" : `${doc.availableSlots} slots left`}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-                {!doctors.length && (
-                  <div className={`border-dashed p-6 text-sm text-slate-600 ${surfaceMuted}`}>
-                    <p className="font-medium text-slate-800">No Sunday doctors listed yet</p>
-                    <p className="mt-2">
-                      Doctors who enable Sunday Free Consult will appear here with open{" "}
-                      {sundayCopy.durationLabel} video slots. Check back soon or browse{" "}
-                      <Link href={siteConfig.links.doctors} className="text-brand hover:underline">
-                        all doctors
-                      </Link>
-                      .
+          {booking && (
+            <Card className="mt-6 border-brand-light/40 bg-brand-muted/60 shadow-premium">
+              <CardContent className="p-5 sm:p-6">
+                <p className="mb-4 font-display text-lg font-semibold text-foreground">
+                  {isMatching
+                    ? sundayCopy.matchingTitle
+                    : dashboardCopy.sundayBooking.title}
+                </p>
+                {isMatching ? (
+                  <SundayMatchingStatus />
+                ) : (
+                  <PatientSundayBookingCard booking={booking} variant="dashboard" />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {!booking && (
+            <Card className="mt-6 overflow-hidden border-brand-light/40 shadow-premium">
+              <CardContent className="p-5 sm:p-6">
+                {!bookingOpen ? (
+                  <div className="space-y-3 text-center text-sm text-slate-600">
+                    <p className="font-medium text-slate-800">{sundayCopy.closedTitle}</p>
+                    <p>{sundayCopy.closedMessage}</p>
+                  </div>
+                ) : status === "loading" ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner size="md" />
+                  </div>
+                ) : isGuest ? (
+                  <div className="space-y-4 text-center">
+                    <p className="text-sm text-slate-600">{sundayCopy.loginGateMessage}</p>
+                    <Button
+                      asChild
+                      size="lg"
+                      className="w-full bg-brand text-white hover:bg-brand-dark"
+                    >
+                      <Link href={LOGIN_HREF}>{sundayCopy.loginToRequest}</Link>
+                    </Button>
+                    <p className="text-sm text-slate-500">
+                      <Link href={REGISTER_HREF} className="font-medium text-brand">
+                        {sundayCopy.explainer.createAccount}
+                      </Link>{" "}
+                      {sundayCopy.loginHint}
                     </p>
                   </div>
-                )}
-              </div>
-
-              <Card className={surfaceCardInteractive}>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {selectedDoctor ? `Book with ${selectedDoctor.name}` : "Select a doctor"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedDoctor && (
-                    <>
-                      <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-                        <DoctorAvatar
-                          name={selectedDoctor.name}
-                          avatarUrl={selectedDoctor.avatarUrl}
-                          size="lg"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-foreground">{selectedDoctor.name}</p>
-                          <p className="text-sm text-slate-500">{selectedDoctor.specialties[0]}</p>
-                          <p className="mt-1 flex items-center gap-1 text-sm text-slate-600">
-                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                            {selectedDoctor.ratingAvg} ({selectedDoctor.ratingCount})
-                          </p>
-                        </div>
-                      </div>
-                      <SlotPicker
-                        slots={slots}
-                        selectedSlotId={selectedSlotId}
-                        onSelect={setSelectedSlotId}
+                ) : (
+                  <form onSubmit={submitRequest} className="space-y-4">
+                    <div>
+                      <label htmlFor="sunday-phone" className="text-sm font-medium text-slate-700">
+                        {sundayCopy.phoneLabel}
+                      </label>
+                      <Input
+                        id="sunday-phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        autoFocus
+                        placeholder={sundayCopy.phonePlaceholder}
+                        value={patientPhone}
+                        onChange={(e) => setPatientPhone(e.target.value)}
+                        className="mt-1.5"
                         disabled={loading}
                       />
-                      {error && <p className="text-sm text-red-600">{error}</p>}
-                      <Button
-                        variant="default"
-                        className="w-full bg-brand text-white hover:bg-brand-dark"
-                        disabled={!selectedSlotId || loading}
-                        onClick={reserveAndConfirm}
-                      >
-                        {!mounted
-                          ? "Loading…"
-                          : status === "authenticated"
-                            ? loading
-                              ? "Booking…"
-                              : "Confirm free booking"
-                            : "Log in to book"}
-                      </Button>
-                    </>
-                  )}
-                  {mounted && status === "unauthenticated" && (
-                    <p className="text-center text-sm text-slate-500">
-                      <Link href={siteConfig.links.register} className="text-brand">
-                        Create account
-                      </Link>{" "}
-                      for free Sunday consults.
+                    </div>
+                    <div>
+                      <label htmlFor="sunday-notes" className="text-sm font-medium text-slate-700">
+                        {sundayCopy.notesLabel}
+                      </label>
+                      <textarea
+                        id="sunday-notes"
+                        rows={3}
+                        value={patientNotes}
+                        onChange={(e) => setPatientNotes(e.target.value)}
+                        placeholder={sundayCopy.notesPlaceholder}
+                        disabled={loading}
+                        className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none ring-brand/30 placeholder:text-slate-400 focus:ring-2"
+                      />
+                    </div>
+                    {error && <p className="text-sm text-red-600">{error}</p>}
+                    <Button
+                      type="submit"
+                      variant="default"
+                      className="w-full bg-brand text-white hover:bg-brand-dark"
+                      disabled={loading}
+                    >
+                      {loading ? sundayCopy.requesting : sundayCopy.requestCta}
+                    </Button>
+                    <p className="flex items-start gap-2 text-xs text-slate-500">
+                      <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />
+                      {sundayCopy.noDoctorPickHint}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </PageSection>
+
+      <PageSection id="how-it-works" spacing="default">
+        <SundayExplainer showCta={false} />
       </PageSection>
     </>
   );
 }
-

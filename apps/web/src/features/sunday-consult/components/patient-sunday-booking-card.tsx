@@ -10,7 +10,11 @@ import {
   Clock,
   Star,
 } from "lucide-react";
-import { AppointmentStatuses, IntakeStatuses } from "@zindagi/shared";
+import {
+  AppointmentStatuses,
+  IntakeStatuses,
+  SundayFreeRequestStatuses,
+} from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
@@ -20,6 +24,7 @@ import { VideoJoinLinkButton } from "@/features/consult/components/video-join-li
 import { VideoSessionStatusBanner } from "@/features/consult/components/video-session-status-banner";
 import { useVideoJoinWindow } from "@/features/consult/hooks/use-video-join-window";
 import { useIntakeStatus } from "@/features/intake/hooks/use-intake-status";
+import { SundayMatchingStatus } from "./sunday-matching-status";
 import type { SundayPatientBookingDto } from "../types";
 
 type Props = {
@@ -51,25 +56,46 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
   const t = useTranslations();
   const b = t.dashboard.sundayBooking;
   const { doctor } = booking;
-  const intakeStatus = useIntakeStatus(booking.appointmentId);
+  const isMatching =
+    booking.requestStatus === SundayFreeRequestStatuses.REQUESTED || !doctor.doctorId;
+  const intakeStatus = useIntakeStatus(isMatching ? undefined : booking.appointmentId);
   const { canJoin, joinClosesAt } = useVideoJoinWindow(
     booking.scheduledStart,
     booking.scheduledEnd,
   );
   const isMissed =
+    !isMatching &&
     booking.status === AppointmentStatuses.CONFIRMED &&
     !canJoin &&
     Date.now() > joinClosesAt.getTime();
 
-  const statusLabel = isMissed
-    ? t.dashboard.appointmentHistory.missed
-    : booking.status === AppointmentStatuses.CONFIRMED
-      ? b.statusConfirmed
-      : booking.status === AppointmentStatuses.IN_PROGRESS
-        ? b.statusInProgress
-        : b.statusPending;
+  const statusLabel = isMatching
+    ? t.sunday.matchingTitle
+    : isMissed
+      ? t.dashboard.appointmentHistory.missed
+      : booking.status === AppointmentStatuses.CONFIRMED
+        ? b.statusConfirmed
+        : booking.status === AppointmentStatuses.IN_PROGRESS
+          ? b.statusInProgress
+          : b.statusPending;
 
   const isProfile = variant === "profile";
+
+  if (isMatching) {
+    return (
+      <div className={isProfile ? "space-y-3 p-4 sm:p-5" : "space-y-3"}>
+        {isProfile && (
+          <div className="mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-dark">{b.title}</p>
+          </div>
+        )}
+        <SundayMatchingStatus showTitle />
+        <Button variant="outline" asChild>
+          <Link href={`${siteConfig.links.sundayConsult}#request`}>{b.viewOnSundayPage}</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div

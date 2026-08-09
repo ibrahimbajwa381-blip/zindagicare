@@ -117,7 +117,13 @@ export function CopilotConversation({
     async () => {},
   );
 
-  const { listening, speaking, startListening, speakText } = useCopilotVoice({
+  // Mic temporarily disabled — restore listening / startListening later
+  const {
+    // listening,
+    speaking,
+    // startListening,
+    speakText,
+  } = useCopilotVoice({
     locale,
     onTranscript: (text) => {
       void handleSendRef.current(text, {
@@ -366,14 +372,15 @@ export function CopilotConversation({
             </div>
           </div>
 
+          {/* Mic temporarily disabled — restore listening/onMicClick/micLabel/stopMicLabel later */}
           <CopilotComposer
             onSend={(body) => handleSend(body, { inputMode: "text" })}
             placeholder={copy.messagePlaceholder}
             disabled={streaming || speaking}
-            listening={listening}
-            onMicClick={startListening}
-            micLabel={copy.micLabel}
-            stopMicLabel={copy.stopMicLabel}
+            // listening={listening}
+            // onMicClick={startListening}
+            // micLabel={copy.micLabel}
+            // stopMicLabel={copy.stopMicLabel}
           />
           <CopilotDisclaimer text={copy.disclaimer} />
         </div>
