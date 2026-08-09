@@ -15,7 +15,7 @@ import {
   Video,
   XCircle,
 } from "lucide-react";
-import { AppointmentTypes, cn } from "@zindagi/shared";
+import { AppointmentTypes, SUNDAY_CONSULT_CONFIG, cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/config/site";
@@ -43,6 +43,7 @@ function formatType(type: string) {
   if (type === AppointmentTypes.ONLINE) return "Online consult";
   if (type === AppointmentTypes.URGENT_ONLINE) return "Urgent care";
   if (type === AppointmentTypes.CLINIC) return "Clinic visit";
+  if (type === AppointmentTypes.SUNDAY_FREE) return "Sunday free";
   return type.replaceAll("_", " ");
 }
 
@@ -124,6 +125,16 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+function joinWindowEnd(request: DoctorRequestRow) {
+  if (request.type !== AppointmentTypes.SUNDAY_FREE) return request.scheduledEnd;
+  const matchEnd =
+    new Date(request.scheduledStart).getTime() +
+    SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000;
+  return new Date(
+    Math.max(new Date(request.scheduledEnd).getTime(), matchEnd),
+  ).toISOString();
+}
+
 function patientInitials(name: string) {
   return name
     .split(/\s+/)
@@ -134,7 +145,7 @@ function patientInitials(name: string) {
 
 export function DoctorConsultRequestsPanel({ requests }: Props) {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<CategoryKey>("active");
+  const [category, setCategory] = useState<CategoryKey>("all");
 
   const counts = useMemo(() => {
     const next = {
@@ -220,8 +231,8 @@ export function DoctorConsultRequestsPanel({ requests }: Props) {
             No consult history yet
           </h2>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-            Online, urgent, and clinic appointments assigned to you will appear here by
-            status — active, completed, missed, and cancelled.
+            Online, urgent, Sunday free, and clinic appointments assigned to you will appear
+            here by status — active, completed, missed, and cancelled.
           </p>
         </div>
       </div>
@@ -328,7 +339,7 @@ export function DoctorConsultRequestsPanel({ requests }: Props) {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search patient, notes, type..."
-                  className="h-10 pl-9"
+                  className="h-10 pl-9 sm:pl-9"
                   aria-label="Search consult requests"
                 />
               </div>
@@ -476,7 +487,7 @@ export function DoctorConsultRequestsPanel({ requests }: Props) {
                         <VideoJoinLinkButton
                           appointmentId={request.id}
                           scheduledStart={request.scheduledStart}
-                          scheduledEnd={request.scheduledEnd}
+                          scheduledEnd={joinWindowEnd(request)}
                           size="sm"
                         />
                       ) : null}

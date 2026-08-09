@@ -49,10 +49,23 @@ export function resolveNotificationHref(
         ? `/admin/appointments?appointmentId=${encodeURIComponent(appointmentId)}`
         : "/admin/appointments";
 
+    case "doctor_appointment_reminder_start_now": {
+      if (!isDoctor) return null;
+      if (!appointmentId) return "/doctor/requests";
+      // Clinic visits are in-person; online / Sunday Free open Zoom directly.
+      const appointmentType =
+        typeof payload.appointmentType === "string"
+          ? payload.appointmentType
+          : undefined;
+      if (appointmentType === "clinic") {
+        return `/doctor/intake/${encodeURIComponent(appointmentId)}`;
+      }
+      return `/consult/video/${encodeURIComponent(appointmentId)}`;
+    }
+
     case "doctor_consult_booked":
     case "doctor_appointment_reminder_24h":
     case "doctor_appointment_reminder_1h":
-    case "doctor_appointment_reminder_start_now":
     case "doctor_appointment_reminder_sunday_morning":
     case "intake_completed":
       if (!isDoctor) return null;

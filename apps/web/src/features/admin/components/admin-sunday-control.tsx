@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
-import { SundayFreeRequestStatuses, SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
+import { SundayAffordabilityChoices, SundayFreeRequestStatuses, SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
 import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type {
   SundayAdminRequestDto,
@@ -163,9 +163,23 @@ export function AdminSundayControl() {
                       {request.doctor ? ` · Dr. ${request.doctor.name}` : ""}
                     </p>
                   </div>
-                  <Badge variant={awaiting ? "default" : "outline"}>
-                    {awaiting ? "Awaiting assignment" : "Doctor assigned"}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={
+                        request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-sky-200 bg-sky-50 text-sky-800"
+                      }
+                    >
+                      {request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+                        ? `Paid Rs. ${request.contributionFeePkr ?? SUNDAY_CONSULT_CONFIG.contributionFeePkr}`
+                        : "Cannot afford (free)"}
+                    </Badge>
+                    <Badge variant={awaiting ? "default" : "outline"}>
+                      {awaiting ? "Awaiting assignment" : "Doctor assigned"}
+                    </Badge>
+                  </div>
                 </div>
                 {awaiting && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">

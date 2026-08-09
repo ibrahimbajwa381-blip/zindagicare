@@ -372,6 +372,7 @@ export class UrgentConsultService {
       url: string;
       originalName: string;
       mimeType: string;
+      transactionId?: string;
     },
   ) {
     await UrgentConsultService.ensureConnected();
@@ -408,10 +409,10 @@ export class UrgentConsultService {
       },
     );
 
-    return UrgentConsultService.confirmAfterPayment(
-      paymentId,
-      manualExternalTransactionId(paymentId),
-    );
+    const externalId =
+      receipt.transactionId?.trim() || manualExternalTransactionId(paymentId);
+
+    return UrgentConsultService.confirmAfterPayment(paymentId, externalId);
   }
 
   static async confirmAfterPayment(paymentId: string, externalTransactionId?: string) {

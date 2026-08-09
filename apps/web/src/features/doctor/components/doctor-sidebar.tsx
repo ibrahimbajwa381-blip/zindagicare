@@ -66,7 +66,6 @@ export function DoctorSidebar({
   const pathname = usePathname();
   const [navStats, setNavStats] = useState<DoctorNavStats>({
     unreadMessages: 0,
-    patients: 0,
     pendingRequests: 0,
     sundayQueue: 0,
     homeVisits: 0,

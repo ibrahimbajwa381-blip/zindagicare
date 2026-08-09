@@ -177,15 +177,19 @@ export async function sendDoctorAppointmentStartNow(params: {
   type: "online" | "clinic" | "sunday_free";
 }) {
   const label = consultLabel(params.type);
+  const isVideo = params.type === "online" || params.type === "sunday_free";
 
   await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Consultation starts now",
-    body: `Your ${label} with ${params.patientName} is starting now. Open Consult requests to join.`,
+    body: isVideo
+      ? `Your ${label} with ${params.patientName} is starting now. Tap to join the Zoom call.`
+      : `Your ${label} with ${params.patientName} is starting now.`,
     payload: {
       type: "doctor_appointment_reminder_start_now",
       appointmentId: params.appointmentId,
+      appointmentType: params.type,
     },
   });
 }

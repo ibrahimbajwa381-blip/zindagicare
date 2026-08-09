@@ -1,5 +1,7 @@
 import {
+  SundayAffordabilityChoices,
   SundayFreeRequestStatuses,
+  type SundayAffordabilityChoice,
   type SundayFreeRequestStatus,
 } from "@zindagi/shared";
 import { Schema, type InferSchemaType, type Model } from "mongoose";
@@ -9,6 +11,7 @@ import { registerModel } from "../lib/register-model";
 /**
  * Sunday free consult request — patient asks for a free video consult;
  * ops assigns an available doctor within the SLA window (no patient-side doctor picker).
+ * Optional Rs contribution (`pay_fee`) uses the same JazzCash transfer flow as paid booking.
  */
 const sundayFreeRequestSchema = new Schema(
   {
@@ -20,6 +23,13 @@ const sundayFreeRequestSchema = new Schema(
     },
     patientPhone: { type: String, required: true, trim: true },
     patientNotes: { type: String, maxlength: 1000 },
+    affordabilityChoice: {
+      type: String,
+      enum: Object.values(SundayAffordabilityChoices),
+      default: SundayAffordabilityChoices.CANNOT_AFFORD,
+      index: true,
+    },
+    paymentId: { type: Schema.Types.ObjectId, ref: "Payment", index: true },
     /** YYYY-MM-DD (Asia/Karachi Sunday) — one free request per patient per week */
     sundayDateKey: { type: String, required: true, index: true },
     status: {
@@ -72,6 +82,7 @@ applyFieldEncryption(sundayFreeRequestSchema, {
 export type SundayFreeRequestDocument = InferSchemaType<typeof sundayFreeRequestSchema> & {
   _id: Schema.Types.ObjectId;
   status: SundayFreeRequestStatus;
+  affordabilityChoice: SundayAffordabilityChoice;
 };
 
 export const SundayFreeRequestModel: Model<SundayFreeRequestDocument> =

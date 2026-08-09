@@ -64,14 +64,18 @@ export default function UrgentPayPageClient() {
     };
   }, [paymentId, router, p.missingPayment, p.loadError]);
 
-  const submitReceipt = async (file: File) => {
+  const submitReceipt = async (proof: {
+    file?: File;
+    transactionId?: string;
+  }) => {
     if (!paymentId) return;
     setSubmitting(true);
     setError(null);
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      if (proof.file) formData.append("file", proof.file);
+      if (proof.transactionId) formData.append("transactionId", proof.transactionId);
       const res = await fetch(`/api/v1/payments/${paymentId}/receipt`, {
         method: "POST",
         body: formData,
@@ -100,6 +104,10 @@ export default function UrgentPayPageClient() {
     copied: p.copied,
     uploadLabel: p.uploadReceipt,
     uploadHint: p.uploadHint,
+    tidLabel: p.tidLabel,
+    tidPlaceholder: p.tidPlaceholder,
+    tidHint: p.tidHint,
+    proofRequired: p.proofRequired,
     submit: p.submit,
     submitting: p.submitting,
     cancel: u.backToUrgent,

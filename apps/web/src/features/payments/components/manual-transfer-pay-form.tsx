@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Copy, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LoadingInline } from "@/components/ui/loading-screen";
 import type { ManualTransferCheckout } from "@/lib/payments/manual-payment";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
@@ -20,11 +21,20 @@ export type ManualTransferPayCopy = {
   copied: string;
   uploadLabel: string;
   uploadHint: string;
+  tidLabel?: string;
+  tidPlaceholder?: string;
+  tidHint?: string;
+  proofRequired?: string;
   submit: string;
   submitting: string;
   cancel: string;
   missingPayment: string;
   loadError: string;
+};
+
+export type ManualTransferProof = {
+  file?: File;
+  transactionId?: string;
 };
 
 type Props = {
@@ -35,7 +45,7 @@ type Props = {
   error: string | null;
   copy: ManualTransferPayCopy;
   cancelHref: string;
-  onSubmitReceipt: (file: File) => Promise<void>;
+  onSubmitReceipt: (proof: ManualTransferProof) => Promise<void>;
   submitting: boolean;
 };
 
@@ -51,6 +61,7 @@ export function ManualTransferPayForm({
   submitting,
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [transactionId, setTransactionId] = useState("");
   const [copied, setCopied] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -69,12 +80,16 @@ export function ManualTransferPayForm({
   };
 
   const handleSubmit = async () => {
-    if (!file) {
-      setLocalError(copy.uploadHint);
+    const tid = transactionId.trim();
+    if (!file && !tid) {
+      setLocalError(copy.proofRequired ?? copy.uploadHint);
       return;
     }
     setLocalError(null);
-    await onSubmitReceipt(file);
+    await onSubmitReceipt({
+      file: file ?? undefined,
+      transactionId: tid || undefined,
+    });
   };
 
   return (
@@ -150,6 +165,25 @@ export function ManualTransferPayForm({
                 }}
               />
             </label>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700" htmlFor="jazzcash-tid">
+              {copy.tidLabel ?? "JazzCash TID (optional)"}
+            </label>
+            <p className="text-xs text-slate-500">
+              {copy.tidHint ?? "If you do not have a screenshot, enter the JazzCash transaction ID."}
+            </p>
+            <Input
+              id="jazzcash-tid"
+              value={transactionId}
+              onChange={(e) => {
+                setTransactionId(e.target.value);
+                setLocalError(null);
+              }}
+              placeholder={copy.tidPlaceholder ?? "Enter JazzCash TID"}
+              disabled={submitting}
+            />
           </div>
 
           {(error || localError) && (

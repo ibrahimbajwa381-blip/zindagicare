@@ -1,9 +1,14 @@
 import { z } from "zod";
+import { SundayAffordabilityChoices } from "@zindagi/shared";
 import { pakistaniPhoneSchema } from "./auth.schema";
 
 export const sundayFreeRequestSchema = z.object({
   patientPhone: pakistaniPhoneSchema,
   patientNotes: z.string().max(1000).optional(),
+  affordabilityChoice: z.enum([
+    SundayAffordabilityChoices.CANNOT_AFFORD,
+    SundayAffordabilityChoices.PAY_FEE,
+  ]),
 });
 
 export type SundayFreeRequestInput = z.infer<typeof sundayFreeRequestSchema>;

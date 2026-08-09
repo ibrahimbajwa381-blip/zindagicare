@@ -447,6 +447,19 @@ export const ur: Dictionary = {
     phonePlaceholder: "03XXXXXXXXX",
     notesLabel: "آپ کو کس مدد کی ضرورت ہے؟ (اختیاری)",
     notesPlaceholder: "علامات، رپورٹس، یا فالو اپ نوٹس",
+    affordabilityTitle: "کیا آپ چھوٹی مشورہ فیس ادا کر سکتے ہیں؟",
+    affordabilityHint:
+      "اتوار کا مشورہ ضرورت مندوں کے لیے ہے۔ ایمانداری سے انتخاب کریں — ضرورت مند مریض مفت رہتے ہیں۔",
+    affordabilityCannotAfford: "میں ڈاکٹر کی فیس ادا نہیں کر سکتا/سکتی",
+    affordabilityCannotAffordHint: "مفت اتوار مشورہ کی درخواست جاری رکھیں۔",
+    affordabilityPayFee: "میں Rs. {amount} فیس ادا کر سکتا/سکتی ہوں",
+    affordabilityPayFeeHint:
+      "JazzCash سے Rs. {amount} بھیجیں (سکرین شاٹ یا TID)، پھر ہم ڈاکٹر جوڑیں گے۔",
+    affordabilityRequired: "براہِ کرم بتائیں کہ آپ فیس ادا کر سکتے ہیں یا نہیں۔",
+    paymentTitle: "اتوار مشورہ فیس ادا کریں",
+    paymentDescription:
+      "ہمارے JazzCash اکاؤنٹ پر Rs. {amount} بھیجیں، پھر رسید اپ لوڈ کریں یا TID درج کریں۔",
+    paymentCancel: "اتوار مشورہ پر واپس",
     matchingTitle: "درخواست موصول ہو گئی",
     matchingMessage: "ہمارا ڈاکٹر چند منٹ میں آپ کو کال کرے گا۔",
     matchingHint: `اگر ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} منٹ میں رابطہ نہ ہو، تو براہِ راست ہماری سپورٹ ٹیم کو کال کریں:`,
@@ -458,8 +471,9 @@ export const ur: Dictionary = {
     howItWorksDesc: "مفت اتوار مشورہ کے تین آسان مراحل۔",
     rulesTitle: "ضروری معلومات",
     rules: [
-      "مکمل مفت — اتوار کو کوئی مشورہ فیس نہیں۔",
-      `ہر مریض کے لیے ہفتے میں ایک مفت درخواست (${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} منٹ)۔`,
+      "جو ادا نہیں کر سکتے ان کے لیے مفت — جب آپ وہ اختیار چنیں۔",
+      `اگر آپ حصہ ڈال سکتے ہیں تو JazzCash سے Rs. ${SUNDAY_CONSULT_CONFIG.contributionFeePkr} ادا کریں (ڈاکٹر بکنگ جیسا رسید/TID طریقہ)۔`,
+      `ہر مریض کے لیے ہفتے میں ایک اتوار درخواست (${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} منٹ)۔`,
       `ہم ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} منٹ میں دستیاب ڈاکٹر سے جوڑتے ہیں — ڈاکٹر چننے کی ضرورت نہیں۔`,
       "درخواستیں آنے والے اتوار کے لیے کھلتی ہیں (پاکستان کا وقت)۔",
       "ڈاکٹر تیار ہونے پر فون یا لیپ ٹاپ سے شامل ہوں — کلینک جانے کی ضرورت نہیں۔",
@@ -467,6 +481,7 @@ export const ur: Dictionary = {
     errors: {
       phoneRequired: "رابطے کے لیے اپنا موبائل نمبر درج کریں۔",
       requestFailed: "درخواست جمع نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
+      affordabilityRequired: "براہِ کرم بتائیں کہ آپ فیس ادا کر سکتے ہیں یا نہیں۔",
     },
     explainer: {
       nextSession: "اگلا سیشن دن: {date}",
@@ -1939,6 +1954,10 @@ export const ur: Dictionary = {
       copied: "کاپی ہو گیا",
       uploadReceipt: "ٹرانسفر رسید اپ لوڈ کریں",
       uploadHint: "JPG، PNG، WebP، یا PDF · زیادہ سے زیادہ 5 MB",
+      tidLabel: "JazzCash TID",
+      tidPlaceholder: "JazzCash ٹرانزیکشن آئی ڈی درج کریں",
+      tidHint: "اگر سکرین شاٹ ہے تو TID اختیاری ہے — بغیر رسید تصویر کے TID ضروری ہے۔",
+      proofRequired: "رسید کا سکرین شاٹ اپ لوڈ کریں یا JazzCash TID درج کریں۔",
       submit: "میں نے رقم بھیج دی — رسید جمع کروائیں",
       submitting: "ادائیگی کی تصدیق ہو رہی ہے…",
       backToDoctors: "ڈاکٹرز پر واپس",

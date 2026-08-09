@@ -324,7 +324,7 @@ export function DoctorPatientsPanel({ patients }: Props) {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search patients or reviews..."
-                    className="h-10 pl-9"
+                    className="h-10 pl-9 sm:pl-9"
                     aria-label="Search patients"
                   />
                 </div>

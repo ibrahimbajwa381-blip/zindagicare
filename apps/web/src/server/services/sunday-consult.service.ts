@@ -7,6 +7,7 @@ import {
   SundaySlotInstanceModel,
   SundayFreeRequestModel,
   AppointmentModel,
+  PaymentModel,
   type EmbeddedSlot,
 } from "@zindagi/database";
 import {
@@ -15,7 +16,10 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   IntakeSources,
+  PaymentProviders,
+  PaymentStatuses,
   SlotStatuses,
+  SundayAffordabilityChoices,
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
@@ -39,19 +43,56 @@ import { isSundayConsultGloballyEnabled } from "./system-settings.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
   SundayAdminRequestDto,
+  SundayCheckoutResult,
   SundayConfirmBookingResult,
   SundayPatientBookingDto,
   SundayPatientRequestDto,
+  SundaySubmitRequestResult,
   SundayTeamDoctorOption,
 } from "@/features/sunday-consult/types";
 import type {
   SundayFreeAssignInput,
   SundayFreeRequestInput,
+  PaymentProviderInput,
 } from "@zindagi/validators";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import type { HydratedDocument } from "mongoose";
 import type { AppointmentDocument } from "@zindagi/database";
+import { generateTxnRefNo } from "@/lib/payments/jazzcash";
+import {
+  buildManualTransferCheckout,
+  isManualTransferMode,
+  manualExternalTransactionId,
+} from "@/lib/payments/manual-payment";
+import { buildTestPaymentCheckout } from "@/lib/payments/dummy-payment";
+import {
+  buildGatewayCheckout,
+  gatewayIntegrationLabel,
+  resolveCheckoutProvider,
+  type LivePaymentProvider,
+} from "@/lib/payments/payment-gateway";
+
+const SUNDAY_PAYMENT_KIND = "sunday_consult";
+
+type SundayPaymentMetadata = {
+  kind: typeof SUNDAY_PAYMENT_KIND;
+  patientPhone: string;
+  patientNotes?: string;
+  sundayDateKey: string;
+  affordabilityChoice: typeof SundayAffordabilityChoices.PAY_FEE;
+  txnRefNo?: string;
+  expiresAt?: string;
+  integration?: string;
+  receipt?: {
+    storageKey: string;
+    url: string;
+    originalName: string;
+    mimeType: string;
+    transactionId?: string;
+    uploadedAt?: string;
+  };
+};
 
 const ACTIVE_REQUEST_STATUSES = [
   SundayFreeRequestStatuses.REQUESTED,
@@ -610,7 +651,9 @@ export class SundayConsultService {
 
     const sundayDate = dateKey
       ? parseSundayDateKey(dateKey)
-      : getNextSundayDate();
+      : getActiveOrNextSundayDate();
+    const sundayKey = dateKey ?? formatSundayDateKey(sundayDate);
+    const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
 
     const [instance, appointments] = await Promise.all([
       SundaySlotInstanceModel.findOne(
@@ -618,12 +661,12 @@ export class SundayConsultService {
       ).lean(),
       AppointmentModel.find(
         mongoFilter({
-        doctorId: profile._id,
-        type: AppointmentTypes.SUNDAY_FREE,
-        scheduledStart: {
-          $gte: sundayDate,
-          $lt: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000),
-        },
+          doctorId: profile._id,
+          type: AppointmentTypes.SUNDAY_FREE,
+          $or: [
+            { sundayDateKey: sundayKey },
+            { scheduledStart: { $gte: sundayDate, $lt: sundayEnd } },
+          ],
         }),
       )
         .populate("patientId", "name phone")
@@ -774,8 +817,9 @@ export class SundayConsultService {
   static async submitRequest(
     patientId: string,
     input: SundayFreeRequestInput,
-  ): Promise<SundayPatientRequestDto> {
+  ): Promise<SundaySubmitRequestResult> {
     await connectDatabase();
+    await SundayConsultService.expireStalePendingPayments();
 
     const globallyEnabled = await isSundayConsultGloballyEnabled();
     if (!globallyEnabled) {
@@ -823,9 +867,10 @@ export class SundayConsultService {
     ).lean();
 
     if (existingRequest) {
-      return SundayConsultService.mapPatientRequest(
+      const mapped = SundayConsultService.mapPatientRequest(
         existingRequest as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
       );
+      return { kind: "request", ...mapped };
     }
 
     const existingAppointment = await AppointmentModel.findOne(
@@ -845,19 +890,56 @@ export class SundayConsultService {
       );
     }
 
+    if (input.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE) {
+      return SundayConsultService.initiateContributionCheckout(patientId, {
+        patientPhone: input.patientPhone,
+        patientNotes: input.patientNotes,
+        sundayDateKey,
+      });
+    }
+
+    const mapped = await SundayConsultService.createFreeRequestInternal(patientId, {
+      patientPhone: input.patientPhone,
+      patientNotes: input.patientNotes,
+      sundayDateKey,
+      affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD,
+    });
+
+    return { kind: "request", ...mapped };
+  }
+
+  private static async createFreeRequestInternal(
+    patientId: string,
+    input: {
+      patientPhone: string;
+      patientNotes?: string;
+      sundayDateKey: string;
+      affordabilityChoice: SundayPatientRequestDto["affordabilityChoice"];
+      paymentId?: string;
+    },
+  ): Promise<SundayPatientRequestDto> {
+    const user = await UserModel.findById(patientId).lean();
+
     const doc = await SundayFreeRequestModel.create({
       patientId,
       patientPhone: input.patientPhone,
       patientNotes: input.patientNotes,
-      sundayDateKey,
+      sundayDateKey: input.sundayDateKey,
+      affordabilityChoice: input.affordabilityChoice,
+      paymentId: input.paymentId,
       status: SundayFreeRequestStatuses.REQUESTED,
     });
 
     const requestId = doc._id.toString();
+    const isPaid = input.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE;
     await notifyAdmins({
-      title: "New Sunday free consult request",
-      body: `${safeDisplayText(user.name) ?? "A patient"} requested a free Sunday consult — assign a doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
-      payload: { type: "sunday_free_requested", requestId, sundayDateKey },
+      title: isPaid
+        ? "New Sunday consult request (paid contribution)"
+        : "New Sunday free consult request",
+      body: isPaid
+        ? `${safeDisplayText(user?.name) ?? "A patient"} paid Rs. ${SUNDAY_CONSULT_CONFIG.contributionFeePkr} and requested a Sunday consult — assign a doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`
+        : `${safeDisplayText(user?.name) ?? "A patient"} requested a free Sunday consult (cannot afford paid care) — assign a doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
+      payload: { type: "sunday_free_requested", requestId, sundayDateKey: input.sundayDateKey },
     }).catch((err) => {
       console.error("[sunday-consult] admin notification failed", err);
     });
@@ -865,11 +947,349 @@ export class SundayConsultService {
     publishSundayEvent({
       type: "instance_updated",
       doctorId: "queue",
-      sundayDateKey,
+      sundayDateKey: input.sundayDateKey,
       instanceId: requestId,
     });
 
     return SundayConsultService.mapPatientRequest(doc.toObject());
+  }
+
+  private static async expireStalePendingPayments() {
+    const cutoff = new Date(Date.now() - SUNDAY_CONSULT_CONFIG.paymentHoldDurationMs);
+    await PaymentModel.updateMany(
+      mongoFilter({
+        status: PaymentStatuses.PENDING,
+        "metadata.kind": SUNDAY_PAYMENT_KIND,
+        createdAt: { $lt: cutoff },
+      }),
+      { $set: { status: PaymentStatuses.CANCELLED } },
+    );
+  }
+
+  private static async initiateContributionCheckout(
+    patientId: string,
+    input: {
+      patientPhone: string;
+      patientNotes?: string;
+      sundayDateKey: string;
+      paymentProvider?: PaymentProviderInput;
+    },
+  ): Promise<SundayCheckoutResult> {
+    const pendingPayment = await PaymentModel.findOne(
+      mongoFilter({
+        userId: patientId,
+        status: PaymentStatuses.PENDING,
+        "metadata.kind": SUNDAY_PAYMENT_KIND,
+      }),
+    ).lean();
+
+    if (pendingPayment) {
+      const paymentId = pendingPayment._id.toString();
+      const amount = pendingPayment.amount;
+      const useManual =
+        pendingPayment.provider === PaymentProviders.MANUAL_JAZZCASH ||
+        pendingPayment.provider === PaymentProviders.DUMMY;
+
+      if (useManual) {
+        const manualTransfer = buildManualTransferCheckout({
+          paymentId,
+          amountPkr: amount,
+          description: `Sunday consult contribution — Rs. ${amount}`,
+          payPath: `/sunday-consult/pay?paymentId=${paymentId}`,
+        });
+        return {
+          kind: "payment",
+          paymentId,
+          amount,
+          manualTransfer,
+          testMode: true,
+          testPayment: buildTestPaymentCheckout({
+            paymentId,
+            appointmentId: paymentId,
+            amountPkr: amount,
+            description: `Sunday consult contribution — Rs. ${amount}`,
+            payPath: `/sunday-consult/pay?paymentId=${paymentId}`,
+          }),
+        };
+      }
+    }
+
+    const amount = SUNDAY_CONSULT_CONFIG.contributionFeePkr;
+    const txnRefNo = generateTxnRefNo();
+    const idempotencyKey = randomUUID();
+    const expiresAt = new Date(Date.now() + SUNDAY_CONSULT_CONFIG.paymentHoldDurationMs);
+    const useManual = isManualTransferMode();
+    let liveProvider: LivePaymentProvider | null = null;
+
+    if (!useManual) {
+      try {
+        liveProvider = resolveCheckoutProvider(input.paymentProvider);
+      } catch (error) {
+        throw new AppError(
+          error instanceof Error ? error.message : "Payment gateway unavailable",
+          ErrorCodes.VALIDATION,
+          503,
+        );
+      }
+    }
+
+    const payment = (await PaymentModel.create({
+      userId: patientId,
+      provider: useManual ? PaymentProviders.MANUAL_JAZZCASH : liveProvider!,
+      status: PaymentStatuses.PENDING,
+      amount,
+      currency: "PKR",
+      idempotencyKey,
+      externalTransactionId: txnRefNo,
+      metadata: {
+        kind: SUNDAY_PAYMENT_KIND,
+        patientPhone: input.patientPhone,
+        patientNotes: input.patientNotes,
+        sundayDateKey: input.sundayDateKey,
+        affordabilityChoice: SundayAffordabilityChoices.PAY_FEE,
+        txnRefNo,
+        expiresAt: expiresAt.toISOString(),
+        integration: useManual
+          ? "manual_jazzcash"
+          : gatewayIntegrationLabel(liveProvider!),
+      } satisfies SundayPaymentMetadata,
+    } as Record<string, unknown>)) as { _id: { toString(): string } };
+
+    const paymentId = payment._id.toString();
+
+    if (useManual) {
+      const manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: amount,
+        description: `Sunday consult contribution — Rs. ${amount}`,
+        payPath: `/sunday-consult/pay?paymentId=${paymentId}`,
+      });
+      return {
+        kind: "payment",
+        paymentId,
+        amount,
+        manualTransfer,
+        testMode: true,
+        testPayment: buildTestPaymentCheckout({
+          paymentId,
+          appointmentId: paymentId,
+          amountPkr: amount,
+          description: `Sunday consult contribution — Rs. ${amount}`,
+          payPath: `/sunday-consult/pay?paymentId=${paymentId}`,
+        }),
+      };
+    }
+
+    const gatewayRedirect = buildGatewayCheckout(liveProvider!, {
+      amountPkr: amount,
+      txnRefNo,
+      billReference: paymentId.slice(-12),
+      description: "ZindagiCare Sunday consult",
+      paymentId,
+      customerMobile: input.patientPhone,
+    });
+
+    return { kind: "payment", paymentId, amount, gatewayRedirect };
+  }
+
+  static async submitManualReceipt(
+    paymentId: string,
+    userId: string,
+    receipt: {
+      storageKey: string;
+      url: string;
+      originalName: string;
+      mimeType: string;
+      transactionId?: string;
+    },
+  ) {
+    await connectDatabase();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment || payment.userId.toString() !== userId) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if ((payment.metadata as SundayPaymentMetadata | undefined)?.kind !== SUNDAY_PAYMENT_KIND) {
+      throw new AppError("Not a Sunday consult payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (
+      payment.provider !== PaymentProviders.MANUAL_JAZZCASH &&
+      payment.provider !== PaymentProviders.DUMMY
+    ) {
+      throw new AppError("Not a manual JazzCash payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (payment.status !== PaymentStatuses.PENDING) {
+      throw new AppError("Payment is not pending", ErrorCodes.VALIDATION, 400);
+    }
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          "metadata.receipt": {
+            storageKey: receipt.storageKey,
+            url: receipt.url,
+            originalName: receipt.originalName,
+            mimeType: receipt.mimeType,
+            ...(receipt.transactionId ? { transactionId: receipt.transactionId } : {}),
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      },
+    );
+
+    const externalId =
+      receipt.transactionId?.trim() || manualExternalTransactionId(paymentId);
+
+    return SundayConsultService.confirmAfterPayment(paymentId, externalId);
+  }
+
+  static async completeTestPayment(paymentId: string, userId: string) {
+    await connectDatabase();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment || payment.userId.toString() !== userId) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if ((payment.metadata as SundayPaymentMetadata | undefined)?.kind !== SUNDAY_PAYMENT_KIND) {
+      throw new AppError("Not a Sunday consult payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    if (payment.provider !== PaymentProviders.DUMMY) {
+      throw new AppError("Not a test payment", ErrorCodes.VALIDATION, 400);
+    }
+
+    return SundayConsultService.confirmAfterPayment(
+      paymentId,
+      `DUMMY-${paymentId}`,
+    );
+  }
+
+  static async confirmAfterPayment(paymentId: string, externalTransactionId?: string) {
+    await connectDatabase();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const metadata = payment.metadata as SundayPaymentMetadata | undefined;
+    if (metadata?.kind !== SUNDAY_PAYMENT_KIND) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    if (payment.status === PaymentStatuses.PAID && payment.sundayFreeRequestId) {
+      const existing = await SundayFreeRequestModel.findById(
+        payment.sundayFreeRequestId,
+      ).lean();
+      if (existing) {
+        return SundayConsultService.mapPatientRequest(
+          existing as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
+        );
+      }
+    }
+
+    if (payment.status === PaymentStatuses.PAID) {
+      const linked = await SundayFreeRequestModel.findOne(
+        mongoFilter({ paymentId }),
+      ).lean();
+      if (linked) {
+        return SundayConsultService.mapPatientRequest(
+          linked as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
+        );
+      }
+    }
+
+    if (payment.status !== PaymentStatuses.PENDING && payment.status !== PaymentStatuses.PAID) {
+      throw new AppError("Payment is not pending", ErrorCodes.VALIDATION, 400);
+    }
+
+    const patientId = payment.userId.toString();
+    const request = await SundayConsultService.createFreeRequestInternal(patientId, {
+      patientPhone: metadata.patientPhone,
+      patientNotes: metadata.patientNotes,
+      sundayDateKey: metadata.sundayDateKey,
+      affordabilityChoice: SundayAffordabilityChoices.PAY_FEE,
+      paymentId,
+    });
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          status: PaymentStatuses.PAID,
+          paidAt: new Date(),
+          sundayFreeRequestId: request.requestId,
+          ...(externalTransactionId ? { externalTransactionId } : {}),
+        },
+      },
+    );
+
+    return request;
+  }
+
+  static async failPayment(paymentId: string, reason?: string) {
+    await connectDatabase();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (
+      !payment ||
+      payment.status !== PaymentStatuses.PENDING ||
+      (payment.metadata as SundayPaymentMetadata | undefined)?.kind !== SUNDAY_PAYMENT_KIND
+    ) {
+      return;
+    }
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          status: PaymentStatuses.FAILED,
+          failureReason: reason,
+        },
+      },
+    );
+  }
+
+  static async getPaymentStatus(paymentId: string, userId: string) {
+    await connectDatabase();
+
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment || payment.userId.toString() !== userId) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const metadata = payment.metadata as SundayPaymentMetadata | undefined;
+    if (metadata?.kind !== SUNDAY_PAYMENT_KIND) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const isManual =
+      payment.provider === PaymentProviders.MANUAL_JAZZCASH ||
+      payment.provider === PaymentProviders.DUMMY;
+
+    let manualTransfer = null;
+    if (isManual && payment.status === PaymentStatuses.PENDING) {
+      manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: payment.amount,
+        description: `Sunday consult contribution — Rs. ${payment.amount}`,
+        payPath: `/sunday-consult/pay?paymentId=${paymentId}`,
+      });
+    }
+
+    return {
+      paymentId,
+      status: payment.status,
+      amount: payment.amount,
+      currency: payment.currency ?? "PKR",
+      sundayFreeRequestId: payment.sundayFreeRequestId?.toString(),
+      manualTransfer,
+    };
   }
 
   static async getPatientRequest(
@@ -884,7 +1304,12 @@ export class SundayConsultService {
       mongoFilter({
         patientId,
         sundayDateKey,
-        status: { $in: [...ACTIVE_REQUEST_STATUSES] },
+        status: {
+          $in: [
+            ...ACTIVE_REQUEST_STATUSES,
+            SundayFreeRequestStatuses.COMPLETED,
+          ],
+        },
       }),
     )
       .sort({ createdAt: -1 })
@@ -934,6 +1359,9 @@ export class SundayConsultService {
         patientName: patient?.name ?? "Patient",
         patientPhone: mapped.patientPhone,
         patientNotes: mapped.patientNotes,
+        affordabilityChoice: mapped.affordabilityChoice,
+        paymentId: mapped.paymentId,
+        contributionFeePkr: mapped.contributionFeePkr,
         createdAt: mapped.createdAt,
         assignedAt: mapped.assignedAt,
         appointmentId: mapped.appointmentId,
@@ -1009,8 +1437,9 @@ export class SundayConsultService {
 
     const assignedAt = new Date();
     const scheduledStart = assignedAt;
+    // Admin match: keep the join window open for the SLA, not just one 10-min slot.
     const scheduledEnd = new Date(
-      assignedAt.getTime() + SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+      assignedAt.getTime() + SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
     );
 
     let appointmentId = request.appointmentId?.toString();
@@ -1111,6 +1540,8 @@ export class SundayConsultService {
     patientNotes?: string | null;
     status: string;
     sundayDateKey: string;
+    affordabilityChoice?: string | null;
+    paymentId?: { toString(): string } | null;
     createdAt?: Date;
     assignedAt?: Date | null;
     appointmentId?:
@@ -1120,6 +1551,7 @@ export class SundayConsultService {
           _id?: { toString(): string };
           scheduledStart?: Date;
           scheduledEnd?: Date;
+          status?: string;
         };
     assignedDoctorId?:
       | { toString(): string }
@@ -1152,16 +1584,26 @@ export class SundayConsultService {
     let appointmentId: string | undefined;
     let scheduledStart: string | undefined;
     let scheduledEnd: string | undefined;
+    let appointmentStatus: SundayPatientRequestDto["appointmentStatus"];
     const appointment = doc.appointmentId;
     if (appointment && typeof appointment === "object") {
       if ("scheduledStart" in appointment) {
         appointmentId = appointment._id?.toString();
         scheduledStart = appointment.scheduledStart?.toISOString();
         scheduledEnd = appointment.scheduledEnd?.toISOString();
+        if (typeof appointment.status === "string") {
+          appointmentStatus =
+            appointment.status as SundayPatientRequestDto["appointmentStatus"];
+        }
       } else if ("toString" in appointment) {
         appointmentId = appointment.toString();
       }
     }
+
+    const affordabilityChoice =
+      doc.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+        ? SundayAffordabilityChoices.PAY_FEE
+        : SundayAffordabilityChoices.CANNOT_AFFORD;
 
     return {
       requestId: doc._id.toString(),
@@ -1169,13 +1611,36 @@ export class SundayConsultService {
       sundayDateKey: doc.sundayDateKey,
       patientPhone: doc.patientPhone,
       patientNotes: doc.patientNotes ?? undefined,
+      affordabilityChoice,
+      paymentId: doc.paymentId?.toString(),
+      contributionFeePkr:
+        affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+          ? SUNDAY_CONSULT_CONFIG.contributionFeePkr
+          : undefined,
       createdAt: (doc.createdAt ?? new Date()).toISOString(),
       assignedAt: doc.assignedAt?.toISOString(),
       appointmentId,
+      appointmentStatus,
       scheduledStart,
       scheduledEnd,
       doctor,
     };
+  }
+
+  private static resolveBookingAppointmentStatus(
+    request: SundayPatientRequestDto,
+  ): SundayPatientBookingDto["status"] {
+    if (request.appointmentStatus) return request.appointmentStatus;
+    if (request.status === SundayFreeRequestStatuses.COMPLETED) {
+      return AppointmentStatuses.COMPLETED;
+    }
+    if (request.status === SundayFreeRequestStatuses.CANCELLED) {
+      return AppointmentStatuses.CANCELLED;
+    }
+    if (request.status === SundayFreeRequestStatuses.REQUESTED) {
+      return AppointmentStatuses.PENDING;
+    }
+    return AppointmentStatuses.CONFIRMED;
   }
 
   private static requestToBookingDto(
@@ -1204,15 +1669,17 @@ export class SundayConsultService {
       };
     }
 
+    const status = SundayConsultService.resolveBookingAppointmentStatus(request);
+
     if (!request.appointmentId || !request.scheduledStart || !request.scheduledEnd || !request.doctor) {
       return {
         appointmentId: request.requestId,
         scheduledStart: request.assignedAt ?? request.createdAt,
         scheduledEnd: new Date(
           new Date(request.assignedAt ?? request.createdAt).getTime() +
-            SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+            SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
         ).toISOString(),
-        status: AppointmentStatuses.CONFIRMED,
+        status,
         sundayDateKey: request.sundayDateKey,
         doctor: request.doctor ?? {
           doctorId: "",
@@ -1231,7 +1698,7 @@ export class SundayConsultService {
       appointmentId: request.appointmentId,
       scheduledStart: request.scheduledStart,
       scheduledEnd: request.scheduledEnd,
-      status: AppointmentStatuses.CONFIRMED,
+      status,
       sundayDateKey: request.sundayDateKey,
       doctor: request.doctor,
       requestId: request.requestId,

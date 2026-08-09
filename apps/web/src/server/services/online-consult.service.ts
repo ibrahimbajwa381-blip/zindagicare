@@ -750,6 +750,7 @@ export class OnlineConsultService {
       url: string;
       originalName: string;
       mimeType: string;
+      transactionId?: string;
     },
   ) {
     await OnlineConsultService.ensureConnected();
@@ -782,10 +783,10 @@ export class OnlineConsultService {
       },
     );
 
-    return OnlineConsultService.confirmAfterPayment(
-      paymentId,
-      manualExternalTransactionId(paymentId),
-    );
+    const externalId =
+      receipt.transactionId?.trim() || manualExternalTransactionId(paymentId);
+
+    return OnlineConsultService.confirmAfterPayment(paymentId, externalId);
   }
 
   static async confirmAfterPayment(paymentId: string, externalTransactionId?: string) {

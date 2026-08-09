@@ -63,12 +63,30 @@ export async function POST(req: Request, { params }: Params) {
 
     const formData = await req.formData();
     const file = formData.get("file");
-    if (!(file instanceof File)) {
-      throw new AppError("Receipt file is required", ErrorCodes.VALIDATION, 400);
+    const transactionId = String(formData.get("transactionId") ?? "").trim();
+
+    if (!(file instanceof File) && !transactionId) {
+      throw new AppError(
+        "Upload a receipt screenshot or enter your JazzCash TID",
+        ErrorCodes.VALIDATION,
+        400,
+      );
     }
 
-    const stored = await savePaymentReceipt(session.user.id, paymentId, file);
-    const result = await submitManualPaymentReceipt(paymentId, session.user.id, stored);
+    const stored =
+      file instanceof File
+        ? await savePaymentReceipt(session.user.id, paymentId, file)
+        : {
+            storageKey: "",
+            url: "",
+            originalName: "tid-only",
+            mimeType: "text/plain",
+          };
+
+    const result = await submitManualPaymentReceipt(paymentId, session.user.id, {
+      ...stored,
+      ...(transactionId ? { transactionId } : {}),
+    });
 
     return apiSuccess({
       paymentId,

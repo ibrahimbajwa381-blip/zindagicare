@@ -6,8 +6,11 @@ import { useSession } from "next-auth/react";
 import { Clock, Gift, Video } from "lucide-react";
 import {
   AppointmentStatuses,
+  SundayAffordabilityChoices,
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
+  cn,
+  type SundayAffordabilityChoice,
 } from "@zindagi/shared";
 import { PageSection } from "@/components/layout/page-section";
 import { SundayExplainer } from "./sunday-explainer";
@@ -20,7 +23,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { siteConfig } from "@/config/site";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
 import { SundayMatchingStatus } from "./sunday-matching-status";
-import type { SundayPatientBookingDto, SundayPatientRequestDto } from "../types";
+import type {
+  SundayPatientBookingDto,
+  SundayPatientRequestDto,
+  SundaySubmitRequestResult,
+} from "../types";
 import {
   AppointmentConfirmationModal,
   type AppointmentConfirmationDetails,
@@ -54,6 +61,14 @@ function requestToBooking(request: SundayPatientRequestDto): SundayPatientBookin
     };
   }
 
+  const status =
+    request.appointmentStatus ??
+    (request.status === SundayFreeRequestStatuses.COMPLETED
+      ? AppointmentStatuses.COMPLETED
+      : request.status === SundayFreeRequestStatuses.CANCELLED
+        ? AppointmentStatuses.CANCELLED
+        : AppointmentStatuses.CONFIRMED);
+
   return {
     appointmentId: request.appointmentId ?? request.requestId,
     scheduledStart: request.scheduledStart ?? request.assignedAt ?? request.createdAt,
@@ -61,9 +76,9 @@ function requestToBooking(request: SundayPatientRequestDto): SundayPatientBookin
       request.scheduledEnd ??
       new Date(
         new Date(request.scheduledStart ?? request.assignedAt ?? request.createdAt).getTime() +
-          SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
+          SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
       ).toISOString(),
-    status: AppointmentStatuses.CONFIRMED,
+    status,
     sundayDateKey: request.sundayDateKey,
     doctor: request.doctor,
     requestId: request.requestId,
@@ -81,6 +96,8 @@ export function SundayConsultClient() {
   const [booking, setBooking] = useState<SundayPatientBookingDto | null>(null);
   const [patientPhone, setPatientPhone] = useState("");
   const [patientNotes, setPatientNotes] = useState("");
+  const [affordabilityChoice, setAffordabilityChoice] =
+    useState<SundayAffordabilityChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
@@ -90,6 +107,7 @@ export function SundayConsultClient() {
   const bookingOpen = isSundayBookingOpenNow();
   const isAuthenticated = status === "authenticated";
   const isGuest = status === "unauthenticated";
+  const fee = SUNDAY_CONSULT_CONFIG.contributionFeePkr;
 
   const loadMyRequest = useCallback(async () => {
     if (!session?.user) return;
@@ -125,7 +143,6 @@ export function SundayConsultClient() {
     if (typeof window === "undefined") return;
     const hash = window.location.hash;
     if (hash === "#request" || hash === "#how-it-works") {
-      // Wait a tick so the form card is painted after auth status settles.
       const timer = window.setTimeout(scrollToRequest, 50);
       return () => window.clearTimeout(timer);
     }
@@ -155,6 +172,13 @@ export function SundayConsultClient() {
       return;
     }
 
+    if (!affordabilityChoice) {
+      setError(
+        sundayCopy.errors.affordabilityRequired ?? sundayCopy.affordabilityRequired,
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -165,6 +189,7 @@ export function SundayConsultClient() {
         body: JSON.stringify({
           patientPhone: phone,
           patientNotes: patientNotes.trim() || undefined,
+          affordabilityChoice,
         }),
       });
       const json = await res.json();
@@ -172,7 +197,17 @@ export function SundayConsultClient() {
         throw new Error(json.error?.message ?? sundayCopy.errors.requestFailed);
       }
 
-      const request = json.data as SundayPatientRequestDto;
+      const result = json.data as SundaySubmitRequestResult;
+
+      if (result.kind === "payment") {
+        const payUrl =
+          result.manualTransfer?.payUrl ??
+          `/sunday-consult/pay?paymentId=${result.paymentId}`;
+        window.location.href = payUrl;
+        return;
+      }
+
+      const request = result as SundayPatientRequestDto & { kind: "request" };
       const nextBooking = requestToBooking(request);
       setBooking(nextBooking);
 
@@ -314,6 +349,75 @@ export function SundayConsultClient() {
                         className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none ring-brand/30 placeholder:text-slate-400 focus:ring-2"
                       />
                     </div>
+
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium text-slate-700">
+                        {sundayCopy.affordabilityTitle}
+                      </legend>
+                      <p className="text-xs text-slate-500">{sundayCopy.affordabilityHint}</p>
+
+                      <label
+                        className={cn(
+                          "flex cursor-pointer gap-3 rounded-xl border p-3 transition",
+                          affordabilityChoice === SundayAffordabilityChoices.CANNOT_AFFORD
+                            ? "border-brand bg-brand-muted/40 ring-2 ring-brand/20"
+                            : "border-slate-200 hover:border-slate-300",
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="sunday-affordability"
+                          className="mt-1"
+                          checked={
+                            affordabilityChoice === SundayAffordabilityChoices.CANNOT_AFFORD
+                          }
+                          onChange={() =>
+                            setAffordabilityChoice(SundayAffordabilityChoices.CANNOT_AFFORD)
+                          }
+                          disabled={loading}
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-900">
+                            {sundayCopy.affordabilityCannotAfford}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-slate-500">
+                            {sundayCopy.affordabilityCannotAffordHint}
+                          </span>
+                        </span>
+                      </label>
+
+                      <label
+                        className={cn(
+                          "flex cursor-pointer gap-3 rounded-xl border p-3 transition",
+                          affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+                            ? "border-brand bg-brand-muted/40 ring-2 ring-brand/20"
+                            : "border-slate-200 hover:border-slate-300",
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="sunday-affordability"
+                          className="mt-1"
+                          checked={affordabilityChoice === SundayAffordabilityChoices.PAY_FEE}
+                          onChange={() =>
+                            setAffordabilityChoice(SundayAffordabilityChoices.PAY_FEE)
+                          }
+                          disabled={loading}
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-900">
+                            {sundayCopy.affordabilityPayFee.replace("{amount}", String(fee))}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-slate-500">
+                            {sundayCopy.affordabilityPayFeeHint.replace(
+                              "{amount}",
+                              String(fee),
+                            )}
+                          </span>
+                        </span>
+                      </label>
+                    </fieldset>
+
                     {error && <p className="text-sm text-red-600">{error}</p>}
                     <Button
                       type="submit"
@@ -321,7 +425,11 @@ export function SundayConsultClient() {
                       className="w-full bg-brand text-white hover:bg-brand-dark"
                       disabled={loading}
                     >
-                      {loading ? sundayCopy.requesting : sundayCopy.requestCta}
+                      {loading
+                        ? sundayCopy.requesting
+                        : affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+                          ? sundayCopy.affordabilityPayFee.replace("{amount}", String(fee))
+                          : sundayCopy.requestCta}
                     </Button>
                     <p className="flex items-start gap-2 text-xs text-slate-500">
                       <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />

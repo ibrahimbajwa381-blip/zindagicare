@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,7 +172,13 @@ export function DoctorSundayDashboard() {
                   <VideoJoinLinkButton
                     appointmentId={apt._id}
                     scheduledStart={apt.scheduledStart}
-                    scheduledEnd={apt.scheduledEnd}
+                    scheduledEnd={new Date(
+                      Math.max(
+                        new Date(apt.scheduledEnd).getTime(),
+                        new Date(apt.scheduledStart).getTime() +
+                          SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
+                      ),
+                    ).toISOString()}
                     size="sm"
                   />
                   <Button size="sm" variant="outline" asChild className="gap-1">

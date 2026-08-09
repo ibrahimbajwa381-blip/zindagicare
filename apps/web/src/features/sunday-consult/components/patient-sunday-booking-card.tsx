@@ -13,6 +13,7 @@ import {
 import {
   AppointmentStatuses,
   IntakeStatuses,
+  SUNDAY_CONSULT_CONFIG,
   SundayFreeRequestStatuses,
 } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,13 @@ function DoctorAvatar({ name, src }: { name: string; src?: string }) {
   );
 }
 
+function sundayJoinWindowEnd(scheduledStart: string, scheduledEnd: string) {
+  const matchEnd =
+    new Date(scheduledStart).getTime() +
+    SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000;
+  return new Date(Math.max(new Date(scheduledEnd).getTime(), matchEnd)).toISOString();
+}
+
 export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Props) {
   const t = useTranslations();
   const b = t.dashboard.sundayBooking;
@@ -59,25 +67,39 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
   const isMatching =
     booking.requestStatus === SundayFreeRequestStatuses.REQUESTED || !doctor.doctorId;
   const intakeStatus = useIntakeStatus(isMatching ? undefined : booking.appointmentId);
+  const joinEnd = sundayJoinWindowEnd(booking.scheduledStart, booking.scheduledEnd);
   const { canJoin, joinClosesAt } = useVideoJoinWindow(
     booking.scheduledStart,
-    booking.scheduledEnd,
+    joinEnd,
   );
+  const isCompleted =
+    booking.status === AppointmentStatuses.COMPLETED ||
+    booking.requestStatus === SundayFreeRequestStatuses.COMPLETED;
+  const isCancelled =
+    booking.status === AppointmentStatuses.CANCELLED ||
+    booking.status === AppointmentStatuses.NO_SHOW ||
+    booking.requestStatus === SundayFreeRequestStatuses.CANCELLED;
   const isMissed =
     !isMatching &&
+    !isCompleted &&
+    !isCancelled &&
     booking.status === AppointmentStatuses.CONFIRMED &&
     !canJoin &&
     Date.now() > joinClosesAt.getTime();
 
   const statusLabel = isMatching
     ? t.sunday.matchingTitle
-    : isMissed
-      ? t.dashboard.appointmentHistory.missed
-      : booking.status === AppointmentStatuses.CONFIRMED
-        ? b.statusConfirmed
-        : booking.status === AppointmentStatuses.IN_PROGRESS
-          ? b.statusInProgress
-          : b.statusPending;
+    : isCompleted
+      ? t.dashboard.appointmentHistory.status.completed
+      : isMissed
+        ? t.dashboard.appointmentHistory.missed
+        : isCancelled
+          ? t.dashboard.appointmentHistory.status.cancelled
+          : booking.status === AppointmentStatuses.CONFIRMED
+            ? b.statusConfirmed
+            : booking.status === AppointmentStatuses.IN_PROGRESS
+              ? b.statusInProgress
+              : b.statusPending;
 
   const isProfile = variant === "profile";
 
@@ -138,7 +160,9 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
                   className={
                     isMissed
                       ? "border-red-200 bg-red-50 text-xs uppercase tracking-wide text-red-700"
-                      : "text-xs"
+                      : isCompleted
+                        ? "border-emerald-200 bg-emerald-50 text-xs uppercase tracking-wide text-emerald-700"
+                        : "text-xs"
                   }
                 >
                   {statusLabel}
@@ -180,11 +204,11 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
 
         <VideoSessionStatusBanner
           scheduledStart={booking.scheduledStart}
-          scheduledEnd={booking.scheduledEnd}
+          scheduledEnd={joinEnd}
           appointmentStatus={booking.status}
         />
 
-        {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && (
+        {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && !isCompleted && (
           <Link
             href={`/intake/${booking.appointmentId}`}
             className="flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50/80 px-4 py-3 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100/80"
@@ -201,14 +225,16 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
         )}
 
         <div className="flex flex-wrap gap-2">
-          <VideoJoinLinkButton
-            appointmentId={booking.appointmentId}
-            scheduledStart={booking.scheduledStart}
-            scheduledEnd={booking.scheduledEnd}
-            label={b.joinSession}
-            className="gap-1.5"
-            iconClassName="h-4 w-4"
-          />
+          {!isCompleted && !isCancelled && !isMissed ? (
+            <VideoJoinLinkButton
+              appointmentId={booking.appointmentId}
+              scheduledStart={booking.scheduledStart}
+              scheduledEnd={joinEnd}
+              label={b.joinSession}
+              className="gap-1.5"
+              iconClassName="h-4 w-4"
+            />
+          ) : null}
           <Button variant="outline" asChild>
             <Link href={siteConfig.links.sundayConsult}>{b.viewOnSundayPage}</Link>
           </Button>

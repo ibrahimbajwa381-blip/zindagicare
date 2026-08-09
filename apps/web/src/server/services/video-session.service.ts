@@ -3,6 +3,7 @@ import {
   connectDatabase,
   DoctorProfileModel,
   PrescriptionModel,
+  SundayFreeRequestModel,
   UserModel,
   VideoSessionModel,
 } from "@zindagi/database";
@@ -11,8 +12,11 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   ErrorCodes,
+  SUNDAY_CONSULT_CONFIG,
+  SundayFreeRequestStatuses,
   VIDEO_CONSULT_CONFIG,
   VideoSessionStatuses,
+  getVideoJoinWindow,
   getVideoJoinWindowForAppointment,
 } from "@zindagi/shared";
 import { createZoomMeeting } from "@/lib/zoom/api";
@@ -49,10 +53,26 @@ function getJoinWindow(appointment: AppointmentRow) {
     (appointment.status === AppointmentStatuses.CONFIRMED ||
       appointment.status === AppointmentStatuses.IN_PROGRESS);
 
-  return getVideoJoinWindowForAppointment(
+  if (urgentWhileActive) {
+    return getVideoJoinWindowForAppointment(
+      appointment.scheduledStart,
+      appointment.scheduledEnd,
+      { urgentWhileActive: true },
+    );
+  }
+
+  let scheduledEnd = appointment.scheduledEnd;
+  if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
+    const matchEnd = new Date(
+      appointment.scheduledStart.getTime() +
+        SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
+    );
+    if (matchEnd > scheduledEnd) scheduledEnd = matchEnd;
+  }
+
+  return getVideoJoinWindow(
     appointment.scheduledStart,
-    appointment.scheduledEnd,
-    { urgentWhileActive },
+    scheduledEnd,
   );
 }
 
@@ -98,6 +118,18 @@ export class VideoSessionService {
         completedAt: appointment.completedAt ?? new Date(),
       },
     });
+
+    if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
+      await SundayFreeRequestModel.updateOne(
+        mongoFilter({ appointmentId: appointment._id }),
+        {
+          $set: {
+            status: SundayFreeRequestStatuses.COMPLETED,
+            completedAt: appointment.completedAt ?? new Date(),
+          },
+        },
+      );
+    }
 
     return true;
   }
@@ -387,6 +419,18 @@ export class VideoSessionService {
           completedAt: endedAt,
         },
       });
+
+      if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
+        await SundayFreeRequestModel.updateOne(
+          mongoFilter({ appointmentId: appointment._id }),
+          {
+            $set: {
+              status: SundayFreeRequestStatuses.COMPLETED,
+              completedAt: endedAt,
+            },
+          },
+        );
+      }
     }
   }
 

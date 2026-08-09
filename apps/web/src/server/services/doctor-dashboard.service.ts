@@ -18,10 +18,14 @@ import {
   HomeVisitStatuses,
   PaymentStatuses,
   Roles,
+  SUNDAY_CONSULT_CONFIG,
   UrgentCareRequestStatuses,
   VIDEO_CONSULT_CONFIG,
 } from "@zindagi/shared";
-import { getNextSundayDate } from "@/lib/sunday/date-utils";
+import {
+  formatSundayDateKey,
+  getActiveOrNextSundayDate,
+} from "@/lib/sunday/date-utils";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import {
@@ -49,7 +53,14 @@ function activeConsultRequestFilter(now = new Date()) {
   );
 
   return {
-    type: { $in: [AppointmentTypes.ONLINE, AppointmentTypes.CLINIC, AppointmentTypes.URGENT_ONLINE] },
+    type: {
+      $in: [
+        AppointmentTypes.ONLINE,
+        AppointmentTypes.CLINIC,
+        AppointmentTypes.URGENT_ONLINE,
+        AppointmentTypes.SUNDAY_FREE,
+      ],
+    },
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
     $or: [
       { scheduledEnd: { $gte: windowEnd } },
@@ -459,7 +470,8 @@ export async function getDoctorDashboardSummary(
 ): Promise<DoctorDashboardSummary> {
   const { profile } = await getDoctorProfileForUser(userId);
   const now = new Date();
-  const sundayDate = getNextSundayDate();
+  const sundayDate = getActiveOrNextSundayDate(now);
+  const sundayDateKey = formatSundayDateKey(sundayDate);
   const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
 
   const [patientIds, pendingRequests, sundayQueue, homeVisitRequests, urgentCalls, earnings] =
@@ -476,7 +488,10 @@ export async function getDoctorDashboardSummary(
           doctorId: profile._id,
           type: AppointmentTypes.SUNDAY_FREE,
           status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-          scheduledStart: { $gte: sundayDate, $lt: sundayEnd },
+          $or: [
+            { sundayDateKey },
+            { scheduledStart: { $gte: sundayDate, $lt: sundayEnd } },
+          ],
         }),
       ),
       HomeVisitModel.countDocuments(
@@ -517,8 +532,18 @@ function resolveDoctorPatientLastOutcome(
   scheduledStart?: Date,
   scheduledEnd?: Date,
   now = new Date(),
+  type?: string,
 ): DoctorPatientLastOutcome {
-  return resolveConsultOutcome(status, scheduledStart, scheduledEnd, now);
+  return resolveConsultOutcome(status, scheduledStart, scheduledEnd, now, type);
+}
+
+/** Admin-matched Sunday free used a short slot end; keep the match SLA joinable. */
+function effectiveVideoEnd(type: string | undefined, start: Date, end: Date) {
+  if (type !== AppointmentTypes.SUNDAY_FREE) return end;
+  const matchEnd = new Date(
+    start.getTime() + SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
+  );
+  return matchEnd > end ? matchEnd : end;
 }
 
 function resolveConsultOutcome(
@@ -526,6 +551,7 @@ function resolveConsultOutcome(
   scheduledStart?: Date,
   scheduledEnd?: Date,
   now = new Date(),
+  type?: string,
 ): DoctorRequestOutcome {
   if (status === AppointmentStatuses.COMPLETED) return "completed";
   if (status === AppointmentStatuses.NO_SHOW) return "missed";
@@ -540,7 +566,7 @@ function resolveConsultOutcome(
   ) {
     const { joinClosesAt } = getVideoJoinWindow(
       scheduledStart,
-      scheduledEnd,
+      effectiveVideoEnd(type, scheduledStart, scheduledEnd),
       now,
     );
     if (now > joinClosesAt) return "missed";
@@ -560,7 +586,8 @@ function canJoinConsultRequest(
 ) {
   if (
     type !== AppointmentTypes.ONLINE &&
-    type !== AppointmentTypes.URGENT_ONLINE
+    type !== AppointmentTypes.URGENT_ONLINE &&
+    type !== AppointmentTypes.SUNDAY_FREE
   ) {
     return false;
   }
@@ -576,7 +603,11 @@ function canJoinConsultRequest(
     return false;
   }
 
-  const { canJoin } = getVideoJoinWindow(scheduledStart, scheduledEnd, now);
+  const { canJoin } = getVideoJoinWindow(
+    scheduledStart,
+    effectiveVideoEnd(type, scheduledStart, scheduledEnd),
+    now,
+  );
   return canJoin || status === AppointmentStatuses.IN_PROGRESS;
 }
 
@@ -722,6 +753,7 @@ export async function listDoctorPatients(userId: string): Promise<DoctorPatientR
       row.lastVisitAt,
       row.lastVisitEndAt,
       now,
+      row.lastVisitType,
     );
 
     return {
@@ -758,6 +790,7 @@ export async function listDoctorConsultRequests(
           AppointmentTypes.ONLINE,
           AppointmentTypes.CLINIC,
           AppointmentTypes.URGENT_ONLINE,
+          AppointmentTypes.SUNDAY_FREE,
         ],
       },
       deletedAt: null,
@@ -821,6 +854,7 @@ export async function listDoctorConsultRequests(
       apt.scheduledStart,
       apt.scheduledEnd,
       now,
+      apt.type,
     );
     const id = apt._id.toString();
 

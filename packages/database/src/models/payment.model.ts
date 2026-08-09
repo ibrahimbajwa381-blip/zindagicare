@@ -35,6 +35,7 @@ const paymentSchema = new Schema(
     idempotencyKey: { type: String, unique: true, sparse: true },
     appointmentId: { type: Schema.Types.ObjectId, ref: "Appointment" },
     urgentCareRequestId: { type: Schema.Types.ObjectId, ref: "UrgentCareRequest" },
+    sundayFreeRequestId: { type: Schema.Types.ObjectId, ref: "SundayFreeRequest" },
     homeVisitId: { type: Schema.Types.ObjectId, ref: "HomeVisit" },
     orderId: { type: Schema.Types.ObjectId, ref: "Order" },
     metadata: { type: Schema.Types.Mixed, default: {} },

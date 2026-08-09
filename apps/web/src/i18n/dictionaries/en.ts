@@ -462,6 +462,19 @@ export const en = {
     phonePlaceholder: "03XXXXXXXXX",
     notesLabel: "What do you need help with? (optional)",
     notesPlaceholder: "Symptoms, reports, or follow-up notes",
+    affordabilityTitle: "Can you afford a small consultation fee?",
+    affordabilityHint:
+      "Sunday consults are for people who need care. Choose honestly — needy patients stay free.",
+    affordabilityCannotAfford: "I cannot afford to pay a doctor",
+    affordabilityCannotAffordHint: "Continue with a free Sunday consult request.",
+    affordabilityPayFee: "I can pay the Rs. {amount} fee",
+    affordabilityPayFeeHint:
+      "Transfer Rs. {amount} via JazzCash (screenshot or TID), then we connect a doctor.",
+    affordabilityRequired: "Please select whether you can afford the fee.",
+    paymentTitle: "Pay Sunday consult fee",
+    paymentDescription:
+      "Transfer Rs. {amount} to our JazzCash account, then upload your receipt or enter the TID.",
+    paymentCancel: "Back to Sunday consult",
     matchingTitle: "Request received",
     matchingMessage: "Our doctor will call you within a few minutes.",
     matchingHint: `If we are not connecting with you within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes, call our support team directly:`,
@@ -473,8 +486,9 @@ export const en = {
     howItWorksDesc: "Three quick steps for your free Sunday consult.",
     rulesTitle: "Good to know",
     rules: [
-      "Completely free — no consultation fee on Sundays.",
-      `One free request per patient each week (${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} min).`,
+      "For people who cannot afford paid care — free when you select that option.",
+      `If you can contribute, pay Rs. ${SUNDAY_CONSULT_CONFIG.contributionFeePkr} via JazzCash (same receipt/TID flow as doctor booking).`,
+      `One Sunday request per patient each week (${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} min).`,
       `We connect you with an available doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes — no doctor selection needed.`,
       "Requests open for the upcoming Sunday (Pakistan time).",
       "Join from your phone or laptop when your doctor is ready — no clinic visit needed.",
@@ -482,6 +496,7 @@ export const en = {
     errors: {
       phoneRequired: "Enter your mobile number so we can reach you.",
       requestFailed: "Could not submit your request. Please try again.",
+      affordabilityRequired: "Please select whether you can afford the fee.",
     },
     explainer: {
       nextSession: "Next session day: {date}",
@@ -1971,6 +1986,10 @@ export const en = {
       copied: "Copied",
       uploadReceipt: "Upload transfer receipt",
       uploadHint: "JPG, PNG, WebP, or PDF · max 5 MB",
+      tidLabel: "JazzCash TID",
+      tidPlaceholder: "Enter JazzCash transaction ID",
+      tidHint: "Optional if you uploaded a screenshot — required if you have no receipt image.",
+      proofRequired: "Upload a receipt screenshot or enter your JazzCash TID.",
       submit: "I've transferred — submit receipt",
       submitting: "Confirming payment…",
       backToDoctors: "Back to doctors",
