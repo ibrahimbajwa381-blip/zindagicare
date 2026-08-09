@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff, Star, Trash2 } from "lucide-react";
+import { Check, Eye, EyeOff, Star, Trash2 } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { surfaceCard, surfaceInset } from "@/lib/ui/surfaces";
 
@@ -23,10 +24,14 @@ type AdminReviewRow = {
 };
 
 const FILTERS = [
+  { value: "pending", label: "Needs review" },
   { value: "all", label: "All" },
   { value: "visible", label: "Public" },
   { value: "hidden", label: "Hidden" },
 ] as const;
+
+type FilterValue = (typeof FILTERS)[number]["value"];
+type ModerateAction = "approve" | "hide" | "show" | "delete";
 
 function RatingStars({ rating }: { rating: number }) {
   return (
@@ -45,13 +50,14 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 export function AdminReviewModeration() {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["value"]>("all");
+  const [filter, setFilter] = useState<FilterValue>("pending");
   const [reloadKey, setReloadKey] = useState(0);
   const [reviews, setReviews] = useState<AdminReviewRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [approvingAll, setApprovingAll] = useState(false);
 
   const refresh = useCallback(() => {
     setReloadKey((key) => key + 1);
@@ -85,7 +91,7 @@ export function AdminReviewModeration() {
     };
   }, [filter, reloadKey]);
 
-  async function moderate(review: AdminReviewRow, action: "hide" | "show" | "delete") {
+  async function moderate(review: AdminReviewRow, action: ModerateAction) {
     if (action === "delete") {
       const confirmed = window.confirm(
         `Permanently remove this review from ${review.patientName}? Doctor ratings will be recalculated.`,
@@ -104,6 +110,7 @@ export function AdminReviewModeration() {
       if (!json.success) {
         throw new Error(json?.error?.message ?? "Action failed");
       }
+      dispatchAdminNavCountsRefresh();
       refresh();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Action failed");
@@ -111,6 +118,33 @@ export function AdminReviewModeration() {
       setPendingId(null);
     }
   }
+
+  async function approveAllPending() {
+    const confirmed = window.confirm(
+      "Mark all reviews that still need review as approved? They stay public unless you hide them later.",
+    );
+    if (!confirmed) return;
+
+    setApprovingAll(true);
+    try {
+      const res = await fetch("/api/v1/admin/reviews/approve-all", {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json?.error?.message ?? "Failed to approve reviews");
+      }
+      dispatchAdminNavCountsRefresh();
+      refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to approve reviews");
+    } finally {
+      setApprovingAll(false);
+    }
+  }
+
+  const pendingInView = reviews.filter((review) => !review.isModerated).length;
+  const showApproveAll = filter === "pending" ? total > 0 : pendingInView > 0;
 
   return (
     <div className="space-y-6">
@@ -132,7 +166,24 @@ export function AdminReviewModeration() {
             </button>
           ))}
         </div>
-        <p className="text-sm text-slate-500">{total} review{total === 1 ? "" : "s"}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          {showApproveAll ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={approvingAll || loading}
+              className="gap-1.5"
+              onClick={() => void approveAllPending()}
+            >
+              <Check className="h-3.5 w-3.5" />
+              {approvingAll ? "Approving…" : "Approve all pending"}
+            </Button>
+          ) : null}
+          <p className="text-sm text-slate-500">
+            {total} review{total === 1 ? "" : "s"}
+          </p>
+        </div>
       </div>
 
       {loading ? (
@@ -143,7 +194,9 @@ export function AdminReviewModeration() {
         </p>
       ) : reviews.length === 0 ? (
         <div className={`border-dashed p-8 text-center text-sm text-slate-500 ${surfaceInset}`}>
-          No reviews in this filter yet.
+          {filter === "pending"
+            ? "No reviews waiting for moderation."
+            : "No reviews in this filter yet."}
         </div>
       ) : (
         <ul className="space-y-4">
@@ -171,7 +224,14 @@ export function AdminReviewModeration() {
                       <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                         Moderated
                       </Badge>
-                    ) : null}
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-200 bg-amber-50 text-[10px] uppercase tracking-wide text-amber-700"
+                      >
+                        Needs review
+                      </Badge>
+                    )}
                   </div>
                   <p className="mt-2 text-sm text-slate-700">
                     <span className="font-medium">{review.patientName}</span>
@@ -191,6 +251,18 @@ export function AdminReviewModeration() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  {!review.isModerated ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={pendingId === review.id}
+                      className="gap-1.5"
+                      onClick={() => moderate(review, "approve")}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Approve
+                    </Button>
+                  ) : null}
                   {review.isVisible ? (
                     <Button
                       type="button"

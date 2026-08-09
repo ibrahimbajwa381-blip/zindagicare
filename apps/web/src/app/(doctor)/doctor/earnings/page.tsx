@@ -23,9 +23,9 @@ export default async function DoctorEarningsPage() {
   return (
     <>
       <DoctorPageHeader
-        eyebrow="Revenue"
+        eyebrow="Earnings"
         title="Earnings"
-        description="Track revenue, completed consultations, commissions, and withdrawals from paid online, clinic, and in-house visits."
+        description="Track your earnings, completed consultations, and withdrawals from paid online, clinic, and in-house visits."
       />
       <DoctorEarningsPanel earnings={earnings} />
     </>

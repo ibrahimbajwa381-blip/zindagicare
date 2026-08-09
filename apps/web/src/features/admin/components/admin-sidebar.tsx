@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
+import { ADMIN_NAV_COUNTS_EVENT } from "@/features/admin/lib/nav-counts-events";
 import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -42,6 +43,50 @@ type AdminNavSection = {
 };
 
 const NAV_SECTIONS: AdminNavSection[] = [
+  {
+    title: "Operations",
+    items: [
+      {
+        href: "/admin/appointments",
+        label: "Appointments",
+        description: "Schedule and reassign visits",
+        icon: CalendarDays,
+      },
+      {
+        href: "/admin/finances",
+        label: "Finances",
+        description: "Payments and payouts",
+        icon: Banknote,
+      },
+      {
+        href: "/admin/sunday-consult",
+        label: "Sunday consult",
+        description: "Free Sunday consult queue",
+        icon: Sun,
+        countKey: "sundayConsult",
+      },
+      {
+        href: "/admin/urgent-care",
+        label: "Urgent care",
+        description: "Assign urgent video consults",
+        icon: Activity,
+        countKey: "urgentCare",
+      },
+      {
+        href: "/admin/home-visits",
+        label: "Home care",
+        description: "In-home visit requests",
+        icon: Home,
+        countKey: "homeVisits",
+      },
+      {
+        href: "/admin/notifications",
+        label: "Notifications",
+        description: "System alerts and broadcasts",
+        icon: Bell,
+      },
+    ],
+  },
   {
     title: "Overview",
     items: [
@@ -110,49 +155,6 @@ const NAV_SECTIONS: AdminNavSection[] = [
       },
     ],
   },
-  {
-    title: "Operations",
-    items: [
-      {
-        href: "/admin/appointments",
-        label: "Appointments",
-        description: "Schedule and reassign visits",
-        icon: CalendarDays,
-      },
-      {
-        href: "/admin/finances",
-        label: "Finances",
-        description: "Payments and payouts",
-        icon: Banknote,
-      },
-      {
-        href: "/admin/sunday-consult",
-        label: "Sunday consult",
-        description: "Free Sunday consult queue",
-        icon: Sun,
-      },
-      {
-        href: "/admin/urgent-care",
-        label: "Urgent care",
-        description: "Assign urgent video consults",
-        icon: Activity,
-        countKey: "urgentCare",
-      },
-      {
-        href: "/admin/home-visits",
-        label: "Home care",
-        description: "In-home visit requests",
-        icon: Home,
-        countKey: "homeVisits",
-      },
-      {
-        href: "/admin/notifications",
-        label: "Notifications",
-        description: "System alerts and broadcasts",
-        icon: Bell,
-      },
-    ],
-  },
 ];
 
 const NAV_POLL_MS = 30_000;
@@ -197,8 +199,27 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   useEffect(() => {
     void loadCounts();
     const interval = setInterval(loadCounts, NAV_POLL_MS);
-    return () => clearInterval(interval);
+
+    const onRefresh = () => {
+      void loadCounts();
+    };
+    const onFocus = () => {
+      void loadCounts();
+    };
+
+    window.addEventListener(ADMIN_NAV_COUNTS_EVENT, onRefresh);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(ADMIN_NAV_COUNTS_EVENT, onRefresh);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [loadCounts]);
+
+  useEffect(() => {
+    void loadCounts();
+  }, [pathname, loadCounts]);
 
   function isActive(item: AdminNavItem) {
     if (item.exact) return pathname === item.href;
@@ -266,7 +287,6 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
                     <Link
                       key={item.href}
                       href={item.href}
-                      prefetch={false}
                       onClick={onMobileClose}
                       className={cn(
                         "group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200",

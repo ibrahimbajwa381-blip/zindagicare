@@ -12,6 +12,8 @@ export type OnlinePatientBookingDto = {
   consultationFee: number;
   doctor: {
     doctorId: string;
+    /** User account id — required for `/messages?doctor=` deep links. */
+    userId: string;
     name: string;
     avatarUrl?: string;
     specialty: string;

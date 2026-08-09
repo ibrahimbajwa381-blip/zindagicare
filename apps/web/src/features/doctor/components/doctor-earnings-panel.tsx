@@ -4,7 +4,6 @@ import {
   Banknote,
   ChevronRight,
   CircleDollarSign,
-  Percent,
   Stethoscope,
   TrendingUp,
   Wallet,
@@ -155,47 +154,33 @@ function ConsultBreakdownGrid({
 }
 
 export function DoctorEarningsPanel({ earnings }: Props) {
-  const platformOnlineFeePercent = 100 - earnings.onlineCommissionPercent;
-  const platformHomeFeePercent = 100 - earnings.homeVisitCommissionPercent;
-
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
-        Your revenue share is{" "}
+        You earn{" "}
         <span className="font-semibold text-slate-900">
           {earnings.onlineCommissionPercent}%
         </span>{" "}
-        for online, clinic, and urgent consults and{" "}
+        on online, clinic, and urgent consults and{" "}
         <span className="font-semibold text-slate-900">
           {earnings.homeVisitCommissionPercent}%
         </span>{" "}
-        for in-house visits. Figures below separate patient payments, your net share, and
-        platform commission.
+        on in-house visits. Amounts below are what is credited to you.
       </div>
 
       <EarningsSection
         icon={TrendingUp}
-        title="Revenue"
-        description="Gross patient payments and your net earnings after commission."
+        title="Your earnings"
+        description="Amounts credited to you from completed paid consultations."
       >
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <StatCard
-            label="Gross revenue (all time)"
-            value={formatCurrency(earnings.totalGrossRevenue)}
-            hint="Total paid by patients"
-          />
-          <StatCard
-            label="Gross revenue (this month)"
-            value={formatCurrency(earnings.grossRevenueThisMonth)}
-            accent="emerald"
-          />
-          <StatCard
-            label="Your net earnings (all time)"
+            label="Your earnings (all time)"
             value={formatCurrency(earnings.totalEarnings)}
             hint="Amount credited to you"
           />
           <StatCard
-            label="Your net earnings (this month)"
+            label="Your earnings (this month)"
             value={formatCurrency(earnings.earningsThisMonth)}
             accent="emerald"
           />
@@ -212,36 +197,6 @@ export function DoctorEarningsPanel({ earnings }: Props) {
           <ConsultBreakdownGrid
             label="This month"
             counts={earnings.completedConsultsThisMonth}
-          />
-        </div>
-      </EarningsSection>
-
-      <EarningsSection
-        icon={Percent}
-        title="Commissions"
-        description="Platform fees deducted from gross patient payments."
-      >
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Platform commission (all time)"
-            value={formatCurrency(earnings.totalPlatformCommission)}
-            hint="Deducted from gross revenue"
-            accent="amber"
-          />
-          <StatCard
-            label="Platform commission (this month)"
-            value={formatCurrency(earnings.platformCommissionThisMonth)}
-            accent="amber"
-          />
-          <StatCard
-            label="Online / clinic / urgent share"
-            value={`${earnings.onlineCommissionPercent}%`}
-            hint={`Platform keeps ${platformOnlineFeePercent}%`}
-          />
-          <StatCard
-            label="In-house visit share"
-            value={`${earnings.homeVisitCommissionPercent}%`}
-            hint={`Platform keeps ${platformHomeFeePercent}%`}
           />
         </div>
       </EarningsSection>
@@ -311,7 +266,7 @@ export function DoctorEarningsPanel({ earnings }: Props) {
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Earning history</h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                Per-consult breakdown of gross payment, commission, and your net share.
+                Your credited amount for each completed consultation.
               </p>
             </div>
           </div>
@@ -325,7 +280,7 @@ export function DoctorEarningsPanel({ earnings }: Props) {
                 <DoctorListCard
                   title={tx.patient.name}
                   subtitle={formatConsultType(tx.type)}
-                  meta={`Completed ${formatDateTime(tx.completedAt)} · Gross ${formatCurrency(tx.grossAmount, tx.currency)} · Commission ${formatCurrency(tx.commissionAmount, tx.currency)} (${100 - tx.commissionPercent}%)`}
+                  meta={`Completed ${formatDateTime(tx.completedAt)}`}
                   badge={formatCurrency(tx.amount, tx.currency)}
                 />
               </div>

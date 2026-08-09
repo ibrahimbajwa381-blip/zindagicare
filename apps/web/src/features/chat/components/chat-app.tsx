@@ -31,6 +31,9 @@ type ChatCopy = {
   selectChatDescription: string;
   messagePlaceholder: string;
   backLabel: string;
+  openChatFailedTitle?: string;
+  openingChatTitle?: string;
+  openingChatDescription?: string;
 };
 
 type ChatAppProps = {
@@ -81,6 +84,8 @@ export function ChatApp({
   const [view, setView] = useState<ViewMode>(initialThreadId ? "conversation" : "inbox");
   const [search, setSearch] = useState("");
   const [loadingThreads, setLoadingThreads] = useState(true);
+  const [openingParticipant, setOpeningParticipant] = useState(!!initialParticipantId);
+  const [openParticipantError, setOpenParticipantError] = useState<string | null>(null);
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, { messages: ChatMessageDto[]; hasMore: boolean; loaded: boolean }>
   >({});
@@ -116,14 +121,27 @@ export function ChatApp({
     let cancelled = false;
 
     void (async () => {
+      setOpeningParticipant(true);
+      setOpenParticipantError(null);
       try {
         const thread = await createDirectThread(initialParticipantId);
         if (cancelled) return;
         await loadThreads();
+        if (cancelled) return;
+        setThreads((prev) =>
+          prev.some((row) => row.id === thread.id) ? prev : [thread, ...prev],
+        );
         setActiveThreadId(thread.id);
         setView("conversation");
-      } catch {
-        // Participant may be invalid; inbox still works.
+      } catch (error) {
+        if (cancelled) return;
+        setOpenParticipantError(
+          error instanceof Error
+            ? error.message
+            : "Unable to open this conversation.",
+        );
+      } finally {
+        if (!cancelled) setOpeningParticipant(false);
       }
     })();
 
@@ -464,12 +482,34 @@ export function ChatApp({
               <div className="mb-4 rounded-full bg-brand-muted p-5 text-brand">
                 <MessageSquare className="h-10 w-10" />
               </div>
-              <h3 className="font-display text-xl font-semibold text-slate-900">
-                {copy.selectChatTitle}
-              </h3>
-              <p className="mt-2 max-w-sm text-sm text-slate-500">
-                {copy.selectChatDescription}
-              </p>
+              {openingParticipant ? (
+                <>
+                  <h3 className="font-display text-xl font-semibold text-slate-900">
+                    {copy.openingChatTitle ?? "Opening conversation…"}
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-500">
+                    {copy.openingChatDescription ?? "Connecting you now."}
+                  </p>
+                </>
+              ) : openParticipantError ? (
+                <>
+                  <h3 className="font-display text-xl font-semibold text-slate-900">
+                    {copy.openChatFailedTitle ?? "Unable to open chat"}
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-500">
+                    {openParticipantError}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-display text-xl font-semibold text-slate-900">
+                    {copy.selectChatTitle}
+                  </h3>
+                  <p className="mt-2 max-w-sm text-sm text-slate-500">
+                    {copy.selectChatDescription}
+                  </p>
+                </>
+              )}
             </div>
           )}
         </div>

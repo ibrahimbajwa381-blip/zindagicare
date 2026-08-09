@@ -5,6 +5,7 @@ import { useState } from "react";
 import { VerificationStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type { AdminNurseDetailDto } from "@/features/admin/types/nurse-admin";
 import {
   ExternalLink,
@@ -168,6 +169,7 @@ export function AdminNurseApplicationReview({ profile }: Props) {
       return;
     }
 
+    dispatchAdminNavCountsRefresh();
     router.push("/admin/nurses");
     router.refresh();
   }

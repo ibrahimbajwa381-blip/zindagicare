@@ -1,31 +1,5 @@
-import { connectDatabase, NotificationModel } from "@zindagi/database";
-import { NotificationChannels } from "@zindagi/shared";
+import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 import { sendWebPushToUser } from "@/server/services/push.service";
-
-type ReminderPayload = {
-  userId: string;
-  title: string;
-  body: string;
-  phone?: string;
-  payload: Record<string, unknown>;
-};
-
-async function sendConsultNotification(input: ReminderPayload) {
-  await connectDatabase();
-
-  await NotificationModel.create({
-    userId: input.userId,
-    channel: NotificationChannels.IN_APP,
-    title: input.title,
-    body: input.body,
-    payload: input.payload,
-    sentAt: new Date(),
-  });
-
-  if (input.phone && process.env.SMS_API_KEY) {
-    console.info("[SMS]", input.phone, input.body);
-  }
-}
 
 export async function sendOnlineConsultConfirmation(params: {
   userId: string;
@@ -40,7 +14,7 @@ export async function sendOnlineConsultConfirmation(params: {
     timeStyle: "short",
   });
 
-  await sendConsultNotification({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Online consult confirmed",
@@ -78,7 +52,7 @@ export async function sendDoctorConsultBooked(params: {
     ? `${params.patientName} needs an urgent video consult — join within 5–10 minutes (${time}).`
     : `${params.patientName} booked a ${label} for ${time}.`;
 
-  await sendConsultNotification({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title,
@@ -116,7 +90,7 @@ export async function sendUrgentConsultConfirmation(params: {
   amount: number;
   appointmentId?: string;
 }) {
-  await sendConsultNotification({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Urgent care — doctor assigned",

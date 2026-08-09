@@ -1,34 +1,4 @@
-import { connectDatabase, NotificationModel } from "@zindagi/database";
-import { NotificationChannels } from "@zindagi/shared";
-
-type ReminderPayload = {
-  userId: string;
-  title: string;
-  body: string;
-  phone?: string;
-  payload: Record<string, unknown>;
-};
-
-async function persistReminder(input: ReminderPayload) {
-  await connectDatabase();
-
-  await NotificationModel.create({
-    userId: input.userId,
-    channel: NotificationChannels.IN_APP,
-    title: input.title,
-    body: input.body,
-    payload: input.payload,
-    sentAt: new Date(),
-  });
-
-  if (input.phone && process.env.SMS_API_KEY) {
-    console.info("[SMS]", input.phone, input.body);
-  }
-
-  if (input.phone && process.env.WHATSAPP_API_KEY) {
-    console.info("[WhatsApp]", input.phone, input.body);
-  }
-}
+import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
 function formatSlotTime(slotStart: Date) {
   return slotStart.toLocaleString("en-PK", {
@@ -55,7 +25,7 @@ export async function sendAppointmentReminder24h(params: {
   const time = formatSlotTime(params.slotStart);
   const label = consultLabel(params.type);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Appointment tomorrow",
@@ -78,7 +48,7 @@ export async function sendAppointmentReminder1h(params: {
   const time = formatSlotTime(params.slotStart);
   const label = consultLabel(params.type);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Appointment in 1 hour",
@@ -99,7 +69,7 @@ export async function sendSundayMorningReminder(params: {
 }) {
   const time = formatSlotTime(params.slotStart);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Sunday consult today",
@@ -122,7 +92,7 @@ export async function sendDoctorAppointmentReminder24h(params: {
   const time = formatSlotTime(params.slotStart);
   const label = consultLabel(params.type);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Upcoming appointment tomorrow",
@@ -145,7 +115,7 @@ export async function sendDoctorAppointmentReminder1h(params: {
   const time = formatSlotTime(params.slotStart);
   const label = consultLabel(params.type);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Appointment in 1 hour",
@@ -166,7 +136,7 @@ export async function sendDoctorSundayMorningReminder(params: {
 }) {
   const time = formatSlotTime(params.slotStart);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Sunday consult today",
@@ -187,7 +157,7 @@ export async function sendAppointmentStartNow(params: {
 }) {
   const label = consultLabel(params.type);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Consultation starts now",
@@ -208,7 +178,7 @@ export async function sendDoctorAppointmentStartNow(params: {
 }) {
   const label = consultLabel(params.type);
 
-  await persistReminder({
+  await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
     title: "Consultation starts now",

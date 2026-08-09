@@ -3,7 +3,7 @@
 import { CalendarCheck, Home, Search, Video } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { PageSection } from "@/components/layout/page-section";
-import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import { sectionPanel, surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
 import { useTranslations } from "@/i18n/locale-provider";
 
@@ -47,7 +47,7 @@ export function HowItWorksSection() {
       />
 
       <div className="mt-8 sm:mt-14">
-        <div className="rounded-2xl border border-white/70 bg-white/45 p-3 shadow-premium backdrop-blur-md sm:rounded-3xl sm:p-5 lg:p-6">
+        <div className={cn(sectionPanel, "sm:p-5 lg:p-6")}>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-5">
             {t.howItWorks.steps.map((item, index) => {
               const Icon = stepIcons[index];

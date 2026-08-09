@@ -228,15 +228,21 @@ html[lang="ur"] h3.font-semibold {
 
   .browse-scroll {
     overflow-x: auto;
+    overflow-y: hidden;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+    touch-action: pan-x pinch-zoom;
   }
 
   .browse-scroll::-webkit-scrollbar {
     display: none;
+  }
+
+  .browse-scroll > .snap-start {
+    scroll-snap-align: start;
   }
 
   /** Hidden scrollbar for workspace sidebars — scroll still works via wheel/touch. */
@@ -250,10 +256,6 @@ html[lang="ur"] h3.font-semibold {
 
   .sidebar-scroll::-webkit-scrollbar {
     display: none;
-  }
-
-  .browse-scroll > * > * {
-    scroll-snap-align: start;
   }
 
   /** Visible thin scrollbar for chat message and contact lists. */

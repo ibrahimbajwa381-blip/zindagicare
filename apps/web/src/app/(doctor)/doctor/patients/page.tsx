@@ -26,7 +26,7 @@ export default async function DoctorPatientsPage() {
       <DoctorPageHeader
         eyebrow="Patient care"
         title="My patients"
-        description="Patients you have consulted through paid online or clinic bookings on ZindagiCare."
+        description="Visit outcomes, patient reviews, prescriptions, and messaging for everyone you’ve consulted on ZindagiCare."
         actions={
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-800">
             <Users className="size-4" aria-hidden />

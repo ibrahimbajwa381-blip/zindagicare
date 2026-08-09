@@ -77,6 +77,20 @@ async function resolveDoctorProfileId(doctorUserId: string): Promise<string> {
   return profile._id.toString();
 }
 
+/**
+ * Chat deep links may pass either a user id or a doctor profile id.
+ * Prefer an existing user; otherwise map a DoctorProfile `_id` to its `userId`.
+ */
+async function resolveChatParticipantUserId(participantId: string): Promise<string | null> {
+  const user = await UserModel.findById(participantId).select("_id").lean();
+  if (user) return user._id.toString();
+
+  const profile = await DoctorProfileModel.findById(participantId)
+    .select("userId")
+    .lean();
+  return profile?.userId?.toString() ?? null;
+}
+
 type AppointmentEligibilityRow = {
   type: string;
   status: string;
@@ -659,9 +673,14 @@ export class ChatService {
   ): Promise<ChatThreadDto> {
     await ChatService.ensureConnected();
 
+    const resolvedOtherUserId = await resolveChatParticipantUserId(otherUserId);
+    if (!resolvedOtherUserId) {
+      throw new AppError("User not found", "NOT_FOUND", 404);
+    }
+
     const [initiator, other] = await Promise.all([
       UserModel.findById(initiatorId).lean(),
-      UserModel.findById(otherUserId).lean(),
+      UserModel.findById(resolvedOtherUserId).lean(),
     ]);
 
     if (!initiator || !other) {
@@ -682,26 +701,60 @@ export class ChatService {
       throw new AppError("Chats are only between doctors and patients", "FORBIDDEN", 403);
     }
 
-    const doctorUserId = initiatorIsDoctor ? initiatorId : otherUserId;
-    const patientUserId = initiatorIsPatient ? initiatorId : otherUserId;
-
-    const doctorProfile = await DoctorProfileModel.findOne(
-      mongoFilter({ userId: doctorUserId }),
-    ).lean();
-
-    if (
-      !doctorProfile?.isListed ||
-      doctorProfile.verificationStatus !== VerificationStatuses.APPROVED
-    ) {
-      throw new AppError("Doctor is not available for chat", "FORBIDDEN", 403);
+    // Dual-role clinical accounts include Roles.PATIENT. Do not resolve sides from
+    // independent role flags — that maps both IDs to the initiator and breaks
+    // doctor "Message patient" deep links. Try each valid pairing and keep the
+    // first with an eligible paid appointment (doctor-as-initiator first).
+    type PairAttempt = { doctorUserId: string; patientUserId: string };
+    const pairAttempts: PairAttempt[] = [];
+    if (initiatorIsDoctor && otherIsPatient) {
+      pairAttempts.push({
+        doctorUserId: initiatorId,
+        patientUserId: resolvedOtherUserId,
+      });
+    }
+    if (initiatorIsPatient && otherIsDoctor) {
+      pairAttempts.push({
+        doctorUserId: resolvedOtherUserId,
+        patientUserId: initiatorId,
+      });
     }
 
-    const paidAppointment = await findLatestEligibleAppointment(
-      patientUserId,
-      doctorProfile._id.toString(),
-    );
+    let doctorUserId = "";
+    let patientUserId = "";
+    let paidAppointment: Awaited<ReturnType<typeof findLatestEligibleAppointment>> = null;
+    let sawApprovedListedDoctor = false;
 
-    if (!paidAppointment) {
+    for (const attempt of pairAttempts) {
+      const doctorProfile = await DoctorProfileModel.findOne(
+        mongoFilter({ userId: attempt.doctorUserId }),
+      ).lean();
+
+      if (
+        !doctorProfile?.isListed ||
+        doctorProfile.verificationStatus !== VerificationStatuses.APPROVED
+      ) {
+        continue;
+      }
+
+      sawApprovedListedDoctor = true;
+      const appointment = await findLatestEligibleAppointment(
+        attempt.patientUserId,
+        doctorProfile._id.toString(),
+      );
+
+      if (appointment) {
+        doctorUserId = attempt.doctorUserId;
+        patientUserId = attempt.patientUserId;
+        paidAppointment = appointment;
+        break;
+      }
+    }
+
+    if (!paidAppointment || !doctorUserId || !patientUserId) {
+      if (!sawApprovedListedDoctor) {
+        throw new AppError("Doctor is not available for chat", "FORBIDDEN", 403);
+      }
       throw new AppError(
         "Chat is available after a paid consultation booking. Sunday free consults do not include messaging.",
         "FORBIDDEN",

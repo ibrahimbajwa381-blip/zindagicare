@@ -3,7 +3,6 @@ import {
   AuditLogModel,
   DoctorMissModel,
   DoctorProfileModel,
-  UserModel,
   VideoSessionModel,
   connectDatabase,
 } from "@zindagi/database";
@@ -11,14 +10,13 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   DOCTOR_ACCOUNTABILITY_CONFIG,
-  Roles,
   VerificationStatuses,
 } from "@zindagi/shared";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { notifyAdmins as notifyAdminsChannel } from "@/lib/notifications/notify-admins";
 import {
-  notifyAdminDoctorRemoved,
   notifyPatientDoctorMissed,
   sendDoctorMissWarning,
   sendDoctorRemovalNotice,
@@ -176,7 +174,7 @@ export class DoctorAccountabilityService {
       if (patientUserId) {
         await notifyPatientDoctorMissed({
           patientUserId,
-          phone: patientDoc?.phone ?? undefined,
+          phone: safeDisplayText(patientDoc?.phone) ?? undefined,
           appointmentId: appointment._id.toString(),
         });
       }
@@ -184,7 +182,7 @@ export class DoctorAccountabilityService {
       const escalation = await DoctorAccountabilityService.escalate({
         doctorProfileId,
         doctorUserId,
-        doctorPhone: doctor?.userId?.phone ?? undefined,
+        doctorPhone: safeDisplayText(doctor?.userId?.phone) ?? undefined,
         doctorName: safeDisplayText(doctor?.userId?.name) ?? "Doctor",
         monthKey,
         missedAt,
@@ -326,20 +324,14 @@ export class DoctorAccountabilityService {
     missCount: number;
     monthLabel: string;
   }) {
-    const admins = await UserModel.find(
-      mongoFilter({ roles: Roles.ADMIN, isActive: { $ne: false }, deletedAt: null }),
-    )
-      .select("_id")
-      .lean();
-
-    for (const admin of admins) {
-      await notifyAdminDoctorRemoved({
-        adminUserId: admin._id.toString(),
-        doctorName: params.doctorName,
+    await notifyAdminsChannel({
+      title: "Doctor auto-restricted for missed consults",
+      body: `Dr. ${params.doctorName} was automatically restricted after ${params.missCount} missed consultations in ${params.monthLabel}.`,
+      payload: {
+        type: "admin_doctor_auto_restricted",
         doctorProfileId: params.doctorProfileId,
         missCount: params.missCount,
-        monthLabel: params.monthLabel,
-      });
-    }
+      },
+    });
   }
 }

@@ -1,10 +1,7 @@
-import Link from "next/link";
-import { siteConfig } from "@/config/site";
 import { mockDoctors } from "../data/mock-doctors";
 import { DoctorCard } from "./doctor-card";
 import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
-import { Button } from "@/components/ui/button";
 import { getServerTranslations } from "@/i18n/server";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
 import { doctorProfilePath, nameToDoctorSlug } from "@/lib/doctors/profile-path";
@@ -48,7 +45,7 @@ export async function TopDoctorsSection() {
         title={t.doctors.title}
         description={t.doctors.description}
       />
-      <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {doctors.map((doctor) => (
           <DoctorCard
             key={doctor.key}
@@ -65,13 +62,6 @@ export async function TopDoctorsSection() {
           />
         ))}
       </div>
-      <Button
-        variant="outline"
-        className="mx-auto mt-8 flex h-12 w-full rounded-xl border-accent/30 bg-white/90 text-accent-dark backdrop-blur-sm hover:border-accent hover:bg-accent-muted sm:mt-10 sm:w-auto sm:px-8"
-        asChild
-      >
-        <Link href={siteConfig.links.doctors}>{t.common.browseAll}</Link>
-      </Button>
     </PageSection>
   );
 }

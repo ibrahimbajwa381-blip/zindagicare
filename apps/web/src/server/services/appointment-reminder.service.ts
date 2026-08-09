@@ -135,7 +135,7 @@ export class AppointmentReminderService {
       if (isPatientReminderType && msUntil > 0 && msUntil <= MS_DAY && !remindersSent.h24) {
         await sendAppointmentReminder24h({
           userId: patientId,
-          phone: patientDoc?.phone ?? undefined,
+          phone: safeDisplayText(patientDoc?.phone) ?? undefined,
           doctorName,
           slotStart: appointment.scheduledStart,
           appointmentId,
@@ -151,7 +151,7 @@ export class AppointmentReminderService {
       if (isPatientReminderType && msUntil > 0 && msUntil <= MS_HOUR && !remindersSent.h1) {
         await sendAppointmentReminder1h({
           userId: patientId,
-          phone: patientDoc?.phone ?? undefined,
+          phone: safeDisplayText(patientDoc?.phone) ?? undefined,
           doctorName,
           slotStart: appointment.scheduledStart,
           appointmentId,
@@ -172,7 +172,7 @@ export class AppointmentReminderService {
       ) {
         await sendAppointmentStartNow({
           userId: patientId,
-          phone: patientDoc?.phone ?? undefined,
+          phone: safeDisplayText(patientDoc?.phone) ?? undefined,
           doctorName,
           appointmentId,
           type: patientReminderType,
@@ -193,7 +193,7 @@ export class AppointmentReminderService {
       ) {
         await sendSundayMorningReminder({
           userId: patientId,
-          phone: patientDoc?.phone ?? undefined,
+          phone: safeDisplayText(patientDoc?.phone) ?? undefined,
           doctorName,
           slotStart: appointment.scheduledStart,
           appointmentId,
@@ -208,7 +208,7 @@ export class AppointmentReminderService {
       if (doctorUserId && msUntil > 0 && msUntil <= MS_DAY && !remindersSent.doctorH24) {
         await sendDoctorAppointmentReminder24h({
           userId: doctorUserId,
-          phone: doctorUser?.phone ?? undefined,
+          phone: safeDisplayText(doctorUser?.phone) ?? undefined,
           patientName,
           slotStart: appointment.scheduledStart,
           appointmentId,
@@ -224,7 +224,7 @@ export class AppointmentReminderService {
       if (doctorUserId && msUntil > 0 && msUntil <= MS_HOUR && !remindersSent.doctorH1) {
         await sendDoctorAppointmentReminder1h({
           userId: doctorUserId,
-          phone: doctorUser?.phone ?? undefined,
+          phone: safeDisplayText(doctorUser?.phone) ?? undefined,
           patientName,
           slotStart: appointment.scheduledStart,
           appointmentId,
@@ -245,7 +245,7 @@ export class AppointmentReminderService {
       ) {
         await sendDoctorAppointmentStartNow({
           userId: doctorUserId,
-          phone: doctorUser?.phone ?? undefined,
+          phone: safeDisplayText(doctorUser?.phone) ?? undefined,
           patientName,
           appointmentId,
           type: reminderType,
@@ -267,7 +267,7 @@ export class AppointmentReminderService {
       ) {
         await sendDoctorSundayMorningReminder({
           userId: doctorUserId,
-          phone: doctorUser?.phone ?? undefined,
+          phone: safeDisplayText(doctorUser?.phone) ?? undefined,
           patientName,
           slotStart: appointment.scheduledStart,
           appointmentId,

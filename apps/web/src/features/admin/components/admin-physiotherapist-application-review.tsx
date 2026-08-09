@@ -5,6 +5,7 @@ import { useState } from "react";
 import { VerificationStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type { AdminPhysiotherapistDetailDto } from "@/features/admin/types/physiotherapist-admin";
 import {
   ExternalLink,
@@ -168,6 +169,7 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
       return;
     }
 
+    dispatchAdminNavCountsRefresh();
     router.push("/admin/physiotherapists");
     router.refresh();
   }

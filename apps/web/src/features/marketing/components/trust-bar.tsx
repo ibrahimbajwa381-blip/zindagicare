@@ -5,7 +5,7 @@ import { Gift, Lock, ShieldCheck, Star } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
-import { surfaceCardInteractive } from "@/lib/ui/surfaces";
+import { sectionPanel, surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { useTranslations } from "@/i18n/locale-provider";
 
 const itemAccents = [
@@ -63,8 +63,8 @@ export function TrustBar() {
 
   return (
     <PageSection variant="accent" spacing="default" flipBlur>
-      <div className="rounded-2xl border border-white/70 bg-white/45 p-3 shadow-premium backdrop-blur-md sm:rounded-3xl sm:p-5 lg:p-6">
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-4">
+      <div className={cn(sectionPanel, "sm:p-5 lg:p-6")}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {items.map(({ icon: Icon, label, description, href }, index) => {
             const accent = itemAccents[index];
             const cardClass = cn(

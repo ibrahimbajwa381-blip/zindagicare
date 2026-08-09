@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { cn } from "@zindagi/shared";
@@ -210,6 +211,7 @@ export function AdminUrgentCareBoard() {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? "Assignment failed");
+      dispatchAdminNavCountsRefresh();
       await loadOpen();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Assignment failed");
@@ -230,6 +232,7 @@ export function AdminUrgentCareBoard() {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? "Update failed");
+      dispatchAdminNavCountsRefresh();
       await loadOpen();
       await loadHistory();
     } catch (e) {

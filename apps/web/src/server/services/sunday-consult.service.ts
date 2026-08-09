@@ -7,7 +7,6 @@ import {
   SundaySlotInstanceModel,
   SundayFreeRequestModel,
   AppointmentModel,
-  NotificationModel,
   type EmbeddedSlot,
 } from "@zindagi/database";
 import {
@@ -16,13 +15,13 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   IntakeSources,
-  NotificationChannels,
-  Roles,
   SlotStatuses,
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
 } from "@zindagi/shared";
+import { notifyAdmins } from "@/lib/notifications/notify-admins";
+import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import {
   canBookNow,
@@ -478,16 +477,16 @@ export class SundayConsultService {
     const patient = await UserModel.findById(patientId).lean();
     await sendBookingConfirmation({
       userId: patientId,
-      phone: patient?.phone ?? undefined,
-      doctorName: doctorUser?.name ?? "Doctor",
+      phone: safeDisplayText(patient?.phone) ?? undefined,
+      doctorName: safeDisplayText(doctorUser?.name) ?? "Doctor",
       slotStart: slot.startAt,
     });
 
     if (doctor?.userId) {
       await sendDoctorConsultBooked({
         userId: resolveMongoRefId(doctor.userId),
-        phone: doctorUser?.phone ?? undefined,
-        patientName: patient?.name ?? "Patient",
+        phone: safeDisplayText(doctorUser?.phone) ?? undefined,
+        patientName: safeDisplayText(patient?.name) ?? "Patient",
         slotStart: slot.startAt,
         appointmentId: result.appointmentId,
         type: "sunday_free",
@@ -855,11 +854,11 @@ export class SundayConsultService {
     });
 
     const requestId = doc._id.toString();
-    await SundayConsultService.notifyAdmins(
-      "New Sunday free consult request",
-      `${user.name ?? "A patient"} requested a free Sunday consult — assign a doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
-      { type: "sunday_free_requested", requestId, sundayDateKey },
-    ).catch((err) => {
+    await notifyAdmins({
+      title: "New Sunday free consult request",
+      body: `${safeDisplayText(user.name) ?? "A patient"} requested a free Sunday consult — assign a doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
+      payload: { type: "sunday_free_requested", requestId, sundayDateKey },
+    }).catch((err) => {
       console.error("[sunday-consult] admin notification failed", err);
     });
 
@@ -1067,11 +1066,11 @@ export class SundayConsultService {
       name?: string;
       phone?: string;
     } | null;
-    const doctorName = doctorUser?.name ?? "Doctor";
+    const doctorName = safeDisplayText(doctorUser?.name) ?? "Doctor";
 
     await sendBookingConfirmation({
       userId: request.patientId.toString(),
-      phone: patient?.phone ?? request.patientPhone,
+      phone: safeDisplayText(patient?.phone) ?? request.patientPhone,
       doctorName,
       slotStart: scheduledStart,
     }).catch((err) => {
@@ -1081,8 +1080,8 @@ export class SundayConsultService {
     if (doctorUser?._id) {
       await sendDoctorConsultBooked({
         userId: doctorUser._id.toString(),
-        phone: doctorUser.phone ?? undefined,
-        patientName: patient?.name ?? "Patient",
+        phone: safeDisplayText(doctorUser.phone) ?? undefined,
+        patientName: safeDisplayText(patient?.name) ?? "Patient",
         slotStart: scheduledStart,
         appointmentId,
         type: "sunday_free",
@@ -1104,31 +1103,6 @@ export class SundayConsultService {
       throw new AppError("Assigned request not found", ErrorCodes.NOT_FOUND, 404);
     }
     return row;
-  }
-
-  private static async notifyAdmins(
-    title: string,
-    body: string,
-    payload: Record<string, unknown>,
-  ) {
-    const admins = await UserModel.find({
-      roles: { $in: [Roles.ADMIN, Roles.SUPER_ADMIN] },
-      isActive: { $ne: false },
-      deletedAt: null,
-    })
-      .select("_id")
-      .lean();
-
-    for (const admin of admins) {
-      await NotificationModel.create({
-        userId: admin._id.toString(),
-        channel: NotificationChannels.IN_APP,
-        title,
-        body,
-        payload,
-        sentAt: new Date(),
-      });
-    }
   }
 
   private static mapPatientRequest(doc: {

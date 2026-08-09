@@ -9,6 +9,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { SundayFreeRequestStatuses, SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
+import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type {
   SundayAdminRequestDto,
   SundayTeamDoctorOption,
@@ -91,6 +92,7 @@ export function AdminSundayControl() {
       alert(json?.error?.message ?? "Failed to assign doctor");
       return;
     }
+    dispatchAdminNavCountsRefresh();
     await load();
   };
 

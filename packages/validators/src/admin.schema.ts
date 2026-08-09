@@ -67,7 +67,7 @@ export const adminSendNotificationSchema = z.object({
 
 export const adminReviewModerationSchema = z.object({
   reviewId: z.string().min(1),
-  action: z.enum(["hide", "show", "delete"]),
+  action: z.enum(["approve", "hide", "show", "delete"]),
 });
 
 export const adminUpdatePatientSchema = z.object({

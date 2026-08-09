@@ -11,7 +11,6 @@ import { PrescriptionService } from "@/server/services/prescription.service";
 import {
   AppError,
   ErrorCodes,
-  Roles,
   UrgentCareRequestStatuses,
   VerificationStatuses,
   URGENT_CONSULT_CONFIG,
@@ -47,6 +46,7 @@ import {
   sendDoctorConsultBooked,
   sendUrgentConsultConfirmation,
 } from "@/lib/notifications/consult-notifications";
+import { notifyAdmins } from "@/lib/notifications/notify-admins";
 import { ChatService } from "@/server/services/chat.service";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import {
@@ -93,31 +93,6 @@ type UrgentPaymentMetadata = {
 
 const EXPIRE_SWEEP_INTERVAL_MS = 60_000;
 let lastExpireSweepAt = 0;
-
-async function notifyAdmins(title: string, body: string, payload: Record<string, unknown>) {
-  await connectDatabase();
-  const { NotificationModel } = await import("@zindagi/database");
-  const { NotificationChannels } = await import("@zindagi/shared");
-
-  const admins = await UserModel.find({
-    roles: { $in: [Roles.ADMIN, Roles.SUPER_ADMIN] },
-    isActive: { $ne: false },
-    deletedAt: null,
-  })
-    .select("_id")
-    .lean();
-
-  for (const admin of admins) {
-    await NotificationModel.create({
-      userId: admin._id.toString(),
-      channel: NotificationChannels.IN_APP,
-      title,
-      body,
-      payload,
-      sentAt: new Date(),
-    });
-  }
-}
 
 function mapRequestRow(
   doc: {
@@ -690,11 +665,11 @@ export class UrgentConsultService {
     const patient = await UserModel.findById(patientId).lean();
     const requestId = doc._id.toString();
 
-    await notifyAdmins(
-      "New urgent care request",
-      `${patient?.name ?? "A patient"} paid for urgent care — assign a doctor for an in-app video consult within 10 minutes.`,
-      { type: "urgent_care_requested", requestId },
-    ).catch((err) => {
+    await notifyAdmins({
+      title: "New urgent care request",
+      body: `${safeDisplayText(patient?.name) ?? "A patient"} paid for urgent care — assign a doctor for an in-app video consult within 10 minutes.`,
+      payload: { type: "urgent_care_requested", requestId },
+    }).catch((err) => {
       console.error("[urgent-care] admin notification failed", err);
     });
 
@@ -1015,7 +990,7 @@ export class UrgentConsultService {
       name?: string;
       phone?: string;
     } | null;
-    const doctorName = doctorUser?.name ?? "Doctor";
+    const doctorName = safeDisplayText(doctorUser?.name) ?? "Doctor";
     const payment = request.paymentId
       ? await PaymentModel.findById(request.paymentId).lean()
       : null;
@@ -1024,8 +999,8 @@ export class UrgentConsultService {
     if (doctorUser?._id) {
       await sendDoctorConsultBooked({
         userId: doctorUser._id.toString(),
-        phone: doctorUser.phone ?? undefined,
-        patientName: patient?.name ?? "Patient",
+        phone: safeDisplayText(doctorUser.phone) ?? undefined,
+        patientName: safeDisplayText(patient?.name) ?? "Patient",
         slotStart: scheduledStart,
         appointmentId,
         type: "urgent_online",
@@ -1036,7 +1011,7 @@ export class UrgentConsultService {
 
     await sendUrgentConsultConfirmation({
       userId: request.patientId.toString(),
-      phone: patient?.phone ?? undefined,
+      phone: safeDisplayText(patient?.phone) ?? undefined,
       doctorName,
       slotStart: scheduledStart,
       amount,

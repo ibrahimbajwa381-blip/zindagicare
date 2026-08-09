@@ -38,6 +38,9 @@ export function DoctorWorkspaceMessages({
         selectChatDescription: copy.doctorSelectChatDescription,
         messagePlaceholder: copy.messagePlaceholder,
         backLabel: copy.backLabel,
+        openChatFailedTitle: copy.openChatFailedTitle,
+        openingChatTitle: copy.openingChatTitle,
+        openingChatDescription: copy.openingChatDescription,
       }}
     />
   );

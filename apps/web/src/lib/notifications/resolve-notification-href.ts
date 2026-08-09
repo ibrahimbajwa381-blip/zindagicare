@@ -36,6 +36,19 @@ export function resolveNotificationHref(
         ? `/admin/urgent-care?requestId=${encodeURIComponent(requestId)}`
         : "/admin/urgent-care";
 
+    case "sunday_free_requested":
+      if (!isStaffAdmin) return null;
+      return requestId
+        ? `/admin/sunday-consult?requestId=${encodeURIComponent(requestId)}`
+        : "/admin/sunday-consult";
+
+    case "online_consult_requested":
+    case "online_consult_paid":
+      if (!isStaffAdmin) return null;
+      return appointmentId
+        ? `/admin/appointments?appointmentId=${encodeURIComponent(appointmentId)}`
+        : "/admin/appointments";
+
     case "doctor_consult_booked":
     case "doctor_appointment_reminder_24h":
     case "doctor_appointment_reminder_1h":

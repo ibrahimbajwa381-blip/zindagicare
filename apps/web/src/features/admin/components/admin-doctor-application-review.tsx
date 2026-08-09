@@ -6,6 +6,7 @@ import { VerificationStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
+import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import { formatDayOfWeek, type DoctorProfileDto } from "@/features/doctor/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import {
@@ -118,6 +119,7 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
       return;
     }
 
+    dispatchAdminNavCountsRefresh();
     router.push("/admin/doctors");
     router.refresh();
   }

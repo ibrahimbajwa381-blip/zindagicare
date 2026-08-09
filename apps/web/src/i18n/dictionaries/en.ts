@@ -319,7 +319,7 @@ export const en = {
   },
   hero: {
     learnMore: "Learn more →",
-    swipeHint: "Swipe to explore services · tap a card to preview above",
+    swipeHint: "Scroll down to explore services · tap a card to preview above",
     servingPatients: "Serving patients across {city}",
     freeBadge: "Free",
     prevService: "Previous service",
@@ -1604,6 +1604,9 @@ export const en = {
     doctorNewChatEmpty: "No paid-consult patients found.",
     doctorSelectChatDescription:
       "Select a patient from your paid consultations. Sunday free consults do not include chat.",
+    openChatFailedTitle: "Unable to open chat",
+    openingChatTitle: "Opening conversation…",
+    openingChatDescription: "Connecting you now.",
     assistantName: "ZindagiCare Assistant",
   },
   intake: {

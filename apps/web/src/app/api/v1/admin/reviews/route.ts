@@ -9,7 +9,11 @@ export async function GET(req: NextRequest) {
     async () => {
       return ReviewService.listAdminReviews({
         visibility:
-          visibility === "visible" || visibility === "hidden" ? visibility : "all",
+          visibility === "visible" ||
+          visibility === "hidden" ||
+          visibility === "pending"
+            ? visibility
+            : "all",
       });
     },
     { auth: true, roles: ["admin", "super_admin"] },

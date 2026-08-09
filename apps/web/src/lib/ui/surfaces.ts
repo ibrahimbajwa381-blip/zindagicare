@@ -23,6 +23,10 @@ export const surfaceMuted =
 export const pageContainer =
   "relative mx-auto w-full max-w-[100rem] px-4 sm:px-8 lg:px-14";
 
+/** No extra mobile inset — panel chrome only from `sm` so edges match `pageContainer`. */
+export const sectionPanel =
+  "rounded-none border-0 bg-transparent p-0 shadow-none sm:rounded-3xl sm:border sm:border-white/70 sm:bg-white/45 sm:p-6 sm:shadow-premium sm:backdrop-blur-md";
+
 export const appHeaderShell =
   "sticky top-0 z-50 border-b border-slate-200/90 bg-white supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]";
 

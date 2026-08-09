@@ -48,6 +48,9 @@ export default async function PatientMessagesPage({ searchParams }: PageProps) {
             selectChatDescription: t.chat.selectChatDescription,
             messagePlaceholder: t.chat.messagePlaceholder,
             backLabel: t.chat.backLabel,
+            openChatFailedTitle: t.chat.openChatFailedTitle,
+            openingChatTitle: t.chat.openingChatTitle,
+            openingChatDescription: t.chat.openingChatDescription,
           }}
         />
       </div>

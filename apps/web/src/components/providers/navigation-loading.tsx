@@ -3,8 +3,9 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
+import { workspaceShell } from "@/components/layout/workspace-content-nav-loading";
 
-function isInternalNavigationClick(event: MouseEvent): boolean {
+function isCrossShellNavigationClick(event: MouseEvent): boolean {
   if (event.defaultPrevented) return false;
   if (event.button !== 0) return false;
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
@@ -32,7 +33,14 @@ function isInternalNavigationClick(event: MouseEvent): boolean {
 
   const next = `${url.pathname}${url.search}${url.hash}`;
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  return next !== current;
+  if (next === current) return false;
+
+  const fromShell = workspaceShell(window.location.pathname);
+  const toShell = workspaceShell(url.pathname);
+  // Same-shell navigations use the in-shell content loader instead.
+  if (fromShell && fromShell === toShell) return false;
+
+  return true;
 }
 
 function NavigationLoadingInner() {
@@ -59,7 +67,7 @@ function NavigationLoadingInner() {
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (!isInternalNavigationClick(event)) return;
+      if (!isCrossShellNavigationClick(event)) return;
       setPending(true);
     };
 
@@ -71,7 +79,7 @@ function NavigationLoadingInner() {
   return <BrandLoadingScreen overlay />;
 }
 
-/** Shows the branded loader immediately on in-app link clicks until the next route commits. */
+/** Full-page branded loader for cross-shell navigations until the next route commits. */
 export function NavigationLoadingProvider({ children }: { children: React.ReactNode }) {
   return (
     <>

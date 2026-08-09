@@ -42,6 +42,7 @@ import {
   notifyPatientHomeVisitStatus,
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
+import { safeDisplayText } from "@/server/lib/decrypt-pii";
 
 const ACTIVE_STATUSES: HomeVisitStatus[] = [
   HomeVisitStatuses.REQUESTED,
@@ -75,8 +76,11 @@ async function notifyVisitAssignment(visit: Record<string, unknown>, staffUserId
       : "Patient";
   const serviceType = visit.serviceType as HomeVisitServiceType;
 
+  const staffUser = await UserModel.findById(staffUserId).select("phone").lean();
+
   await notifyStaffHomeVisitAssigned({
     staffUserId,
+    phone: safeDisplayText(staffUser?.phone) ?? undefined,
     visitId: (visit._id as { toString(): string }).toString(),
     serviceLabel: SERVICE_LABELS[serviceType] ?? "Home visit",
     patientName,
@@ -100,8 +104,11 @@ async function notifyVisitStatusChange(
   }
 
   const staff = visit.assignedStaffId as { name?: string } | undefined;
+  const patientUser = await UserModel.findById(patientUserId).select("phone").lean();
+
   await notifyPatientHomeVisitStatus({
     patientUserId,
+    phone: safeDisplayText(patientUser?.phone) ?? undefined,
     visitId: (visit._id as { toString(): string }).toString(),
     status,
     staffName:
@@ -411,7 +418,7 @@ export class HomeVisitService {
     const patient = await UserModel.findById(patientId).select("name").lean();
     await notifyAdminsHomeVisitRequested({
       visitId: visit._id.toString(),
-      patientName: patient?.name ?? "A patient",
+      patientName: safeDisplayText(patient?.name) ?? "A patient",
       serviceLabel: SERVICE_LABELS[input.serviceType] ?? "Home visit",
       scheduledAt,
     }).catch((err) => {

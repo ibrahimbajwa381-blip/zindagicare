@@ -1,37 +1,16 @@
-import { connectDatabase, NotificationModel } from "@zindagi/database";
-import { NotificationChannels } from "@zindagi/shared";
+import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
-type ReminderPayload = {
+/**
+ * Persists in-app notification + SMS stub / WhatsApp when providers are configured.
+ */
+export async function sendSundayReminder(input: {
   userId: string;
   title: string;
   body: string;
   phone?: string;
   payload: Record<string, unknown>;
-};
-
-/**
- * Persists in-app notification + logs SMS/WhatsApp (wire providers in production).
- */
-export async function sendSundayReminder(input: ReminderPayload) {
-  await connectDatabase();
-
-  await NotificationModel.create({
-    userId: input.userId,
-    channel: NotificationChannels.IN_APP,
-    title: input.title,
-    body: input.body,
-    payload: input.payload,
-    sentAt: new Date(),
-  });
-
-  if (input.phone && process.env.SMS_API_KEY) {
-    // TODO: Jazz/SMS gateway adapter
-    console.info("[SMS]", input.phone, input.body);
-  }
-
-  if (input.phone && process.env.WHATSAPP_API_KEY) {
-    console.info("[WhatsApp]", input.phone, input.body);
-  }
+}) {
+  await deliverUserNotification(input);
 }
 
 export async function sendBookingConfirmation(params: {

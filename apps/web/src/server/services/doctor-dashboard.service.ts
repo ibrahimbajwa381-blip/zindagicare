@@ -4,6 +4,8 @@ import {
   DoctorProfileModel,
   HomeVisitModel,
   PaymentModel,
+  PrescriptionModel,
+  ReviewModel,
   UrgentCareRequestModel,
   UserModel,
 } from "@zindagi/database";
@@ -11,6 +13,7 @@ import {
   AppError,
   AppointmentStatuses,
   AppointmentTypes,
+  getVideoJoinWindow,
   HomeVisitServiceTypes,
   HomeVisitStatuses,
   PaymentStatuses,
@@ -117,22 +120,65 @@ export type DoctorEarningsDetail = {
   transactions: DoctorEarningRow[];
 };
 
+export type DoctorPatientLastOutcome =
+  | "completed"
+  | "missed"
+  | "cancelled"
+  | "upcoming"
+  | "in_progress"
+  | "pending";
+
+export type DoctorPatientReviewSummary = {
+  rating: number;
+  comment?: string;
+  createdAt: string;
+};
+
 export type DoctorPatientRow = {
   id: string;
   name: string;
   phone?: string;
   lastVisitAt?: string;
+  lastVisitEndAt?: string;
+  lastVisitType?: string;
+  lastVisitStatus?: string;
+  /** Effective outcome for the latest consult (treats overdue confirmed as missed). */
+  lastOutcome: DoctorPatientLastOutcome;
   appointmentCount: number;
+  completedCount: number;
+  missedCount: number;
+  cancelledCount: number;
+  upcomingCount: number;
+  prescriptionCount: number;
+  review?: DoctorPatientReviewSummary;
 };
+
+export type DoctorRequestOutcome =
+  | "completed"
+  | "missed"
+  | "cancelled"
+  | "upcoming"
+  | "in_progress"
+  | "pending";
 
 export type DoctorRequestRow = {
   id: string;
   type: string;
   status: string;
+  /** Effective outcome used for category filters (overdue confirmed → missed). */
+  outcome: DoctorRequestOutcome;
   scheduledStart: string;
   scheduledEnd: string;
+  consultationFee?: number;
   patient: { id: string; name: string; phone?: string };
   patientNotes?: string;
+  canJoin: boolean;
+  hasPrescription: boolean;
+  review?: {
+    rating: number;
+    comment?: string;
+    createdAt: string;
+  };
 };
 
 export type DoctorHomeVisitRow = {
@@ -466,47 +512,234 @@ export async function getDoctorEarnings(userId: string): Promise<DoctorEarningsD
   return buildDoctorEarningsDetail(profile._id.toString(), userId);
 }
 
+function resolveDoctorPatientLastOutcome(
+  status: string | undefined,
+  scheduledStart?: Date,
+  scheduledEnd?: Date,
+  now = new Date(),
+): DoctorPatientLastOutcome {
+  return resolveConsultOutcome(status, scheduledStart, scheduledEnd, now);
+}
+
+function resolveConsultOutcome(
+  status: string | undefined,
+  scheduledStart?: Date,
+  scheduledEnd?: Date,
+  now = new Date(),
+): DoctorRequestOutcome {
+  if (status === AppointmentStatuses.COMPLETED) return "completed";
+  if (status === AppointmentStatuses.NO_SHOW) return "missed";
+  if (status === AppointmentStatuses.CANCELLED) return "cancelled";
+  if (status === AppointmentStatuses.IN_PROGRESS) return "in_progress";
+  if (status === AppointmentStatuses.PENDING) return "pending";
+
+  if (
+    status === AppointmentStatuses.CONFIRMED &&
+    scheduledStart &&
+    scheduledEnd
+  ) {
+    const { joinClosesAt } = getVideoJoinWindow(
+      scheduledStart,
+      scheduledEnd,
+      now,
+    );
+    if (now > joinClosesAt) return "missed";
+    return "upcoming";
+  }
+
+  return "upcoming";
+}
+
+function canJoinConsultRequest(
+  type: string,
+  status: string,
+  outcome: DoctorRequestOutcome,
+  scheduledStart: Date,
+  scheduledEnd: Date,
+  now = new Date(),
+) {
+  if (
+    type !== AppointmentTypes.ONLINE &&
+    type !== AppointmentTypes.URGENT_ONLINE
+  ) {
+    return false;
+  }
+
+  if (
+    status !== AppointmentStatuses.CONFIRMED &&
+    status !== AppointmentStatuses.IN_PROGRESS
+  ) {
+    return false;
+  }
+
+  if (outcome === "missed" || outcome === "cancelled" || outcome === "completed") {
+    return false;
+  }
+
+  const { canJoin } = getVideoJoinWindow(scheduledStart, scheduledEnd, now);
+  return canJoin || status === AppointmentStatuses.IN_PROGRESS;
+}
+
 export async function listDoctorPatients(userId: string): Promise<DoctorPatientRow[]> {
   const { profile } = await getDoctorProfileForUser(userId);
+  const now = new Date();
+  const overdueCutoff = new Date(
+    now.getTime() - VIDEO_CONSULT_CONFIG.joinLateMinutes * 60_000,
+  );
 
   const grouped = await AppointmentModel.aggregate<{
     _id: unknown;
     lastVisitAt: Date;
+    lastVisitEndAt: Date;
+    lastVisitStatus: string;
+    lastVisitType: string;
     appointmentCount: number;
+    completedCount: number;
+    missedCount: number;
+    cancelledCount: number;
+    upcomingCount: number;
   }>([
-    { $match: { doctorId: profile._id } },
+    {
+      $match: mongoFilter({
+        doctorId: profile._id,
+        deletedAt: null,
+      }),
+    },
+    { $sort: { scheduledStart: -1 } },
     {
       $group: {
         _id: "$patientId",
-        lastVisitAt: { $max: "$scheduledStart" },
+        lastVisitAt: { $first: "$scheduledStart" },
+        lastVisitEndAt: { $first: "$scheduledEnd" },
+        lastVisitStatus: { $first: "$status" },
+        lastVisitType: { $first: "$type" },
         appointmentCount: { $sum: 1 },
+        completedCount: {
+          $sum: {
+            $cond: [{ $eq: ["$status", AppointmentStatuses.COMPLETED] }, 1, 0],
+          },
+        },
+        missedCount: {
+          $sum: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$status", AppointmentStatuses.NO_SHOW] },
+                  {
+                    $and: [
+                      { $eq: ["$status", AppointmentStatuses.CONFIRMED] },
+                      { $lt: ["$scheduledEnd", overdueCutoff] },
+                    ],
+                  },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        cancelledCount: {
+          $sum: {
+            $cond: [{ $eq: ["$status", AppointmentStatuses.CANCELLED] }, 1, 0],
+          },
+        },
+        upcomingCount: {
+          $sum: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$status", AppointmentStatuses.PENDING] },
+                  { $eq: ["$status", AppointmentStatuses.IN_PROGRESS] },
+                  {
+                    $and: [
+                      { $eq: ["$status", AppointmentStatuses.CONFIRMED] },
+                      { $gte: ["$scheduledEnd", overdueCutoff] },
+                    ],
+                  },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
       },
     },
     { $sort: { lastVisitAt: -1 } },
     { $limit: 100 },
   ]);
 
-  const patientIds = grouped.map((row) => row._id);
-  const patients = await UserModel.find(
-    mongoFilter({
-      _id: { $in: patientIds.map((id) => String(id)) },
-    }),
-  )
-    .select("name phone")
-    .lean();
-  const patientMap = new Map(
-    patients.map((p) => [p._id.toString(), p]),
+  const patientIds = grouped.map((row) => String(row._id));
+  if (patientIds.length === 0) return [];
+
+  const [patients, reviews, prescriptionCounts] = await Promise.all([
+    UserModel.find(mongoFilter({ _id: { $in: patientIds } }))
+      .select("name phone")
+      .lean(),
+    ReviewModel.find(
+      mongoFilter({
+        doctorId: profile._id,
+        patientId: { $in: patientIds },
+        deletedAt: null,
+        isVisible: true,
+      }),
+    )
+      .sort({ createdAt: -1 })
+      .select("patientId rating comment createdAt")
+      .lean(),
+    PrescriptionModel.aggregate<{ _id: unknown; count: number }>([
+      {
+        $match: mongoFilter({
+          doctorId: profile._id,
+          patientId: { $in: patientIds },
+          deletedAt: null,
+        }),
+      },
+      { $group: { _id: "$patientId", count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const patientMap = new Map(patients.map((p) => [p._id.toString(), p]));
+  const reviewByPatient = new Map<string, DoctorPatientReviewSummary>();
+  for (const review of reviews) {
+    const patientId = review.patientId.toString();
+    if (reviewByPatient.has(patientId)) continue;
+    reviewByPatient.set(patientId, {
+      rating: review.rating,
+      comment: review.comment ?? undefined,
+      createdAt: review.createdAt.toISOString(),
+    });
+  }
+  const prescriptionByPatient = new Map(
+    prescriptionCounts.map((row) => [String(row._id), row.count]),
   );
 
   return grouped.map((row) => {
-    const id = (row._id as { toString(): string }).toString();
+    const id = String(row._id);
     const patient = patientMap.get(id);
+    const lastOutcome = resolveDoctorPatientLastOutcome(
+      row.lastVisitStatus,
+      row.lastVisitAt,
+      row.lastVisitEndAt,
+      now,
+    );
+
     return {
       id,
       name: safeDisplayText(patient?.name) ?? "Patient",
       phone: formatPhoneForDisplay(patient?.phone),
       lastVisitAt: row.lastVisitAt?.toISOString(),
+      lastVisitEndAt: row.lastVisitEndAt?.toISOString(),
+      lastVisitType: row.lastVisitType,
+      lastVisitStatus: row.lastVisitStatus,
+      lastOutcome,
       appointmentCount: row.appointmentCount,
+      completedCount: row.completedCount,
+      missedCount: row.missedCount,
+      cancelledCount: row.cancelledCount,
+      upcomingCount: row.upcomingCount,
+      prescriptionCount: prescriptionByPatient.get(id) ?? 0,
+      review: reviewByPatient.get(id),
     };
   });
 }
@@ -520,30 +753,102 @@ export async function listDoctorConsultRequests(
   const appointments = await AppointmentModel.find(
     mongoFilter({
       doctorId: profile._id,
-      ...activeConsultRequestFilter(now),
+      type: {
+        $in: [
+          AppointmentTypes.ONLINE,
+          AppointmentTypes.CLINIC,
+          AppointmentTypes.URGENT_ONLINE,
+        ],
+      },
+      deletedAt: null,
     }),
   )
     .populate("patientId", "name phone")
-    .sort({ scheduledStart: 1 })
-    .limit(50)
+    .populate("paymentId", "amount status")
+    .sort({ scheduledStart: -1 })
+    .limit(150)
     .lean();
+
+  if (appointments.length === 0) return [];
+
+  const appointmentIds = appointments.map((apt) => apt._id.toString());
+
+  const [reviews, prescriptions] = await Promise.all([
+    ReviewModel.find(
+      mongoFilter({
+        appointmentId: { $in: appointmentIds },
+        deletedAt: null,
+        isVisible: true,
+      }),
+    )
+      .select("appointmentId rating comment createdAt")
+      .lean(),
+    PrescriptionModel.find(
+      mongoFilter({
+        appointmentId: { $in: appointmentIds },
+        deletedAt: null,
+      }),
+    )
+      .select("appointmentId")
+      .lean(),
+  ]);
+
+  const reviewByAppointment = new Map(
+    reviews.map((review) => [
+      review.appointmentId.toString(),
+      {
+        rating: review.rating,
+        comment: review.comment ?? undefined,
+        createdAt: review.createdAt.toISOString(),
+      },
+    ]),
+  );
+  const prescriptionAppointmentIds = new Set(
+    prescriptions
+      .map((rx) => rx.appointmentId?.toString())
+      .filter((id): id is string => !!id),
+  );
 
   return appointments.map((apt) => {
     const patient = apt.patientId as
       | { _id?: { toString(): string }; name?: string; phone?: string }
       | null;
+    const payment = apt.paymentId as
+      | { amount?: number; status?: string }
+      | null;
+    const outcome = resolveConsultOutcome(
+      apt.status,
+      apt.scheduledStart,
+      apt.scheduledEnd,
+      now,
+    );
+    const id = apt._id.toString();
+
     return {
-      id: apt._id.toString(),
+      id,
       type: apt.type,
       status: apt.status,
+      outcome,
       scheduledStart: apt.scheduledStart.toISOString(),
       scheduledEnd: apt.scheduledEnd.toISOString(),
+      consultationFee:
+        payment?.status === PaymentStatuses.PAID ? payment.amount : undefined,
       patient: {
         id: patient?._id?.toString() ?? "",
         name: safeDisplayText(patient?.name) ?? "Patient",
         phone: formatPhoneForDisplay(patient?.phone),
       },
       patientNotes: apt.patientNotes ?? undefined,
+      canJoin: canJoinConsultRequest(
+        apt.type,
+        apt.status,
+        outcome,
+        apt.scheduledStart,
+        apt.scheduledEnd,
+        now,
+      ),
+      hasPrescription: prescriptionAppointmentIds.has(id),
+      review: reviewByAppointment.get(id),
     };
   });
 }

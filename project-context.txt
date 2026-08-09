@@ -161,6 +161,8 @@ Pay: PAYMENTS_LIVE, JAZZCASH_*, EASYPAISA_*, STRIPE_*
 Video: ZOOM_ACCOUNT_ID, ZOOM_CLIENT_*, ZOOM_SDK_*, NEXT_PUBLIC_ZOOM_SDK_KEY
 AI: GEMINI_API_KEY, GEMINI_MODEL, COPILOT_ENABLED, COPILOT_RATE_LIMIT
 Push: NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+  WhatsApp: WHATSAPP_ACCESS_TOKEN + WHATSAPP_PHONE_NUMBER_ID (Meta Cloud),
+    or WHATSAPP_API_URL + WHATSAPP_API_KEY (HTTP gateway); WHATSAPP_ADMIN_PHONES
 Maps: GOOGLE_MAPS_API_KEY, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 
@@ -199,7 +201,8 @@ DONE: doctor/patient/nurse/physio auth+verification, paid online booking,
   manual JazzCash receipt flow, dual-role patient↔doctor workspace switch.
 
 PARTIAL / NEEDS LIVE CREDENTIALS: JazzCash/EasyPaisa gateway live mode,
-  Zoom production apps, SMS/WhatsApp providers, Redis for OTP/holds at scale.
+  Zoom production apps, SMS gateway, WhatsApp provider credentials
+  (Meta Cloud or HTTP API), Redis for OTP/holds at scale.
 
 NOT BUILT / THIN: rider delivery app UI, pharmacy catalog, multi-city beyond
   Lahore, automated PMDC registry check, clinic in-person patient booking UI.

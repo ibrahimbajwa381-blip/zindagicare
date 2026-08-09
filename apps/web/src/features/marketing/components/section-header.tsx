@@ -30,7 +30,7 @@ export function SectionHeader({
       )}
       <h2
         className={cn(
-          "font-display text-2xl font-semibold text-foreground sm:text-4xl",
+          "font-display text-[1.65rem] font-semibold text-foreground sm:text-4xl",
           "leading-[1.15] tracking-tight sm:leading-tight",
           "[:where(html[lang=ur])_&]:leading-[2.15] [:where(html[lang=ur])_&]:tracking-normal [:where(html[lang=ur])_&]:font-medium",
           eyebrow && "mt-3",

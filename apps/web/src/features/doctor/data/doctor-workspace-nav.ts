@@ -15,7 +15,6 @@ import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.
 
 export type DoctorNavBadgeKey =
   | "messages"
-  | "patients"
   | "pendingRequests"
   | "sundayQueue"
   | "homeVisits"
@@ -48,7 +47,6 @@ export const DOCTOR_WORKSPACE_ACTIONS: DoctorWorkspaceNavItem[] = [
     label: "My patients",
     description: "Patients you have consulted",
     icon: Users,
-    badgeKey: "patients",
   },
   {
     href: "/doctor/requests",
@@ -139,7 +137,6 @@ export const DOCTOR_ONBOARDING_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
 
 export type DoctorNavStats = {
   unreadMessages: number;
-  patients: number;
   pendingRequests: number;
   sundayQueue: number;
   homeVisits: number;
@@ -155,8 +152,6 @@ export function doctorNavBadgeCount(
   switch (item.badgeKey) {
     case "messages":
       return stats.unreadMessages > 0 ? stats.unreadMessages : null;
-    case "patients":
-      return stats.patients > 0 ? stats.patients : null;
     case "pendingRequests":
       return stats.pendingRequests > 0 ? stats.pendingRequests : null;
     case "sundayQueue":
@@ -176,7 +171,6 @@ export function summaryToNavStats(
 ): DoctorNavStats {
   return {
     unreadMessages,
-    patients: summary.patients,
     pendingRequests: summary.pendingRequests,
     sundayQueue: summary.sundayQueue,
     homeVisits: summary.homeVisitRequests,

@@ -3,6 +3,8 @@ import { AppError, NotificationChannels, Roles, emailLookupHash } from "@zindagi
 import type { z } from "zod";
 import type { adminSendNotificationSchema } from "@zindagi/validators";
 import { mongoFilter } from "@/lib/mongo/query";
+import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { sendWhatsAppMessage } from "@/server/services/whatsapp.service";
 
 type SendInput = z.infer<typeof adminSendNotificationSchema>;
 
@@ -48,8 +50,10 @@ async function deliverExternal(
   title: string,
   body: string,
 ) {
-  if (channel === "sms" && user.phone) {
-    console.info(`[SMS stub] → ${user.phone}: ${title} — ${body}`);
+  const phone = safeDisplayText(user.phone);
+  if (channel === "sms" && phone) {
+    console.info(`[SMS stub] → ${phone}: ${title} — ${body}`);
+    await sendWhatsAppMessage({ to: phone, title, body });
   }
   if (channel === "email" && user.email) {
     console.info(`[Email stub] → ${user.email}: ${title} — ${body}`);
@@ -66,13 +70,23 @@ export async function adminSendNotification(input: SendInput) {
   for (const userId of recipientIds) {
     try {
       if (input.channel === "in_app") {
+        const user = await UserModel.findById(userId).select("phone").lean();
         await NotificationModel.create({
           userId,
           channel,
           title: input.title,
           body: input.body,
           payload: { source: "admin_broadcast" },
+          sentAt: new Date(),
         });
+        const phone = safeDisplayText(user?.phone);
+        if (phone) {
+          await sendWhatsAppMessage({
+            to: phone,
+            title: input.title,
+            body: input.body,
+          });
+        }
       } else {
         const user = await UserModel.findById(userId).select("email phone").lean();
         if (user) {
@@ -84,6 +98,7 @@ export async function adminSendNotification(input: SendInput) {
           title: input.title,
           body: input.body,
           payload: { source: "admin_broadcast", delivered: input.channel },
+          sentAt: new Date(),
         });
       }
       results.sent += 1;

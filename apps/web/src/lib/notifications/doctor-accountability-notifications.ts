@@ -1,32 +1,13 @@
-import { connectDatabase, NotificationModel } from "@zindagi/database";
-import { NotificationChannels } from "@zindagi/shared";
+import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
-type NotifyPayload = {
+async function persist(input: {
   userId: string;
   title: string;
   body: string;
   phone?: string;
   payload: Record<string, unknown>;
-};
-
-async function persist(input: NotifyPayload) {
-  await connectDatabase();
-
-  await NotificationModel.create({
-    userId: input.userId,
-    channel: NotificationChannels.IN_APP,
-    title: input.title,
-    body: input.body,
-    payload: input.payload,
-    sentAt: new Date(),
-  });
-
-  if (input.phone && process.env.SMS_API_KEY) {
-    console.info("[SMS]", input.phone, input.body);
-  }
-  if (input.phone && process.env.WHATSAPP_API_KEY) {
-    console.info("[WhatsApp]", input.phone, input.body);
-  }
+}) {
+  await deliverUserNotification(input);
 }
 
 /** Warning sent to a doctor when they reach the monthly miss warning threshold. */
@@ -73,6 +54,7 @@ export async function sendDoctorRemovalNotice(params: {
 /** Alert sent to each admin when a doctor is auto-removed. */
 export async function notifyAdminDoctorRemoved(params: {
   adminUserId: string;
+  phone?: string;
   doctorName: string;
   missCount: number;
   monthLabel: string;
@@ -80,6 +62,7 @@ export async function notifyAdminDoctorRemoved(params: {
 }) {
   await persist({
     userId: params.adminUserId,
+    phone: params.phone,
     title: "Doctor auto-restricted for missed consults",
     body: `Dr. ${params.doctorName} was automatically restricted after ${params.missCount} missed consultations in ${params.monthLabel}.`,
     payload: {

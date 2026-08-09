@@ -5,6 +5,7 @@ import { cn } from "@zindagi/shared";
 import type { BrowseItem } from "../data/browse-catalog";
 import { conditionDoctorPath } from "@/lib/seo/conditions";
 import { specialtyDoctorPath } from "@/lib/seo/specialties";
+import { sectionPanel } from "@/lib/ui/surfaces";
 import { BrowseIconTile } from "./browse-icon-tile";
 
 const desktopColumnClasses: Record<number, string> = {
@@ -44,12 +45,7 @@ export function BrowseSectionRow({
     "inline-flex min-h-10 shrink-0 items-center gap-1 rounded-xl border border-brand/15 bg-white/70 px-3 py-1.5 text-sm font-medium text-brand shadow-sm transition-colors hover:border-brand/30 hover:bg-white hover:text-brand-dark active:bg-brand-muted/40";
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-white/70 bg-white/45 p-4 shadow-premium backdrop-blur-md sm:rounded-3xl sm:p-6",
-        className,
-      )}
-    >
+    <div className={cn(sectionPanel, className)}>
       <div className="flex items-start justify-between gap-3 sm:items-end">
         <h3 className="min-w-0 font-display text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-2xl">
           {title}

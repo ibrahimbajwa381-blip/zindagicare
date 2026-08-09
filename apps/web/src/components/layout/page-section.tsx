@@ -110,7 +110,12 @@ export function PageSection({
       />
 
       <div
-        className={cn(pageContainer, spacingClasses[spacing], "max-md:py-8", innerClassName)}
+        className={cn(
+          pageContainer,
+          spacingClasses[spacing],
+          innerClassName,
+          "max-md:!py-8",
+        )}
       >
         {children}
       </div>

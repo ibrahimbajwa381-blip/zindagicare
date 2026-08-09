@@ -1,28 +1,13 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
-import {
-  DoctorEmptyState,
-  DoctorListCard,
-  formatDateTime,
-} from "@/features/doctor/components/doctor-workspace-panels";
+import { DoctorConsultRequestsPanel } from "@/features/doctor/components/doctor-consult-requests-panel";
 import { listDoctorConsultRequests } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
-import Link from "next/link";
-import { ClipboardList, FileText, MessageSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { siteConfig } from "@/config/site";
-import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
-import { AppointmentTypes, VerificationStatuses } from "@zindagi/shared";
+import { CalendarDays } from "lucide-react";
+import { VerificationStatuses } from "@zindagi/shared";
 
 export const metadata = { title: "Consult requests | Doctor" };
-
-function formatType(type: string) {
-  if (type === "online") return "Online consult";
-  if (type === "urgent_online") return "Urgent care";
-  if (type === "clinic") return "Clinic visit";
-  return type;
-}
 
 export default async function DoctorRequestsPage() {
   const session = await auth();
@@ -35,73 +20,28 @@ export default async function DoctorRequestsPage() {
   }
 
   const requests = await listDoctorConsultRequests(session.user.id);
+  const activeCount = requests.filter(
+    (request) =>
+      request.outcome === "upcoming" ||
+      request.outcome === "in_progress" ||
+      request.outcome === "pending",
+  ).length;
 
   return (
     <>
       <DoctorPageHeader
         eyebrow="Scheduling"
         title="Consult requests"
-        description="Upcoming online and in-clinic appointments assigned to you."
+        description="Full appointment history by status — active, completed, missed, and cancelled — with reviews and care actions."
         actions={
-          <span className="rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand-dark">
-            {requests.length} active
+          <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-semibold text-violet-800">
+            <CalendarDays className="size-4" aria-hidden />
+            {activeCount} active
           </span>
         }
       />
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        {requests.length === 0 ? (
-          <DoctorEmptyState message="No pending consult requests right now." />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {requests.map((request) => (
-              <div key={request.id} className="p-4 sm:p-5">
-                <DoctorListCard
-                  title={request.patient.name}
-                  subtitle={request.patient.phone}
-                  meta={`${formatType(request.type)} · ${formatDateTime(request.scheduledStart)}${request.patientNotes ? ` · ${request.patientNotes}` : ""}`}
-                  badge={request.status.replace("_", " ")}
-                  action={
-                    <div className="flex flex-wrap gap-2">
-                      {request.type === AppointmentTypes.ONLINE ||
-                      request.type === AppointmentTypes.URGENT_ONLINE ? (
-                        <VideoJoinLinkButton
-                          appointmentId={request.id}
-                          scheduledStart={request.scheduledStart}
-                          scheduledEnd={request.scheduledEnd}
-                          size="sm"
-                        />
-                      ) : null}
-                      <Button size="sm" variant="outline" asChild className="gap-1">
-                        <Link href={`/doctor/intake/${request.id}`}>
-                          <ClipboardList className="h-3.5 w-3.5" />
-                          Patient history
-                        </Link>
-                      </Button>
-                      {request.patient.id ? (
-                        <Button size="sm" variant="outline" asChild className="gap-1">
-                          <Link
-                            href={`${siteConfig.links.doctorMessages}?patient=${request.patient.id}`}
-                          >
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            Message
-                          </Link>
-                        </Button>
-                      ) : null}
-                      <Button size="sm" variant="outline" asChild className="gap-1">
-                        <Link href={`/doctor/prescriptions/new?appointmentId=${request.id}`}>
-                          <FileText className="h-3.5 w-3.5" />
-                          Issue Rx
-                        </Link>
-                      </Button>
-                    </div>
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <DoctorConsultRequestsPanel requests={requests} />
     </>
   );
 }

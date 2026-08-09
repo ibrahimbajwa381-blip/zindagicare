@@ -48,6 +48,8 @@ import {
   type ManualTransferCheckout,
 } from "@/lib/payments/manual-payment";
 import { sendOnlineConsultConfirmation, sendDoctorConsultBooked } from "@/lib/notifications/consult-notifications";
+import { notifyAdmins } from "@/lib/notifications/notify-admins";
+import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { ChatService } from "@/server/services/chat.service";
@@ -90,6 +92,8 @@ export type OnlinePatientBookingDto = {
   consultationFee: number;
   doctor: {
     doctorId: string;
+    /** User account id — required for `/messages?doctor=` deep links. */
+    userId: string;
     name: string;
     avatarUrl?: string;
     specialty: string;
@@ -660,6 +664,20 @@ export class OnlineConsultService {
 
       const paymentId = payment._id.toString();
 
+      const patient = await UserModel.findById(patientId).select("name").lean();
+      await notifyAdmins({
+        title: "New online consult booking",
+        body: `${safeDisplayText(patient?.name) ?? "A patient"} started checkout with Dr. ${validated.doctorName} for ${formatKarachiDateTime(validated.slotStart)} (Rs. ${validated.consultationFee.toLocaleString()}). Awaiting payment confirmation.`,
+        payload: {
+          type: "online_consult_requested",
+          appointmentId,
+          paymentId,
+          patientId,
+        },
+      }).catch((err) => {
+        console.error("[online-consult] admin notification failed", err);
+      });
+
       if (useManual) {
         const manualTransfer = buildManualTransferCheckout({
           paymentId,
@@ -836,6 +854,19 @@ export class OnlineConsultService {
         type: "online",
       });
     }
+
+    await notifyAdmins({
+      title: "Online consult paid",
+      body: `${safeDisplayText(patient?.name) ?? "A patient"} paid Rs. ${payment.amount.toLocaleString()} for a consult with Dr. ${mapUserPii(doctorUser ?? {}).name} at ${formatKarachiDateTime(appointment.scheduledStart)}.`,
+      payload: {
+        type: "online_consult_paid",
+        appointmentId: appointment._id.toString(),
+        paymentId,
+        patientId: appointment.patientId.toString(),
+      },
+    }).catch((err) => {
+      console.error("[online-consult] admin paid notification failed", err);
+    });
 
     return OnlineConsultService.getBookingByAppointmentId(appointment._id.toString());
   }
@@ -1038,12 +1069,18 @@ export class OnlineConsultService {
       ratingAvg?: number;
       ratingCount?: number;
       consultationFee?: number;
-      userId?: { name?: string; avatarUrl?: string };
+      userId?: { _id?: { toString(): string }; name?: string; avatarUrl?: string } | string;
     } | null;
 
     if (!doctor?._id) return null;
 
-    const user = doctor.userId;
+    const doctorUserId = resolveMongoRefId(doctor.userId);
+    if (!doctorUserId || doctorUserId === "undefined" || doctorUserId === "null") {
+      return null;
+    }
+
+    const user =
+      doctor.userId && typeof doctor.userId === "object" ? doctor.userId : undefined;
     const name = mapUserPii(user ?? {}).name;
     const scheduledStart = appointment.scheduledStart as Date;
     const scheduledEnd = appointment.scheduledEnd as Date;
@@ -1057,6 +1094,7 @@ export class OnlineConsultService {
       consultationFee: payment?.amount ?? doctor.consultationFee ?? 0,
       doctor: {
         doctorId: doctor._id.toString(),
+        userId: doctorUserId,
         name,
         avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
         specialty: doctor.specialties?.[0] ?? "General Physician",

@@ -442,7 +442,9 @@ export class ReviewService {
   }
 
   static async listAdminReviews(
-    options: { visibility?: "visible" | "hidden" | "all" } = {},
+    options: {
+      visibility?: "visible" | "hidden" | "all" | "pending";
+    } = {},
   ): Promise<{ reviews: AdminReviewRow[]; total: number }> {
     await ReviewService.ensureConnected();
 
@@ -451,6 +453,7 @@ export class ReviewService {
       deletedAt: null,
       ...(visibility === "visible" ? { isVisible: true } : {}),
       ...(visibility === "hidden" ? { isVisible: false } : {}),
+      ...(visibility === "pending" ? { isModerated: false } : {}),
     });
 
     const rows = await ReviewModel.find(filter).sort({ createdAt: -1 }).limit(100).lean();
@@ -499,7 +502,7 @@ export class ReviewService {
   static async moderateReview(
     adminUserId: string,
     reviewId: string,
-    action: "hide" | "show" | "delete",
+    action: "approve" | "hide" | "show" | "delete",
   ) {
     await ReviewService.ensureConnected();
 
@@ -510,7 +513,11 @@ export class ReviewService {
 
     const doctorId = review.doctorId.toString();
 
-    if (action === "hide") {
+    if (action === "approve") {
+      review.isModerated = true;
+      review.moderatedBy = adminUserId as never;
+      await review.save();
+    } else if (action === "hide") {
       review.isVisible = false;
       review.isModerated = true;
       review.moderatedBy = adminUserId as never;
@@ -536,5 +543,22 @@ export class ReviewService {
       isModerated: review.isModerated,
       deleted: Boolean(review.deletedAt),
     };
+  }
+
+  /** Mark every unmoderated review as reviewed (keeps current visibility). */
+  static async approveAllPendingReviews(adminUserId: string) {
+    await ReviewService.ensureConnected();
+
+    const result = await ReviewModel.updateMany(
+      mongoFilter({ deletedAt: null, isModerated: false }),
+      {
+        $set: {
+          isModerated: true,
+          moderatedBy: adminUserId as never,
+        },
+      },
+    );
+
+    return { approved: result.modifiedCount ?? 0 };
   }
 }

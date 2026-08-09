@@ -2,7 +2,6 @@ import {
   AppointmentModel,
   DoctorProfileModel,
   MedicalIntakeModel,
-  NotificationModel,
   UserModel,
   connectDatabase,
 } from "@zindagi/database";
@@ -15,13 +14,14 @@ import {
   IntakeSources,
   IntakeStatuses,
   normalizeIntakeLocale,
-  NotificationChannels,
   resolveIntakeQuestionText,
   type IntakeLocale,
   type IntakeSource,
   type IntakeStatus,
 } from "@zindagi/shared";
 import { mongoFilter } from "@/lib/mongo/query";
+import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
+import { safeDisplayText } from "@/server/lib/decrypt-pii";
 
 export type IntakeQuestionDto = {
   key: string;
@@ -137,20 +137,20 @@ async function notifyDoctorIntakeCompleted(params: {
   const profile = await DoctorProfileModel.findById(params.doctorProfileId).lean();
   if (!profile?.userId) return;
 
-  const patient = await UserModel.findById(params.patientId)
-    .select("name")
-    .lean();
+  const [patient, doctorUser] = await Promise.all([
+    UserModel.findById(params.patientId).select("name").lean(),
+    UserModel.findById(profile.userId).select("phone").lean(),
+  ]);
 
-  await NotificationModel.create({
+  await deliverUserNotification({
     userId: profile.userId.toString(),
-    channel: NotificationChannels.IN_APP,
+    phone: safeDisplayText(doctorUser?.phone) ?? undefined,
     title: "Medical history completed",
-    body: `${patient?.name ?? "A patient"} has completed their pre-consult medical history.`,
+    body: `${safeDisplayText(patient?.name) ?? "A patient"} has completed their pre-consult medical history.`,
     payload: {
       type: "intake_completed",
       appointmentId: params.appointmentId,
     },
-    sentAt: new Date(),
   });
 }
 

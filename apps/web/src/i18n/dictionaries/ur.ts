@@ -304,7 +304,7 @@ export const ur: Dictionary = {
   },
   hero: {
     learnMore: "مزید جانیں ←",
-    swipeHint: "خدمات دیکھنے کے لیے سوائپ کریں · اوپر پیش نظارہ کے لیے کارڈ ٹیپ کریں",
+    swipeHint: "خدمات دیکھنے کے لیے نیچے سکرول کریں · اوپر پیش نظارہ کے لیے کارڈ ٹیپ کریں",
     servingPatients: "{city} میں مریضوں کی خدمت",
     freeBadge: "مفت",
     prevService: "پچھلی خدمت",
@@ -1599,6 +1599,9 @@ export const ur: Dictionary = {
     doctorNewChatEmpty: "ادا شدہ مشورہ کے کوئی مریض نہیں ملے۔",
     doctorSelectChatDescription:
       "اپنی ادا شدہ مشورہ کے مریض کی گفتگو چنیں۔ اتوار کی مفت مشورہ میں چیٹ شامل نہیں۔",
+    openChatFailedTitle: "چیٹ نہیں کھل سکی",
+    openingChatTitle: "گفتگو کھل رہی ہے…",
+    openingChatDescription: "آپ کو ابھی منسلک کیا جا رہا ہے۔",
     assistantName: "زندگی کیئر اسسٹنٹ",
   },
   intake: {

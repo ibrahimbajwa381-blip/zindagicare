@@ -6,6 +6,7 @@ import {
   AppointmentModel,
   HomeVisitModel,
   SundaySlotInstanceModel,
+  SundayFreeRequestModel,
   UrgentCareRequestModel,
   StaffProfileModel,
   ReviewModel,
@@ -16,11 +17,16 @@ import {
   HomeVisitStatuses,
   Roles,
   STAFF_ROLES,
+  SundayFreeRequestStatuses,
   UrgentCareRequestStatuses,
   VerificationStatuses,
 } from "@zindagi/shared";
 import { getSystemSettings } from "./system-settings.service";
-import { getNextSundayDate } from "@/lib/sunday/date-utils";
+import {
+  formatSundayDateKey,
+  getActiveOrNextSundayDate,
+  getNextSundayDate,
+} from "@/lib/sunday/date-utils";
 import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
 
 export type { AdminNavCounts };
@@ -43,8 +49,17 @@ export type AdminDashboardStats = {
 export async function getAdminNavCounts(): Promise<AdminNavCounts> {
   await connectDatabase();
 
-  const [doctors, nurses, physiotherapists, reviews, urgentCare, homeVisits] =
-    await Promise.all([
+  const sundayDateKey = formatSundayDateKey(getActiveOrNextSundayDate());
+
+  const [
+    doctors,
+    nurses,
+    physiotherapists,
+    reviews,
+    sundayConsult,
+    urgentCare,
+    homeVisits,
+  ] = await Promise.all([
     DoctorProfileModel.countDocuments({
       verificationStatus: VerificationStatuses.PENDING,
       verificationSubmittedAt: { $exists: true },
@@ -63,6 +78,10 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
       deletedAt: null,
       isModerated: false,
     }),
+    SundayFreeRequestModel.countDocuments({
+      sundayDateKey,
+      status: SundayFreeRequestStatuses.REQUESTED,
+    }),
     UrgentCareRequestModel.countDocuments({
       status: {
         $in: [UrgentCareRequestStatuses.REQUESTED, UrgentCareRequestStatuses.ASSIGNED],
@@ -73,7 +92,15 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
     }),
   ]);
 
-  return { doctors, nurses, physiotherapists, reviews, urgentCare, homeVisits };
+  return {
+    doctors,
+    nurses,
+    physiotherapists,
+    reviews,
+    sundayConsult,
+    urgentCare,
+    homeVisits,
+  };
 }
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {

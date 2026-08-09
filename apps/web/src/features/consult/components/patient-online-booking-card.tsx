@@ -184,7 +184,7 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
             iconClassName="h-4 w-4"
           />
           <Button variant="outline" asChild className="gap-1.5">
-            <Link href={`${siteConfig.links.messages}?doctor=${doctor.doctorId}`}>
+            <Link href={`${siteConfig.links.messages}?doctor=${doctor.userId}`}>
               <MessageCircle className="h-4 w-4" />
               Message doctor
             </Link>

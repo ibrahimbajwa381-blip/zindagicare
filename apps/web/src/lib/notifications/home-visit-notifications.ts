@@ -1,6 +1,7 @@
-import { connectDatabase, NotificationModel, UserModel } from "@zindagi/database";
-import { HomeVisitStatuses, NotificationChannels, Roles } from "@zindagi/shared";
+import { HomeVisitStatuses } from "@zindagi/shared";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
+import { notifyAdmins } from "@/lib/notifications/notify-admins";
+import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
 export async function notifyAdminsHomeVisitRequested(input: {
   visitId: string;
@@ -8,47 +9,29 @@ export async function notifyAdminsHomeVisitRequested(input: {
   serviceLabel: string;
   scheduledAt: Date;
 }) {
-  await connectDatabase();
-
-  const admins = await UserModel.find({
-    roles: { $in: [Roles.ADMIN, Roles.SUPER_ADMIN] },
-    isActive: { $ne: false },
-    deletedAt: null,
-  })
-    .select("_id")
-    .lean();
-
-  if (!admins.length) return;
-
   const scheduled = formatKarachiDateTime(input.scheduledAt);
 
-  await Promise.all(
-    admins.map((admin) =>
-      NotificationModel.create({
-        userId: admin._id.toString(),
-        channel: NotificationChannels.IN_APP,
-        title: "New home care request",
-        body: `${input.patientName} requested ${input.serviceLabel} — scheduled ${scheduled}. Assign a provider from Home care.`,
-        payload: {
-          type: "home_visit_requested",
-          visitId: input.visitId,
-        },
-        sentAt: new Date(),
-      }),
-    ),
-  );
+  await notifyAdmins({
+    title: "New home care request",
+    body: `${input.patientName} requested ${input.serviceLabel} — scheduled ${scheduled}. Assign a provider from Home care.`,
+    payload: {
+      type: "home_visit_requested",
+      visitId: input.visitId,
+    },
+  });
 }
 
 export async function notifyStaffHomeVisitAssigned(input: {
   staffUserId: string;
+  phone?: string;
   visitId: string;
   serviceLabel: string;
   patientName: string;
   scheduledAt: Date;
 }) {
-  await NotificationModel.create({
+  await deliverUserNotification({
     userId: input.staffUserId,
-    channel: NotificationChannels.IN_APP,
+    phone: input.phone,
     title: "Home visit assigned",
     body: `${input.serviceLabel} for ${input.patientName} — check your visits dashboard.`,
     payload: {
@@ -60,6 +43,7 @@ export async function notifyStaffHomeVisitAssigned(input: {
 
 export async function notifyPatientHomeVisitStatus(input: {
   patientUserId: string;
+  phone?: string;
   visitId: string;
   status: string;
   staffName?: string;
@@ -82,9 +66,9 @@ export async function notifyPatientHomeVisitStatus(input: {
   const copy = messages[input.status];
   if (!copy) return;
 
-  await NotificationModel.create({
+  await deliverUserNotification({
     userId: input.patientUserId,
-    channel: NotificationChannels.IN_APP,
+    phone: input.phone,
     title: copy.title,
     body: copy.body,
     payload: {
