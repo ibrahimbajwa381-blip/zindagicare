@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { DoctorProfileOverview } from "@/features/doctor/components/doctor-profile-overview";
 import { DoctorProfileSection } from "@/features/doctor/components/doctor-profile-section";
 import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
-import { getDoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
+import {
+  emptyDoctorDashboardSummary,
+  getDoctorDashboardSummary,
+} from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 
 export const metadata = { title: "Doctor workspace" };
@@ -29,16 +32,7 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
 
   const summary = isApproved
     ? await getDoctorDashboardSummary(session.user.id)
-    : {
-        patients: 0,
-        pendingRequests: 0,
-        sundayQueue: 0,
-        homeVisitRequests: 0,
-        urgentCalls: 0,
-        totalEarnings: 0,
-        earningsThisMonth: 0,
-        availableBalance: 0,
-      };
+    : emptyDoctorDashboardSummary();
 
   return (
     <div className="space-y-6">

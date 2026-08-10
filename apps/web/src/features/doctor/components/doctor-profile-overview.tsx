@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { ChevronRight, Pencil } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  Pencil,
+  RefreshCw,
+  Star,
+  Stethoscope,
+  Users,
+} from "lucide-react";
 import { VerificationStatuses } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +42,55 @@ function formatTime12h(time: string): string {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+function formatRating(avg: number, count: number): string {
+  if (count <= 0) return "—";
+  return avg.toFixed(1);
+}
+
+function returningShare(returning: number, patients: number): string | undefined {
+  if (patients <= 0 || returning <= 0) return undefined;
+  return `${Math.round((returning / patients) * 100)}% of patients`;
+}
+
+function PracticeStat({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  accent = "slate",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: "slate" | "amber" | "emerald" | "sky" | "violet";
+}) {
+  const accents = {
+    slate: "border-slate-100 bg-slate-50 text-slate-600",
+    amber: "border-amber-100 bg-amber-50 text-amber-700",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    sky: "border-sky-100 bg-sky-50 text-sky-700",
+    violet: "border-violet-100 bg-violet-50 text-violet-700",
+  } as const;
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white px-4 py-3.5">
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${accents[accent]}`}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">{value}</p>
+          {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DoctorProfileOverview({ profile, summary }: Props) {
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
   const isPending = profile.verificationStatus === VerificationStatuses.PENDING;
@@ -41,6 +100,13 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
     profile.qualifications,
   );
   const avatarSrc = resolveDoctorPortrait(profile.user.name, profile.user.avatarUrl);
+
+  const queueStats: Array<{ label: string; value: number }> = [
+    { label: "Patients", value: summary.patients },
+    { label: "Open requests", value: summary.pendingRequests },
+    { label: "Sunday queue", value: summary.sundayQueue },
+    { label: "Home visits", value: summary.homeVisitRequests },
+  ];
 
   return (
     <div className="space-y-6">
@@ -65,6 +131,12 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
                 {profile.pmdcVerified && (
                   <Badge variant="outline" className="border-emerald-200 text-emerald-800">
                     PMDC verified
+                  </Badge>
+                )}
+                {summary.ratingCount > 0 && (
+                  <Badge variant="outline" className="border-amber-200 text-amber-800">
+                    <Star className="mr-1 h-3 w-3 fill-amber-400 text-amber-400" />
+                    {summary.ratingAvg.toFixed(1)} · {summary.ratingCount} reviews
                   </Badge>
                 )}
                 {credentials.map((credential) => (
@@ -96,18 +168,15 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
 
           {isApproved && (
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-              {[
-                { label: "Patients", value: summary.patients },
-                { label: "Requests", value: summary.pendingRequests },
-                { label: "Sunday queue", value: summary.sundayQueue },
-                { label: "Home visits", value: summary.homeVisitRequests },
-              ].map((stat) => (
+              {queueStats.map((stat) => (
                 <div
                   key={stat.label}
                   className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
                 >
                   <dt className="text-xs font-medium text-slate-500">{stat.label}</dt>
-                  <dd className="mt-1 text-2xl font-semibold text-slate-900">{stat.value}</dd>
+                  <dd className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                    {stat.value}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -117,25 +186,107 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
 
       {isApproved && (
         <>
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                  Practice performance
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  How your ZindagiCare practice is doing with patients.
+                </p>
+              </div>
+              <p className="text-xs text-slate-500">
+                {profile.experienceYears} yrs experience · fee PKR{" "}
+                {profile.consultationFee.toLocaleString("en-PK")}
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <PracticeStat
+                icon={Star}
+                label="Patient rating"
+                value={formatRating(summary.ratingAvg, summary.ratingCount)}
+                hint={
+                  summary.ratingCount > 0
+                    ? `${summary.ratingCount} review${summary.ratingCount === 1 ? "" : "s"}`
+                    : "No reviews yet"
+                }
+                accent="amber"
+              />
+              <PracticeStat
+                icon={Stethoscope}
+                label="Completed this month"
+                value={String(summary.completedThisMonth)}
+                hint={`${summary.completedAllTime} all time`}
+                accent="emerald"
+              />
+              <PracticeStat
+                icon={CalendarDays}
+                label="Today’s appointments"
+                value={String(summary.todayAppointments)}
+                hint={`${summary.upcomingThisWeek} upcoming this week`}
+                accent="sky"
+              />
+              <PracticeStat
+                icon={CheckCircle2}
+                label="Completion rate"
+                value={
+                  summary.completedAllTime > 0 || summary.completionRate > 0
+                    ? `${summary.completionRate}%`
+                    : "—"
+                }
+                hint="Completed vs missed or cancelled"
+                accent="violet"
+              />
+              <PracticeStat
+                icon={ClipboardList}
+                label="Prescriptions written"
+                value={String(summary.prescriptionsWritten)}
+                hint="Across all patients"
+              />
+              <PracticeStat
+                icon={RefreshCw}
+                label="Returning patients"
+                value={String(summary.returningPatients)}
+                hint={returningShare(summary.returningPatients, summary.patients)}
+                accent="emerald"
+              />
+              <PracticeStat
+                icon={Users}
+                label="Patients served"
+                value={String(summary.patients)}
+                hint={`${summary.pendingRequests} open request${summary.pendingRequests === 1 ? "" : "s"}`}
+                accent="sky"
+              />
+              <PracticeStat
+                icon={CalendarDays}
+                label="This week ahead"
+                value={String(summary.upcomingThisWeek)}
+                hint={
+                  summary.urgentCalls > 0
+                    ? `${summary.urgentCalls} urgent call${summary.urgentCalls === 1 ? "" : "s"} waiting`
+                    : "Next 7 days"
+                }
+              />
+            </div>
+          </section>
+
           <DoctorEarningsSummaryCard
             totalEarnings={summary.totalEarnings}
             earningsThisMonth={summary.earningsThisMonth}
             availableBalance={summary.availableBalance}
           />
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="hidden gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-4">
             {DOCTOR_OVERVIEW_ACTIONS.map((action) => {
               const Icon = action.icon;
-              const summaryKey =
-                action.badgeKey === "homeVisits"
-                  ? "homeVisitRequests"
-                  : action.badgeKey === "messages"
-                    ? null
-                    : action.badgeKey;
-              const count =
-                summaryKey && summaryKey in summary
-                  ? summary[summaryKey as keyof DoctorDashboardSummary]
-                  : null;
+              let count: number | null = null;
+              if (action.badgeKey === "homeVisits") count = summary.homeVisitRequests;
+              else if (action.badgeKey === "pendingRequests") count = summary.pendingRequests;
+              else if (action.badgeKey === "sundayQueue") count = summary.sundayQueue;
+              else if (action.badgeKey === "urgentCalls") count = summary.urgentCalls;
+
               const accent = accentByHref[action.href] ?? "text-brand bg-brand/10 border-brand/20";
               return (
                 <Link

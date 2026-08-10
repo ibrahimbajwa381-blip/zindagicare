@@ -232,6 +232,14 @@ export const ur: Dictionary = {
     whatsappPrefill: "سلام، مجھے زندگی کیئر کے بارے میں ایک سوال ہے۔",
     loadingPage: "آپ کا کیئر تجربہ لوڈ ہو رہا ہے…",
   },
+  notFoundPage: {
+    eyebrow: "صفحہ نہیں ملا",
+    title: "یہ راستہ دیکھ بھال تک نہیں پہنچتا",
+    description:
+      "لنک پرانا یا غلط ہو سکتا ہے۔ گھر واپس جائیں، یا ڈاکٹرز دیکھ کر اپنی دیکھ بھال حاصل کریں۔",
+    goHome: "گھر واپس جائیں",
+    browseDoctors: "ڈاکٹرز دیکھیں",
+  },
   pwa: {
     offlineTitle: "آپ آف لائن ہیں",
     offlineDescription:

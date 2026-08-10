@@ -348,7 +348,7 @@ export function MobileNav({
   );
 
   return (
-    <div className={cn("shrink-0 md:hidden", className)}>
+    <div className={cn("shrink-0", className)}>
       <button
         type="button"
         onClick={toggle}

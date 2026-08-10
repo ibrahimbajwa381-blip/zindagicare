@@ -494,6 +494,56 @@ html[lang="ur"] h3.font-semibold {
     );
   }
 
+  @keyframes not-found-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes not-found-glow {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+  }
+
+  @keyframes not-found-watermark {
+    0%,
+    100% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+      opacity: 0.72;
+      transform: translate(-50%, -50%) scale(1.025);
+    }
+  }
+
+  .not-found-rise {
+    animation: not-found-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .not-found-glow {
+    animation: not-found-glow 4s ease-in-out infinite;
+  }
+
+  .not-found-watermark {
+    animation: not-found-watermark 6s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .brand-loading-glow,
     .brand-loading-ring,
@@ -502,7 +552,10 @@ html[lang="ur"] h3.font-semibold {
     .agent-float-orb,
     .agent-float-ring,
     .agent-float-shimmer,
-    .agent-float-wave {
+    .agent-float-wave,
+    .not-found-rise,
+    .not-found-glow,
+    .not-found-watermark {
       animation: none;
     }
   }

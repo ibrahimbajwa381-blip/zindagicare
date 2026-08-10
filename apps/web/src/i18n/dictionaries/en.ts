@@ -231,6 +231,14 @@ export const en = {
     whatsappPrefill: "Hello, I have a question about ZindagiCare.",
     loadingPage: "Loading your care experience…",
   },
+  notFoundPage: {
+    eyebrow: "Page not found",
+    title: "This path doesn't lead to care",
+    description:
+      "The link may be outdated or mistyped. Head home, or browse doctors to get the care you need.",
+    goHome: "Back to home",
+    browseDoctors: "Browse doctors",
+  },
   agentFloat: {
     badgeTitle: "AI Health Agent",
     badgeLive: "Live",

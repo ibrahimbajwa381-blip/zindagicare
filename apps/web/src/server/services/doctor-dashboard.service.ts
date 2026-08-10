@@ -78,7 +78,44 @@ export type DoctorDashboardSummary = {
   totalEarnings: number;
   earningsThisMonth: number;
   availableBalance: number;
+  /** Patient-facing rating shown on the public profile. */
+  ratingAvg: number;
+  ratingCount: number;
+  /** Completed paid/unpaid consults finished this calendar month. */
+  completedThisMonth: number;
+  completedAllTime: number;
+  /** Active or scheduled appointments for today. */
+  todayAppointments: number;
+  /** Upcoming appointments in the next 7 days (confirmed/pending/in progress). */
+  upcomingThisWeek: number;
+  /** Completed / (completed + missed + cancelled), 0–100. */
+  completionRate: number;
+  prescriptionsWritten: number;
+  /** Patients with 2+ completed consults. */
+  returningPatients: number;
 };
+
+export function emptyDoctorDashboardSummary(): DoctorDashboardSummary {
+  return {
+    patients: 0,
+    pendingRequests: 0,
+    sundayQueue: 0,
+    homeVisitRequests: 0,
+    urgentCalls: 0,
+    totalEarnings: 0,
+    earningsThisMonth: 0,
+    availableBalance: 0,
+    ratingAvg: 0,
+    ratingCount: 0,
+    completedThisMonth: 0,
+    completedAllTime: 0,
+    todayAppointments: 0,
+    upcomingThisWeek: 0,
+    completionRate: 0,
+    prescriptionsWritten: 0,
+    returningPatients: 0,
+  };
+}
 
 export type DoctorEarningRow = {
   id: string;
@@ -473,42 +510,167 @@ export async function getDoctorDashboardSummary(
   const sundayDate = getActiveOrNextSundayDate(now);
   const sundayDateKey = formatSundayDateKey(sundayDate);
   const sundayEnd = new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfWeek = new Date(startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const doctorFilter = mongoFilter({
+    doctorId: profile._id,
+    $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+  });
 
-  const [patientIds, pendingRequests, sundayQueue, homeVisitRequests, urgentCalls, earnings] =
-    await Promise.all([
-      AppointmentModel.distinct("patientId", mongoFilter({ doctorId: profile._id })),
-      AppointmentModel.countDocuments(
-        mongoFilter({
+  const [
+    patientIds,
+    pendingRequests,
+    sundayQueue,
+    homeVisitRequests,
+    urgentCalls,
+    earnings,
+    completedApptsThisMonth,
+    completedApptsAllTime,
+    completedHomeVisitsThisMonth,
+    completedHomeVisitsAllTime,
+    todayAppointments,
+    upcomingThisWeek,
+    outcomeCounts,
+    prescriptionsWritten,
+    returningPatientsAgg,
+  ] = await Promise.all([
+    AppointmentModel.distinct("patientId", mongoFilter({ doctorId: profile._id })),
+    AppointmentModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        ...activeConsultRequestFilter(now),
+      }),
+    ),
+    AppointmentModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        type: AppointmentTypes.SUNDAY_FREE,
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+        $or: [
+          { sundayDateKey },
+          { scheduledStart: { $gte: sundayDate, $lt: sundayEnd } },
+        ],
+      }),
+    ),
+    HomeVisitModel.countDocuments(
+      mongoFilter({
+        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+        assignedStaffId: userId,
+        status: { $in: ACTIVE_HOME_VISIT_STATUSES },
+      }),
+    ),
+    UrgentCareRequestModel.countDocuments(
+      mongoFilter({
+        assignedDoctorId: profile._id,
+        status: UrgentCareRequestStatuses.ASSIGNED,
+      }),
+    ),
+    loadDoctorEarningsTotals(profile._id.toString(), userId),
+    AppointmentModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        status: AppointmentStatuses.COMPLETED,
+        deletedAt: null,
+        $or: [
+          { completedAt: { $gte: startOfMonth } },
+          {
+            completedAt: null,
+            scheduledStart: { $gte: startOfMonth },
+          },
+        ],
+      }),
+    ),
+    AppointmentModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        status: AppointmentStatuses.COMPLETED,
+        deletedAt: null,
+      }),
+    ),
+    HomeVisitModel.countDocuments(
+      mongoFilter({
+        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+        assignedStaffId: userId,
+        status: HomeVisitStatuses.COMPLETED,
+        deletedAt: null,
+        $or: [
+          { completedAt: { $gte: startOfMonth } },
+          {
+            completedAt: null,
+            scheduledAt: { $gte: startOfMonth },
+          },
+        ],
+      }),
+    ),
+    HomeVisitModel.countDocuments(
+      mongoFilter({
+        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+        assignedStaffId: userId,
+        status: HomeVisitStatuses.COMPLETED,
+        deletedAt: null,
+      }),
+    ),
+    AppointmentModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        deletedAt: null,
+        scheduledStart: { $gte: startOfToday, $lt: endOfToday },
+        status: {
+          $in: [...ACTIVE_APPOINTMENT_STATUSES, AppointmentStatuses.COMPLETED],
+        },
+      }),
+    ),
+    AppointmentModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        deletedAt: null,
+        scheduledStart: { $gte: now, $lt: endOfWeek },
+        status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+      }),
+    ),
+    AppointmentModel.aggregate<{
+      _id: string;
+      count: number;
+    }>([
+      { $match: doctorFilter },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    PrescriptionModel.countDocuments(
+      mongoFilter({
+        doctorId: profile._id,
+        deletedAt: null,
+      }),
+    ),
+    AppointmentModel.aggregate<{ count: number }>([
+      {
+        $match: mongoFilter({
           doctorId: profile._id,
-          ...activeConsultRequestFilter(now),
+          deletedAt: null,
+          status: AppointmentStatuses.COMPLETED,
         }),
-      ),
-      AppointmentModel.countDocuments(
-        mongoFilter({
-          doctorId: profile._id,
-          type: AppointmentTypes.SUNDAY_FREE,
-          status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-          $or: [
-            { sundayDateKey },
-            { scheduledStart: { $gte: sundayDate, $lt: sundayEnd } },
-          ],
-        }),
-      ),
-      HomeVisitModel.countDocuments(
-        mongoFilter({
-          serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
-          assignedStaffId: userId,
-          status: { $in: ACTIVE_HOME_VISIT_STATUSES },
-        }),
-      ),
-      UrgentCareRequestModel.countDocuments(
-        mongoFilter({
-          assignedDoctorId: profile._id,
-          status: UrgentCareRequestStatuses.ASSIGNED,
-        }),
-      ),
-      loadDoctorEarningsTotals(profile._id.toString(), userId),
-    ]);
+      },
+      { $group: { _id: "$patientId", completed: { $sum: 1 } } },
+      { $match: { completed: { $gte: 2 } } },
+      { $count: "count" },
+    ]),
+  ]);
+
+  const completed =
+    outcomeCounts.find((row) => row._id === AppointmentStatuses.COMPLETED)?.count ?? 0;
+  const missed =
+    outcomeCounts.find((row) => row._id === AppointmentStatuses.NO_SHOW)?.count ?? 0;
+  const cancelled =
+    outcomeCounts.find((row) => row._id === AppointmentStatuses.CANCELLED)?.count ?? 0;
+  const settled = completed + missed + cancelled;
+  const completionRate =
+    settled > 0 ? Math.round((completed / settled) * 100) : 0;
 
   return {
     patients: patientIds.length,
@@ -519,6 +681,15 @@ export async function getDoctorDashboardSummary(
     totalEarnings: earnings.totalEarnings,
     earningsThisMonth: earnings.earningsThisMonth,
     availableBalance: earnings.availableBalance,
+    ratingAvg: profile.ratingAvg ?? 0,
+    ratingCount: profile.ratingCount ?? 0,
+    completedThisMonth: completedApptsThisMonth + completedHomeVisitsThisMonth,
+    completedAllTime: completedApptsAllTime + completedHomeVisitsAllTime,
+    todayAppointments,
+    upcomingThisWeek,
+    completionRate,
+    prescriptionsWritten,
+    returningPatients: returningPatientsAgg[0]?.count ?? 0,
   };
 }
 

@@ -61,7 +61,7 @@ export function WorkspaceSwitcher({ className, current }: Props) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6",
+        "min-w-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6",
         className,
       )}
     >
@@ -71,7 +71,7 @@ export function WorkspaceSwitcher({ className, current }: Props) {
       <p className="mt-1 text-sm text-slate-600">
         You have access to multiple workspaces. Choose which profile to use.
       </p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {workspaces.map((workspace) => {
           const isActive = workspace === highlighted;
           return (
@@ -81,13 +81,13 @@ export function WorkspaceSwitcher({ className, current }: Props) {
               variant={isActive ? "default" : "outline"}
               disabled={pending}
               className={cn(
-                "h-auto min-h-10 flex-col items-start gap-0.5 px-4 py-2.5 text-left sm:min-w-[10rem]",
+                "h-auto min-h-10 w-full min-w-0 flex-col items-start gap-0.5 whitespace-normal px-4 py-2.5 text-left sm:h-auto",
                 isActive && "ring-2 ring-brand/30",
               )}
               onClick={() => switchTo(workspace)}
             >
               <span className="font-semibold">{WORKSPACE_LABELS[workspace]}</span>
-              <span className="text-xs font-normal opacity-80">
+              <span className="w-full text-xs font-normal leading-snug whitespace-normal opacity-80">
                 {WORKSPACE_DESCRIPTIONS[workspace]}
               </span>
             </Button>

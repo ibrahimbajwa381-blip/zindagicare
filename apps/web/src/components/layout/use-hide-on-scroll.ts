@@ -7,6 +7,11 @@ type Options = {
   topOffset?: number;
   /** Minimum scroll delta before toggling, to avoid jitter. */
   threshold?: number;
+  /**
+   * Enable hide-on-scroll even on touch/mobile viewports.
+   * Default is off because transform + scroll updates can ghost on Android.
+   */
+  forceEnable?: boolean;
 };
 
 function isTouchViewport() {
@@ -21,15 +26,20 @@ function isTouchViewport() {
  * Returns whether a sticky header should be visible based on scroll direction:
  * hides when scrolling down, reveals when scrolling up or near the top.
  *
- * Disabled on touch/mobile — transform + scroll state updates cause GPU ghosting on Android.
+ * Disabled on touch/mobile unless `forceEnable` is set — transform + scroll
+ * state updates can cause GPU ghosting on Android.
  */
-export function useHideOnScroll({ topOffset = 80, threshold = 6 }: Options = {}) {
+export function useHideOnScroll({
+  topOffset = 80,
+  threshold = 6,
+  forceEnable = false,
+}: Options = {}) {
   const [hidden, setHidden] = useState(false);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(forceEnable);
 
   useEffect(() => {
-    setEnabled(!isTouchViewport());
-  }, []);
+    setEnabled(forceEnable || !isTouchViewport());
+  }, [forceEnable]);
 
   useEffect(() => {
     if (!enabled) {

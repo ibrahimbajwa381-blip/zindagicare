@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, Menu, ShieldAlert } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 import { UnifiedHeader } from "@/components/layout/unified-header";
+import { DoctorMobilePracticeNav } from "@/features/doctor/components/doctor-mobile-practice-nav";
 import { DoctorSidebar } from "@/features/doctor/components/doctor-sidebar";
 
 export type DoctorAccountabilityBanner = {
@@ -69,7 +71,9 @@ export function DoctorShell({
   doctorAvatarUrl,
   accountabilityBanner,
 }: DoctorShellProps) {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const showPracticeNav = showFullNav && pathname === "/doctor/profile";
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -77,6 +81,7 @@ export function DoctorShell({
         <UnifiedHeader
           navLinks={[]}
           showMobileNav={false}
+          releaseStickyOnMobile={showPracticeNav}
           leadingSlot={
             <button
               type="button"
@@ -101,9 +106,17 @@ export function DoctorShell({
       />
 
       <div className={cn("flex min-h-[calc(100vh-4rem)] flex-col sm:min-h-[calc(100vh-4.75rem)] lg:pl-[17.5rem]")}>
+        {showPracticeNav ? (
+          <div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white supports-[padding:max(0px)]:top-[env(safe-area-inset-top)] lg:hidden">
+            <DoctorMobilePracticeNav />
+          </div>
+        ) : null}
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
           <div className="mx-auto w-full max-w-[100rem]">
-            <AutoBreadcrumbs variant="workspace" />
+            <AutoBreadcrumbs
+              variant="workspace"
+              className={cn(showPracticeNav && "hidden lg:block")}
+            />
             {accountabilityBanner && (
               <AccountabilityBanner banner={accountabilityBanner} />
             )}
