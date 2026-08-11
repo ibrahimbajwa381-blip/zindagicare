@@ -42,6 +42,7 @@ export const en = {
     refundPolicy: "Refund policy",
     telemedicineConsent: "Telemedicine consent",
     forDoctors: "For doctors",
+    doctorGuide: "Doctor guide",
     forNurses: "For nurses",
     forPhysiotherapists: "For physiotherapists",
     getApp: "Get the app",
@@ -1861,6 +1862,7 @@ export const en = {
         "Create your doctor account and complete verification — your workspace unlocks after admin approval.",
       primaryCta: "Register as doctor",
       secondaryCta: "Log in",
+      guideCta: "Read the doctor guide",
     },
     nurse: {
       eyebrow: "For nurses",

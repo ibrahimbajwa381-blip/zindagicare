@@ -32,6 +32,7 @@ import {
   calculateStaffNetEarnings,
   getDoctorCommissionRatesByProfileId,
 } from "./commission.service";
+import { VideoSessionService } from "./video-session.service";
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -62,10 +63,7 @@ function activeConsultRequestFilter(now = new Date()) {
       ],
     },
     status: { $in: ACTIVE_APPOINTMENT_STATUSES },
-    $or: [
-      { scheduledEnd: { $gte: windowEnd } },
-      { status: AppointmentStatuses.IN_PROGRESS },
-    ],
+    scheduledEnd: { $gte: windowEnd },
   };
 }
 
@@ -974,6 +972,24 @@ export async function listDoctorConsultRequests(
     .lean();
 
   if (appointments.length === 0) return [];
+
+  const staleAfterMs = 2 * 60 * 60 * 1000;
+  for (const apt of appointments) {
+    if (apt.status !== AppointmentStatuses.IN_PROGRESS) continue;
+    const { joinClosesAt } = getVideoJoinWindow(
+      apt.scheduledStart,
+      effectiveVideoEnd(apt.type, apt.scheduledStart, apt.scheduledEnd),
+      now,
+    );
+    if (now.getTime() <= joinClosesAt.getTime() + staleAfterMs) continue;
+
+    const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
+      apt._id.toString(),
+    );
+    if (finalized) {
+      apt.status = AppointmentStatuses.COMPLETED;
+    }
+  }
 
   const appointmentIds = appointments.map((apt) => apt._id.toString());
 

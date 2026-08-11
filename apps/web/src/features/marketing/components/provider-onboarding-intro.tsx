@@ -114,6 +114,13 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
+              {role === "doctor" ? (
+                <Button size="lg" variant="outline" className="h-12 rounded-xl sm:h-14" asChild>
+                  <Link href={siteConfig.links.forDoctorsGuide}>
+                    {t.providerOnboarding.doctor.guideCta}
+                  </Link>
+                </Button>
+              ) : null}
               <Button size="lg" variant="outline" className="h-12 rounded-xl sm:h-14" asChild>
                 <Link href={siteConfig.links.login}>{content.secondaryCta}</Link>
               </Button>
@@ -204,6 +211,13 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
                 <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
+            {role === "doctor" ? (
+              <Button size="lg" variant="outline" className="h-12 rounded-xl" asChild>
+                <Link href={siteConfig.links.forDoctorsGuide}>
+                  {t.providerOnboarding.doctor.guideCta}
+                </Link>
+              </Button>
+            ) : null}
             <Button size="lg" variant="outline" className="h-12 rounded-xl" asChild>
               <Link href={siteConfig.links.login}>{content.secondaryCta}</Link>
             </Button>

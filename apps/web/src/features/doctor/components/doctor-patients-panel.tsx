@@ -112,7 +112,7 @@ function outcomeMeta(outcome: DoctorPatientLastOutcome) {
 
 function StarRating({ rating }: { rating: number }) {
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
+    <span className="inline-flex shrink-0 items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
       {Array.from({ length: 5 }, (_, index) => {
         const filled = index < rating;
         return (
@@ -222,7 +222,7 @@ export function DoctorPatientsPanel({ patients }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50/80 to-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
@@ -303,19 +303,19 @@ export function DoctorPatientsPanel({ patients }: Props) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
                 <h2 className="text-sm font-semibold text-slate-900">Patient directory</h2>
                 <p className="mt-1 text-xs text-slate-500">
                   Outcomes, reviews, prescriptions, and messaging for each patient.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
                   <Search
                     className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                     aria-hidden
@@ -324,12 +324,12 @@ export function DoctorPatientsPanel({ patients }: Props) {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search patients or reviews..."
-                    className="h-10 pl-9 sm:pl-9"
+                    className="h-10 w-full pl-9 sm:pl-9"
                     aria-label="Search patients"
                   />
                 </div>
 
-                <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                <div className="flex w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-1 sm:w-auto">
                   {(
                     [
                       ["recent", "Recent"],
@@ -342,7 +342,7 @@ export function DoctorPatientsPanel({ patients }: Props) {
                       type="button"
                       onClick={() => setSort(key)}
                       className={cn(
-                        "rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                        "flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition sm:flex-none sm:px-3",
                         sort === key
                           ? "bg-white text-slate-900 shadow-sm"
                           : "text-slate-500 hover:text-slate-700",
@@ -389,24 +389,24 @@ export function DoctorPatientsPanel({ patients }: Props) {
             No patients match this filter. Try another status or search term.
           </div>
         ) : (
-          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-4 p-4 md:grid-cols-2 md:p-5 xl:grid-cols-3">
             {filteredPatients.map((patient) => {
               const outcome = outcomeMeta(patient.lastOutcome);
               return (
                 <article
                   key={patient.id}
-                  className="group flex flex-col rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/60 p-4 transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md"
+                  className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/60 p-3.5 transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md sm:p-4"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     <PatientAvatar name={patient.name} />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="truncate font-semibold text-slate-900">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <h3 className="min-w-0 flex-1 text-pretty font-semibold leading-snug text-slate-900">
                           {patient.name}
                         </h3>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                            "mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight ring-1 ring-inset",
                             outcome.className,
                           )}
                         >
@@ -414,84 +414,81 @@ export function DoctorPatientsPanel({ patients }: Props) {
                         </span>
                       </div>
                       {patient.phone ? (
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
+                        <p className="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-slate-600">
                           <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
-                          <span className="truncate">{patient.phone}</span>
+                          <span className="min-w-0 truncate">{patient.phone}</span>
                         </p>
                       ) : null}
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-4 min-w-0 space-y-2">
                     <div className="flex flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800">
-                        <Stethoscope className="size-3" aria-hidden />
+                      <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800">
+                        <Stethoscope className="size-3 shrink-0" aria-hidden />
                         {patient.appointmentCount} visit
                         {patient.appointmentCount === 1 ? "" : "s"}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                      <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
                         {visitTypeLabel(patient.lastVisitType)}
                       </span>
                       {patient.lastVisitAt ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                          <CalendarDays className="size-3" aria-hidden />
-                          {formatDateTime(patient.lastVisitAt)}
+                        <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                          <CalendarDays className="size-3 shrink-0" aria-hidden />
+                          <span className="min-w-0 break-words">
+                            {formatDateTime(patient.lastVisitAt)}
+                          </span>
                         </span>
                       ) : null}
                     </div>
 
-                    <p className="text-xs leading-relaxed text-slate-500">
+                    <p className="flex flex-wrap gap-x-2 gap-y-1 text-xs leading-relaxed text-slate-500">
                       <span className="font-medium text-emerald-700">
                         {patient.completedCount} completed
                       </span>
-                      <span className="mx-1.5 text-slate-300">·</span>
                       <span className="font-medium text-rose-700">
                         {patient.missedCount} missed
                       </span>
                       {patient.cancelledCount > 0 ? (
-                        <>
-                          <span className="mx-1.5 text-slate-300">·</span>
-                          <span className="font-medium text-slate-600">
-                            {patient.cancelledCount} cancelled
-                          </span>
-                        </>
+                        <span className="font-medium text-slate-600">
+                          {patient.cancelledCount} cancelled
+                        </span>
                       ) : null}
                       {patient.upcomingCount > 0 ? (
-                        <>
-                          <span className="mx-1.5 text-slate-300">·</span>
-                          <span className="font-medium text-violet-700">
-                            {patient.upcomingCount} upcoming
-                          </span>
-                        </>
+                        <span className="font-medium text-violet-700">
+                          {patient.upcomingCount} upcoming
+                        </span>
                       ) : null}
                     </p>
 
                     {patient.prescriptionCount > 0 ? (
-                      <p className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                        <ClipboardList className="size-3.5 text-slate-400" aria-hidden />
+                      <p className="inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-slate-600">
+                        <ClipboardList className="size-3.5 shrink-0 text-slate-400" aria-hidden />
                         {patient.prescriptionCount} prescription
                         {patient.prescriptionCount === 1 ? "" : "s"} issued
                       </p>
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex-1 rounded-xl border border-slate-100 bg-white/80 p-3">
+                  <div className="mt-4 min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-100 bg-white/80 p-3">
                     {patient.review ? (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Latest review
                           </p>
                           <StarRating rating={patient.review.rating} />
                         </div>
                         {patient.review.comment ? (
-                          <p className="line-clamp-3 text-sm leading-relaxed text-slate-700">
+                          <p className="line-clamp-3 break-words text-sm leading-relaxed text-slate-700">
                             “{patient.review.comment}”
                           </p>
                         ) : (
-                          <p className="text-sm text-slate-500">Rated without a written comment.</p>
+                          <p className="break-words text-sm text-slate-500">
+                            Rated without a written comment.
+                          </p>
                         )}
-                        <p className="text-[11px] text-slate-400">
+                        <p className="break-words text-[11px] text-slate-400">
                           {formatDateTime(patient.review.createdAt)}
                         </p>
                       </div>
@@ -510,10 +507,10 @@ export function DoctorPatientsPanel({ patients }: Props) {
                     )}
                   </div>
 
-                  <div className="mt-4 border-t border-slate-100 pt-4">
-                    <Button asChild size="sm" className="w-full gap-1.5">
+                  <div className="mt-4 min-w-0 border-t border-slate-100 pt-4">
+                    <Button asChild size="sm" className="w-full max-w-full gap-1.5">
                       <Link href={`${siteConfig.links.doctorMessages}?patient=${patient.id}`}>
-                        <MessageSquare className="size-3.5" aria-hidden />
+                        <MessageSquare className="size-3.5 shrink-0" aria-hidden />
                         Message patient
                       </Link>
                     </Button>

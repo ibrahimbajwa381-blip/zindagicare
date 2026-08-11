@@ -40,6 +40,11 @@ export const marketingPageSeo = {
     description:
       "Grow your practice on ZindagiCare. PMDC-verified doctors in Pakistan can offer online video consultations, manage bookings, and reach patients through telemedicine.",
   },
+  forDoctorsGuide: {
+    title: "Doctor Guide — Earnings, How to Join & Use ZindagiCare",
+    description:
+      "Complete ZindagiCare doctor guide: keep 70% of paid consults, monthly payouts, how to join, Sunday volunteer care, urgent care, home visits in Lahore, and a full product demo.",
+  },
   forNurses: {
     title: "Join ZindagiCare as a Nurse — Home Nursing Lahore",
     description:

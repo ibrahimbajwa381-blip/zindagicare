@@ -1,6 +1,6 @@
 import type { LegalDocument, LegalDocumentSlug } from "@/features/legal/types";
 
-const CONTACT = "support@zindagicare.pk";
+const CONTACT = "info.zindagicare@gmail.com";
 const LAST_UPDATED = "Last updated: 17 July 2026";
 
 const privacy: LegalDocument = {

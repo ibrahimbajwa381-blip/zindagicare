@@ -102,20 +102,33 @@ export class VideoSessionService {
 
     const [session, hasPrescription] = await Promise.all([
       VideoSessionModel.findOne(mongoFilter({ appointmentId: appointment._id.toString() }))
-        .select("patientJoinedAt doctorJoinedAt")
+        .select("patientJoinedAt doctorJoinedAt status")
         .lean(),
       PrescriptionModel.exists(
         mongoFilter({ appointmentId: appointment._id, deletedAt: null }),
       ),
     ]);
 
-    const attended = Boolean(session?.patientJoinedAt || hasPrescription);
+    const slotWindow = getVideoJoinWindow(
+      appointment.scheduledStart,
+      appointment.scheduledEnd,
+    );
+    const staleAfterMs = 2 * 60 * 60 * 1000;
+    const windowStale = Date.now() > slotWindow.joinClosesAt.getTime() + staleAfterMs;
+
+    const attended = Boolean(
+      session?.patientJoinedAt ||
+        hasPrescription ||
+        session?.status === VideoSessionStatuses.COMPLETED ||
+        (windowStale && session?.doctorJoinedAt),
+    );
     if (!attended) return false;
 
+    const completedAt = appointment.completedAt ?? new Date();
     await AppointmentModel.updateOne(mongoFilter({ _id: appointment._id }), {
       $set: {
         status: AppointmentStatuses.COMPLETED,
-        completedAt: appointment.completedAt ?? new Date(),
+        completedAt,
       },
     });
 
@@ -125,9 +138,15 @@ export class VideoSessionService {
         {
           $set: {
             status: SundayFreeRequestStatuses.COMPLETED,
-            completedAt: appointment.completedAt ?? new Date(),
+            completedAt,
           },
         },
+      );
+    }
+
+    if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
+      await UrgentConsultService.tryCompleteByAppointmentId(
+        appointment._id.toString(),
       );
     }
 
@@ -408,7 +427,14 @@ export class VideoSessionService {
     );
 
     if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
-      await UrgentConsultService.tryCompleteByAppointmentId(appointment._id.toString());
+      const completed = await UrgentConsultService.tryCompleteByAppointmentId(
+        appointment._id.toString(),
+      );
+      if (!completed) {
+        await VideoSessionService.finalizeAppointmentIfAttended(
+          appointment._id.toString(),
+        );
+      }
       return;
     }
 

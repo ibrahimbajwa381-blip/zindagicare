@@ -161,7 +161,7 @@ function drawFooter(
       .fontSize(7.5)
       .fillColor(BRAND.muted)
       .text(
-        "ZindagiCare  ·  support@zindagicare.pk  ·  Verified telemedicine — Lahore, Pakistan",
+        "ZindagiCare  ·  info.zindagicare@gmail.com  ·  Verified telemedicine — Lahore, Pakistan",
         doc.page.margins.left + 26,
         footerY - 4,
         { width: pageWidth - 26 },
@@ -171,7 +171,7 @@ function drawFooter(
       .font("Helvetica")
       .fontSize(7.5)
       .fillColor(BRAND.muted)
-      .text("ZindagiCare  ·  support@zindagicare.pk", doc.page.margins.left, footerY - 4, {
+      .text("ZindagiCare  ·  info.zindagicare@gmail.com", doc.page.margins.left, footerY - 4, {
         width: pageWidth,
         align: "center",
       });

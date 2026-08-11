@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { fetchThreads } from "@/features/chat/lib/chat-api";
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export function DoctorMobilePracticeNav({ className }: Props) {
+  const pathname = usePathname();
   const [stats, setStats] = useState<DoctorNavStats>({
     unreadMessages: 0,
     pendingRequests: 0,
@@ -85,23 +87,36 @@ export function DoctorMobilePracticeNav({ className }: Props) {
       aria-label="Practice shortcuts"
       className={cn(className)}
     >
-      <ul className="flex gap-0.5 overflow-x-auto px-2 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-3">
+      <ul className="flex w-full items-stretch justify-between gap-0.5 overflow-x-auto px-1 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-2">
         {DOCTOR_WORKSPACE_ACTIONS.map((item) => {
           const Icon = item.icon;
           const badge = doctorNavBadgeCount(item, stats);
           const shortLabel = SHORT_LABELS[item.href] ?? item.label;
+          const active =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
-            <li key={item.href} className="shrink-0">
+            <li key={item.href} className="min-w-0 flex-1">
               <Link
                 href={item.href}
                 title={item.label}
+                aria-current={active ? "page" : undefined}
                 aria-label={
                   badge !== null ? `${item.label}, ${badge} pending` : item.label
                 }
-                className="relative flex w-[3.75rem] flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand active:bg-slate-200 sm:w-16"
+                className={cn(
+                  "relative flex w-full flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 transition-colors",
+                  active
+                    ? "text-brand"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-brand active:bg-slate-200",
+                )}
               >
-                <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                <span
+                  className={cn(
+                    "relative flex h-8 w-8 items-center justify-center rounded-full",
+                    active ? "bg-brand/10 text-brand" : "bg-slate-100 text-slate-700",
+                  )}
+                >
                   <Icon className="h-3.5 w-3.5" />
                   {badge !== null && (
                     <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand px-0.5 text-[8px] font-bold leading-none text-white tabular-nums">

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useMounted } from "@/hooks/use-mounted";
 import { useTranslations } from "@/i18n/locale-provider";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
@@ -20,10 +21,12 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export function WhatsAppFloatButton() {
   const mounted = useMounted();
+  const pathname = usePathname();
   const t = useTranslations();
   const href = getWhatsAppSupportUrl(t.common.whatsappPrefill);
 
   if (!mounted) return null;
+  if (pathname?.startsWith("/doctor")) return null;
 
   return (
     <a

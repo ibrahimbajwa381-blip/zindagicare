@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  BookOpen,
   CalendarHeart,
   FileText,
   HeartPulse,
@@ -117,6 +118,7 @@ export function SiteFooter() {
 
   const providerLinks: FooterLinkItem[] = [
     { href: siteConfig.links.forDoctors, label: t.providerOnboarding.doctor.eyebrow, icon: Stethoscope },
+    { href: siteConfig.links.forDoctorsGuide, label: t.breadcrumbs.doctorGuide, icon: BookOpen },
     { href: siteConfig.links.forNurses, label: t.providerOnboarding.nurse.eyebrow, icon: HeartPulse },
     { href: siteConfig.links.forPhysiotherapists, label: t.providerOnboarding.physiotherapist.eyebrow, icon: HeartPulse },
     { href: siteConfig.links.registerDoctor, label: t.auth.registerDoctor, icon: UserPlus },

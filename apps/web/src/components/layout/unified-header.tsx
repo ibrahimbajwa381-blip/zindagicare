@@ -40,11 +40,6 @@ type UnifiedHeaderProps = {
   menuLabel?: string;
   openMenuLabel?: string;
   closeMenuLabel?: string;
-  /**
-   * Below `lg`, keep the header in document flow (not sticky) so a following
-   * sticky strip can take its place as the user scrolls.
-   */
-  releaseStickyOnMobile?: boolean;
 };
 
 export function UnifiedHeader({
@@ -57,7 +52,6 @@ export function UnifiedHeader({
   menuLabel,
   openMenuLabel,
   closeMenuLabel,
-  releaseStickyOnMobile = false,
 }: UnifiedHeaderProps) {
   const t = useTranslations();
   const { data: session } = useSession();
@@ -112,7 +106,6 @@ export function UnifiedHeader({
       dir="ltr"
       className={cn(
         appHeaderShell,
-        releaseStickyOnMobile && "max-lg:relative max-lg:top-auto",
         hidden &&
           "max-md:translate-y-0 md:pointer-events-none md:-translate-y-full md:transition-transform md:duration-300 md:ease-in-out md:motion-reduce:transition-none",
       )}

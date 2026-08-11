@@ -43,6 +43,7 @@ export const ur: Dictionary = {
     refundPolicy: "واپسی کی پالیسی",
     telemedicineConsent: "آن لائن علاج کی اجازت",
     forDoctors: "ڈاکٹرز کے لیے",
+    doctorGuide: "ڈاکٹر گائیڈ",
     forNurses: "نرسز کے لیے",
     forPhysiotherapists: "فزیو تھراپسٹس کے لیے",
     getApp: "ایپ انسٹال کریں",
@@ -1856,6 +1857,7 @@ export const ur: Dictionary = {
         "اپنا ڈاکٹر اکاؤنٹ بنائیں اور تصدیق مکمل کریں — ایڈمن منظور ہونے کے بعد ورک اسپیس کھل جائے گا۔",
       primaryCta: "ڈاکٹر کے طور پر رجسٹر",
       secondaryCta: "لاگ ان",
+      guideCta: "مکمل ڈاکٹر گائیڈ",
     },
     nurse: {
       eyebrow: "نرسز کے لیے",

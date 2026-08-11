@@ -30,7 +30,7 @@ export const siteConfig = {
     bingSiteVerification: "926E710D97534856394734561D5740B9",
   },
   launchCity: LAUNCH_CITY,
-  supportEmail: "support@zindagicare.pk",
+  supportEmail: "info.zindagicare@gmail.com",
   supportWhatsApp: "923074583567",
   supportWhatsAppDisplay: "0307 458 3567",
   /** Direct call numbers shown after Sunday free-consult requests. */
@@ -59,6 +59,7 @@ export const siteConfig = {
     registerNurse: "/register/nurse",
     registerPhysiotherapist: "/register/physiotherapist",
     forDoctors: "/for-doctors",
+    forDoctorsGuide: "/for-doctors/guide",
     forNurses: "/for-nurses",
     forPhysiotherapists: "/for-physiotherapists",
     privacy: "/privacy",

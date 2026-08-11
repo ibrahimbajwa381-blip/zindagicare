@@ -14,6 +14,7 @@ const MARKETING_ROUTES = [
   "/home-physiotherapy",
   "/home-care/request",
   "/for-doctors",
+  "/for-doctors/guide",
   "/for-nurses",
   "/for-physiotherapists",
   "/get-app",

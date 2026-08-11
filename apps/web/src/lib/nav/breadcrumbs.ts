@@ -76,6 +76,7 @@ const SEGMENT_LABELS: Record<string, { name: string; labelKey?: string }> = {
 };
 
 const FULL_PATH_LABELS: Record<string, { name: string; labelKey?: string }> = {
+  "/for-doctors/guide": { name: "Doctor guide", labelKey: "breadcrumbs.doctorGuide" },
   "/dashboard": { name: "My dashboard", labelKey: "breadcrumbs.dashboard" },
   "/admin": { name: "Overview", labelKey: "breadcrumbs.overview" },
   "/doctor/profile": { name: "Overview", labelKey: "breadcrumbs.overview" },
