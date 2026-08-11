@@ -57,7 +57,7 @@ export function DoctorGuidePage() {
 
 function Hero() {
   return (
-    <PageSection spacing="tall" variant="brand">
+    <PageSection spacing="lg" variant="brand">
       <div className="mx-auto max-w-4xl text-center">
         <p className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white sm:text-sm">
           <Stethoscope className="h-4 w-4" />
@@ -112,7 +112,7 @@ function Hero() {
 
 function VideoSection() {
   return (
-    <PageSection id="demo" variant="soft" spacing="lg" className="scroll-mt-[7.5rem] sm:scroll-mt-[8.25rem]">
+    <PageSection id="demo" variant="soft" spacing="lg" className="scroll-mt-28 sm:scroll-mt-32">
       <SectionHeader
         eyebrow="Watch first"
         title="Full platform walkthrough"
@@ -152,7 +152,7 @@ function VideoSection() {
 
 function EarningsSection() {
   return (
-    <PageSection id="earnings" variant="accent" spacing="lg" flipBlur className="scroll-mt-[7.5rem] sm:scroll-mt-[8.25rem]">
+    <PageSection id="earnings" variant="accent" spacing="lg" flipBlur className="scroll-mt-28 sm:scroll-mt-32">
       <SectionHeader
         eyebrow="Compensation"
         title="You keep 70% of every paid consult"
@@ -250,7 +250,7 @@ function JoinSection() {
   ] as const;
 
   return (
-    <PageSection id="join" variant="neutral" spacing="lg" className="scroll-mt-[7.5rem] sm:scroll-mt-[8.25rem]">
+    <PageSection id="join" variant="neutral" spacing="lg" className="scroll-mt-28 sm:scroll-mt-32">
       <SectionHeader
         eyebrow="Getting started"
         title="How to join as a doctor"
@@ -332,7 +332,7 @@ function PatientDemandSection() {
 
 function WorkspaceSection() {
   return (
-    <PageSection id="workspace" variant="soft" spacing="lg" flipBlur className="scroll-mt-[7.5rem] sm:scroll-mt-[8.25rem]">
+    <PageSection id="workspace" variant="soft" spacing="lg" flipBlur className="scroll-mt-28 sm:scroll-mt-32">
       <SectionHeader
         eyebrow="Doctor workspace"
         title="How to use the system"
@@ -460,7 +460,7 @@ function WorkspaceSection() {
 
 function AttendanceSection() {
   return (
-    <PageSection id="attendance" variant="neutral" spacing="lg" className="scroll-mt-[7.5rem] sm:scroll-mt-[8.25rem]">
+    <PageSection id="attendance" variant="neutral" spacing="lg" className="scroll-mt-28 sm:scroll-mt-32">
       <SectionHeader
         eyebrow="Practice standards"
         title="Join your appointments on time"
@@ -500,7 +500,7 @@ function AttendanceSection() {
 
 function FaqSection() {
   return (
-    <PageSection id="faq" variant="soft" spacing="lg" flipBlur className="scroll-mt-[7.5rem] sm:scroll-mt-[8.25rem]">
+    <PageSection id="faq" variant="soft" spacing="lg" flipBlur className="scroll-mt-28 sm:scroll-mt-32">
       <div className="mx-auto max-w-3xl">
         <SectionHeader
           eyebrow="Questions"
