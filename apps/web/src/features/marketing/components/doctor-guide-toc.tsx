@@ -21,7 +21,7 @@ const TOC = [
   { href: "#faq", id: "faq", label: "FAQ", short: "FAQ", icon: CircleHelp },
 ] as const;
 
-const MOBILE_HEADER_OFFSET = "4rem";
+const MOBILE_HEADER_OFFSET_PX = "64px";
 
 export function DoctorGuideToc() {
   const headerHidden = useHideOnScroll();
@@ -65,7 +65,7 @@ export function DoctorGuideToc() {
       },
       {
         threshold: 0,
-        rootMargin: `-${MOBILE_HEADER_OFFSET} 0px 0px 0px`,
+        rootMargin: `-${MOBILE_HEADER_OFFSET_PX} 0px 0px 0px`,
       },
     );
 
