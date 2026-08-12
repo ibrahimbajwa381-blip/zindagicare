@@ -9,6 +9,7 @@ export const POST = withApiHandler(
       body.doctorProfileId,
       body.action,
       body.rejectionReason,
+      body.verifiedSpecialties,
     );
     return {
       id: profile._id.toString(),

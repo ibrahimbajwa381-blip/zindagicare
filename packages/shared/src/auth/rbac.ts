@@ -89,6 +89,7 @@ export const Permissions = {
   "admin.users.read": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.users.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.doctors.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.doctors.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "doctor.profile.manage": [Roles.DOCTOR],
   "doctor.sunday.manage": [Roles.DOCTOR],
   "patient.book": [Roles.PATIENT],

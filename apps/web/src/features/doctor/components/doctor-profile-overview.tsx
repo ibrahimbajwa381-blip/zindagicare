@@ -10,7 +10,7 @@ import {
   Stethoscope,
   Users,
 } from "lucide-react";
-import { VerificationStatuses } from "@zindagi/shared";
+import { VerificationStatuses, resolveDisplaySpecialty } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DoctorAvatar } from "@/features/doctor/components/doctor-avatar";
@@ -94,7 +94,11 @@ function PracticeStat({
 export function DoctorProfileOverview({ profile, summary }: Props) {
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
   const isPending = profile.verificationStatus === VerificationStatuses.PENDING;
-  const specialty = profile.specialties.join(", ") || "General physician";
+  const specialty = resolveDisplaySpecialty({
+    primarySpecialty: profile.primarySpecialty,
+    specialties: profile.specialties,
+    fallback: "General physician",
+  });
   const credentials = formatQualificationsList(
     profile.medicalDegree,
     profile.qualifications,
@@ -148,7 +152,7 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
                   <Badge variant="secondary">Sunday consult</Badge>
                 )}
               </div>
-              {isApproved && (
+              {(isApproved || isPending) && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <Link href="/doctor/profile/edit">
@@ -161,7 +165,7 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
                 {isApproved
                   ? "Manage consultations, track earnings, and handle home visits from your workspace."
-                  : "Your full workspace unlocks once an admin reviews and approves your application."}
+                  : "You can update your profile while we verify your credentials. Your full workspace unlocks once approved."}
               </p>
             </div>
           </div>
@@ -335,7 +339,21 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
             </h2>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
-                { label: "Specialization", value: profile.specialties.join(", ") || "—" },
+                {
+                  label: "Primary specialty",
+                  value: profile.primarySpecialty ?? profile.specialties[0] ?? "—",
+                },
+                {
+                  label: "Additional specialties",
+                  value: (profile.additionalSpecialties.length
+                    ? profile.additionalSpecialties
+                    : profile.specialties.slice(1)
+                  ).join(", ") || "—",
+                },
+                {
+                  label: "Verified for patients",
+                  value: profile.specialties.join(", ") || "Pending verification",
+                },
                 { label: "Primary degree", value: profile.medicalDegree ?? "—" },
                 {
                   label: "Other qualifications",

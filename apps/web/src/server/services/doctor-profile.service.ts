@@ -90,6 +90,8 @@ function mapProfileToDto(
     medicalCollege: profile.medicalCollege ?? undefined,
     graduationYear: profile.graduationYear ?? undefined,
     experienceYears: profile.experienceYears ?? 0,
+    primarySpecialty: profile.primarySpecialty ?? undefined,
+    additionalSpecialties: profile.additionalSpecialties ?? [],
     specialties: profile.specialties ?? [],
     bio: profile.bio ?? undefined,
     languages: profile.languages ?? ["English", "Urdu"],
@@ -167,7 +169,7 @@ function computeMaxSundaySlots(
   );
 }
 
-async function upsertSundayTemplateFromProfileEdit(
+export async function upsertSundayTemplateFromProfileEdit(
   doctorProfileId: string,
   sundayConsult: NonNullable<UpdateDoctorProfileInput["sundayConsult"]>,
 ) {
@@ -229,15 +231,11 @@ export async function updateDoctorProfile(
     throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
   }
 
-  if (profile.verificationStatus === VerificationStatuses.PENDING) {
-    throw new AppError(
-      "Profile cannot be edited while pending admin review",
-      "FORBIDDEN",
-      403,
-    );
-  }
+  const canEdit =
+    profile.verificationStatus === VerificationStatuses.APPROVED ||
+    profile.verificationStatus === VerificationStatuses.PENDING;
 
-  if (profile.verificationStatus !== VerificationStatuses.APPROVED) {
+  if (!canEdit) {
     throw new AppError(
       "Use verification to resubmit your application",
       "FORBIDDEN",
@@ -288,8 +286,13 @@ export async function updateDoctorProfile(
   if (data.consultationFee !== undefined) {
     profile.consultationFee = data.consultationFee;
   }
-  if (data.specialties !== undefined) {
-    profile.specialties = data.specialties;
+  if (data.primarySpecialty !== undefined) {
+    profile.primarySpecialty = data.primarySpecialty;
+    profile.additionalSpecialties = data.additionalSpecialties ?? [];
+    // Doctors may request specialty changes; patient-visible list stays admin-verified.
+    if (profile.verificationStatus === VerificationStatuses.PENDING) {
+      profile.specialties = [];
+    }
   }
   if (data.languages !== undefined) {
     profile.languages = data.languages;

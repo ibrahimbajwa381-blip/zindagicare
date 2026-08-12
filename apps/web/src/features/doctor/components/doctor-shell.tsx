@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { AlertTriangle, Menu, ShieldAlert } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { UnifiedHeader } from "@/components/layout/unified-header";
 import { DoctorMobilePracticeNav } from "@/features/doctor/components/doctor-mobile-practice-nav";
 import { DoctorSidebar } from "@/features/doctor/components/doctor-sidebar";
@@ -117,6 +118,7 @@ export function DoctorShell({
             {children}
           </div>
         </main>
+        <SiteFooter />
         {showPracticeNav ? (
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
             <DoctorMobilePracticeNav />

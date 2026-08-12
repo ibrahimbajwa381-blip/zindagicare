@@ -120,10 +120,11 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
                     {t.providerOnboarding.doctor.guideCta}
                   </Link>
                 </Button>
-              ) : null}
-              <Button size="lg" variant="outline" className="h-12 rounded-xl sm:h-14" asChild>
-                <Link href={siteConfig.links.login}>{content.secondaryCta}</Link>
-              </Button>
+              ) : (
+                <Button size="lg" variant="outline" className="h-12 rounded-xl sm:h-14" asChild>
+                  <Link href={siteConfig.links.login}>{content.secondaryCta}</Link>
+                </Button>
+              )}
             </div>
           </div>
 

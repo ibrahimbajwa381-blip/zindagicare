@@ -10,6 +10,8 @@ export const mockDoctors = [
     reviews: 312,
     fee: 2500,
     pmdcVerified: true,
+    medicalDegree: "MBBS",
+    qualifications: ["FCPS"],
     imageUrl: getDemoDoctorImage("Dr. Ayesha Khan"),
   },
   {
@@ -21,6 +23,8 @@ export const mockDoctors = [
     reviews: 198,
     fee: 3500,
     pmdcVerified: true,
+    medicalDegree: "MBBS",
+    qualifications: ["MRCP", "MD Cardiology (R)"],
     imageUrl: getDemoDoctorImage("Dr. Hassan Raza"),
   },
   {
@@ -32,6 +36,8 @@ export const mockDoctors = [
     reviews: 421,
     fee: 3000,
     pmdcVerified: true,
+    medicalDegree: "MBBS",
+    qualifications: ["FCPS Dermatology"],
     imageUrl: getDemoDoctorImage("Dr. Sara Ahmed"),
   },
   {
@@ -43,6 +49,8 @@ export const mockDoctors = [
     reviews: 156,
     fee: 2800,
     pmdcVerified: true,
+    medicalDegree: "MBBS",
+    qualifications: ["MCPS Pediatrics"],
     imageUrl: getDemoDoctorImage("Dr. Omar Siddiqui"),
   },
   {
@@ -54,6 +62,8 @@ export const mockDoctors = [
     reviews: 267,
     fee: 3200,
     pmdcVerified: true,
+    medicalDegree: "MBBS",
+    qualifications: ["FCPS Obstetrics & Gynaecology"],
     imageUrl: getDemoDoctorImage("Dr. Fatima Malik"),
   },
   {
@@ -65,6 +75,8 @@ export const mockDoctors = [
     reviews: 89,
     fee: 4000,
     pmdcVerified: true,
+    medicalDegree: "MBBS",
+    qualifications: ["FCPS Orthopedics"],
     imageUrl: getDemoDoctorImage("Dr. Usman Ali"),
   },
 ] as const;

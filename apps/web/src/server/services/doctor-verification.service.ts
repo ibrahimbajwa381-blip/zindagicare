@@ -9,6 +9,8 @@ import {
   Roles,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
+  claimedSpecialties,
+  normalizeAdditionalSpecialties,
 } from "@zindagi/shared";
 import type { z } from "zod";
 import type { doctorVerificationSchema } from "@zindagi/validators";
@@ -117,7 +119,10 @@ export async function submitDoctorVerification(
   profile.medicalCollege = input.medicalCollege;
   profile.graduationYear = input.graduationYear;
   profile.experienceYears = input.experienceYears;
-  profile.specialties = input.specialties;
+  profile.primarySpecialty = input.primarySpecialty;
+  profile.additionalSpecialties = input.additionalSpecialties;
+  // Patient-visible specialties stay empty until an admin verifies them.
+  profile.specialties = [];
   profile.bio = input.bio;
   profile.consultationFee = input.consultationFee ?? 0;
 
@@ -221,6 +226,7 @@ export async function decideDoctorVerification(
   doctorProfileId: string,
   action: "approve" | "reject",
   rejectionReason?: string,
+  verifiedSpecialties?: string[],
 ) {
   await connectDatabase();
   const profile = (await DoctorProfileModel.findById(
@@ -232,6 +238,50 @@ export async function decideDoctorVerification(
   if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
 
   if (action === "approve") {
+    const primary =
+      profile.primarySpecialty?.trim() ||
+      profile.specialties?.[0] ||
+      "";
+    const additional = normalizeAdditionalSpecialties(
+      primary,
+      profile.additionalSpecialties ?? profile.specialties?.slice(1) ?? [],
+    );
+    const claimed = claimedSpecialties(primary, additional);
+    if (!claimed.length) {
+      throw new AppError(
+        "Doctor must have a primary specialty before approval",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+
+    const claimedSet = new Set(claimed);
+    let verified = verifiedSpecialties?.length
+      ? [...new Set(verifiedSpecialties.map((s) => s.trim()).filter(Boolean))]
+      : claimed;
+
+    verified = verified.filter((s) => claimedSet.has(s));
+    if (!verified.length) {
+      throw new AppError(
+        "Select at least one specialty from the doctor's requested list to verify",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+
+    // Keep primary first in the verified list when it is included.
+    if (primary && verified.includes(primary)) {
+      verified = [primary, ...verified.filter((s) => s !== primary)];
+    }
+
+    if (!profile.primarySpecialty) {
+      profile.primarySpecialty = primary;
+    }
+    if (!profile.additionalSpecialties?.length && additional.length) {
+      profile.additionalSpecialties = additional;
+    }
+    profile.specialties = verified;
+
     profile.verificationStatus = VerificationStatuses.APPROVED;
     profile.pmdcVerified = true;
     profile.isListed = true;

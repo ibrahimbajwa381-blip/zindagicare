@@ -2,7 +2,7 @@ import {
   connectDatabase,
   DoctorProfileModel,
 } from "@zindagi/database";
-import { VerificationStatuses } from "@zindagi/shared";
+import { VerificationStatuses, resolveDisplaySpecialty } from "@zindagi/shared";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
   FeaturedDoctorCard,
@@ -89,13 +89,18 @@ async function queryFeaturedDoctors(limit: number): Promise<FeaturedDoctorCard[]
       doctorId: doc._id.toString(),
       slug: resolveDoctorSlug(doc.slug, name),
       name,
-      specialty: doc.specialties?.[0] ?? "General Physician",
+      specialty: resolveDisplaySpecialty({
+        primarySpecialty: doc.primarySpecialty,
+        specialties: doc.specialties,
+      }),
       hospital: doc.hospitals?.[0]?.name ?? "Lahore",
       rating: doc.ratingAvg ?? 0,
       reviews: doc.ratingCount ?? 0,
       fee: doc.consultationFee ?? 0,
       pmdcVerified: doc.pmdcVerified ?? false,
       imageUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+      medicalDegree: doc.medicalDegree ?? undefined,
+      qualifications: doc.qualifications ?? [],
     };
   });
 }

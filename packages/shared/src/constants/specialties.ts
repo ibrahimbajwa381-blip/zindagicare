@@ -1,4 +1,4 @@
-/** Full specialty list (deduplicated, display order). Used for onboarding and patient browse. */
+/** Full specialty list (deduplicated). Featured browse order is the list order; forms sort A–Z. */
 export const SPECIALTIES = [
   "Dermatologist",
   "Gynecologist",
@@ -139,8 +139,68 @@ export const SPECIALTIES = [
 
 export type Specialty = (typeof SPECIALTIES)[number];
 
+/** Max additional specialties a doctor may request beyond the primary. */
+export const MAX_ADDITIONAL_SPECIALTIES = 4;
+
+/** Max admin-verified specialties visible to patients (primary + additional). */
+export const MAX_VERIFIED_SPECIALTIES = MAX_ADDITIONAL_SPECIALTIES + 1;
+
 const SPECIALTY_SET = new Set<string>(SPECIALTIES);
+
+/** Alphabetically sorted copy for searchable specialty pickers. */
+export const SPECIALTIES_ALPHABETICAL: readonly Specialty[] = [...SPECIALTIES].sort((a, b) =>
+  a.localeCompare(b, "en", { sensitivity: "base" }),
+);
 
 export function isKnownSpecialty(value: string): value is Specialty {
   return SPECIALTY_SET.has(value);
+}
+
+/** Deduplicate additional specialties and drop the primary if repeated. */
+export function normalizeAdditionalSpecialties(
+  primarySpecialty: string,
+  additionalSpecialties: readonly string[],
+): string[] {
+  const primary = primarySpecialty.trim();
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const raw of additionalSpecialties) {
+    const value = raw.trim();
+    if (!value || value === primary || seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+
+  return result;
+}
+
+/** Claimed specialties in display order: primary first, then additional. */
+export function claimedSpecialties(
+  primarySpecialty: string | undefined | null,
+  additionalSpecialties: readonly string[] | undefined | null,
+): string[] {
+  const primary = primarySpecialty?.trim();
+  const additional = normalizeAdditionalSpecialties(
+    primary ?? "",
+    additionalSpecialties ?? [],
+  );
+  return primary ? [primary, ...additional] : additional;
+}
+
+/**
+ * Specialty shown on cards / titles: prefer verified primary, else first verified,
+ * else claimed primary (doctor-facing fallback).
+ */
+export function resolveDisplaySpecialty(input: {
+  primarySpecialty?: string | null;
+  specialties?: readonly string[] | null;
+  fallback?: string;
+}): string {
+  const verified = input.specialties ?? [];
+  const primary = input.primarySpecialty?.trim();
+  if (primary && verified.includes(primary)) return primary;
+  if (verified[0]) return verified[0];
+  if (primary) return primary;
+  return input.fallback ?? "General Physician";
 }

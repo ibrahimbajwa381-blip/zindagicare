@@ -46,4 +46,6 @@ export type FeaturedDoctorCard = {
   fee: number;
   pmdcVerified: boolean;
   imageUrl?: string;
+  medicalDegree?: string;
+  qualifications: string[];
 };

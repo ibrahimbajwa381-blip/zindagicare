@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { CalendarHeart, Clock, Home, Plus, Trash2 } from "lucide-react";
-import { HOME_CARE_MATCH_RADIUS_KM, isKnownSpecialty, SPECIALTIES } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES, VerificationStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
+import { DoctorSpecialtyFields } from "@/components/forms/doctor-specialty-fields";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { previewSundaySlots } from "@/lib/sunday/display";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
@@ -62,9 +63,26 @@ function buildAvailabilityFromProfile(
 
 type Props = {
   profile: DoctorProfileDto;
+  /** PATCH endpoint — defaults to doctor self-edit API. */
+  apiEndpoint?: string;
+  /** Where to go after a successful save. */
+  successRedirect?: string;
+  /** Update the signed-in session name/avatar (doctor self-edit only). */
+  syncSession?: boolean;
+  /** Allow editing PMDC, degree, college, and experience (admin). */
+  allowCredentialEdit?: boolean;
+  /** Avatar upload endpoint — defaults to doctor self-serve upload. */
+  avatarUploadEndpoint?: string;
 };
 
-export function DoctorProfileEditForm({ profile }: Props) {
+export function DoctorProfileEditForm({
+  profile,
+  apiEndpoint = "/api/v1/doctor/profile",
+  successRedirect = "/doctor/profile",
+  syncSession = true,
+  allowCredentialEdit = false,
+  avatarUploadEndpoint,
+}: Props) {
   const router = useRouter();
   const { update } = useSession();
   const [error, setError] = useState<string>();
@@ -75,11 +93,29 @@ export function DoctorProfileEditForm({ profile }: Props) {
   const [phone, setPhone] = useState(profile.user.phone ?? "");
   const [avatarUrl, setAvatarUrl] = useState(profile.user.avatarUrl ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
-  const [specialty, setSpecialty] = useState(
-    profile.specialties[0] ??
+  const [pmdcNumber, setPmdcNumber] = useState(profile.pmdcNumber ?? "");
+  const [medicalDegree, setMedicalDegree] = useState(profile.medicalDegree ?? "");
+  const [qualifications, setQualifications] = useState(
+    (profile.qualifications ?? []).join(", "),
+  );
+  const [medicalCollege, setMedicalCollege] = useState(profile.medicalCollege ?? "");
+  const [graduationYear, setGraduationYear] = useState(
+    profile.graduationYear ? String(profile.graduationYear) : "",
+  );
+  const [experienceYears, setExperienceYears] = useState(
+    String(profile.experienceYears ?? 0),
+  );
+  const [primarySpecialty, setPrimarySpecialty] = useState(
+    profile.primarySpecialty ??
+      profile.specialties[0] ??
       SPECIALTIES.find((item) => item === "General Physician") ??
       SPECIALTIES[0] ??
       "",
+  );
+  const [additionalSpecialties, setAdditionalSpecialties] = useState(
+    profile.additionalSpecialties?.length
+      ? profile.additionalSpecialties
+      : profile.specialties.slice(1),
   );
   const [consultationFee, setConsultationFee] = useState(
     String(profile.consultationFee ?? 0),
@@ -184,8 +220,8 @@ export function DoctorProfileEditForm({ profile }: Props) {
       return;
     }
 
-    if (!specialty.trim() || !isKnownSpecialty(specialty)) {
-      setError("Select your specialization category.");
+    if (!primarySpecialty.trim()) {
+      setError("Select your primary specialty.");
       setPending(false);
       return;
     }
@@ -211,7 +247,8 @@ export function DoctorProfileEditForm({ profile }: Props) {
         : {}),
       bio: bio.trim() || null,
       consultationFee: Number(consultationFee) || 0,
-      specialties: [specialty],
+      primarySpecialty,
+      additionalSpecialties,
       languages: languageList,
       hospitals: cleanedHospitals,
       weeklyAvailability,
@@ -226,9 +263,22 @@ export function DoctorProfileEditForm({ profile }: Props) {
         endTimeLocal: sundayEnabled ? sundayEnd : undefined,
         slotDurationMins,
       },
+      ...(allowCredentialEdit
+        ? {
+            pmdcNumber: pmdcNumber.trim() || undefined,
+            medicalDegree: medicalDegree.trim() || undefined,
+            qualifications: qualifications
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            medicalCollege: medicalCollege.trim() || undefined,
+            graduationYear: graduationYear ? Number(graduationYear) : undefined,
+            experienceYears: Number(experienceYears) || 0,
+          }
+        : {}),
     };
 
-    const res = await fetch("/api/v1/doctor/profile", {
+    const res = await fetch(apiEndpoint, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -246,25 +296,99 @@ export function DoctorProfileEditForm({ profile }: Props) {
       return;
     }
 
-    await update({
-      name: name.trim(),
-      ...(avatarUrl && avatarUrl !== profile.user.avatarUrl
-        ? { image: avatarUrl }
-        : {}),
-    });
-    router.push("/doctor/profile");
+    if (syncSession) {
+      await update({
+        name: name.trim(),
+        ...(avatarUrl && avatarUrl !== profile.user.avatarUrl
+          ? { image: avatarUrl }
+          : {}),
+      });
+    }
+    router.push(successRedirect);
     router.refresh();
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
-        <p className="font-medium text-slate-900">Credentials are read-only</p>
-        <p className="mt-1">
-          PMDC ({profile.pmdcNumber ?? "—"}), degree, and verification documents cannot
-          be changed here. Contact support if your credentials need updating.
-        </p>
-      </section>
+      {allowCredentialEdit ? (
+        <section className="space-y-4">
+          <div className="rounded-xl border border-brand/20 bg-brand/5 p-4 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">Admin profile correction</p>
+            <p className="mt-1">
+              You can fix any field on this doctor&apos;s profile, including credentials
+              doctors cannot change themselves.
+            </p>
+          </div>
+          <h2 className="text-sm font-semibold text-slate-900">Credentials</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="pmdcNumber">PMDC number</Label>
+              <Input
+                id="pmdcNumber"
+                value={pmdcNumber}
+                onChange={(e) => setPmdcNumber(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="medicalDegree">Medical degree</Label>
+              <Input
+                id="medicalDegree"
+                value={medicalDegree}
+                onChange={(e) => setMedicalDegree(e.target.value)}
+                placeholder="MBBS"
+              />
+            </div>
+            <div>
+              <Label htmlFor="medicalCollege">Medical college</Label>
+              <Input
+                id="medicalCollege"
+                value={medicalCollege}
+                onChange={(e) => setMedicalCollege(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="graduationYear">Graduation year</Label>
+              <Input
+                id="graduationYear"
+                type="number"
+                min={1950}
+                max={new Date().getFullYear()}
+                value={graduationYear}
+                onChange={(e) => setGraduationYear(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="experienceYears">Years of experience</Label>
+              <Input
+                id="experienceYears"
+                type="number"
+                min={0}
+                max={60}
+                value={experienceYears}
+                onChange={(e) => setExperienceYears(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="qualifications">Additional qualifications</Label>
+              <Input
+                id="qualifications"
+                value={qualifications}
+                onChange={(e) => setQualifications(e.target.value)}
+                placeholder="FCPS, MCPS"
+              />
+              <p className="mt-1 text-xs text-slate-500">Comma-separated</p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
+          <p className="font-medium text-slate-900">Credentials are read-only</p>
+          <p className="mt-1">
+            PMDC ({profile.pmdcNumber ?? "—"}), degree, and verification documents cannot
+            be changed here. Contact support if your credentials need updating.
+          </p>
+        </section>
+      )}
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold text-slate-900">Profile photo</h2>
@@ -272,6 +396,7 @@ export function DoctorProfileEditForm({ profile }: Props) {
           name={name}
           value={avatarUrl || undefined}
           onUploaded={setAvatarUrl}
+          uploadEndpoint={avatarUploadEndpoint}
         />
       </section>
 
@@ -300,31 +425,19 @@ export function DoctorProfileEditForm({ profile }: Props) {
             )}
           </div>
         </div>
-        <div>
-          <Label htmlFor="specialty">Specialty</Label>
-          <select
-            id="specialty"
-            value={specialty}
-            onChange={(e) => setSpecialty(e.target.value)}
-            required
-            className="mt-1 flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Select your specialty
-            </option>
-            {!isKnownSpecialty(specialty) && specialty && (
-              <option value={specialty}>{specialty}</option>
-            )}
-            {SPECIALTIES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-slate-500">
-            Patients browse doctors by this category on the homepage and consult pages.
-          </p>
-        </div>
+        <DoctorSpecialtyFields
+          primarySpecialty={primarySpecialty}
+          additionalSpecialties={additionalSpecialties}
+          onPrimaryChange={setPrimarySpecialty}
+          onAdditionalChange={setAdditionalSpecialties}
+          verifiedSpecialties={profile.specialties}
+          showVerificationHint={
+            !allowCredentialEdit &&
+            (profile.verificationStatus === VerificationStatuses.APPROVED ||
+              profile.verificationStatus === VerificationStatuses.PENDING)
+          }
+          allowCustomPrimary
+        />
         <div>
           <Label htmlFor="bio">Professional bio</Label>
           <textarea

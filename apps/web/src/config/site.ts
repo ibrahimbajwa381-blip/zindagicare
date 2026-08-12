@@ -44,7 +44,7 @@ export const siteConfig = {
     numberDisplay: "0307 458 3567",
     accountTitle: "Ibrahim Aslam",
   },
-  url: process.env.NEXT_PUBLIC_APP_URL ?? PRODUCTION_URL,
+  url: (process.env.NEXT_PUBLIC_APP_URL ?? PRODUCTION_URL).trim(),
   links: {
     doctors: "/doctors",
     sundayConsult: "/sunday-consult",

@@ -36,6 +36,11 @@ export type DoctorProfileDto = {
   medicalCollege?: string;
   graduationYear?: number;
   experienceYears: number;
+  /** Doctor-chosen primary specialty. */
+  primarySpecialty?: string;
+  /** Doctor-requested additional specialties (may await admin verification). */
+  additionalSpecialties: string[];
+  /** Admin-verified specialties visible to patients. */
   specialties: string[];
   bio?: string;
   languages: string[];

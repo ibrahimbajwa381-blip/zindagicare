@@ -131,6 +131,12 @@ export const DOCTOR_ONBOARDING_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         icon: LayoutDashboard,
         exact: true,
       },
+      {
+        href: "/doctor/profile/edit",
+        label: "Edit profile",
+        description: "Update details while awaiting approval",
+        icon: UserCog,
+      },
     ],
   },
 ];

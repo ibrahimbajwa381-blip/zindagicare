@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
 import { parseQualificationsInput } from "@/lib/doctors/qualifications";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
@@ -11,9 +11,16 @@ import { Input, Label } from "@/components/ui/input";
 import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
 import { previewSundaySlots } from "@/lib/sunday/display";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
+import { DoctorSpecialtyFields } from "@/components/forms/doctor-specialty-fields";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
+import {
+  EMPTY_VERIFICATION_FIELDS,
+  useDoctorVerificationDraft,
+  type AvailabilityDayDraft,
+  type DoctorVerificationDraftFields,
+} from "@/features/auth/hooks/use-doctor-verification-draft";
 
 const DAYS = [
   { value: 1, label: "Monday" },
@@ -25,11 +32,7 @@ const DAYS = [
   { value: 0, label: "Sunday" },
 ];
 
-type AvailabilityDay = {
-  enabled: boolean;
-  startTimeLocal: string;
-  endTimeLocal: string;
-};
+type AvailabilityDay = AvailabilityDayDraft;
 
 const DEFAULT_AVAILABILITY: Record<number, AvailabilityDay> = {
   1: { enabled: true, startTimeLocal: "16:00", endTimeLocal: "20:00" },
@@ -41,15 +44,61 @@ const DEFAULT_AVAILABILITY: Record<number, AvailabilityDay> = {
   0: { enabled: false, startTimeLocal: "10:00", endTimeLocal: "14:00" },
 };
 
+const DEFAULT_SPECIALTY =
+  SPECIALTIES.find((item) => item === "General Physician") ?? SPECIALTIES[0] ?? "";
+
+const DRAFT_SAVE_MS = 400;
+
+function mergeAvailability(
+  raw: Record<string, AvailabilityDayDraft> | undefined,
+): Record<number, AvailabilityDay> {
+  const next: Record<number, AvailabilityDay> = { ...DEFAULT_AVAILABILITY };
+  if (!raw) return next;
+
+  for (const day of DAYS) {
+    const entry = raw[String(day.value)];
+    if (!entry || typeof entry !== "object") continue;
+    next[day.value] = {
+      enabled: Boolean(entry.enabled),
+      startTimeLocal:
+        typeof entry.startTimeLocal === "string" && entry.startTimeLocal
+          ? entry.startTimeLocal
+          : DEFAULT_AVAILABILITY[day.value].startTimeLocal,
+      endTimeLocal:
+        typeof entry.endTimeLocal === "string" && entry.endTimeLocal
+          ? entry.endTimeLocal
+          : DEFAULT_AVAILABILITY[day.value].endTimeLocal,
+    };
+  }
+  return next;
+}
+
+function availabilityForStorage(
+  availability: Record<number, AvailabilityDay>,
+): Record<string, AvailabilityDayDraft> {
+  const out: Record<string, AvailabilityDayDraft> = {};
+  for (const day of DAYS) {
+    out[String(day.value)] = availability[day.value];
+  }
+  return out;
+}
+
 export function DoctorVerificationForm() {
   const { push } = useSafeRouter();
   const { update, data: session } = useSession();
+  const userId = session?.user?.id;
+  const { ready, restored, draft, save, clear } = useDoctorVerificationDraft(userId);
+  const skipDraftSave = useRef(false);
+
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [draftApplied, setDraftApplied] = useState(false);
+  const [showRestoredNotice, setShowRestoredNotice] = useState(false);
+
+  const [fields, setFields] = useState<DoctorVerificationDraftFields>(EMPTY_VERIFICATION_FIELDS);
   const [avatarUrl, setAvatarUrl] = useState<string>();
-  const [specialty, setSpecialty] = useState<string>(
-    SPECIALTIES.find((item) => item === "General Physician") ?? SPECIALTIES[0] ?? "",
-  );
+  const [primarySpecialty, setPrimarySpecialty] = useState<string>(DEFAULT_SPECIALTY);
+  const [additionalSpecialties, setAdditionalSpecialties] = useState<string[]>([]);
   const [availability, setAvailability] = useState(DEFAULT_AVAILABILITY);
   const [sundayEnabled, setSundayEnabled] = useState(false);
   const [sundayStart, setSundayStart] = useState("16:00");
@@ -60,10 +109,79 @@ export function DoctorVerificationForm() {
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [homeVisitGeo, setHomeVisitGeo] = useState<GeoCoordinates | null>(null);
 
-  function updateAvailability(
-    day: number,
-    patch: Partial<AvailabilityDay>,
+  useEffect(() => {
+    if (!ready || draftApplied) return;
+
+    if (draft) {
+      setFields(draft.fields);
+      setPrimarySpecialty(draft.primarySpecialty || DEFAULT_SPECIALTY);
+      setAdditionalSpecialties(draft.additionalSpecialties ?? []);
+      setAvatarUrl(draft.avatarUrl);
+      setAvailability(mergeAvailability(draft.availability));
+      setSundayEnabled(draft.sundayEnabled);
+      setSundayStart(draft.sundayStart);
+      setSundayEnd(draft.sundayEnd);
+      setSlotDurationMins(draft.slotDurationMins);
+      setDocuments(draft.documents);
+      setDocumentNames(draft.documentNames);
+      setHomeVisitEnabled(draft.homeVisitEnabled);
+      setHomeVisitGeo(draft.homeVisitGeo);
+      setShowRestoredNotice(true);
+    }
+
+    setDraftApplied(true);
+  }, [ready, draft, draftApplied]);
+
+  const draftPayload = useMemo(
+    () => ({
+      fields,
+      primarySpecialty,
+      additionalSpecialties,
+      avatarUrl,
+      availability: availabilityForStorage(availability),
+      sundayEnabled,
+      sundayStart,
+      sundayEnd,
+      slotDurationMins,
+      documents,
+      documentNames,
+      homeVisitEnabled,
+      homeVisitGeo,
+    }),
+    [
+      fields,
+      primarySpecialty,
+      additionalSpecialties,
+      avatarUrl,
+      availability,
+      sundayEnabled,
+      sundayStart,
+      sundayEnd,
+      slotDurationMins,
+      documents,
+      documentNames,
+      homeVisitEnabled,
+      homeVisitGeo,
+    ],
+  );
+
+  useEffect(() => {
+    if (!draftApplied || !userId || skipDraftSave.current) return;
+    const timer = window.setTimeout(() => {
+      if (skipDraftSave.current) return;
+      save(draftPayload);
+    }, DRAFT_SAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [draftApplied, userId, draftPayload, save]);
+
+  function updateField<K extends keyof DoctorVerificationDraftFields>(
+    key: K,
+    value: DoctorVerificationDraftFields[K],
   ) {
+    setFields((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateAvailability(day: number, patch: Partial<AvailabilityDay>) {
     setAvailability((prev) => ({
       ...prev,
       [day]: { ...prev[day], ...patch },
@@ -79,7 +197,6 @@ export function DoctorVerificationForm() {
     e.preventDefault();
     setPending(true);
     setError(undefined);
-    const form = new FormData(e.currentTarget);
 
     const weeklyAvailability = DAYS.filter((d) => availability[d.value]?.enabled).map(
       (d) => ({
@@ -121,36 +238,37 @@ export function DoctorVerificationForm() {
       return;
     }
 
-    const homeVisitArea = String(form.get("homeVisitArea") ?? "").trim();
+    const homeVisitArea = fields.homeVisitArea.trim();
     if (homeVisitEnabled && homeVisitArea.length < 2) {
       setError("Please enter your service area for in-house visits.");
       setPending(false);
       return;
     }
 
-    if (!specialty) {
-      setError("Select your specialization category.");
+    if (!primarySpecialty) {
+      setError("Select your primary specialty.");
       setPending(false);
       return;
     }
 
     const body = {
-      pmdcNumber: form.get("pmdcNumber"),
-      cnic: form.get("cnic"),
-      medicalDegree: form.get("medicalDegree"),
-      qualifications: parseQualificationsInput(String(form.get("qualifications") ?? "")),
-      medicalCollege: form.get("medicalCollege"),
-      graduationYear: form.get("graduationYear"),
-      experienceYears: form.get("experienceYears"),
-      specialties: [specialty],
+      pmdcNumber: fields.pmdcNumber,
+      cnic: fields.cnic,
+      medicalDegree: fields.medicalDegree,
+      qualifications: parseQualificationsInput(fields.qualifications),
+      medicalCollege: fields.medicalCollege,
+      graduationYear: fields.graduationYear,
+      experienceYears: fields.experienceYears,
+      primarySpecialty,
+      additionalSpecialties,
       avatarUrl,
-      bio: form.get("bio") || undefined,
-      consultationFee: form.get("consultationFee") || 0,
+      bio: fields.bio || undefined,
+      consultationFee: fields.consultationFee || 0,
       hospitals: [
         {
-          name: form.get("hospitalName"),
-          city: form.get("hospitalCity"),
-          address: form.get("hospitalAddress") || undefined,
+          name: fields.hospitalName,
+          city: fields.hospitalCity,
+          address: fields.hospitalAddress || undefined,
           geo: homeVisitEnabled && homeVisitGeo ? homeVisitGeo : undefined,
         },
       ],
@@ -187,6 +305,9 @@ export function DoctorVerificationForm() {
       return;
     }
 
+    skipDraftSave.current = true;
+    clear();
+
     await update({
       doctorVerificationStatus: "pending",
     });
@@ -196,6 +317,16 @@ export function DoctorVerificationForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      {showRestoredNotice && restored && (
+        <div className="rounded-xl border border-brand-light/40 bg-brand-light/10 px-4 py-3 text-sm text-slate-800">
+          <p className="font-medium text-slate-900">Draft restored</p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            We saved your previous progress on this device, including uploaded photos and
+            documents. Review the form, then finish any remaining steps.
+          </p>
+        </div>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Profile photo</h2>
         <DoctorProfilePhotoUpload
@@ -210,11 +341,24 @@ export function DoctorVerificationForm() {
         <h2 className="text-sm font-semibold text-slate-900">Identity & PMDC</h2>
         <div>
           <Label htmlFor="pmdcNumber">PMDC registration number</Label>
-          <Input id="pmdcNumber" name="pmdcNumber" required />
+          <Input
+            id="pmdcNumber"
+            name="pmdcNumber"
+            value={fields.pmdcNumber}
+            onChange={(e) => updateField("pmdcNumber", e.target.value)}
+            required
+          />
         </div>
         <div>
           <Label htmlFor="cnic">CNIC (XXXXX-XXXXXXX-X)</Label>
-          <Input id="cnic" name="cnic" placeholder="35202-1234567-1" required />
+          <Input
+            id="cnic"
+            name="cnic"
+            placeholder="35202-1234567-1"
+            value={fields.cnic}
+            onChange={(e) => updateField("cnic", e.target.value)}
+            required
+          />
         </div>
       </section>
 
@@ -222,7 +366,14 @@ export function DoctorVerificationForm() {
         <h2 className="text-sm font-semibold text-slate-900">Qualifications</h2>
         <div>
           <Label htmlFor="medicalDegree">Primary degree (e.g. MBBS)</Label>
-          <Input id="medicalDegree" name="medicalDegree" placeholder="MBBS" required />
+          <Input
+            id="medicalDegree"
+            name="medicalDegree"
+            placeholder="MBBS"
+            value={fields.medicalDegree}
+            onChange={(e) => updateField("medicalDegree", e.target.value)}
+            required
+          />
         </div>
         <div>
           <Label htmlFor="qualifications">Additional qualifications (optional)</Label>
@@ -230,6 +381,8 @@ export function DoctorVerificationForm() {
             id="qualifications"
             name="qualifications"
             placeholder="e.g. FCPS, MCPS, MRCP — separate with commas"
+            value={fields.qualifications}
+            onChange={(e) => updateField("qualifications", e.target.value)}
           />
           <p className="mt-1 text-xs text-slate-500">
             Postgraduate degrees and fellowships shown on your public profile alongside MBBS.
@@ -237,12 +390,25 @@ export function DoctorVerificationForm() {
         </div>
         <div>
           <Label htmlFor="medicalCollege">Medical college</Label>
-          <Input id="medicalCollege" name="medicalCollege" required />
+          <Input
+            id="medicalCollege"
+            name="medicalCollege"
+            value={fields.medicalCollege}
+            onChange={(e) => updateField("medicalCollege", e.target.value)}
+            required
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="graduationYear">Graduation year</Label>
-            <Input id="graduationYear" name="graduationYear" type="number" required />
+            <Input
+              id="graduationYear"
+              name="graduationYear"
+              type="number"
+              value={fields.graduationYear}
+              onChange={(e) => updateField("graduationYear", e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="experienceYears">Years of experience</Label>
@@ -250,34 +416,18 @@ export function DoctorVerificationForm() {
               id="experienceYears"
               name="experienceYears"
               type="number"
-              defaultValue={0}
+              value={fields.experienceYears}
+              onChange={(e) => updateField("experienceYears", e.target.value)}
               required
             />
           </div>
         </div>
-        <div>
-          <Label htmlFor="specialty">Specialization category</Label>
-          <select
-            id="specialty"
-            name="specialty"
-            value={specialty}
-            onChange={(e) => setSpecialty(e.target.value)}
-            required
-            className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Select your specialty
-            </option>
-            {SPECIALTIES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-slate-500">
-            Patients browse doctors by this category on the homepage and consult pages.
-          </p>
-        </div>
+        <DoctorSpecialtyFields
+          primarySpecialty={primarySpecialty}
+          additionalSpecialties={additionalSpecialties}
+          onPrimaryChange={setPrimarySpecialty}
+          onAdditionalChange={setAdditionalSpecialties}
+        />
         <div>
           <Label htmlFor="bio">Professional bio</Label>
           <textarea
@@ -286,6 +436,8 @@ export function DoctorVerificationForm() {
             rows={3}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             placeholder="Brief summary of your practice and expertise"
+            value={fields.bio}
+            onChange={(e) => updateField("bio", e.target.value)}
           />
         </div>
       </section>
@@ -295,20 +447,44 @@ export function DoctorVerificationForm() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="hospitalName">Hospital / clinic name</Label>
-            <Input id="hospitalName" name="hospitalName" required />
+            <Input
+              id="hospitalName"
+              name="hospitalName"
+              value={fields.hospitalName}
+              onChange={(e) => updateField("hospitalName", e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="hospitalCity">City</Label>
-            <Input id="hospitalCity" name="hospitalCity" defaultValue="Lahore" required />
+            <Input
+              id="hospitalCity"
+              name="hospitalCity"
+              value={fields.hospitalCity}
+              onChange={(e) => updateField("hospitalCity", e.target.value)}
+              required
+            />
           </div>
         </div>
         <div>
           <Label htmlFor="hospitalAddress">Address</Label>
-          <Input id="hospitalAddress" name="hospitalAddress" />
+          <Input
+            id="hospitalAddress"
+            name="hospitalAddress"
+            value={fields.hospitalAddress}
+            onChange={(e) => updateField("hospitalAddress", e.target.value)}
+          />
         </div>
         <div>
           <Label htmlFor="consultationFee">Consultation fee (PKR)</Label>
-          <Input id="consultationFee" name="consultationFee" type="number" min={0} />
+          <Input
+            id="consultationFee"
+            name="consultationFee"
+            type="number"
+            min={0}
+            value={fields.consultationFee}
+            onChange={(e) => updateField("consultationFee", e.target.value)}
+          />
         </div>
       </section>
 
@@ -321,6 +497,8 @@ export function DoctorVerificationForm() {
             name="homeVisitArea"
             placeholder="e.g. DHA Phase 5, Gulberg — where you can travel for home visits"
             minLength={2}
+            value={fields.homeVisitArea}
+            onChange={(e) => updateField("homeVisitArea", e.target.value)}
           />
         </div>
 

@@ -16,6 +16,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Mail,
+  Pencil,
   Phone,
   ShieldAlert,
   UserCheck,
@@ -231,6 +232,12 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
             >
               <Ban className="h-4 w-4" />
               {doctor.isActive ? "Deactivate account" : "Activate account"}
+            </Button>
+            <Button className="w-full justify-start" variant="default" asChild>
+              <Link href={`/admin/doctors/manage/${doctor.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                Edit profile
+              </Link>
             </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
               <Link href={`/admin/doctors/review/${doctor.id}`}>View verification profile</Link>

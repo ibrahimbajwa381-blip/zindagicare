@@ -14,6 +14,7 @@ import { DoctorCard } from "@/features/marketing/components/doctor-card";
 import { SectionHeader } from "@/features/marketing/components/section-header";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
+import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import { conditionDoctorPath, getConditionBySlug } from "@/lib/seo/conditions";
 import { getSpecialtyBySlug, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { useTranslations } from "@/i18n/locale-provider";
@@ -30,6 +31,8 @@ type DoctorRow = {
   pmdcVerified: boolean;
   consultationFee: number;
   hospital?: string;
+  medicalDegree?: string;
+  qualifications?: string[];
   availableSlots: number;
   isFull: boolean;
 };
@@ -176,6 +179,10 @@ export function DoctorsConsultClient({
                 fee={doc.consultationFee}
                 pmdcVerified={doc.pmdcVerified}
                 imageUrl={resolveDoctorPortrait(doc.name, doc.avatarUrl) ?? undefined}
+                credentials={formatQualificationsList(
+                  doc.medicalDegree,
+                  doc.qualifications ?? [],
+                )}
                 pmdcLabel={t.common.pmdc}
                 isFull={doc.isFull}
                 slotsOpenLabel={

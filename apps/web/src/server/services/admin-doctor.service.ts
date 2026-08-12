@@ -19,6 +19,8 @@ import {
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
   emailLookupHash,
+  normalizeAdditionalSpecialties,
+  phoneLookupHash,
 } from "@zindagi/shared";
 import type { z } from "zod";
 import type {
@@ -26,6 +28,7 @@ import type {
   adminUpdateDoctorSchema,
 } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { mapUserPii, revealPii } from "@/server/lib/decrypt-pii";
@@ -38,6 +41,8 @@ import {
   type DoctorCommissionRates,
 } from "./commission.service";
 import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
+import { isDoctorAvatarUrlForUser } from "@/server/services/doctor-avatar.storage";
+import { upsertSundayTemplateFromProfileEdit } from "@/server/services/doctor-profile.service";
 
 type CreateDoctorInput = z.infer<typeof adminCreateDoctorSchema>;
 type UpdateDoctorInput = z.infer<typeof adminUpdateDoctorSchema>;
@@ -189,7 +194,11 @@ function mapDoctorRow(
     effectiveHomeVisitCommissionPercent: effectiveRates.homeVisit,
     ratingAvg: profile.ratingAvg ?? 0,
     ratingCount: profile.ratingCount ?? 0,
-    weeklyAvailability: profile.weeklyAvailability ?? [],
+    weeklyAvailability: (profile.weeklyAvailability ?? []).map((slot) => ({
+      dayOfWeek: slot.dayOfWeek,
+      startTimeLocal: slot.startTimeLocal,
+      endTimeLocal: slot.endTimeLocal,
+    })),
     stats,
     accountability: profile.accountability
       ? {
@@ -489,6 +498,8 @@ export async function adminCreateDoctor(
     userId: user._id,
     pmdcNumber: input.pmdcNumber,
     pmdcVerified: true,
+    primarySpecialty: input.specialties[0],
+    additionalSpecialties: input.specialties.slice(1),
     specialties: input.specialties,
     verificationStatus: VerificationStatuses.APPROVED,
     verifiedBy: adminUserId,
@@ -602,16 +613,169 @@ export async function adminUpdateDoctor(
   if (input.weeklyAvailability !== undefined) {
     refreshed.set("weeklyAvailability", input.weeklyAvailability);
   }
+  if (input.bio !== undefined) {
+    refreshed.bio = input.bio ?? undefined;
+  }
+  if (input.consultationFee !== undefined) {
+    refreshed.consultationFee = input.consultationFee;
+  }
+  if (input.languages !== undefined) {
+    refreshed.languages = input.languages;
+  }
+  if (input.hospitals !== undefined) {
+    const hospitals = input.hospitals.map((h) => ({
+      name: h.name.trim(),
+      city: h.city.trim(),
+      address: h.address?.trim() || undefined,
+    }));
+    refreshed.set("hospitals", hospitals);
+    refreshed.coverageCities = [
+      ...new Set(input.hospitals.map((hospital) => hospital.city.trim())),
+    ];
+  }
+  if (input.homeVisit !== undefined) {
+    if (
+      input.homeVisit.enabled &&
+      refreshed.verificationStatus === VerificationStatuses.RESTRICTED
+    ) {
+      throw new AppError(
+        "Cannot enable services for a restricted doctor",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+    refreshed.homeVisitEnabled = input.homeVisit.enabled;
+    if (input.homeVisit.enabled && input.homeVisit.geo) {
+      refreshed.homeVisitLocation = {
+        area: input.homeVisit.area?.trim(),
+        geo: {
+          type: "Point",
+          coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat],
+        },
+      };
+    } else if (!input.homeVisit.enabled) {
+      refreshed.homeVisitLocation = undefined;
+    }
+    if (input.homeVisit.enabled) {
+      refreshed.coverageCities = [
+        ...new Set([
+          ...(refreshed.coverageCities ?? []),
+          ...(refreshed.hospitals ?? []).map((h) => h.city?.trim()).filter(Boolean),
+        ]),
+      ];
+    }
+  }
+  if (input.pmdcNumber !== undefined) {
+    refreshed.pmdcNumber = input.pmdcNumber.trim();
+  }
+  if (input.medicalDegree !== undefined) {
+    refreshed.medicalDegree = input.medicalDegree.trim();
+  }
+  if (input.qualifications !== undefined) {
+    refreshed.qualifications = input.qualifications;
+  }
+  if (input.medicalCollege !== undefined) {
+    refreshed.medicalCollege = input.medicalCollege.trim();
+  }
+  if (input.graduationYear !== undefined) {
+    refreshed.graduationYear = input.graduationYear;
+  }
+  if (input.experienceYears !== undefined) {
+    refreshed.experienceYears = input.experienceYears;
+  }
+  if (input.primarySpecialty !== undefined) {
+    refreshed.primarySpecialty = input.primarySpecialty;
+    refreshed.additionalSpecialties = normalizeAdditionalSpecialties(
+      input.primarySpecialty,
+      input.additionalSpecialties ?? refreshed.additionalSpecialties ?? [],
+    );
+    // Admin edits sync patient-visible specialties unless explicitly overridden.
+    if (input.verifiedSpecialties === undefined) {
+      refreshed.specialties = [
+        input.primarySpecialty,
+        ...(refreshed.additionalSpecialties ?? []),
+      ];
+    }
+  } else if (input.additionalSpecialties !== undefined) {
+    const primary =
+      refreshed.primarySpecialty ?? refreshed.specialties?.[0] ?? input.additionalSpecialties[0];
+    if (primary) {
+      refreshed.primarySpecialty = primary;
+      refreshed.additionalSpecialties = normalizeAdditionalSpecialties(
+        primary,
+        input.additionalSpecialties,
+      );
+      if (input.verifiedSpecialties === undefined) {
+        refreshed.specialties = [primary, ...refreshed.additionalSpecialties];
+      }
+    }
+  }
+  if (input.verifiedSpecialties !== undefined) {
+    refreshed.specialties = input.verifiedSpecialties;
+  }
+  if (input.sundayConsult !== undefined) {
+    if (
+      input.sundayConsult.enabled &&
+      refreshed.verificationStatus === VerificationStatuses.RESTRICTED
+    ) {
+      throw new AppError(
+        "Cannot enable services for a restricted doctor",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+    refreshed.sundayConsultEnabled = input.sundayConsult.enabled;
+  }
 
   await refreshed.save();
 
+  const user = await UserModel.findById(refreshed.userId);
+  if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
+
+  let userDirty = false;
   if (input.isActive !== undefined) {
-    await UserModel.findByIdAndUpdate(refreshed.userId, {
-      $set: { isActive: input.isActive },
-    });
+    user.isActive = input.isActive;
+    userDirty = true;
+  }
+  if (input.name !== undefined) {
+    user.name = input.name.trim();
+    userDirty = true;
+  }
+  if (input.phone !== undefined) {
+    const normalized = normalizePakistaniPhone(input.phone);
+    const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
+    if (normalized !== user.phone && phoneLocal !== user.phone) {
+      const existing = await UserModel.findOne({
+        _id: { $ne: user._id },
+        $or: [
+          { phoneLookup: phoneLookupHash(normalized) },
+          { phoneLookup: phoneLookupHash(phoneLocal) },
+        ],
+      });
+      if (existing) {
+        throw new AppError("Phone number already in use", "CONFLICT", 409, "phone");
+      }
+      user.phone = normalized;
+      userDirty = true;
+    }
+  }
+  if (input.avatarUrl !== undefined) {
+    if (!isDoctorAvatarUrlForUser(user._id.toString(), input.avatarUrl)) {
+      throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    user.avatarUrl = input.avatarUrl;
+    userDirty = true;
+  }
+  if (userDirty) {
+    await user.save();
   }
 
-  if (input.sundayMaxSlots !== undefined || input.sundaySlotDurationMins !== undefined) {
+  if (input.sundayConsult !== undefined) {
+    await upsertSundayTemplateFromProfileEdit(
+      refreshed._id.toString(),
+      input.sundayConsult,
+    );
+  } else if (input.sundayMaxSlots !== undefined || input.sundaySlotDurationMins !== undefined) {
     const template = await SundaySlotTemplateModel.findOne({
       doctorId: refreshed._id,
     } as Record<string, unknown>);

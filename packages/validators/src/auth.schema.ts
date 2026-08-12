@@ -1,4 +1,3 @@
-import { SPECIALTIES } from "@zindagi/shared";
 import { z } from "zod";
 import {
   isValidPakistaniMobile,
@@ -7,6 +6,10 @@ import {
   toPakistaniLocalPhone,
 } from "./pakistan-phone";
 import { geoPointInputSchema } from "./geo.schema";
+import {
+  doctorSpecialtySelectionSchema,
+  verifiedSpecialtiesSchema,
+} from "./specialty.schema";
 
 /** Accepts 03001234567, spaces, dashes, +92, 0092, etc. Outputs 03XXXXXXXXX. */
 export const pakistaniPhoneSchema = z
@@ -122,10 +125,6 @@ export const doctorVerificationSchema = z.object({
     .min(1950)
     .max(new Date().getFullYear()),
   experienceYears: z.coerce.number().int().min(0).max(60),
-  specialties: z
-    .array(z.enum(SPECIALTIES))
-    .min(1, "Select your specialization category")
-    .max(3, "Select up to three specialties"),
   avatarUrl: z.string().min(1, "Profile photo is required"),
   bio: z.string().max(2000).optional(),
   consultationFee: z.coerce.number().min(0).optional(),
@@ -207,10 +206,12 @@ export const doctorVerificationSchema = z.object({
         });
       }
     }),
-});
+}).and(doctorSpecialtySelectionSchema);
 
 export const adminDoctorDecisionSchema = z.object({
   doctorProfileId: z.string().min(1),
   action: z.enum(["approve", "reject"]),
   rejectionReason: z.string().max(500).optional(),
+  /** On approve: specialties to make patient-visible. Defaults to all claimed. */
+  verifiedSpecialties: verifiedSpecialtiesSchema.optional(),
 });

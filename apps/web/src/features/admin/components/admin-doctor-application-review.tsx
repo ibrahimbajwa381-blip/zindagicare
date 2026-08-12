@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { VerificationStatuses } from "@zindagi/shared";
+import { useMemo, useState } from "react";
+import { VerificationStatuses, claimedSpecialties } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
@@ -82,8 +83,35 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
   const isRejected = profile.verificationStatus === VerificationStatuses.REJECTED;
 
+  const requestedSpecialties = useMemo(
+    () =>
+      claimedSpecialties(
+        profile.primarySpecialty ?? profile.specialties[0],
+        profile.additionalSpecialties.length
+          ? profile.additionalSpecialties
+          : profile.specialties.slice(1),
+      ),
+    [profile.primarySpecialty, profile.additionalSpecialties, profile.specialties],
+  );
+
+  const [verifiedSelection, setVerifiedSelection] = useState<string[]>(() =>
+    profile.specialties.length ? profile.specialties : requestedSpecialties,
+  );
+
+  function toggleVerifiedSpecialty(specialty: string) {
+    setVerifiedSelection((prev) =>
+      prev.includes(specialty)
+        ? prev.filter((item) => item !== specialty)
+        : [...prev, specialty],
+    );
+  }
+
   async function decide(action: "approve" | "reject") {
     if (action === "approve" && !interviewConfirmed) return;
+    if (action === "approve" && verifiedSelection.length === 0) {
+      setActionError("Select at least one specialty to verify for patients.");
+      return;
+    }
 
     let rejectionReason: string | undefined;
     if (action === "reject") {
@@ -108,6 +136,7 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
         doctorProfileId: profile.id,
         action,
         rejectionReason,
+        ...(action === "approve" ? { verifiedSpecialties: verifiedSelection } : {}),
       }),
     });
     const json = await res.json();
@@ -141,7 +170,9 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
               {isRejected && <Badge variant="outline">Rejected</Badge>}
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              PMDC {profile.pmdcNumber ?? "—"} · {profile.specialties.join(", ")}
+              PMDC {profile.pmdcNumber ?? "—"} ·{" "}
+              {profile.primarySpecialty ??
+                (profile.specialties.join(", ") || "No specialty")}
             </p>
             {profile.verificationSubmittedAt && (
               <p className="mt-1 text-xs text-slate-500">
@@ -169,6 +200,9 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
                   </a>
                 </Button>
               )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/doctors/manage/${profile.id}/edit`}>Edit profile</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -193,7 +227,23 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900">Professional details</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <InfoBlock label="Specialization category" value={profile.specialties.join(", ")} />
+          <InfoBlock
+            label="Primary specialty"
+            value={profile.primarySpecialty ?? profile.specialties[0] ?? "—"}
+          />
+          <InfoBlock
+            label="Additional specialties"
+            value={
+              (profile.additionalSpecialties.length
+                ? profile.additionalSpecialties
+                : profile.specialties.slice(1)
+              ).join(", ") || "None"
+            }
+          />
+          <InfoBlock
+            label="Verified for patients"
+            value={profile.specialties.join(", ") || "Not verified yet"}
+          />
           <InfoBlock label="Primary degree" value={profile.medicalDegree ?? "—"} />
           <InfoBlock
             label="Additional qualifications"
@@ -211,6 +261,36 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
           />
         </div>
       </section>
+
+      {isPending && requestedSpecialties.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-slate-900">Verify specialties</h2>
+          <p className="text-sm text-slate-600">
+            Choose which requested specialties become visible to patients for search and
+            booking. Unchecked specialties stay hidden until verified later.
+          </p>
+          <ul className="space-y-2 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            {requestedSpecialties.map((specialty) => {
+              const isPrimary =
+                specialty === (profile.primarySpecialty ?? requestedSpecialties[0]);
+              return (
+                <li key={specialty}>
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={verifiedSelection.includes(specialty)}
+                      onChange={() => toggleVerifiedSpecialty(specialty)}
+                      className="h-4 w-4 rounded border-slate-300"
+                    />
+                    <span className="font-medium">{specialty}</span>
+                    {isPrimary && <Badge variant="secondary">Primary</Badge>}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {profile.bio && (
         <section className="space-y-2">
@@ -316,7 +396,9 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
 
             <div className="flex flex-wrap gap-3">
               <Button
-                disabled={!interviewConfirmed || actionPending}
+                disabled={
+                  !interviewConfirmed || actionPending || verifiedSelection.length === 0
+                }
                 onClick={() => decide("approve")}
               >
                 <UserCheck className="h-4 w-4" />
@@ -332,9 +414,10 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
               </Button>
             </div>
             <p className="text-xs text-slate-500">
-              Approving lists the doctor publicly, enables home visits, and activates
-              Sunday consult slots if configured. Interviews are not recorded on
-              ZindagiCare — only your final decision is saved.
+              Approving lists the doctor publicly with the verified specialties you
+              selected, enables home visits, and activates Sunday consult slots if
+              configured. Interviews are not recorded on ZindagiCare — only your final
+              decision is saved.
             </p>
           </div>
       )}

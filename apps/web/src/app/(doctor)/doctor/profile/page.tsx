@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { VerificationStatuses } from "@zindagi/shared";
 import { redirect } from "next/navigation";
 import { DoctorProfileOverview } from "@/features/doctor/components/doctor-profile-overview";
 import { DoctorProfileSection } from "@/features/doctor/components/doctor-profile-section";
+import { DoctorRegistrationSubmittedModal } from "@/features/doctor/components/doctor-registration-submitted-modal";
 import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
 import {
   emptyDoctorDashboardSummary,
@@ -34,18 +36,16 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
     ? await getDoctorDashboardSummary(session.user.id)
     : emptyDoctorDashboardSummary();
 
+  const showSubmittedModal = submitted === "1" && isPending;
+
   return (
     <div className="space-y-6">
       <WorkspaceSwitcher current="doctor" />
 
-      {submitted === "1" && isPending && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
-          <p className="font-semibold">Application submitted successfully</p>
-          <p className="mt-1">
-            An admin will review your credentials shortly. Your workspace unlocks once
-            your profile is approved.
-          </p>
-        </div>
+      {showSubmittedModal && (
+        <Suspense fallback={null}>
+          <DoctorRegistrationSubmittedModal open />
+        </Suspense>
       )}
 
       {isApproved ? (

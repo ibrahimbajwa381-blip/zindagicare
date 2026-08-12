@@ -18,16 +18,26 @@ export default async function DoctorProfileEditPage() {
 
   const profile = await getDoctorProfile(session.user.id);
 
-  if (profile.verificationStatus !== VerificationStatuses.APPROVED) {
+  const canEdit =
+    profile.verificationStatus === VerificationStatuses.APPROVED ||
+    profile.verificationStatus === VerificationStatuses.PENDING;
+
+  if (!canEdit) {
     redirect("/doctor/profile");
   }
+
+  const isPending = profile.verificationStatus === VerificationStatuses.PENDING;
 
   return (
     <>
       <DoctorPageHeader
         eyebrow="Profile"
         title="Edit profile"
-        description="Update your bio, consultation fee, practice locations, and availability. PMDC credentials require admin support to change."
+        description={
+          isPending
+            ? "Update your bio, fee, practice locations, and availability while we verify your credentials. PMDC details require a resubmission to change."
+            : "Update your bio, consultation fee, practice locations, and availability. PMDC credentials require admin support to change."
+        }
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link href="/doctor/profile">Back to overview</Link>
@@ -37,9 +47,11 @@ export default async function DoctorProfileEditPage() {
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <DoctorProfileEditForm profile={profile} />
       </div>
-      <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-        <DoctorIntakeQuestionsEditor />
-      </div>
+      {profile.verificationStatus === VerificationStatuses.APPROVED && (
+        <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+          <DoctorIntakeQuestionsEditor />
+        </div>
+      )}
     </>
   );
 }

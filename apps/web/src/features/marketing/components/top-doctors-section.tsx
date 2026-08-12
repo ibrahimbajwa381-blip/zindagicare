@@ -3,6 +3,7 @@ import { DoctorCard } from "./doctor-card";
 import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
 import { getServerTranslations } from "@/i18n/server";
+import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
 import { doctorProfilePath, nameToDoctorSlug } from "@/lib/doctors/profile-path";
 
@@ -23,6 +24,10 @@ export async function TopDoctorsSection() {
           fee: doctor.fee,
           pmdcVerified: doctor.pmdcVerified,
           imageUrl: doctor.imageUrl,
+          credentials: formatQualificationsList(
+            doctor.medicalDegree,
+            doctor.qualifications,
+          ),
         }))
       : mockDoctors.map((doctor) => ({
           key: doctor.id,
@@ -35,6 +40,10 @@ export async function TopDoctorsSection() {
           fee: doctor.fee,
           pmdcVerified: doctor.pmdcVerified,
           imageUrl: doctor.imageUrl,
+          credentials: formatQualificationsList(
+            doctor.medicalDegree,
+            doctor.qualifications,
+          ),
         }))
   ).slice(0, 6);
 
@@ -58,6 +67,7 @@ export async function TopDoctorsSection() {
             fee={doctor.fee}
             pmdcVerified={doctor.pmdcVerified}
             imageUrl={doctor.imageUrl}
+            credentials={doctor.credentials}
             pmdcLabel={t.common.pmdc}
           />
         ))}

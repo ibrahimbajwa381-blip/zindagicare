@@ -33,6 +33,17 @@ const doctorProfileSchema = new Schema(
       degreeCertificate: String,
     },
     verificationSubmittedAt: { type: Date },
+    /**
+     * Doctor-chosen primary specialty (required after verification submit).
+     * Patient-facing listing uses `specialties` (admin-verified) only.
+     */
+    primarySpecialty: { type: String, trim: true },
+    /** Doctor-requested additional specialties (may include unverified ones). */
+    additionalSpecialties: { type: [String], default: [] },
+    /**
+     * Admin-verified specialties visible to patients for search/booking.
+     * Subset of claimed specialties (primary + additional).
+     */
     specialties: { type: [String], default: [], index: true },
     experienceYears: { type: Number, default: 0, min: 0 },
     bio: { type: String, maxlength: 2000 },

@@ -51,9 +51,9 @@ function StatusBanner({
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <p className="font-medium">Profile pending admin approval</p>
         <p className="mt-1">
-          Your application has been submitted. An admin will review your credentials
-          and documents. Your profile will go live once approved — you cannot edit
-          details while under review.
+          You&apos;re registered. An admin will verify your credentials shortly —
+          your profile typically goes live within one day. You can still edit your
+          profile details while you wait.
         </p>
         {profile.verificationSubmittedAt && (
           <p className="mt-2 text-xs text-amber-800">
@@ -214,7 +214,23 @@ function ProfileGrid({
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <InfoItem label="Specialty" value={profile.specialties.join(", ")} />
+        <InfoItem
+          label="Primary specialty"
+          value={profile.primarySpecialty ?? profile.specialties[0] ?? "—"}
+        />
+        <InfoItem
+          label="Additional specialties"
+          value={
+            (profile.additionalSpecialties.length
+              ? profile.additionalSpecialties
+              : profile.specialties.slice(1)
+            ).join(", ") || "—"
+          }
+        />
+        <InfoItem
+          label="Verified for patients"
+          value={profile.specialties.join(", ") || "Pending verification"}
+        />
         <InfoItem label="Experience" value={`${profile.experienceYears} years`} />
         <InfoItem label="Medical college" value={profile.medicalCollege ?? "—"} />
         <InfoItem label="Graduation" value={String(profile.graduationYear ?? "—")} />

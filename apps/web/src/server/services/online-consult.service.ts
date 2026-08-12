@@ -16,6 +16,7 @@ import {
   PaymentStatuses,
   ONLINE_CONSULT_CONFIG,
   getVideoJoinWindow,
+  resolveDisplaySpecialty,
 } from "@zindagi/shared";
 import type { ConsultCheckoutInput } from "@zindagi/validators";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -73,6 +74,8 @@ export type ConsultDoctorRow = {
   pmdcVerified: boolean;
   consultationFee: number;
   hospital?: string;
+  medicalDegree?: string;
+  qualifications: string[];
   availableSlots: number;
   isFull: boolean;
 };
@@ -427,29 +430,38 @@ export class OnlineConsultService {
     }
 
     return doctors.map((doc) => {
-      const user = doc.userId as { name?: string; avatarUrl?: string } | null;
-      const name = mapUserPii(user ?? {}).name;
-      const weeklyAvailability = (doc.weeklyAvailability ?? []) as WeeklyWindow[];
-      const doctorBooked = bookedByDoctor.get(doc._id.toString()) ?? [];
-      const availableSlots = OnlineConsultService.countAvailableSlots(
-        weeklyAvailability,
-        doctorBooked,
-      );
+    const user = doc.userId as { name?: string; avatarUrl?: string } | null;
+    const name = mapUserPii(user ?? {}).name;
+    const weeklyAvailability = (doc.weeklyAvailability ?? []) as WeeklyWindow[];
+    const doctorBooked = bookedByDoctor.get(doc._id.toString()) ?? [];
+    const availableSlots = OnlineConsultService.countAvailableSlots(
+      weeklyAvailability,
+      doctorBooked,
+    );
+    const verified = doc.specialties ?? [];
+    const primary = resolveDisplaySpecialty({
+      primarySpecialty: doc.primarySpecialty,
+      specialties: verified,
+    });
 
-      return {
-        doctorId: doc._id.toString(),
-        slug: resolveDoctorSlug(doc.slug, name),
-        name,
-        avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
-        specialties: doc.specialties ?? [],
-        ratingAvg: doc.ratingAvg ?? 0,
-        ratingCount: doc.ratingCount ?? 0,
-        pmdcVerified: doc.pmdcVerified ?? false,
-        consultationFee: doc.consultationFee ?? 0,
-        hospital: doc.hospitals?.[0]?.name,
-        availableSlots,
-        isFull: availableSlots === 0,
-      } satisfies ConsultDoctorRow;
+    return {
+      doctorId: doc._id.toString(),
+      slug: resolveDoctorSlug(doc.slug, name),
+      name,
+      avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+      specialties: verified.includes(primary)
+        ? [primary, ...verified.filter((s) => s !== primary)]
+        : verified,
+      ratingAvg: doc.ratingAvg ?? 0,
+      ratingCount: doc.ratingCount ?? 0,
+      pmdcVerified: doc.pmdcVerified ?? false,
+      consultationFee: doc.consultationFee ?? 0,
+      hospital: doc.hospitals?.[0]?.name,
+      medicalDegree: doc.medicalDegree ?? undefined,
+      qualifications: doc.qualifications ?? [],
+      availableSlots,
+      isFull: availableSlots === 0,
+    } satisfies ConsultDoctorRow;
     });
   }
 

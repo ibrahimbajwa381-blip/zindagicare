@@ -15,6 +15,8 @@ type DoctorCardProps = {
   pmdcVerified: boolean;
   imageUrl?: string;
   pmdcLabel?: string;
+  /** Degrees / fellowships e.g. MBBS, MRCP, MD Cardiology (R) */
+  credentials?: string[];
   href?: string;
   availableSlots?: number;
   isFull?: boolean;
@@ -42,6 +44,7 @@ export function DoctorCard({
   pmdcVerified,
   imageUrl,
   pmdcLabel = "PMDC",
+  credentials = [],
   href,
   isFull,
   slotsOpenLabel,
@@ -50,6 +53,7 @@ export function DoctorCard({
 }: DoctorCardProps) {
   const showSlots = slotsOpenLabel !== undefined || noSlotsLabel !== undefined;
   const showRating = reviews > 0 && rating > 0;
+  const shownCredentials = credentials.filter(Boolean);
 
   const card = (
     <article
@@ -100,6 +104,19 @@ export function DoctorCard({
                 </Badge>
               ) : null}
             </div>
+            {shownCredentials.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {shownCredentials.map((credential) => (
+                  <Badge
+                    key={credential}
+                    variant="outline"
+                    className="h-5 border-slate-200 bg-slate-50 px-1.5 text-[10px] font-medium text-slate-700"
+                  >
+                    {credential}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 

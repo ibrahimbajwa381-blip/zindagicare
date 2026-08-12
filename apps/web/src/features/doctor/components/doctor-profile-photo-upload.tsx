@@ -13,6 +13,8 @@ type DoctorProfilePhotoUploadProps = {
   onUploaded: (url: string) => void;
   required?: boolean;
   className?: string;
+  /** Defaults to the doctor self-serve avatar upload endpoint. */
+  uploadEndpoint?: string;
 };
 
 export function DoctorProfilePhotoUpload({
@@ -21,6 +23,7 @@ export function DoctorProfilePhotoUpload({
   onUploaded,
   required = false,
   className,
+  uploadEndpoint = "/api/v1/doctor/avatar/upload",
 }: DoctorProfilePhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string>();
@@ -35,7 +38,7 @@ export function DoctorProfilePhotoUpload({
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/v1/doctor/avatar/upload", {
+    const res = await fetch(uploadEndpoint, {
       method: "POST",
       body: formData,
     });
