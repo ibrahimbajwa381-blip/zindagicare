@@ -1175,6 +1175,7 @@ export const en = {
     description: "PMDC verified specialists available for secure video consults.",
     browseTitle: "Consult best doctors online",
     searchByCondition: "Search doctor by condition",
+    viewAllCta: "View all doctors",
     modalTitle: "All specialties",
     modalPlaceholder: "Search specialty…",
     modalEmpty: "No specialties match your search.",

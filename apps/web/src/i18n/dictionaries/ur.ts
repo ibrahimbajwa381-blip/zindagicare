@@ -1168,6 +1168,7 @@ export const ur: Dictionary = {
     description: "محفوظ ویڈیو مشورہ کے لیے پی ایم ڈی سی تصدیق شدہ ماہرین۔",
     browseTitle: "بہترین ڈاکٹرز سے آن لائن مشورہ لیں",
     searchByCondition: "بیماری کے مطابق ڈاکٹر تلاش کریں",
+    viewAllCta: "تمام ڈاکٹرز دیکھیں",
     modalTitle: "تمام خصوصیات",
     modalPlaceholder: "خصوصیت تلاش کریں…",
     modalEmpty: "آپ کی تلاش سے کوئی خصوصیت نہیں ملی۔",
