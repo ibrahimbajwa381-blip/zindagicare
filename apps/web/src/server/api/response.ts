@@ -19,13 +19,16 @@ export function apiError(error: unknown) {
   }
 
   if (error instanceof ZodError) {
+    const issue = error.issues[0];
+    const field = issue?.path?.length ? issue.path.join(".") : undefined;
+    const message = issue?.message ?? "Invalid input";
     return NextResponse.json(
       {
         success: false,
         data: null,
         error: {
           code: "VALIDATION_ERROR",
-          message: error.issues[0]?.message ?? "Invalid input",
+          message: field ? `${field}: ${message}` : message,
         },
       },
       { status: 400 },

@@ -251,6 +251,19 @@ export function DoctorVerificationForm() {
       return;
     }
 
+    const currentYear = new Date().getFullYear();
+    const graduationYear = Number(fields.graduationYear);
+    if (
+      !fields.graduationYear.trim() ||
+      !Number.isInteger(graduationYear) ||
+      graduationYear < 1950 ||
+      graduationYear > currentYear
+    ) {
+      setError(`Enter a valid graduation year between 1950 and ${currentYear}.`);
+      setPending(false);
+      return;
+    }
+
     const body = {
       pmdcNumber: fields.pmdcNumber,
       cnic: fields.cnic,
@@ -405,6 +418,9 @@ export function DoctorVerificationForm() {
               id="graduationYear"
               name="graduationYear"
               type="number"
+              min={1950}
+              max={new Date().getFullYear()}
+              placeholder={`e.g. ${new Date().getFullYear() - 5}`}
               value={fields.graduationYear}
               onChange={(e) => updateField("graduationYear", e.target.value)}
               required
