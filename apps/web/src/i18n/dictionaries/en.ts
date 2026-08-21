@@ -230,6 +230,16 @@ export const en = {
     pmdc: "PMDC",
     whatsappChat: "Chat on WhatsApp",
     whatsappPrefill: "Hello, I have a question about ZindagiCare.",
+    whatsappPrefillHomeServices:
+      "Hello, I need help booking an in-house medical service (doctor/nurse visit at home).",
+    whatsappPrefillPhysio:
+      "Hello, I need help booking a home physiotherapy session.",
+    whatsappPrefillDoctors:
+      "Hello, I need help booking an online video consultation with a doctor.",
+    whatsappPrefillSunday:
+      "Hello, I'd like help booking the free Sunday consultation.",
+    whatsappPrefillUrgentCare:
+      "Hello, I need urgent care help — please connect me quickly.",
     loadingPage: "Loading your care experience…",
   },
   notFoundPage: {

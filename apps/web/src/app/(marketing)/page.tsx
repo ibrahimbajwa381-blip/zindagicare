@@ -10,7 +10,6 @@ import { HomeServicesPreview } from "@/features/marketing/components/home-servic
 import { HomePhysioBanner } from "@/features/marketing/components/home-physio-banner";
 import { HowItWorksSection } from "@/features/marketing/components/how-it-works";
 import { SundayBanner } from "@/features/marketing/components/sunday-banner";
-import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
 import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-section";
 import { TopDoctorsSectionSkeleton } from "@/features/marketing/components/top-doctors-section-skeleton";
 import { ProviderOnboardingPreview } from "@/features/marketing/components/provider-onboarding-preview";
@@ -31,7 +30,6 @@ export default async function HomePage() {
       <TrustBar />
       <HomeServicesPreview />
       <HomePhysioBanner />
-      <DoctorBrowseSection />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
         <TopDoctorsSection />
       </Suspense>

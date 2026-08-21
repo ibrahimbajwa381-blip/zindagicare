@@ -902,7 +902,7 @@ export async function listDoctorPatients(userId: string): Promise<DoctorPatientR
   const patientMap = new Map(patients.map((p) => [p._id.toString(), p]));
   const reviewByPatient = new Map<string, DoctorPatientReviewSummary>();
   for (const review of reviews) {
-    const patientId = review.patientId.toString();
+    const patientId = review.patientId!.toString();
     if (reviewByPatient.has(patientId)) continue;
     reviewByPatient.set(patientId, {
       rating: review.rating,
@@ -1015,7 +1015,7 @@ export async function listDoctorConsultRequests(
 
   const reviewByAppointment = new Map(
     reviews.map((review) => [
-      review.appointmentId.toString(),
+      review.appointmentId!.toString(),
       {
         rating: review.rating,
         comment: review.comment ?? undefined,

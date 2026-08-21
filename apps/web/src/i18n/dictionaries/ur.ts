@@ -231,6 +231,16 @@ export const ur: Dictionary = {
     pmdc: "پی ایم ڈی سی",
     whatsappChat: "واٹس ایپ پر چیٹ",
     whatsappPrefill: "سلام، مجھے زندگی کیئر کے بارے میں ایک سوال ہے۔",
+    whatsappPrefillHomeServices:
+      "سلام، مجھے گھر پر ڈاکٹر/نرس کی سروس بک کروانے میں مدد چاہیے۔",
+    whatsappPrefillPhysio:
+      "سلام، مجھے گھر پر فزیوتھراپی سیشن بک کروانے میں مدد چاہیے۔",
+    whatsappPrefillDoctors:
+      "سلام، مجھے ڈاکٹر کے ساتھ آن لائن ویڈیو کنسلٹیشن بک کروانے میں مدد چاہیے۔",
+    whatsappPrefillSunday:
+      "سلام، مجھے مفت اتوار کنسلٹیشن بک کروانے میں مدد چاہیے۔",
+    whatsappPrefillUrgentCare:
+      "سلام، مجھے فوری طبی مدد چاہیے — براہ کرم جلدی رابطہ کریں۔",
     loadingPage: "آپ کا کیئر تجربہ لوڈ ہو رہا ہے…",
   },
   notFoundPage: {

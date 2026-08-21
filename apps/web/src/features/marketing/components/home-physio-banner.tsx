@@ -6,6 +6,7 @@ import { ArrowRight, Activity, MapPin, Users } from "lucide-react";
 import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
+import { WhatsAppCtaButton } from "@/components/shared/whatsapp-cta-button";
 import { PageSection } from "@/components/layout/page-section";
 import { useTranslations } from "@/i18n/locale-provider";
 import {
@@ -105,6 +106,11 @@ export function HomePhysioBanner() {
                   {copy.secondaryCta}
                 </Link>
               </Button>
+              <WhatsAppCtaButton
+                size="lg"
+                className="h-11 w-full rounded-xl sm:h-12 sm:w-auto"
+                prefill={t.common.whatsappPrefillPhysio}
+              />
             </div>
           </div>
         </div>

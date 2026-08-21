@@ -5,6 +5,7 @@ import { DoctorCard } from "./doctor-card";
 import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
 import { Button } from "@/components/ui/button";
+import { WhatsAppCtaButton } from "@/components/shared/whatsapp-cta-button";
 import { getServerTranslations } from "@/i18n/server";
 import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
@@ -59,15 +60,22 @@ export async function TopDoctorsSection() {
           title={t.doctors.title}
           description={t.doctors.description}
         />
-        <Button
-          className="flex h-10 w-full shrink-0 items-center gap-1.5 rounded-xl px-4 sm:w-auto"
-          asChild
-        >
-          <Link href={siteConfig.links.doctors}>
-            {t.doctors.viewAllCta}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
+        <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
+          <Button
+            className="flex h-10 w-full shrink-0 items-center gap-1.5 rounded-xl px-4 sm:w-auto"
+            asChild
+          >
+            <Link href={siteConfig.links.doctors}>
+              {t.doctors.viewAllCta}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+          <WhatsAppCtaButton
+            size="default"
+            className="h-10 w-full rounded-xl sm:w-auto"
+            prefill={t.common.whatsappPrefillDoctors}
+          />
+        </div>
       </div>
       <div className="mt-6 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {doctors.map((doctor) => (

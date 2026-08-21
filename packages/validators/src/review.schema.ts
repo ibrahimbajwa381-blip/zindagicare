@@ -7,3 +7,13 @@ export const submitReviewSchema = z.object({
 });
 
 export type SubmitReviewInput = z.infer<typeof submitReviewSchema>;
+
+/** Admin manually logs a review a patient left off-platform (e.g. via phone/WhatsApp). */
+export const adminAddReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(2000).optional(),
+  patientName: z.string().trim().min(2).max(100),
+  reviewDate: z.coerce.date().optional(),
+});
+
+export type AdminAddReviewInput = z.infer<typeof adminAddReviewSchema>;

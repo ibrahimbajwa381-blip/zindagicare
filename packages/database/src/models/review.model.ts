@@ -10,8 +10,8 @@ const reviewSchema = new Schema(
     appointmentId: {
       type: Schema.Types.ObjectId,
       ref: "Appointment",
-      required: true,
       unique: true,
+      sparse: true,
     },
     doctorId: {
       type: Schema.Types.ObjectId,
@@ -22,7 +22,6 @@ const reviewSchema = new Schema(
     patientId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
       index: true,
     },
     rating: { type: Number, required: true, min: 1, max: 5 },
@@ -31,6 +30,10 @@ const reviewSchema = new Schema(
     isVisible: { type: Boolean, default: true },
     moderatedBy: { type: Schema.Types.ObjectId, ref: "User" },
     deletedAt: { type: Date },
+    /** "patient" = submitted via app after a consult; "admin" = entered by staff for an off-platform review. */
+    source: { type: String, enum: ["patient", "admin"], default: "patient" },
+    /** Free-text display name for admin-entered reviews (no real patient account). */
+    patientName: { type: String, maxlength: 100 },
   },
   { timestamps: true },
 );

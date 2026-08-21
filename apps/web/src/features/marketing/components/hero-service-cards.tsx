@@ -24,8 +24,6 @@ type HeroServiceCardsProps = {
   };
 };
 
-const STICKY_TOP_PX = 80;
-
 export function HeroServiceCards({
   services,
   activeIndex,
@@ -44,7 +42,6 @@ export function HeroServiceCards({
     if (!pin || !sticky || !track) return;
 
     const mobileQuery = window.matchMedia("(max-width: 639px)");
-    const reduceQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
 
     const reset = () => {
@@ -54,61 +51,34 @@ export function HeroServiceCards({
       sticky.style.touchAction = "";
     };
 
+    // On mobile, cards scroll right-to-left via a plain native horizontal
+    // swipe — no vertical-scroll-driven pin, so no reserved blank space
+    // below the cards while the reveal plays out.
     const sync = () => {
       if (!mobileQuery.matches) {
         reset();
         return;
       }
 
-      // Respect reduced motion: allow a normal horizontal swipe instead.
-      if (reduceQuery.matches) {
-        pin.style.height = "";
-        track.style.transform = "";
-        sticky.style.overflowX = "auto";
-        sticky.style.touchAction = "pan-x pinch-zoom";
-        return;
-      }
-
-      const overflow = Math.max(0, track.scrollWidth - sticky.clientWidth);
-      if (overflow <= 0) {
-        reset();
-        return;
-      }
-
-      // Keep vertical page scroll driving the horizontal reveal.
-      sticky.style.overflowX = "hidden";
-      sticky.style.touchAction = "pan-y";
-      const travel = overflow + Math.round(window.innerHeight * 0.35);
-      pin.style.height = `${sticky.offsetHeight + travel}px`;
-
-      const pinRect = pin.getBoundingClientRect();
-      const scrolled = STICKY_TOP_PX - pinRect.top;
-      const progress = Math.min(1, Math.max(0, scrolled / travel));
-      track.style.transform = `translate3d(${-overflow * progress}px, 0, 0)`;
+      pin.style.height = "";
+      track.style.transform = "";
+      sticky.style.overflowX = "auto";
+      sticky.style.touchAction = "pan-x pinch-zoom";
     };
 
-    const onScrollOrResize = () => {
+    const onResize = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(sync);
     };
 
     sync();
-    window.addEventListener("scroll", onScrollOrResize, { passive: true });
-    window.addEventListener("resize", onScrollOrResize);
-    mobileQuery.addEventListener("change", onScrollOrResize);
-    reduceQuery.addEventListener("change", onScrollOrResize);
-
-    const ro = new ResizeObserver(onScrollOrResize);
-    ro.observe(track);
-    ro.observe(sticky);
+    window.addEventListener("resize", onResize);
+    mobileQuery.addEventListener("change", onResize);
 
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScrollOrResize);
-      window.removeEventListener("resize", onScrollOrResize);
-      mobileQuery.removeEventListener("change", onScrollOrResize);
-      reduceQuery.removeEventListener("change", onScrollOrResize);
-      ro.disconnect();
+      window.removeEventListener("resize", onResize);
+      mobileQuery.removeEventListener("change", onResize);
       reset();
     };
   }, [services.length]);

@@ -12,7 +12,7 @@ import { surfaceCard, surfaceInset } from "@/lib/ui/surfaces";
 
 type AdminReviewRow = {
   id: string;
-  appointmentId: string;
+  appointmentId?: string;
   doctorId: string;
   rating: number;
   comment?: string;
@@ -21,6 +21,7 @@ type AdminReviewRow = {
   createdAt: string;
   patientName: string;
   doctorName: string;
+  source?: "patient" | "admin";
 };
 
 const FILTERS = [
@@ -230,6 +231,14 @@ export function AdminReviewModeration() {
                         className="border-amber-200 bg-amber-50 text-[10px] uppercase tracking-wide text-amber-700"
                       >
                         Needs review
+                      </Badge>
+                    )}
+                    {review.source === "admin" && (
+                      <Badge
+                        variant="outline"
+                        className="border-brand-light/60 bg-brand-muted/40 text-[10px] uppercase tracking-wide text-brand-dark"
+                      >
+                        Off-platform
                       </Badge>
                     )}
                   </div>

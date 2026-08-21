@@ -7,7 +7,7 @@ import {
   connectDatabase,
 } from "@zindagi/database";
 import { Types } from "mongoose";
-import type { SubmitReviewInput } from "@zindagi/validators";
+import type { AdminAddReviewInput, SubmitReviewInput } from "@zindagi/validators";
 import {
   AppointmentStatuses,
   AppointmentTypes,
@@ -43,7 +43,7 @@ export type PatientReviewState = {
 
 export type AdminReviewRow = {
   id: string;
-  appointmentId: string;
+  appointmentId?: string;
   doctorId: string;
   rating: number;
   comment?: string;
@@ -52,6 +52,7 @@ export type AdminReviewRow = {
   createdAt: string;
   patientName: string;
   doctorName: string;
+  source: "patient" | "admin";
 };
 
 type AppointmentReviewContext = {
@@ -169,7 +170,7 @@ export class ReviewService {
       ReviewModel.countDocuments(filter),
     ]);
 
-    const patientIds = [...new Set(rows.map((row) => row.patientId.toString()))];
+    const patientIds = [...new Set(rows.filter((r) => r.patientId).map((row) => row.patientId!.toString()))];
     const patients = patientIds.length
       ? await UserModel.find(mongoFilter({ _id: { $in: patientIds } }))
           .select("name")
@@ -181,7 +182,9 @@ export class ReviewService {
       id: row._id.toString(),
       rating: row.rating,
       comment: row.comment ?? undefined,
-      patientName: maskPatientName(nameById.get(row.patientId.toString()) ?? "Patient"),
+      patientName: maskPatientName(
+        row.patientId ? nameById.get(row.patientId.toString()) ?? "Patient" : row.patientName ?? "Patient",
+      ),
       createdAt: row.createdAt.toISOString(),
     }));
 
@@ -207,9 +210,9 @@ export class ReviewService {
 
     const map = new Map<string, PatientReviewDto>();
     for (const row of rows) {
-      map.set(row.appointmentId.toString(), {
+      map.set(row.appointmentId!.toString(), {
         id: row._id.toString(),
-        appointmentId: row.appointmentId.toString(),
+        appointmentId: row.appointmentId!.toString(),
         rating: row.rating,
         comment: row.comment ?? undefined,
         createdAt: row.createdAt.toISOString(),
@@ -413,6 +416,47 @@ export class ReviewService {
     };
   }
 
+  /** Admin logs a review a patient left off-platform (phone/WhatsApp/in person). */
+  static async adminAddReview(
+    adminUserId: string,
+    doctorId: string,
+    input: AdminAddReviewInput,
+  ): Promise<AdminReviewRow> {
+    await ReviewService.ensureConnected();
+
+    const doctor = await DoctorProfileModel.findById(doctorId).lean();
+    if (!doctor) {
+      throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const review = await ReviewModel.create({
+      doctorId,
+      rating: input.rating,
+      comment: input.comment?.trim() || undefined,
+      patientName: input.patientName.trim(),
+      source: "admin",
+      isVisible: true,
+      isModerated: true,
+      moderatedBy: adminUserId,
+      createdAt: input.reviewDate ?? new Date(),
+    } as Record<string, unknown>);
+
+    await ReviewService.refreshDoctorRatingAggregates(doctorId);
+
+    return {
+      id: review._id.toString(),
+      doctorId,
+      rating: review.rating,
+      comment: review.comment ?? undefined,
+      isVisible: review.isVisible ?? true,
+      isModerated: review.isModerated ?? true,
+      createdAt: review.createdAt.toISOString(),
+      patientName: review.patientName ?? input.patientName,
+      doctorName: "",
+      source: "admin",
+    };
+  }
+
   static async refreshDoctorRatingAggregates(doctorProfileId: string) {
     const [aggregate] = await ReviewModel.aggregate<{ avg: number; count: number }>([
       {
@@ -458,7 +502,9 @@ export class ReviewService {
 
     const rows = await ReviewModel.find(filter).sort({ createdAt: -1 }).limit(100).lean();
 
-    const patientIds = [...new Set(rows.map((row) => row.patientId.toString()))];
+    const patientIds = [
+      ...new Set(rows.filter((r) => r.patientId).map((row) => row.patientId!.toString())),
+    ];
     const doctorIds = [...new Set(rows.map((row) => row.doctorId.toString()))];
 
     const [patients, doctors] = await Promise.all([
@@ -484,15 +530,18 @@ export class ReviewService {
 
     const reviews: AdminReviewRow[] = rows.map((row) => ({
       id: row._id.toString(),
-      appointmentId: row.appointmentId.toString(),
+      appointmentId: row.appointmentId?.toString(),
       doctorId: row.doctorId.toString(),
       rating: row.rating,
       comment: row.comment ?? undefined,
       isVisible: row.isVisible ?? true,
       isModerated: row.isModerated ?? false,
       createdAt: row.createdAt.toISOString(),
-      patientName: patientNameById.get(row.patientId.toString()) ?? "Patient",
+      patientName: row.patientId
+        ? patientNameById.get(row.patientId.toString()) ?? "Patient"
+        : row.patientName ?? "Patient",
       doctorName: doctorNameById.get(row.doctorId.toString()) ?? "Doctor",
+      source: (row.source as "patient" | "admin") ?? "patient",
     }));
 
     const total = await ReviewModel.countDocuments(filter);

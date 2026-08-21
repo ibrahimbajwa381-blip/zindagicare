@@ -19,8 +19,10 @@ import {
   Pencil,
   Phone,
   ShieldAlert,
+  Star,
   UserCheck,
   UserX,
+  X,
 } from "lucide-react";
 import { cn } from "@zindagi/shared";
 
@@ -56,6 +58,9 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
   const [doctor, setDoctor] = useState(initialDoctor);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [showAddReview, setShowAddReview] = useState(false);
+  const [reviewPending, setReviewPending] = useState(false);
+  const [reviewError, setReviewError] = useState<string>();
 
   const updateDoctor = async (patch: Record<string, unknown>) => {
     setPending(true);
@@ -93,6 +98,28 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
       verificationStatus: VerificationStatuses.REJECTED,
       rejectionReason: reason.trim(),
     });
+  };
+
+  const submitAddReview = async (input: {
+    rating: number;
+    patientName: string;
+    comment?: string;
+  }) => {
+    setReviewPending(true);
+    setReviewError(undefined);
+    const res = await fetch(`/api/v1/admin/doctors/${doctor.id}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const json = await res.json();
+    setReviewPending(false);
+    if (!res.ok) {
+      setReviewError(json?.error?.message ?? "Failed to add review");
+      return;
+    }
+    setShowAddReview(false);
+    router.refresh();
   };
 
   const { stats } = doctor;
@@ -239,6 +266,15 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
                 Edit profile
               </Link>
             </Button>
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setShowAddReview(true)}
+            >
+              <Star className="h-4 w-4" />
+              Add review
+            </Button>
             <Button className="w-full justify-start" variant="outline" asChild>
               <Link href={`/admin/doctors/review/${doctor.id}`}>View verification profile</Link>
             </Button>
@@ -354,6 +390,144 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
           </CardContent>
         )}
       </Card>
+
+      {showAddReview && (
+        <AddReviewModal
+          doctorName={doctor.name}
+          pending={reviewPending}
+          error={reviewError}
+          onClose={() => setShowAddReview(false)}
+          onSubmit={submitAddReview}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddReviewModal({
+  doctorName,
+  pending,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  doctorName: string;
+  pending: boolean;
+  error?: string;
+  onClose: () => void;
+  onSubmit: (input: { rating: number; patientName: string; comment?: string }) => void;
+}) {
+  const [rating, setRating] = useState(5);
+  const [patientName, setPatientName] = useState("");
+  const [comment, setComment] = useState("");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-premium-lg sm:rounded-3xl sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-foreground">Add review</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              For a review {doctorName} received outside the platform.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Rating
+            </label>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setRating(value)}
+                  aria-label={`${value} star`}
+                  className="p-0.5"
+                >
+                  <Star
+                    className={cn(
+                      "h-6 w-6",
+                      value <= rating
+                        ? "fill-amber-400 text-amber-400"
+                        : "fill-transparent text-slate-300",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="admin-review-patient-name" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Patient name
+            </label>
+            <input
+              id="admin-review-patient-name"
+              type="text"
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
+              placeholder="e.g. Ayesha K."
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              maxLength={100}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="admin-review-comment" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Comment (optional)
+            </label>
+            <textarea
+              id="admin-review-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={pending}>
+            Cancel
+          </Button>
+          <Button
+            disabled={pending || patientName.trim().length < 2}
+            onClick={() =>
+              onSubmit({
+                rating,
+                patientName: patientName.trim(),
+                comment: comment.trim() || undefined,
+              })
+            }
+          >
+            {pending ? "Saving…" : "Save review"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

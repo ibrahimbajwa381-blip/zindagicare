@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
+import { WhatsAppCtaButton } from "@/components/shared/whatsapp-cta-button";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 import {
@@ -22,6 +23,26 @@ function resolveHeroCtaHref(service: HeroService, isGuest: boolean): string {
     return `/login?callbackUrl=${encodeURIComponent(`${siteConfig.links.sundayConsult}#request`)}`;
   }
   return service.carousel.href;
+}
+
+function resolveWhatsAppPrefill(
+  service: HeroService,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  switch (service.id) {
+    case "in-house-medical":
+      return t.common.whatsappPrefillHomeServices;
+    case "home-physiotherapy":
+      return t.common.whatsappPrefillPhysio;
+    case "urgent-care":
+      return t.common.whatsappPrefillUrgentCare;
+    case "online-consult":
+      return t.common.whatsappPrefillDoctors;
+    case "sunday-consult":
+      return t.common.whatsappPrefillSunday;
+    default:
+      return t.common.whatsappPrefill;
+  }
 }
 
 const AUTO_ADVANCE_MS = 3000;
@@ -166,7 +187,7 @@ export function HeroCarousel({
                   <BadgeCheck className="h-4 w-4 shrink-0 text-brand-lighter sm:h-5 sm:w-5" />
                   <span>{service.carousel.badge}</span>
                 </div>
-                <div className="mt-4 sm:mt-5">
+                <div className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center">
                   <Button
                     size="lg"
                     className="shadow-premium h-14 w-full rounded-xl px-6 text-base font-semibold shadow-brand-dark/25 sm:h-12 sm:w-auto sm:text-lg"
@@ -180,6 +201,11 @@ export function HeroCarousel({
                       </span>
                     </Link>
                   </Button>
+                  <WhatsAppCtaButton
+                    size="lg"
+                    className="h-14 w-full rounded-xl sm:h-12 sm:w-auto"
+                    prefill={resolveWhatsAppPrefill(service, t)}
+                  />
                 </div>
               </div>
 

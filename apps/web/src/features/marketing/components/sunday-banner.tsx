@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { ArrowRight, Calendar, Gift } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
+import { WhatsAppCtaButton } from "@/components/shared/whatsapp-cta-button";
 import {
   formatNextSundayLong,
   isSundayBookingOpenNow,
@@ -119,6 +120,11 @@ export function SundayBanner() {
                   </Link>
                 </Button>
               )}
+              <WhatsAppCtaButton
+                size="lg"
+                className="h-11 w-full sm:h-12 sm:w-auto"
+                prefill={t.common.whatsappPrefillSunday}
+              />
               <Link
                 href={
                   onSundayPage
