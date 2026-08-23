@@ -205,9 +205,19 @@ export function ChatApp({
         });
       });
 
-      const { messageId, senderId, kind, body, createdAt, threadId } = event;
+      const {
+        messageId,
+        senderId,
+        kind,
+        body,
+        attachmentUrl,
+        attachmentMime,
+        createdAt,
+        threadId,
+      } = event;
       const isSystem = kind === "system";
-      if (!messageId || !body || !createdAt) return;
+      if (!messageId || !createdAt) return;
+      if (!body && !attachmentUrl) return;
       if (!senderId && !isSystem) return;
 
       // Own sends are already appended from the send API response.
@@ -226,7 +236,9 @@ export function ChatApp({
           threadId,
           senderId,
           kind: kind ?? "user",
-          body,
+          body: body ?? "",
+          attachmentUrl,
+          attachmentMime,
           createdAt,
           isMine: false,
           readBy: [],

@@ -10,6 +10,10 @@ export type ChatThreadDto = {
   id: string;
   type: string;
   appointmentId?: string;
+  /** Present only when appointmentId refers to an online/urgent-online consult. */
+  appointmentType?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
   lastMessageAt?: string;
   lastMessagePreview?: string;
   unreadCount: number;
@@ -24,6 +28,8 @@ export type ChatMessageDto = {
   senderId?: string;
   kind?: "user" | "system";
   body: string;
+  attachmentUrl?: string;
+  attachmentMime?: string;
   createdAt: string;
   isMine: boolean;
   readBy: string[];

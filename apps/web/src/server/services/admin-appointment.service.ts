@@ -26,6 +26,14 @@ export type AdminAppointmentRow = {
   clinic?: { hospitalName?: string; address?: string; city?: string };
   amountPkr?: number;
   paymentStatus?: string;
+  paymentId?: string;
+  paymentProvider?: string;
+  paymentCurrency?: string;
+  transactionId?: string;
+  paidAt?: string;
+  refundedAt?: string;
+  failureReason?: string;
+  receiptUploaded?: boolean;
   createdAt: string;
 };
 
@@ -59,7 +67,10 @@ export async function listAdminAppointments(filters?: {
       populate: { path: "userId", select: "name" },
       select: "specialties",
     })
-    .populate("paymentId", "amount status")
+    .populate(
+      "paymentId",
+      "amount status provider currency externalTransactionId paidAt refundedAt failureReason metadata",
+    )
     .sort({ scheduledStart: -1 })
     .limit(filters?.limit ?? 100)
     .lean();
@@ -76,7 +87,18 @@ export async function listAdminAppointments(filters?: {
       userId?: { name?: string };
       specialties?: string[];
     } | null;
-    const payment = a.paymentId as { amount?: number; status?: string } | null;
+    const payment = a.paymentId as {
+      _id?: { toString(): string };
+      amount?: number;
+      status?: string;
+      provider?: string;
+      currency?: string;
+      externalTransactionId?: string;
+      paidAt?: Date;
+      refundedAt?: Date;
+      failureReason?: string;
+      metadata?: { receipt?: { transactionId?: string }; transactionId?: string };
+    } | null;
 
     return {
       id: a._id.toString(),
@@ -108,6 +130,18 @@ export async function listAdminAppointments(filters?: {
           : undefined,
       amountPkr: payment?.amount ?? undefined,
       paymentStatus: payment?.status ?? undefined,
+      paymentId: payment?._id?.toString() ?? undefined,
+      paymentProvider: payment?.provider ?? undefined,
+      paymentCurrency: payment?.currency ?? undefined,
+      transactionId:
+        payment?.externalTransactionId ??
+        payment?.metadata?.receipt?.transactionId ??
+        payment?.metadata?.transactionId ??
+        undefined,
+      paidAt: payment?.paidAt ? new Date(payment.paidAt).toISOString() : undefined,
+      refundedAt: payment?.refundedAt ? new Date(payment.refundedAt).toISOString() : undefined,
+      failureReason: payment?.failureReason ?? undefined,
+      receiptUploaded: Boolean(payment?.metadata?.receipt),
       createdAt: (a.createdAt as Date | undefined)?.toISOString() ?? a.scheduledStart.toISOString(),
     };
   });

@@ -15,6 +15,7 @@ export * from "./chat.schema";
 export * from "./payment.schema";
 export * from "./medical-intake.schema";
 export * from "./review.schema";
+export * from "./testimonial.schema";
 export * from "./prescription.schema";
 export * from "./push.schema";
 export * from "./copilot.schema";

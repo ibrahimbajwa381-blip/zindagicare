@@ -431,6 +431,21 @@ export const ur: Dictionary = {
     homeCare: "لاہور میں گھر پر دیکھ بھال",
     homeCareDesc: "گھر پر ڈاکٹر اور نرس",
   },
+  testimonials: {
+    eyebrow: "مریضوں کی کہانیاں",
+    title: "پاکستان بھر کے مریضوں کا اعتماد",
+    description: "ان مریضوں کے حقیقی تجربات جنہوں نے اپائنٹمنٹ بک کی، ڈاکٹر سے مشورہ لیا اور گھر بیٹھے علاج حاصل کیا۔",
+    submit: {
+      title: "اپنا تجربہ شیئر کریں",
+      description: "زندگی کیئر کے ساتھ اپنے تجربے کے بارے میں دوسرے مریضوں کو بتائیں۔ آپ کا ریویو فوراً ویب سائٹ پر آ جائے گا۔",
+      placeholder: "زندگی کیئر کے ساتھ اپنا تجربہ لکھیں…",
+      tooShort: "براہ کرم اپنے تجربے کے بارے میں تھوڑا مزید لکھیں۔",
+      submit: "میرا ریویو پوسٹ کریں",
+      submitting: "پوسٹ ہو رہا ہے…",
+      failed: "آپ کا ریویو جمع نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+      thankYou: "شکریہ! آپ کا ریویو اب ہماری ویب سائٹ پر موجود ہے۔",
+    },
+  },
   sunday: {
     shortName: "اتوار مفت مشورہ",
     tagline: `پی ایم ڈی سی تصدیق شدہ ڈاکٹر کے ساتھ مفت ${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins} منٹ ویڈیو مشورہ — ہر اتوار۔ ہم ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} منٹ میں آپ کو جوڑتے ہیں۔`,
@@ -1640,6 +1655,7 @@ export const ur: Dictionary = {
     openingChatTitle: "گفتگو کھل رہی ہے…",
     openingChatDescription: "آپ کو ابھی منسلک کیا جا رہا ہے۔",
     assistantName: "زندگی کیئر اسسٹنٹ",
+    startConsultation: "آن لائن کنسلٹیشن شروع کریں",
   },
   intake: {
     pageTitle: "وزٹ سے پہلے",

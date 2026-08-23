@@ -41,13 +41,26 @@ function LinkifiedText({ text, intakeLinkLabel }: { text: string; intakeLinkLabe
   );
 }
 
+function VoiceNotePlayer({ url, className }: { url: string; className?: string }) {
+  return (
+    <audio
+      controls
+      preload="metadata"
+      src={url}
+      className={cn("h-10 w-56 max-w-full", className)}
+    />
+  );
+}
+
 function IncomingMessageBubble({
   body,
+  attachmentUrl,
   createdAt,
   showTail,
   intakeLinkLabel,
 }: {
   body: string;
+  attachmentUrl?: string;
   createdAt: string;
   showTail?: boolean;
   intakeLinkLabel: string;
@@ -61,9 +74,12 @@ function IncomingMessageBubble({
           showTail && "rounded-bl-sm",
         )}
       >
-        <p className="whitespace-pre-wrap break-words">
-          <LinkifiedText text={body} intakeLinkLabel={intakeLinkLabel} />
-        </p>
+        {attachmentUrl && <VoiceNotePlayer url={attachmentUrl} className="mb-1" />}
+        {body && (
+          <p className="whitespace-pre-wrap break-words">
+            <LinkifiedText text={body} intakeLinkLabel={intakeLinkLabel} />
+          </p>
+        )}
         <p className="mt-1 text-right text-[11px] text-slate-400">
           {formatTime(createdAt)}
         </p>
@@ -94,6 +110,7 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
     return (
       <IncomingMessageBubble
         body={message.body}
+        attachmentUrl={message.attachmentUrl}
         createdAt={message.createdAt}
         showTail={showTail}
         intakeLinkLabel={intakeLinkLabel}
@@ -110,7 +127,12 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
           showTail && "rounded-br-sm",
         )}
       >
-        <p className="whitespace-pre-wrap break-words">{message.body}</p>
+        {message.attachmentUrl && (
+          <VoiceNotePlayer url={message.attachmentUrl} className="mb-1" />
+        )}
+        {message.body && (
+          <p className="whitespace-pre-wrap break-words">{message.body}</p>
+        )}
         <p className="mt-1 text-right text-[11px] text-emerald-800/70">
           {formatTime(message.createdAt)}
         </p>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { FieldError, Input, Label } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { loginWithCredentialsAction } from "@/server/actions/auth.actions";
-import { AUTH_ROUTES } from "@/lib/auth/routes";
 
 type LoginFormProps = {
   callbackUrl?: string;
@@ -22,9 +20,6 @@ export function LoginForm({
   const t = useTranslations();
   const [state, action, pending] = useActionState(loginWithCredentialsAction, undefined);
   const errorMessage = state?.error ?? initialError;
-  const forgotPasswordHref = callbackUrl
-    ? `${AUTH_ROUTES.forgotPassword}?callbackUrl=${encodeURIComponent(callbackUrl)}`
-    : AUTH_ROUTES.forgotPassword;
 
   return (
     <div className="space-y-4">
@@ -37,14 +32,9 @@ export function LoginForm({
         <input type="hidden" name="callbackUrl" value={callbackUrl ?? "/dashboard"} />
         <FormField label={t.auth.email} name="email" type="email" autoComplete="email" required />
         <div>
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="password" className="text-base font-semibold">
-              {t.auth.password}
-            </Label>
-            <Link href={forgotPasswordHref} className="shrink-0 text-sm font-medium text-brand">
-              {t.auth.forgotPassword}
-            </Link>
-          </div>
+          <Label htmlFor="password" className="text-base font-semibold">
+            {t.auth.password}
+          </Label>
           <PasswordInput
             id="password"
             name="password"

@@ -19,7 +19,7 @@ import { AppointmentTypes, SUNDAY_CONSULT_CONFIG, cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/config/site";
-import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
+import { ConsultJoinAction } from "@/features/doctor/components/consult-join-action";
 import { formatDateTime } from "@/features/doctor/components/doctor-workspace-panels";
 import type {
   DoctorRequestOutcome,
@@ -483,14 +483,13 @@ export function DoctorConsultRequestsPanel({ requests }: Props) {
                     </div>
 
                     <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-md lg:justify-end">
-                      {request.canJoin ? (
-                        <VideoJoinLinkButton
-                          appointmentId={request.id}
-                          scheduledStart={request.scheduledStart}
-                          scheduledEnd={joinWindowEnd(request)}
-                          size="sm"
-                        />
-                      ) : null}
+                      <ConsultJoinAction
+                        appointmentId={request.id}
+                        type={request.type}
+                        outcome={request.outcome}
+                        scheduledStart={request.scheduledStart}
+                        scheduledEnd={joinWindowEnd(request)}
+                      />
                       <Button size="sm" variant="outline" asChild className="gap-1">
                         <Link href={`/doctor/intake/${request.id}`}>
                           <ClipboardList className="h-3.5 w-3.5" />

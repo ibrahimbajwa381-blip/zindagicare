@@ -446,6 +446,21 @@ export const en = {
     homeCare: "In-house care in Lahore",
     homeCareDesc: "Doctors & nurses at home",
   },
+  testimonials: {
+    eyebrow: "Patient stories",
+    title: "Loved by patients across Pakistan",
+    description: "Real experiences from patients who booked appointments, consulted doctors, and got care from the comfort of their homes.",
+    submit: {
+      title: "Share your experience",
+      description: "Tell other patients about your experience with ZindagiCare. Your review goes live right away.",
+      placeholder: "Share your experience with ZindagiCare…",
+      tooShort: "Please write a few more words about your experience.",
+      submit: "Post my review",
+      submitting: "Posting…",
+      failed: "Could not submit your review. Please try again.",
+      thankYou: "Thank you! Your review is now live on our website.",
+    },
+  },
   sunday: {
     shortName: "Sunday Free Consult",
     tagline: `Free ${SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins}-minute video consult with a PMDC-verified doctor — every Sunday. We connect you within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
@@ -1645,6 +1660,7 @@ export const en = {
     openingChatTitle: "Opening conversation…",
     openingChatDescription: "Connecting you now.",
     assistantName: "ZindagiCare Assistant",
+    startConsultation: "Start online consultation",
   },
   intake: {
     pageTitle: "Before your visit",

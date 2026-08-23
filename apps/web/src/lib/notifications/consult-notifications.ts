@@ -30,6 +30,7 @@ export async function sendDoctorConsultBooked(params: {
   slotStart: Date;
   appointmentId: string;
   type: "online" | "clinic" | "sunday_free" | "urgent_online";
+  patientId?: string;
 }) {
   const time = params.slotStart.toLocaleString("en-PK", {
     timeZone: "Asia/Karachi",
@@ -66,6 +67,7 @@ export async function sendDoctorConsultBooked(params: {
       : {
           type: "doctor_consult_booked",
           appointmentId: params.appointmentId,
+          ...(params.patientId ? { patientId: params.patientId } : {}),
         },
   });
 

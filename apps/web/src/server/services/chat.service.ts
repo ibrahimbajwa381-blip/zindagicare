@@ -36,12 +36,13 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { Types } from "mongoose";
 
-/** Paid consult types that unlock doctor–patient chat (Sunday free is excluded). */
+/** Consult types that unlock doctor–patient chat. */
 const CHAT_ELIGIBLE_APPOINTMENT_TYPES = [
   AppointmentTypes.ONLINE,
   AppointmentTypes.URGENT_ONLINE,
   AppointmentTypes.CLINIC,
   AppointmentTypes.HOME_VISIT,
+  AppointmentTypes.SUNDAY_FREE,
 ] as const;
 
 const CHAT_ACTIVE_APPOINTMENT_STATUSES = [
@@ -291,6 +292,43 @@ async function batchEnrichParticipants(
   }
 
   return participants;
+}
+
+const VIDEO_CONSULT_APPOINTMENT_TYPES = [
+  AppointmentTypes.ONLINE,
+  AppointmentTypes.URGENT_ONLINE,
+] as const;
+
+type VideoAppointmentInfo = {
+  type: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+};
+
+async function batchVideoAppointmentInfo(
+  appointmentIds: string[],
+): Promise<Map<string, VideoAppointmentInfo>> {
+  if (appointmentIds.length === 0) return new Map();
+
+  const appointments = await AppointmentModel.find(
+    mongoFilter({
+      _id: { $in: appointmentIds },
+      type: { $in: VIDEO_CONSULT_APPOINTMENT_TYPES },
+    }),
+  )
+    .select("type scheduledStart scheduledEnd")
+    .lean();
+
+  return new Map(
+    appointments.map((appointment) => [
+      appointment._id.toString(),
+      {
+        type: appointment.type,
+        scheduledStart: toIso(appointment.scheduledStart),
+        scheduledEnd: toIso(appointment.scheduledEnd),
+      },
+    ]),
+  );
 }
 
 async function batchCountUnread(
@@ -552,15 +590,24 @@ async function toThreadDto(
     throw new AppError("Invalid chat participants", "INVALID_STATE", 500);
   }
 
-  const [otherParticipant, unreadCount] = await Promise.all([
+  const [otherParticipant, unreadCount, videoInfoById] = await Promise.all([
     enrichParticipant(otherId, viewerId),
     countUnread(thread._id.toString(), viewerId),
+    thread.appointmentId
+      ? batchVideoAppointmentInfo([thread.appointmentId.toString()])
+      : Promise.resolve(new Map<string, VideoAppointmentInfo>()),
   ]);
+  const videoInfo = thread.appointmentId
+    ? videoInfoById.get(thread.appointmentId.toString())
+    : undefined;
 
   return {
     id: thread._id.toString(),
     type: thread.type,
     appointmentId: thread.appointmentId?.toString(),
+    appointmentType: videoInfo?.type,
+    scheduledStart: videoInfo?.scheduledStart,
+    scheduledEnd: videoInfo?.scheduledEnd,
     lastMessageAt: toIso(thread.lastMessageAt),
     lastMessagePreview: thread.lastMessagePreview ?? undefined,
     unreadCount,
@@ -622,10 +669,14 @@ export class ChatService {
       )
       .filter((id): id is string => !!id);
     const threadIds = threadRows.map((thread) => thread._id.toString());
+    const appointmentIds = threadRows
+      .map((thread) => thread.appointmentId?.toString())
+      .filter((id): id is string => !!id);
 
-    const [participantsById, unreadByThreadId] = await Promise.all([
+    const [participantsById, unreadByThreadId, videoInfoById] = await Promise.all([
       batchEnrichParticipants(otherIds, userId),
       batchCountUnread(threadIds, userId),
+      batchVideoAppointmentInfo(appointmentIds),
     ]);
 
     return threadRows.map((thread) => {
@@ -638,10 +689,17 @@ export class ChatService {
         throw new AppError("Invalid chat participants", "INVALID_STATE", 500);
       }
 
+      const videoInfo = thread.appointmentId
+        ? videoInfoById.get(thread.appointmentId.toString())
+        : undefined;
+
       return {
         id: thread._id.toString(),
         type: thread.type,
         appointmentId: thread.appointmentId?.toString(),
+        appointmentType: videoInfo?.type,
+        scheduledStart: videoInfo?.scheduledStart,
+        scheduledEnd: videoInfo?.scheduledEnd,
         lastMessageAt: toIso(thread.lastMessageAt),
         lastMessagePreview: thread.lastMessagePreview ?? undefined,
         unreadCount: unreadByThreadId.get(thread._id.toString()) ?? 0,
@@ -920,6 +978,8 @@ export class ChatService {
         senderId: row.senderId?.toString(),
         kind: (row.kind ?? ChatMessageKinds.USER) as "user" | "system",
         body: row.body ?? "",
+        attachmentUrl: row.attachmentUrl ?? undefined,
+        attachmentMime: row.attachmentMime ?? undefined,
         createdAt: row.createdAt.toISOString(),
         isMine: !!row.senderId && row.senderId.toString() === userId,
         readBy: (row.readBy ?? [])
@@ -930,11 +990,16 @@ export class ChatService {
     return { messages, hasMore };
   }
 
+  static async assertParticipant(threadId: string, userId: string) {
+    return assertThreadParticipant(threadId, userId);
+  }
+
   static async sendMessage(
     threadId: string,
     senderId: string,
     body: string,
     _locale?: string,
+    attachment?: { url: string; mime: string },
   ): Promise<ChatMessageDto> {
     await ChatService.ensureConnected();
 
@@ -944,7 +1009,7 @@ export class ChatService {
     }
 
     const trimmed = body.trim();
-    if (!trimmed) {
+    if (!trimmed && !attachment) {
       throw new AppError("Message cannot be empty", "VALIDATION", 400);
     }
 
@@ -953,16 +1018,19 @@ export class ChatService {
       senderId,
       kind: ChatMessageKinds.USER,
       body: trimmed,
+      attachmentUrl: attachment?.url,
+      attachmentMime: attachment?.mime,
       readBy: [{ userId: senderId, readAt: new Date() }],
     });
 
     const now = new Date();
+    const preview = trimmed ? previewText(trimmed) : "🎤 Voice note";
     await ChatThreadModel.updateOne(
       mongoFilter({ _id: threadId }),
       {
         $set: {
           lastMessageAt: now,
-          lastMessagePreview: previewText(trimmed),
+          lastMessagePreview: preview,
         },
       },
     );
@@ -973,6 +1041,8 @@ export class ChatService {
       senderId,
       kind: ChatMessageKinds.USER,
       body: trimmed,
+      attachmentUrl: attachment?.url,
+      attachmentMime: attachment?.mime,
       createdAt: message.createdAt.toISOString(),
       isMine: true,
       readBy: [senderId],
@@ -986,8 +1056,10 @@ export class ChatService {
       senderId,
       kind: ChatMessageKinds.USER,
       body: trimmed,
+      attachmentUrl: attachment?.url,
+      attachmentMime: attachment?.mime,
       createdAt: dto.createdAt,
-      lastMessagePreview: previewText(trimmed),
+      lastMessagePreview: preview,
       lastMessageAt: now.toISOString(),
     });
 

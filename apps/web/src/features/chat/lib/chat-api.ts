@@ -50,13 +50,33 @@ export async function sendMessage(
   threadId: string,
   body: string,
   locale?: "en" | "ur",
+  attachment?: { url: string; mime: string },
 ): Promise<ChatMessageDto> {
   const res = await fetch(`/api/v1/chat/threads/${threadId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body, locale }),
+    body: JSON.stringify({
+      body,
+      locale,
+      attachmentUrl: attachment?.url,
+      attachmentMime: attachment?.mime,
+    }),
   });
   return parse<ChatMessageDto>(res);
+}
+
+export async function uploadVoiceNote(
+  threadId: string,
+  blob: Blob,
+): Promise<{ storageKey: string; url: string; mimeType: string }> {
+  const formData = new FormData();
+  formData.set("threadId", threadId);
+  formData.set("file", blob, "voice-note.webm");
+  const res = await fetch("/api/v1/chat/attachments/upload", {
+    method: "POST",
+    body: formData,
+  });
+  return parse<{ storageKey: string; url: string; mimeType: string }>(res);
 }
 
 export async function markThreadRead(threadId: string) {

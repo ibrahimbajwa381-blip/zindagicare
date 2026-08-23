@@ -6,6 +6,7 @@ export * from "./family-member.model";
 export * from "./sunday-slot.model";
 export * from "./appointment.model";
 export * from "./review.model";
+export * from "./testimonial.model";
 export * from "./prescription.model";
 export * from "./order.model";
 export * from "./notification.model";

@@ -1,9 +1,16 @@
 import { z } from "zod";
 
-export const sendChatMessageSchema = z.object({
-  body: z.string().trim().min(1).max(5000),
-  locale: z.enum(["en", "ur"]).optional(),
-});
+export const sendChatMessageSchema = z
+  .object({
+    body: z.string().trim().max(5000).optional().default(""),
+    locale: z.enum(["en", "ur"]).optional(),
+    attachmentUrl: z.string().trim().min(1).max(500).optional(),
+    attachmentMime: z.string().trim().min(1).max(100).optional(),
+  })
+  .refine((v) => v.body.length > 0 || !!v.attachmentUrl, {
+    message: "Message cannot be empty",
+    path: ["body"],
+  });
 
 export const createDirectThreadSchema = z.object({
   participantId: z.string().min(1),

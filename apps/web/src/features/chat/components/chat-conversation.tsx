@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import type { ChatMessageDto, ChatThreadDto } from "@/features/chat/types";
-import { useLocale } from "@/i18n/locale-provider";
+import { useLocale, useTranslations } from "@/i18n/locale-provider";
 import { ChatAvatar } from "./chat-avatar";
 import { ChatComposer } from "./chat-composer";
 import { ChatMessageBubble } from "./chat-message-bubble";
@@ -11,8 +11,10 @@ import {
   fetchMessages,
   markThreadRead,
   sendMessage,
+  uploadVoiceNote,
 } from "@/features/chat/lib/chat-api";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
+import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 
 type ChatConversationProps = {
   thread: ChatThreadDto;
@@ -48,6 +50,7 @@ export function ChatConversation({
   isDoctorView = false,
 }: ChatConversationProps) {
   const { locale } = useLocale();
+  const t = useTranslations();
   const listRef = useRef<HTMLDivElement>(null);
   const loadingOlderRef = useRef(false);
   const onThreadReadRef = useRef(onThreadRead);
@@ -109,6 +112,40 @@ export function ChatConversation({
     }
   }
 
+  async function handleSendVoiceNote(blob: Blob) {
+    const tempId = `pending-${Date.now()}`;
+    const tempUrl = URL.createObjectURL(blob);
+    const optimisticMessage: ChatMessageDto = {
+      id: tempId,
+      threadId: thread.id,
+      senderId: currentUserId,
+      kind: "user",
+      body: "",
+      attachmentUrl: tempUrl,
+      attachmentMime: blob.type,
+      createdAt: new Date().toISOString(),
+      isMine: true,
+      readBy: [currentUserId],
+    };
+
+    onMessageSent(optimisticMessage);
+    scrollToBottom("auto");
+
+    try {
+      const uploaded = await uploadVoiceNote(thread.id, blob);
+      const message = await sendMessage(thread.id, "", locale, {
+        url: uploaded.url,
+        mime: uploaded.mimeType,
+      });
+      onMessageReplaced(tempId, message);
+      scrollToBottom("smooth");
+    } catch {
+      onMessageFailed(tempId);
+    } finally {
+      URL.revokeObjectURL(tempUrl);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-[#e5ddd5]">
       <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-[#f0f2f5] px-3 py-3 sm:px-4">
@@ -134,6 +171,16 @@ export function ChatConversation({
             {otherParticipant.subtitle}
           </p>
         </div>
+        {thread.appointmentId && thread.scheduledStart && thread.scheduledEnd && (
+          <VideoJoinLinkButton
+            appointmentId={thread.appointmentId}
+            scheduledStart={thread.scheduledStart}
+            scheduledEnd={thread.scheduledEnd}
+            label={t.chat.startConsultation}
+            size="sm"
+            urgent
+          />
+        )}
       </header>
 
       {isDoctorView && thread.appointmentId && (
@@ -173,6 +220,7 @@ export function ChatConversation({
 
       <ChatComposer
         onSend={handleSend}
+        onSendVoiceNote={handleSendVoiceNote}
         placeholder={placeholder}
         disabled={thread.isClosed}
       />

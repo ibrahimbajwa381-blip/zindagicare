@@ -27,6 +27,7 @@ import {
 import { notifyAdmins } from "@/lib/notifications/notify-admins";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
+import { ChatService } from "@/server/services/chat.service";
 import {
   canBookNow,
   canRequestSundayNow,
@@ -507,13 +508,12 @@ export class SundayConsultService {
       },
     );
 
-    // Sunday consults have no chat, so the medical history is collected
-    // through the intake form instead.
     await MedicalIntakeService.createForAppointment(
       result.appointmentId,
       IntakeSources.FORM,
       locale,
     );
+    await ChatService.ensureAppointmentThread(result.appointmentId);
 
     const patient = await UserModel.findById(patientId).lean();
     await sendBookingConfirmation({
@@ -531,6 +531,7 @@ export class SundayConsultService {
         slotStart: slot.startAt,
         appointmentId: result.appointmentId,
         type: "sunday_free",
+        patientId,
       });
     }
 
@@ -1506,6 +1507,10 @@ export class SundayConsultService {
       console.error("[sunday-consult] patient notification failed", err);
     });
 
+    await ChatService.ensureAppointmentThread(appointmentId).catch((err) => {
+      console.error("[sunday-consult] chat thread setup failed", err);
+    });
+
     if (doctorUser?._id) {
       await sendDoctorConsultBooked({
         userId: doctorUser._id.toString(),
@@ -1514,6 +1519,7 @@ export class SundayConsultService {
         slotStart: scheduledStart,
         appointmentId,
         type: "sunday_free",
+        patientId: request.patientId.toString(),
       }).catch((err) => {
         console.error("[sunday-consult] doctor notification failed", err);
       });

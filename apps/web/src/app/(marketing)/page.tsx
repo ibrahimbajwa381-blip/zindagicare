@@ -13,6 +13,7 @@ import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-section";
 import { TopDoctorsSectionSkeleton } from "@/features/marketing/components/top-doctors-section-skeleton";
 import { ProviderOnboardingPreview } from "@/features/marketing/components/provider-onboarding-preview";
+import { TestimonialsSection } from "@/features/marketing/components/testimonials-section";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
 
 export const metadata: Metadata = buildRootMetadata({
@@ -35,6 +36,7 @@ export default async function HomePage() {
       </Suspense>
       <SundayBanner />
       <HowItWorksSection />
+      <TestimonialsSection />
       <ProviderOnboardingPreview />
       <FaqSection />
     </>

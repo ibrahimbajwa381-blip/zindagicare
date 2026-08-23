@@ -213,6 +213,7 @@ export class AppointmentReminderService {
           slotStart: appointment.scheduledStart,
           appointmentId,
           type: reminderType,
+          patientId,
         });
         await AppointmentModel.updateOne(
           mongoFilter({ _id: appointment._id }),
@@ -229,6 +230,7 @@ export class AppointmentReminderService {
           slotStart: appointment.scheduledStart,
           appointmentId,
           type: reminderType,
+          patientId,
         });
         await AppointmentModel.updateOne(
           mongoFilter({ _id: appointment._id }),
@@ -271,6 +273,7 @@ export class AppointmentReminderService {
           patientName,
           slotStart: appointment.scheduledStart,
           appointmentId,
+          patientId,
         });
         await AppointmentModel.updateOne(
           mongoFilter({ _id: appointment._id }),

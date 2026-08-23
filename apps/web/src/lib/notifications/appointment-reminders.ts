@@ -28,8 +28,8 @@ export async function sendAppointmentReminder24h(params: {
   await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
-    title: "Appointment tomorrow",
-    body: `Reminder: Your ${label} with Dr. ${params.doctorName} is in 24 hours (${time}).`,
+    title: "Upcoming appointment reminder",
+    body: `Reminder: Your ${label} with Dr. ${params.doctorName} is coming up (${time}).`,
     payload: {
       type: "appointment_reminder_24h",
       appointmentId: params.appointmentId,
@@ -88,6 +88,7 @@ export async function sendDoctorAppointmentReminder24h(params: {
   slotStart: Date;
   appointmentId: string;
   type: "online" | "clinic" | "sunday_free";
+  patientId?: string;
 }) {
   const time = formatSlotTime(params.slotStart);
   const label = consultLabel(params.type);
@@ -95,11 +96,12 @@ export async function sendDoctorAppointmentReminder24h(params: {
   await deliverUserNotification({
     userId: params.userId,
     phone: params.phone,
-    title: "Upcoming appointment tomorrow",
-    body: `Reminder: Your ${label} with ${params.patientName} is in 24 hours (${time}).`,
+    title: "Upcoming appointment reminder",
+    body: `Reminder: Your ${label} with ${params.patientName} is coming up (${time}).`,
     payload: {
       type: "doctor_appointment_reminder_24h",
       appointmentId: params.appointmentId,
+      ...(params.patientId ? { patientId: params.patientId } : {}),
     },
   });
 }
@@ -111,6 +113,7 @@ export async function sendDoctorAppointmentReminder1h(params: {
   slotStart: Date;
   appointmentId: string;
   type: "online" | "clinic" | "sunday_free";
+  patientId?: string;
 }) {
   const time = formatSlotTime(params.slotStart);
   const label = consultLabel(params.type);
@@ -123,6 +126,7 @@ export async function sendDoctorAppointmentReminder1h(params: {
     payload: {
       type: "doctor_appointment_reminder_1h",
       appointmentId: params.appointmentId,
+      ...(params.patientId ? { patientId: params.patientId } : {}),
     },
   });
 }
@@ -133,6 +137,7 @@ export async function sendDoctorSundayMorningReminder(params: {
   patientName: string;
   slotStart: Date;
   appointmentId: string;
+  patientId?: string;
 }) {
   const time = formatSlotTime(params.slotStart);
 
@@ -144,6 +149,7 @@ export async function sendDoctorSundayMorningReminder(params: {
     payload: {
       type: "doctor_appointment_reminder_sunday_morning",
       appointmentId: params.appointmentId,
+      ...(params.patientId ? { patientId: params.patientId } : {}),
     },
   });
 }

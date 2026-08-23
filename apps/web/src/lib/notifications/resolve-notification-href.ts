@@ -20,6 +20,8 @@ export function resolveNotificationHref(
     typeof payload.requestId === "string" ? payload.requestId : undefined;
   const appointmentId =
     typeof payload.appointmentId === "string" ? payload.appointmentId : undefined;
+  const patientId =
+    typeof payload.patientId === "string" ? payload.patientId : undefined;
 
   switch (type) {
     case "urgent_care_assigned":
@@ -64,9 +66,21 @@ export function resolveNotificationHref(
     }
 
     case "doctor_consult_booked":
+      if (!isDoctor) return null;
+      if (patientId) return `/doctor/messages?patient=${encodeURIComponent(patientId)}`;
+      return appointmentId
+        ? `/doctor/intake/${encodeURIComponent(appointmentId)}`
+        : "/doctor/requests";
+
     case "doctor_appointment_reminder_24h":
     case "doctor_appointment_reminder_1h":
     case "doctor_appointment_reminder_sunday_morning":
+      if (!isDoctor) return null;
+      if (patientId) return `/doctor/messages?patient=${encodeURIComponent(patientId)}`;
+      return appointmentId
+        ? `/doctor/intake/${encodeURIComponent(appointmentId)}`
+        : "/doctor/requests";
+
     case "intake_completed":
       if (!isDoctor) return null;
       return appointmentId

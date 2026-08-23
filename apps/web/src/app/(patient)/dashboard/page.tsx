@@ -2,8 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { resolvePostAuthPath } from "@/lib/auth/routes";
 import { redirect } from "next/navigation";
-import { canUsePatientWorkspace, getAvailableWorkspaces } from "@zindagi/shared";
-import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
+import { canUsePatientWorkspace } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
@@ -29,6 +28,7 @@ import { ChatService } from "@/server/services/chat.service";
 import { loadPatientOnlineBooking } from "@/features/consult/components/patient-online-booking-section";
 import { PatientOnlineBookingSection } from "@/features/consult/components/patient-online-booking-section";
 import { PatientUpcomingAppointmentsEmpty } from "@/features/patient/components/patient-upcoming-appointments-empty";
+import { PatientTestimonialSection } from "@/features/patient/components/patient-testimonial-section";
 
 export const metadata = { title: "Dashboard" };
 
@@ -56,15 +56,10 @@ export default async function PatientDashboardPage() {
       ChatService.listThreads(session.user.id),
     ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";
-  const showWorkspaceSwitcher =
-    getAvailableWorkspaces(session.user.roles).length > 1;
 
   return (
     <PageShell variant="brand" spacing="default">
       <WelcomeTour userId={session.user.id} />
-      {showWorkspaceSwitcher ? (
-        <WorkspaceSwitcher current="patient" className="mb-6" />
-      ) : null}
       <PageTitle
         eyebrow={t.dashboard.eyebrow}
         title={t.dashboard.pageTitle}
@@ -139,6 +134,8 @@ export default async function PatientDashboardPage() {
           </div>
           <PatientVisitsSection />
         </div>
+
+        <PatientTestimonialSection />
 
       </section>
 

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { DoctorProfileOverview } from "@/features/doctor/components/doctor-profile-overview";
 import { DoctorProfileSection } from "@/features/doctor/components/doctor-profile-section";
 import { DoctorRegistrationSubmittedModal } from "@/features/doctor/components/doctor-registration-submitted-modal";
-import { WorkspaceSwitcher } from "@/features/auth/components/workspace-switcher";
 import {
   emptyDoctorDashboardSummary,
   getDoctorDashboardSummary,
@@ -40,8 +39,6 @@ export default async function DoctorProfilePage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <WorkspaceSwitcher current="doctor" />
-
       {showSubmittedModal && (
         <Suspense fallback={null}>
           <DoctorRegistrationSubmittedModal open />

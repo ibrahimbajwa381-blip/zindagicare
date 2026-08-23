@@ -9,22 +9,12 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { cn } from "@zindagi/shared";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
+import {
+  AdminAppointmentDetailModal,
+  type AppointmentDetail,
+} from "./admin-appointment-detail-modal";
 
-type Appointment = {
-  id: string;
-  type: string;
-  status: string;
-  scheduledStart: string;
-  scheduledEnd?: string;
-  isOnline?: boolean;
-  patient: { name: string; phone?: string; email?: string };
-  doctor: { id: string; name: string; specialty?: string };
-  patientNotes?: string;
-  clinic?: { hospitalName?: string; address?: string; city?: string };
-  amountPkr?: number;
-  paymentStatus?: string;
-  cancellationReason?: string;
-};
+type Appointment = AppointmentDetail;
 
 type DoctorOption = { id: string; name: string };
 
@@ -47,6 +37,7 @@ export function AdminAppointmentsBoard() {
   const [pending, setPending] = useState<string | null>(null);
   const [reassignFor, setReassignFor] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [detailFor, setDetailFor] = useState<Appointment | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -179,8 +170,12 @@ export function AdminAppointmentsBoard() {
                   <Badge variant="outline">{a.status}</Badge>
                 </div>
 
-                {!["cancelled", "completed", "no_show"].includes(a.status) && (
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setDetailFor(a)}>
+                    View details
+                  </Button>
+                  {!["cancelled", "completed", "no_show"].includes(a.status) && (
+                    <>
                     <Button
                       size="sm"
                       variant="outline"
@@ -221,8 +216,9 @@ export function AdminAppointmentsBoard() {
                         </Button>
                       </>
                     )}
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -231,6 +227,7 @@ export function AdminAppointmentsBoard() {
           )}
         </div>
       )}
+      <AdminAppointmentDetailModal appointment={detailFor} onClose={() => setDetailFor(null)} />
     </div>
   );
 }

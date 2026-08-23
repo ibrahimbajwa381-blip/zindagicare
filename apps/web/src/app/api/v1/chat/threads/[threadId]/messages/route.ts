@@ -36,6 +36,9 @@ export async function POST(req: Request, { params }: Params) {
         session!.user!.id,
         body.body,
         body.locale,
+        body.attachmentUrl
+          ? { url: body.attachmentUrl, mime: body.attachmentMime ?? "audio/webm" }
+          : undefined,
       );
     },
     { auth: true, bodySchema: sendChatMessageSchema },

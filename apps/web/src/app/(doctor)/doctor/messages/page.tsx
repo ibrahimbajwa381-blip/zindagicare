@@ -24,7 +24,7 @@ export default async function DoctorMessagesPage({ searchParams }: PageProps) {
   const t = getDictionary(locale);
 
   return (
-    <div className="-mx-4 flex h-[calc(100svh-4rem-4.75rem)] flex-col overflow-hidden sm:-mx-6 lg:-mx-8 lg:h-[calc(100svh-4rem)]">
+    <div className="-mx-4 -my-6 flex h-[calc(100svh-4rem-4.75rem+3rem)] flex-col overflow-hidden sm:-mx-6 sm:-my-8 sm:h-[calc(100svh-4rem-4.75rem+4rem)] lg:-mx-8 lg:-my-10 lg:h-[calc(100svh-4rem+5rem)]">
       <div className="shrink-0 border-b border-slate-200/80 bg-white/95 px-4 py-3 sm:px-6 lg:px-8">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Communications

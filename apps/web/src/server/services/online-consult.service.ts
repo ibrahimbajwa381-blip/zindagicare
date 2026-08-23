@@ -865,6 +865,7 @@ export class OnlineConsultService {
         slotStart: appointment.scheduledStart,
         appointmentId: appointment._id.toString(),
         type: "online",
+        patientId: appointment.patientId.toString(),
       });
     }
 

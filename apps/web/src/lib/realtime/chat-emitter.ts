@@ -7,6 +7,8 @@ export type ChatRealtimeEvent = {
   senderId?: string;
   kind?: "user" | "system";
   body?: string;
+  attachmentUrl?: string;
+  attachmentMime?: string;
   createdAt?: string;
   lastMessagePreview?: string;
   lastMessageAt?: string;

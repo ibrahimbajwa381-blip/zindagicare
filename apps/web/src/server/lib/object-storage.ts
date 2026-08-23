@@ -7,7 +7,8 @@ export type StorageNamespace =
   | "physiotherapist-verification"
   | "home-visit-reports"
   | "payment-receipts"
-  | "prescriptions";
+  | "prescriptions"
+  | "chat-attachments";
 
 type StorageConfig = {
   url: string;
@@ -76,6 +77,12 @@ export function contentTypeFromKey(storageKey: string): string {
     case "jpg":
     case "jpeg":
       return "image/jpeg";
+    case "webm":
+      return "audio/webm";
+    case "m4a":
+      return "audio/mp4";
+    case "ogg":
+      return "audio/ogg";
     default:
       return "application/octet-stream";
   }
