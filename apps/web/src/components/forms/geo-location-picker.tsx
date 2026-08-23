@@ -31,18 +31,40 @@ export function GeoLocationPicker({
   const [parseError, setParseError] = useState<string>();
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading">("idle");
   const [useGpsMode, setUseGpsMode] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
-  function applyParsedLink() {
+  async function applyParsedLink() {
     setUseGpsMode(false);
     setParseError(undefined);
     const parsed = parseGoogleMapsUrl(mapsInput);
-    if (!parsed) {
-      setParseError(
-        "Could not read coordinates. Paste a Google Maps link or lat,lng (e.g. 31.5204, 74.3587).",
-      );
+    if (parsed) {
+      onChange(parsed);
       return;
     }
-    onChange(parsed);
+
+    // Short links (maps.app.goo.gl, goo.gl/maps) don't carry coordinates in
+    // the URL itself — ask the server to follow the redirect chain.
+    if (/^https?:\/\/[^/]*(goo\.gl|google\.com)\//i.test(mapsInput.trim())) {
+      setResolving(true);
+      try {
+        const res = await fetch(
+          `/api/geo/resolve-maps-link?url=${encodeURIComponent(mapsInput.trim())}`,
+        );
+        if (res.ok) {
+          const resolved = (await res.json()) as GeoCoordinates;
+          onChange(resolved);
+          setResolving(false);
+          return;
+        }
+      } catch {
+        // fall through to error message below
+      }
+      setResolving(false);
+    }
+
+    setParseError(
+      "Could not read coordinates. Paste a Google Maps link or lat,lng (e.g. 31.5204, 74.3587).",
+    );
   }
 
   function detectCurrentLocation() {
@@ -101,8 +123,13 @@ export function GeoLocationPicker({
               placeholder="https://maps.google.com/… or 31.5204, 74.3587"
               className="flex-1"
             />
-            <Button type="button" variant="secondary" onClick={applyParsedLink}>
-              Apply link
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={applyParsedLink}
+              disabled={resolving}
+            >
+              {resolving ? "Resolving…" : "Apply link"}
             </Button>
           </div>
           {parseError && <p className="mt-1.5 text-xs text-red-600">{parseError}</p>}

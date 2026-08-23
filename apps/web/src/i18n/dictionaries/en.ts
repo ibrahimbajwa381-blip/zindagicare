@@ -1333,6 +1333,8 @@ export const en = {
     reviewsEmpty: "No reviews yet. Reviews appear after completed paid consultations.",
     videoConsult: "Video consultation",
     perConsultation: "per consultation",
+    shareProfile: "Share profile",
+    linkCopied: "Link copied!",
   },
   consult: {
     videoLeft: {

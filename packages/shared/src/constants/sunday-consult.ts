@@ -24,7 +24,7 @@ export const SUNDAY_CONSULT_CONFIG = {
    * Optional contribution when the patient can afford a small fee
    * (same JazzCash transfer flow as paid doctor booking).
    */
-  contributionFeePkr: 800,
+  contributionFeePkr: 500,
   /** Unpaid Sunday contribution checkout expires after this */
   paymentHoldDurationMs: 15 * 60 * 1000,
 } as const;

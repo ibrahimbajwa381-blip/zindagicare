@@ -10,6 +10,7 @@ import {
   AppointmentTypes,
   SlotStatuses,
 } from "@zindagi/shared";
+import { safeDisplayText } from "@/server/lib/decrypt-pii";
 
 export type AdminAppointmentRow = {
   id: string;
@@ -18,9 +19,14 @@ export type AdminAppointmentRow = {
   scheduledStart: string;
   scheduledEnd: string;
   isOnline: boolean;
-  patient: { id: string; name: string; phone?: string };
-  doctor: { id: string; name: string };
+  patient: { id: string; name: string; phone?: string; email?: string };
+  doctor: { id: string; name: string; specialty?: string };
   cancellationReason?: string;
+  patientNotes?: string;
+  clinic?: { hospitalName?: string; address?: string; city?: string };
+  amountPkr?: number;
+  paymentStatus?: string;
+  createdAt: string;
 };
 
 const TYPE_FILTERS = {
@@ -47,18 +53,30 @@ export async function listAdminAppointments(filters?: {
   }
 
   const appointments = await AppointmentModel.find(query)
-    .populate("patientId", "name phone")
-    .populate({ path: "doctorId", populate: { path: "userId", select: "name" } })
+    .populate("patientId", "name phone email")
+    .populate({
+      path: "doctorId",
+      populate: { path: "userId", select: "name" },
+      select: "specialties",
+    })
+    .populate("paymentId", "amount status")
     .sort({ scheduledStart: -1 })
     .limit(filters?.limit ?? 100)
     .lean();
 
   return appointments.map((a) => {
-    const patient = a.patientId as { _id?: { toString(): string }; name?: string; phone?: string } | null;
+    const patient = a.patientId as {
+      _id?: { toString(): string };
+      name?: string;
+      phone?: string;
+      email?: string;
+    } | null;
     const doctorProfile = a.doctorId as {
       _id?: { toString(): string };
       userId?: { name?: string };
+      specialties?: string[];
     } | null;
+    const payment = a.paymentId as { amount?: number; status?: string } | null;
 
     return {
       id: a._id.toString(),
@@ -69,14 +87,28 @@ export async function listAdminAppointments(filters?: {
       isOnline: a.isOnline ?? false,
       patient: {
         id: patient?._id?.toString() ?? "",
-        name: patient?.name ?? "Patient",
-        phone: patient?.phone ?? undefined,
+        name: safeDisplayText(patient?.name) ?? "Patient",
+        phone: safeDisplayText(patient?.phone) ?? undefined,
+        email: safeDisplayText(patient?.email) ?? undefined,
       },
       doctor: {
         id: doctorProfile?._id?.toString() ?? "",
         name: doctorProfile?.userId?.name ?? "Doctor",
+        specialty: doctorProfile?.specialties?.[0] ?? undefined,
       },
       cancellationReason: a.cancellationReason ?? undefined,
+      patientNotes: a.patientNotes ?? undefined,
+      clinic:
+        a.clinic && (a.clinic.hospitalName || a.clinic.address || a.clinic.city)
+          ? {
+              hospitalName: a.clinic.hospitalName ?? undefined,
+              address: a.clinic.address ?? undefined,
+              city: a.clinic.city ?? undefined,
+            }
+          : undefined,
+      amountPkr: payment?.amount ?? undefined,
+      paymentStatus: payment?.status ?? undefined,
+      createdAt: (a.createdAt as Date | undefined)?.toISOString() ?? a.scheduledStart.toISOString(),
     };
   });
 }

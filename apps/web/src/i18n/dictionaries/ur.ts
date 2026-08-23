@@ -1326,6 +1326,8 @@ export const ur: Dictionary = {
     reviewsEmpty: "ابھی کوئی جائزہ نہیں۔ ادا شدہ مشورہ مکمل ہونے کے بعد جائزے ظاہر ہوں گے۔",
     videoConsult: "ویڈیو مشورہ",
     perConsultation: "فی مشورہ",
+    shareProfile: "پروفائل شیئر کریں",
+    linkCopied: "لنک کاپی ہو گیا!",
   },
   consult: {
     videoLeft: {

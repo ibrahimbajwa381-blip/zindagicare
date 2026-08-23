@@ -79,6 +79,8 @@ export default async function DoctorProfilePage({ params }: PageProps) {
             pmdcVerified: t.common.pmdc,
             videoConsult: p.videoConsult,
             perConsultation: p.perConsultation,
+            shareProfile: p.shareProfile,
+            linkCopied: p.linkCopied,
           }}
         />
       </PageSection>

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DoctorProfileBookingPanel } from "@/features/consult/components/doctor-profile-booking-panel";
+import { ShareProfileButton } from "@/features/marketing/components/share-profile-button";
 import type {
   DoctorReviewDto,
   PublicDoctorProfile,
@@ -34,6 +35,8 @@ type Copy = {
   pmdcVerified: string;
   videoConsult: string;
   perConsultation: string;
+  shareProfile: string;
+  linkCopied: string;
 };
 
 type Props = {
@@ -77,12 +80,19 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px] lg:items-start">
       <div className="space-y-6">
-        <Link
-          href="/doctors"
-          className="inline-flex text-sm font-medium text-brand hover:text-brand-dark"
-        >
-          ← {copy.backToDoctors}
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/doctors"
+            className="inline-flex text-sm font-medium text-brand hover:text-brand-dark"
+          >
+            ← {copy.backToDoctors}
+          </Link>
+          <ShareProfileButton
+            doctorName={doctor.name}
+            shareLabel={copy.shareProfile}
+            copiedLabel={copy.linkCopied}
+          />
+        </div>
 
         <div className={`overflow-hidden ${surfaceCardInteractive}`}>
           <div className="bg-gradient-to-br from-brand-muted/80 via-white to-accent-muted/40 p-6 sm:p-8">

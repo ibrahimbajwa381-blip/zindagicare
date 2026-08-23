@@ -55,7 +55,7 @@ export function useHeaderBadges(enabled: boolean) {
     void refresh();
     const interval = window.setInterval(() => {
       void refresh();
-    }, 60_000);
+    }, 20_000);
 
     const onFocus = () => {
       void refresh();

@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import { cn } from "@zindagi/shared";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 
 type Appointment = {
@@ -13,8 +15,15 @@ type Appointment = {
   type: string;
   status: string;
   scheduledStart: string;
-  patient: { name: string; phone?: string };
-  doctor: { id: string; name: string };
+  scheduledEnd?: string;
+  isOnline?: boolean;
+  patient: { name: string; phone?: string; email?: string };
+  doctor: { id: string; name: string; specialty?: string };
+  patientNotes?: string;
+  clinic?: { hospitalName?: string; address?: string; city?: string };
+  amountPkr?: number;
+  paymentStatus?: string;
+  cancellationReason?: string;
 };
 
 type DoctorOption = { id: string; name: string };
@@ -28,6 +37,9 @@ const TYPE_TABS = [
 ];
 
 export function AdminAppointmentsBoard() {
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get("appointmentId");
+  const highlightRef = useRef<HTMLDivElement | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [typeFilter, setTypeFilter] = useState("");
@@ -54,6 +66,12 @@ export function AdminAppointmentsBoard() {
         if (json.success) setDoctors(json.data?.doctors ?? []);
       });
   }, [load]);
+
+  useEffect(() => {
+    if (!loading && highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [loading, highlightId, appointments]);
 
   const cancel = async (id: string) => {
     const reason = window.prompt("Cancellation reason (optional):") ?? undefined;
@@ -104,18 +122,58 @@ export function AdminAppointmentsBoard() {
       ) : (
         <div className="space-y-3">
           {appointments.map((a) => (
-            <Card key={a.id} className={surfaceCard}>
+            <Card
+              key={a.id}
+              ref={a.id === highlightId ? highlightRef : undefined}
+              className={cn(
+                surfaceCard,
+                a.id === highlightId && "ring-2 ring-brand ring-offset-2",
+              )}
+            >
               <CardContent className="space-y-2 pt-6">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
+                  <div className="space-y-0.5">
                     <p className="font-medium capitalize">
-                      {a.type.replace(/_/g, " ")} · {a.patient.name}
+                      {a.type.replace(/_/g, " ")}
+                      {a.isOnline ? " · Online" : ""} · {a.patient.name}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {formatKarachiDateTime(a.scheduledStart)} · Dr. {a.doctor.name}
+                      {formatKarachiDateTime(a.scheduledStart)}
+                      {a.scheduledEnd
+                        ? ` – ${new Date(a.scheduledEnd).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+                        : ""}
+                      {" · Dr. "}
+                      {a.doctor.name}
+                      {a.doctor.specialty ? ` (${a.doctor.specialty})` : ""}
                     </p>
-                    {a.patient.phone && (
-                      <p className="text-sm text-slate-500">{a.patient.phone}</p>
+                    {(a.patient.phone || a.patient.email) && (
+                      <p className="text-sm text-slate-500">
+                        {[a.patient.phone, a.patient.email].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    {a.clinic && (a.clinic.hospitalName || a.clinic.address || a.clinic.city) && (
+                      <p className="text-sm text-slate-500">
+                        {[a.clinic.hospitalName, a.clinic.address, a.clinic.city]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                    {a.patientNotes && (
+                      <p className="text-sm text-slate-600">
+                        <span className="font-medium">Reason: </span>
+                        {a.patientNotes}
+                      </p>
+                    )}
+                    {typeof a.amountPkr === "number" && (
+                      <p className="text-sm text-slate-500">
+                        Rs. {a.amountPkr.toLocaleString()}
+                        {a.paymentStatus ? ` · ${a.paymentStatus}` : ""}
+                      </p>
+                    )}
+                    {a.status === "cancelled" && a.cancellationReason && (
+                      <p className="text-sm text-red-500">
+                        Cancelled: {a.cancellationReason}
+                      </p>
                     )}
                   </div>
                   <Badge variant="outline">{a.status}</Badge>
