@@ -70,6 +70,7 @@ export const siteConfig = {
     messages: "/messages",
     assistant: "/assistant",
     doctorMessages: "/doctor/messages",
+    shareReview: "/share-review",
     getApp: "/get-app",
     getAppAndroid: "/get-app?platform=android",
     getAppIos: "/get-app?platform=ios",

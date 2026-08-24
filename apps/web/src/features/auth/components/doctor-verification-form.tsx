@@ -264,6 +264,12 @@ export function DoctorVerificationForm() {
       return;
     }
 
+    if (fields.consultationFee && fields.consultationFee < 500) {
+      setError("Consultation fee must be at least PKR 500.");
+      setPending(false);
+      return;
+    }
+
     const body = {
       pmdcNumber: fields.pmdcNumber,
       cnic: fields.cnic,
@@ -497,7 +503,7 @@ export function DoctorVerificationForm() {
             id="consultationFee"
             name="consultationFee"
             type="number"
-            min={0}
+            min={500}
             value={fields.consultationFee}
             onChange={(e) => updateField("consultationFee", e.target.value)}
           />

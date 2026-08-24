@@ -19,8 +19,8 @@ const testimonialSchema = new Schema(
     isVisible: { type: Boolean, default: true },
     moderatedBy: { type: Schema.Types.ObjectId, ref: "User" },
     deletedAt: { type: Date },
-    /** "patient" = submitted via app; "admin" = entered by staff on a patient's behalf. */
-    source: { type: String, enum: ["patient", "admin"], default: "patient" },
+    /** "patient" = submitted via app; "admin" = entered by staff on a patient's behalf; "public" = submitted via the shareable public link (no account). */
+    source: { type: String, enum: ["patient", "admin", "public"], default: "patient" },
   },
   { timestamps: true },
 );

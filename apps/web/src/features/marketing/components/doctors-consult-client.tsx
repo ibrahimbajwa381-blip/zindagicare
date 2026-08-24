@@ -11,11 +11,13 @@ import { siteConfig } from "@/config/site";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
 import { DoctorCard } from "@/features/marketing/components/doctor-card";
+import { DoctorSearchBar } from "@/features/marketing/components/doctor-search-bar";
 import { SectionHeader } from "@/features/marketing/components/section-header";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
 import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import { conditionDoctorPath, getConditionBySlug } from "@/lib/seo/conditions";
+import { findSpecialtiesForKeyword } from "@/lib/seo/disease-specialty-map";
 import { getSpecialtyBySlug, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
@@ -82,6 +84,7 @@ export function DoctorsConsultClient({
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const specialtySlug = searchParams.get("specialty");
   const conditionSlug = searchParams.get("condition");
@@ -113,11 +116,15 @@ export function DoctorsConsultClient({
     }
   }, [conditionSlug, initialSpecialty, router, specialtySlug]);
 
+  const hasSearchQuery = searchQuery.trim().length > 0;
+
   const loadDoctors = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ city: initialCity });
-      if (activeSpecialty) params.set("specialty", activeSpecialty);
+      // When free-text search is active we fetch the full city list and filter
+      // client-side, since search can match name/hospital/disease as well as specialty.
+      if (activeSpecialty && !hasSearchQuery) params.set("specialty", activeSpecialty);
       const res = await fetch(`/api/v1/consult/doctors?${params.toString()}`);
       const json = await res.json();
       if (json.success) {
@@ -126,7 +133,7 @@ export function DoctorsConsultClient({
     } finally {
       setLoading(false);
     }
-  }, [activeSpecialty, initialCity]);
+  }, [activeSpecialty, hasSearchQuery, initialCity]);
 
   const loadMyBooking = useCallback(async () => {
     if (!session?.user) return;
@@ -146,6 +153,24 @@ export function DoctorsConsultClient({
     loadMyBooking();
   }, [loadMyBooking, status]);
 
+  const visibleDoctors = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return doctors;
+
+    const matchedSpecialties = new Set(findSpecialtiesForKeyword(query));
+    const scoped = activeSpecialty
+      ? doctors.filter((doc) => doc.specialties.includes(activeSpecialty))
+      : doctors;
+
+    return scoped.filter((doc) => {
+      if (doc.name.toLowerCase().includes(query)) return true;
+      if (doc.hospital?.toLowerCase().includes(query)) return true;
+      if (doc.specialties.some((specialty) => specialty.toLowerCase().includes(query))) return true;
+      if (doc.specialties.some((specialty) => matchedSpecialties.has(specialty))) return true;
+      return false;
+    });
+  }, [activeSpecialty, doctors, searchQuery]);
+
   return (
     <PageSection id="browse-doctors" variant="brand" spacing="lg" flipBlur>
       {booking && (
@@ -162,12 +187,16 @@ export function DoctorsConsultClient({
         className="mx-auto"
       />
 
+      <div className="mt-6 sm:mt-8">
+        <DoctorSearchBar value={searchQuery} onChange={setSearchQuery} />
+      </div>
+
       <div className="mt-8 sm:mt-12">
         {loading ? (
           <DoctorsListSkeleton label={copy.loading} />
-        ) : doctors.length > 0 ? (
+        ) : visibleDoctors.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-            {doctors.map((doc) => (
+            {visibleDoctors.map((doc) => (
               <DoctorCard
                 key={doc.doctorId}
                 href={doctorProfilePath(doc.slug, doc.doctorId)}
@@ -196,6 +225,15 @@ export function DoctorsConsultClient({
                 bookLabel={copy.bookCta}
               />
             ))}
+          </div>
+        ) : hasSearchQuery ? (
+          <div className={`rounded-2xl border border-dashed p-8 text-center sm:p-10 ${surfaceMuted}`}>
+            <p className="font-display text-lg font-semibold text-slate-800">
+              No doctors found for &ldquo;{searchQuery.trim()}&rdquo;
+            </p>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+              Try a different name, specialty, or condition — or clear the search to browse all doctors.
+            </p>
           </div>
         ) : (
           <div className={`rounded-2xl border border-dashed p-8 text-center sm:p-10 ${surfaceMuted}`}>

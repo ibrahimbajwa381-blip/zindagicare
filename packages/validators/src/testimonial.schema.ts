@@ -18,6 +18,17 @@ export const adminAddTestimonialSchema = z.object({
 
 export type AdminAddTestimonialInput = z.infer<typeof adminAddTestimonialSchema>;
 
+/** Anyone with the shareable link submits a review — no account required. */
+export const publicSubmitTestimonialSchema = z.object({
+  patientName: z.string().trim().min(2).max(100),
+  content: z.string().trim().min(10).max(3000),
+  rating: z.number().int().min(1).max(5).optional(),
+  /** Honeypot — bots fill hidden fields; real users leave it blank. */
+  website: z.string().max(0).optional(),
+});
+
+export type PublicSubmitTestimonialInput = z.infer<typeof publicSubmitTestimonialSchema>;
+
 export const adminTestimonialModerationSchema = z.object({
   testimonialId: z.string().min(1),
   action: z.enum(["hide", "show", "delete"]),

@@ -239,6 +239,13 @@ export function DoctorProfileEditForm({
       }
     }
 
+    const feeValue = Number(consultationFee) || 0;
+    if (feeValue < 500) {
+      setError("Consultation fee must be at least PKR 500.");
+      setPending(false);
+      return;
+    }
+
     const body = {
       name: name.trim(),
       phone: phone.trim() || undefined,
@@ -246,7 +253,7 @@ export function DoctorProfileEditForm({
         ? { avatarUrl }
         : {}),
       bio: bio.trim() || null,
-      consultationFee: Number(consultationFee) || 0,
+      consultationFee: feeValue,
       primarySpecialty,
       additionalSpecialties,
       languages: languageList,
@@ -526,7 +533,7 @@ export function DoctorProfileEditForm({
           <Input
             id="consultationFee"
             type="number"
-            min={0}
+            min={500}
             value={consultationFee}
             onChange={(e) => setConsultationFee(e.target.value)}
             className="max-w-xs"

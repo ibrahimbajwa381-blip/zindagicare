@@ -25,6 +25,7 @@ import {
   UserCheck,
   Users,
   X,
+  BarChart3,
 } from "lucide-react";
 
 type AdminNavCountKey = keyof AdminNavCounts;
@@ -96,6 +97,20 @@ const NAV_SECTIONS: AdminNavSection[] = [
         label: "Overview",
         description: "Platform health and queues",
         icon: LayoutDashboard,
+        exact: true,
+      },
+      {
+        href: "/admin/doctor-stats",
+        label: "Doctor statistics",
+        description: "Specialty, city, and coverage stats",
+        icon: BarChart3,
+        exact: true,
+      },
+      {
+        href: "/admin/patient-stats",
+        label: "Patient statistics",
+        description: "Demographics, growth, and activity",
+        icon: Users,
         exact: true,
       },
     ],

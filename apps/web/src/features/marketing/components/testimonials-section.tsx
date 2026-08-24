@@ -1,8 +1,12 @@
-import { Quote, Star } from "lucide-react";
+import Link from "next/link";
+import { PenLine, Quote, Star } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { PageSection } from "@/components/layout/page-section";
+import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/features/marketing/components/section-header";
+import { ShareReviewLink } from "@/features/marketing/components/share-review-link";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import { siteConfig } from "@/config/site";
 import { getDictionary } from "@/i18n";
 import { getLocale } from "@/i18n/server";
 import { TestimonialService } from "@/server/services/testimonial.service";
@@ -40,8 +44,17 @@ export async function TestimonialsSection() {
         title={t.title}
         description={t.description}
         align="center"
-        className="mb-10"
+        className="mb-6"
       />
+      <div className="mb-10 flex flex-wrap items-center justify-center gap-3">
+        <Button asChild size="sm" className="gap-1.5">
+          <Link href={siteConfig.links.shareReview}>
+            <PenLine className="h-3.5 w-3.5" />
+            {t.addReview}
+          </Link>
+        </Button>
+        <ShareReviewLink />
+      </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {testimonials.map((item) => (
           <article

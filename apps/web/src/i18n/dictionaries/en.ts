@@ -450,6 +450,7 @@ export const en = {
     eyebrow: "Patient stories",
     title: "Loved by patients across Pakistan",
     description: "Real experiences from patients who booked appointments, consulted doctors, and got care from the comfort of their homes.",
+    addReview: "Write a review",
     submit: {
       title: "Share your experience",
       description: "Tell other patients about your experience with ZindagiCare. Your review goes live right away.",

@@ -1,5 +1,9 @@
 import { TestimonialModel, UserModel, connectDatabase } from "@zindagi/database";
-import type { AdminAddTestimonialInput, SubmitTestimonialInput } from "@zindagi/validators";
+import type {
+  AdminAddTestimonialInput,
+  PublicSubmitTestimonialInput,
+  SubmitTestimonialInput,
+} from "@zindagi/validators";
 import { AppError, ErrorCodes } from "@zindagi/shared";
 import { mongoFilter } from "@/lib/mongo/query";
 
@@ -19,7 +23,7 @@ export type AdminTestimonialRow = {
   content: string;
   isVisible: boolean;
   createdAt: string;
-  source: "patient" | "admin";
+  source: "patient" | "admin" | "public";
 };
 
 export class TestimonialService {
@@ -63,6 +67,29 @@ export class TestimonialService {
       rating: input.rating,
       content: input.content.trim(),
       source: "patient",
+      isVisible: true,
+    } as Record<string, unknown>);
+
+    return {
+      id: testimonial._id.toString(),
+      patientName: testimonial.patientName,
+      rating: testimonial.rating ?? undefined,
+      content: testimonial.content,
+      createdAt: testimonial.createdAt.toISOString(),
+    };
+  }
+
+  /** Anyone with the shareable link submits a review — no account, goes live immediately. */
+  static async submitPublicTestimonial(
+    input: PublicSubmitTestimonialInput,
+  ): Promise<PublicTestimonialDto> {
+    await TestimonialService.ensureConnected();
+
+    const testimonial = await TestimonialModel.create({
+      patientName: input.patientName.trim(),
+      rating: input.rating,
+      content: input.content.trim(),
+      source: "public",
       isVisible: true,
     } as Record<string, unknown>);
 
@@ -128,7 +155,7 @@ export class TestimonialService {
       content: row.content,
       isVisible: row.isVisible ?? true,
       createdAt: row.createdAt.toISOString(),
-      source: (row.source as "patient" | "admin") ?? "patient",
+      source: (row.source as "patient" | "admin" | "public") ?? "patient",
     }));
 
     return { testimonials, total };

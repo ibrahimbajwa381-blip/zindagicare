@@ -18,7 +18,7 @@ type AdminTestimonialRow = {
   content: string;
   isVisible: boolean;
   createdAt: string;
-  source: "patient" | "admin";
+  source: "patient" | "admin" | "public";
 };
 
 const FILTERS = [
@@ -286,6 +286,14 @@ export function AdminTestimonialsPanel() {
                         className="border-brand-light/60 bg-brand-muted/40 text-[10px] uppercase tracking-wide text-brand-dark"
                       >
                         Added by admin
+                      </Badge>
+                    )}
+                    {row.source === "public" && (
+                      <Badge
+                        variant="outline"
+                        className="border-accent-light/60 bg-accent-muted/40 text-[10px] uppercase tracking-wide text-accent-dark"
+                      >
+                        Shared link
                       </Badge>
                     )}
                   </div>

@@ -49,7 +49,10 @@ export const updateDoctorProfileSchema = z
     phone: pakistaniPhoneSchema.optional(),
     avatarUrl: z.string().min(1, "Invalid profile photo URL").optional(),
     bio: z.string().max(2000).optional().nullable(),
-    consultationFee: z.coerce.number().min(0).optional(),
+    consultationFee: z.coerce
+      .number()
+      .min(500, "Consultation fee must be at least PKR 500")
+      .optional(),
     primarySpecialty: specialtyEnum.optional(),
     additionalSpecialties: z
       .array(specialtyEnum)

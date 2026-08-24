@@ -127,7 +127,10 @@ export const doctorVerificationSchema = z.object({
   experienceYears: z.coerce.number().int().min(0).max(60),
   avatarUrl: z.string().min(1, "Profile photo is required"),
   bio: z.string().max(2000).optional(),
-  consultationFee: z.coerce.number().min(0).optional(),
+  consultationFee: z.coerce
+    .number()
+    .min(500, "Consultation fee must be at least PKR 500")
+    .optional(),
   hospitals: z
     .array(
       z.object({
