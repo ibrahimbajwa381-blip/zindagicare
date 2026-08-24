@@ -10,7 +10,9 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { siteConfig } from "@/config/site";
 import { DoctorProfileBookingPanel } from "@/features/consult/components/doctor-profile-booking-panel";
+import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
 import { ShareProfileButton } from "@/features/marketing/components/share-profile-button";
 import type {
   DoctorReviewDto,
@@ -87,11 +89,30 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
           >
             ← {copy.backToDoctors}
           </Link>
-          <ShareProfileButton
-            doctorName={doctor.name}
-            shareLabel={copy.shareProfile}
-            copiedLabel={copy.linkCopied}
-          />
+          <div className="flex items-center gap-3">
+            <ShareProfileButton
+              doctorName={doctor.name}
+              shareLabel={copy.shareProfile}
+              copiedLabel={copy.linkCopied}
+            />
+            <DoctorShareCardDialog
+              triggerLabel="Share card"
+              card={{
+                name: doctor.name,
+                avatarUrl: avatarSrc,
+                specialty: doctor.specialties.join(" · "),
+                qualifications: credentialBadges,
+                hospital: doctor.hospitals[0]?.name,
+                city: doctor.hospitals[0]?.city,
+                experienceYears: doctor.experienceYears,
+                ratingAvg: doctor.ratingAvg,
+                ratingCount: doctor.ratingCount,
+                consultationFee: doctor.consultationFee,
+                pmdcVerified: doctor.pmdcVerified,
+                profileUrl: `${siteConfig.url}${callbackUrl}`,
+              }}
+            />
+          </div>
         </div>
 
         <div className={`overflow-hidden ${surfaceCardInteractive}`}>

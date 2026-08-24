@@ -15,10 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DoctorAvatar } from "@/features/doctor/components/doctor-avatar";
 import { DoctorEarningsSummaryCard } from "@/features/doctor/components/doctor-earnings-panel";
+import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
 import { DOCTOR_OVERVIEW_ACTIONS } from "@/features/doctor/data/doctor-workspace-nav";
 import { formatDayOfWeek, type DoctorProfileDto } from "@/features/doctor/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { formatQualificationsList } from "@/lib/doctors/qualifications";
+import { doctorProfilePath } from "@/lib/doctors/profile-path";
+import { siteConfig } from "@/config/site";
 import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 
 type Props = {
@@ -104,6 +107,7 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
     profile.qualifications,
   );
   const avatarSrc = resolveDoctorPortrait(profile.user.name, profile.user.avatarUrl);
+  const profileUrl = `${siteConfig.url}${doctorProfilePath(profile.slug, profile.id)}`;
 
   const queueStats: Array<{ label: string; value: number }> = [
     { label: "Patients", value: summary.patients },
@@ -160,6 +164,25 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
                       Edit profile
                     </Link>
                   </Button>
+                  {isApproved && (
+                    <DoctorShareCardDialog
+                      triggerLabel="Share profile card"
+                      card={{
+                        name: `Dr. ${profile.user.name}`,
+                        avatarUrl: avatarSrc,
+                        specialty,
+                        qualifications: credentials,
+                        hospital: profile.hospitals[0]?.name,
+                        city: profile.hospitals[0]?.city,
+                        experienceYears: profile.experienceYears,
+                        ratingAvg: summary.ratingAvg,
+                        ratingCount: summary.ratingCount,
+                        consultationFee: profile.consultationFee,
+                        pmdcVerified: profile.pmdcVerified,
+                        profileUrl,
+                      }}
+                    />
+                  )}
                 </div>
               )}
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
