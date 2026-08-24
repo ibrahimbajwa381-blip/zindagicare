@@ -264,7 +264,7 @@ export function DoctorVerificationForm() {
       return;
     }
 
-    if (fields.consultationFee && fields.consultationFee < 500) {
+    if (fields.consultationFee && Number(fields.consultationFee) < 500) {
       setError("Consultation fee must be at least PKR 500.");
       setPending(false);
       return;

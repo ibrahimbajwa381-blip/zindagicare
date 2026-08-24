@@ -9,6 +9,7 @@ import {
   Search,
   Settings2,
   Stethoscope,
+  Trash2,
 } from "lucide-react";
 import { VerificationStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,28 @@ export function AdminDoctorsManagement() {
     } else {
       const json = await res.json();
       alert(json?.error?.message ?? "Failed to create doctor");
+    }
+  };
+
+  const deleteDoctor = async (doc: AdminDoctorRow) => {
+    const typed = window.prompt(
+      `This permanently deletes ${doc.name}'s account and doctor profile. This cannot be undone.\n\nType the doctor's name to confirm: "${doc.name}"`,
+    );
+    if (typed !== doc.name) {
+      if (typed !== null) alert("Name didn't match — deletion cancelled.");
+      return;
+    }
+    setPending(doc.id);
+    const res = await fetch(`/api/v1/admin/doctors/${doc.id}`, {
+      method: "DELETE",
+    });
+    setPending(null);
+    if (res.ok) {
+      setExpandedId(null);
+      await load();
+    } else {
+      const json = await res.json();
+      alert(json?.error?.message ?? "Failed to delete doctor");
     }
   };
 
@@ -469,6 +492,16 @@ export function AdminDoctorsManagement() {
                               }}
                             >
                               Set 9–5 schedule
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={pending === doc.id}
+                              onClick={() => deleteDoctor(doc)}
+                              className="ml-auto border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete permanently
                             </Button>
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">

@@ -6,6 +6,7 @@ import {
   HomeVisitModel,
   PaymentModel,
   SundaySlotTemplateModel,
+  SundaySlotInstanceModel,
   UserModel,
   type DoctorProfileDocument,
 } from "@zindagi/database";
@@ -807,6 +808,46 @@ export async function getDoctorDetailForAdmin(
 ): Promise<AdminDoctorRow> {
   await connectDatabase();
   return buildAdminDoctorRow(doctorProfileId);
+}
+
+const BLOCKING_APPOINTMENT_STATUSES = [
+  AppointmentStatuses.PENDING,
+  AppointmentStatuses.CONFIRMED,
+  AppointmentStatuses.IN_PROGRESS,
+];
+
+export async function adminDeleteDoctor(doctorProfileId: string): Promise<void> {
+  await connectDatabase();
+  const profile = await DoctorProfileModel.findById(doctorProfileId);
+  if (!profile) throw new AppError("Doctor not found", "NOT_FOUND", 404);
+
+  const activeAppointments = await AppointmentModel.countDocuments(
+    mongoFilter({
+      doctorId: profile._id,
+      status: { $in: BLOCKING_APPOINTMENT_STATUSES },
+      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+    }),
+  );
+  if (activeAppointments > 0) {
+    throw new AppError(
+      "Cannot delete a doctor with pending, confirmed, or in-progress appointments. Cancel or complete them first.",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
+  const userId = profile.userId;
+
+  await SundaySlotTemplateModel.deleteMany(
+    mongoFilter({ doctorId: profile._id }),
+  );
+  await SundaySlotInstanceModel.deleteMany(
+    mongoFilter({ doctorId: profile._id }),
+  );
+  await DoctorProfileModel.deleteOne({ _id: profile._id });
+  if (userId) {
+    await UserModel.deleteOne(mongoFilter({ _id: userId.toString() }));
+  }
 }
 
 export async function listDoctorsForReassign() {
