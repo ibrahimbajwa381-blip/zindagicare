@@ -1,11 +1,6 @@
-import { connectDatabase, DoctorProfileModel, UserModel } from "@zindagi/database";
+import { connectDatabase } from "@zindagi/database";
 import { VerificationStatuses } from "@zindagi/shared";
-import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
-import { mapUserPii } from "@/server/lib/decrypt-pii";
-import {
-  getDoctorCommissionRatesByProfileIds,
-  type DoctorCommissionRates,
-} from "./commission.service";
+import { listAllDoctors } from "./admin-doctor.service";
 import {
   getPlatformCommissionSettings,
   updatePlatformCommissionSettings,
@@ -15,10 +10,13 @@ import {
 export type AdminFinancesDoctorRow = {
   id: string;
   name: string;
+  avatarUrl?: string;
   onlineCommissionPercent: number | null;
   homeVisitCommissionPercent: number | null;
   effectiveOnlineCommissionPercent: number;
   effectiveHomeVisitCommissionPercent: number;
+  totalEarnings: number;
+  earningsThisMonth: number;
 };
 
 export type AdminFinancesOverview = {
@@ -29,46 +27,25 @@ export type AdminFinancesOverview = {
 export async function getAdminFinancesOverview(): Promise<AdminFinancesOverview> {
   await connectDatabase();
 
-  const [platform, profiles] = await Promise.all([
+  const [platform, allDoctors] = await Promise.all([
     getPlatformCommissionSettings(),
-    DoctorProfileModel.find(
-      mongoFilter({
-        verificationStatus: VerificationStatuses.APPROVED,
-        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-      }),
-    )
-      .select("userId onlineCommissionPercent homeVisitCommissionPercent commissionPercent")
-      .sort({ createdAt: -1 })
-      .lean(),
+    listAllDoctors(),
   ]);
 
-  const profileIds = profiles.map((p) => p._id.toString());
-  const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];
-  const users = userIds.length
-    ? await UserModel.find(mongoFilter({ _id: { $in: mongoObjectIds(userIds) } }))
-        .select("name")
-        .lean()
-    : [];
-  const userMap = new Map(users.map((u) => [u._id.toString(), u]));
-  const ratesByProfile = await getDoctorCommissionRatesByProfileIds(profileIds);
-
-  const doctors: AdminFinancesDoctorRow[] = profiles.map((profile) => {
-    const id = profile._id.toString();
-    const user = userMap.get(profile.userId?.toString() ?? "");
-    const rates: DoctorCommissionRates = ratesByProfile.get(id) ?? {
-      online: platform.defaultDoctorOnlineCommissionPercent,
-      homeVisit: platform.defaultDoctorHomeVisitCommissionPercent,
-    };
-
-    return {
-      id,
-      name: mapUserPii(user ?? {}).name,
-      onlineCommissionPercent: profile.onlineCommissionPercent ?? null,
-      homeVisitCommissionPercent: profile.homeVisitCommissionPercent ?? null,
-      effectiveOnlineCommissionPercent: rates.online,
-      effectiveHomeVisitCommissionPercent: rates.homeVisit,
-    };
-  });
+  const doctors: AdminFinancesDoctorRow[] = allDoctors
+    .filter((doctor) => doctor.verificationStatus === VerificationStatuses.APPROVED)
+    .sort((a, b) => b.stats.totalEarnings - a.stats.totalEarnings)
+    .map((doctor) => ({
+      id: doctor.id,
+      name: doctor.name,
+      avatarUrl: doctor.avatarUrl,
+      onlineCommissionPercent: doctor.onlineCommissionPercent,
+      homeVisitCommissionPercent: doctor.homeVisitCommissionPercent,
+      effectiveOnlineCommissionPercent: doctor.effectiveOnlineCommissionPercent,
+      effectiveHomeVisitCommissionPercent: doctor.effectiveHomeVisitCommissionPercent,
+      totalEarnings: doctor.stats.totalEarnings,
+      earningsThisMonth: doctor.stats.earningsThisMonth,
+    }));
 
   return { platform, doctors };
 }

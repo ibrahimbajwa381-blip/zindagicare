@@ -7,6 +7,7 @@ export type StorageNamespace =
   | "physiotherapist-verification"
   | "home-visit-reports"
   | "payment-receipts"
+  | "payout-receipts"
   | "prescriptions"
   | "chat-attachments";
 

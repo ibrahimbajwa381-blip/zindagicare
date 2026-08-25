@@ -229,28 +229,37 @@ export function DoctorEarningsPanel({ earnings }: Props) {
             Payout requests
           </p>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Withdrawals are processed to your registered bank account. Contact ZindagiCare
-            support to request a payout or update your payout details.
+            Payouts are sent by ZindagiCare admin to your registered bank account. Keep your
+            bank details up to date below so payments reach you.
           </p>
         </div>
 
         {earnings.withdrawals.length === 0 ? (
           <div className="mt-4">
-            <DoctorEmptyState message="No withdrawals yet. Your available balance will appear here once you request a payout." />
+            <DoctorEmptyState message="No payouts yet. Once admin pays you, it will appear here with a receipt." />
           </div>
         ) : (
           <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100">
             {earnings.withdrawals.map((withdrawal) => (
-              <div key={withdrawal.id} className="p-4 sm:p-5">
+              <div
+                key={withdrawal.id}
+                className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+              >
                 <DoctorListCard
                   title={formatCurrency(withdrawal.amount, withdrawal.currency)}
                   subtitle={formatWithdrawalStatus(withdrawal.status)}
-                  meta={`Requested ${formatDateTime(withdrawal.requestedAt)}${
-                    withdrawal.completedAt
-                      ? ` · Completed ${formatDateTime(withdrawal.completedAt)}`
-                      : ""
-                  }`}
+                  meta={`Paid ${formatDateTime(withdrawal.requestedAt)}`}
                 />
+                {withdrawal.receiptUrl && (
+                  <a
+                    href={withdrawal.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-xs font-medium text-brand hover:underline"
+                  >
+                    View receipt
+                  </a>
+                )}
               </div>
             ))}
           </div>

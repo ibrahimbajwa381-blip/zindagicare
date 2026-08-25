@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import type { AdminFinancesOverview } from "@/server/services/admin-finances.service";
+
+function formatCurrency(amount: number) {
+  return `PKR ${amount.toLocaleString("en-PK")}`;
+}
 
 export function AdminFinancesPanel() {
   const [data, setData] = useState<AdminFinancesOverview | null>(null);
@@ -143,8 +148,8 @@ export function AdminFinancesPanel() {
           <div>
             <CardTitle className="text-base">Doctor commission overrides</CardTitle>
             <p className="mt-1 text-sm text-slate-500">
-              Approved doctors with custom rates. Leave blank on a doctor profile to use platform
-              defaults above.
+              Approved doctors with earnings and commission rates. Leave blank on a doctor
+              profile to use platform defaults above.
             </p>
           </div>
         </CardHeader>
@@ -157,6 +162,8 @@ export function AdminFinancesPanel() {
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                     <th className="px-3 py-2 font-medium">Doctor</th>
+                    <th className="px-3 py-2 font-medium">Total earned</th>
+                    <th className="px-3 py-2 font-medium">This month</th>
                     <th className="px-3 py-2 font-medium">Online %</th>
                     <th className="px-3 py-2 font-medium">In-house %</th>
                     <th className="px-3 py-2 font-medium">Effective</th>
@@ -166,7 +173,22 @@ export function AdminFinancesPanel() {
                 <tbody>
                   {data.doctors.map((doctor) => (
                     <tr key={doctor.id} className="border-b border-slate-100">
-                      <td className="px-3 py-3 font-medium text-slate-900">{doctor.name}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <AdminDoctorAvatar
+                            name={doctor.name}
+                            avatarUrl={doctor.avatarUrl}
+                            size="sm"
+                          />
+                          <span className="font-medium text-slate-900">{doctor.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-slate-900">
+                        {formatCurrency(doctor.totalEarnings)}
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">
+                        {formatCurrency(doctor.earningsThisMonth)}
+                      </td>
                       <td className="px-3 py-3 text-slate-600">
                         {formatOverride(doctor.onlineCommissionPercent)}
                       </td>
@@ -179,10 +201,10 @@ export function AdminFinancesPanel() {
                       </td>
                       <td className="px-3 py-3">
                         <Link
-                          href={`/admin/doctors/manage/${doctor.id}`}
+                          href={`/admin/finances/${doctor.id}`}
                           className="text-sm font-medium text-brand hover:underline"
                         >
-                          Manage
+                          Details
                         </Link>
                       </td>
                     </tr>

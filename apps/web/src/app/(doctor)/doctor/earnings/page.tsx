@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { VerificationStatuses } from "@zindagi/shared";
 import { DoctorPageHeader } from "@/features/doctor/components/doctor-page-header";
 import { DoctorEarningsPanel } from "@/features/doctor/components/doctor-earnings-panel";
+import { DoctorBankAccountCard } from "@/features/doctor/components/doctor-bank-account-card";
+import { DoctorEarningEligibilityCard } from "@/features/doctor/components/doctor-earning-eligibility-card";
 import { getDoctorEarnings } from "@/server/services/doctor-dashboard.service";
 import { getDoctorProfile } from "@/server/services/doctor-profile.service";
 
@@ -27,7 +29,11 @@ export default async function DoctorEarningsPage() {
         title="Earnings"
         description="Track your earnings, completed consultations, and withdrawals from paid online, clinic, and in-house visits."
       />
-      <DoctorEarningsPanel earnings={earnings} />
+      <div className="space-y-6">
+        <DoctorEarningsPanel earnings={earnings} />
+        <DoctorBankAccountCard />
+        <DoctorEarningEligibilityCard />
+      </div>
     </>
   );
 }

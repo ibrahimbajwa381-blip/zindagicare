@@ -200,7 +200,7 @@ export async function listPendingDoctorVerifications() {
   const profiles = await DoctorProfileModel.find({
     verificationStatus: VerificationStatuses.PENDING,
   })
-    .sort({ verificationSubmittedAt: 1, createdAt: 1 })
+    .sort({ verificationSubmittedAt: -1, createdAt: -1 })
     .lean();
 
   const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];

@@ -1,6 +1,7 @@
 import {
   AppointmentModel,
   connectDatabase,
+  DoctorPayoutModel,
   DoctorProfileModel,
   HomeVisitModel,
   PaymentModel,
@@ -143,6 +144,7 @@ export type DoctorWithdrawalRow = {
   status: "pending" | "processing" | "completed" | "failed";
   requestedAt: string;
   completedAt?: string;
+  receiptUrl?: string;
 };
 
 export type DoctorEarningsDetail = {
@@ -476,9 +478,26 @@ async function buildDoctorEarningsDetail(
     (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime(),
   );
 
-  const totalWithdrawn = 0;
+  const payoutDocs = await DoctorPayoutModel.find(
+    mongoFilter({ doctorProfileId: profileId }),
+  )
+    .sort({ paidAt: -1 })
+    .lean();
+
+  const withdrawals: DoctorWithdrawalRow[] = payoutDocs.map((p) => ({
+    id: p._id.toString(),
+    amount: p.amount,
+    currency: "PKR",
+    status: "completed",
+    requestedAt: new Date(p.paidAt).toISOString(),
+    completedAt: new Date(p.paidAt).toISOString(),
+    receiptUrl: p.receipt?.storageKey
+      ? `/api/v1/admin/doctors/${profileId}/finance/payouts/${p._id.toString()}/receipt`
+      : undefined,
+  }));
+
+  const totalWithdrawn = payoutDocs.reduce((sum, p) => sum + p.amount, 0);
   const pendingWithdrawal = 0;
-  const withdrawals: DoctorWithdrawalRow[] = [];
 
   return {
     totalGrossRevenue,

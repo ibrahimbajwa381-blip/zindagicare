@@ -17,6 +17,7 @@ export * from "./home-visit-review.model";
 export * from "./urgent-care-request.model";
 export * from "./sunday-free-request.model";
 export * from "./payment.model";
+export * from "./doctor-payout.model";
 export * from "./medical-intake.model";
 export * from "./audit-log.model";
 export * from "./doctor-miss.model";

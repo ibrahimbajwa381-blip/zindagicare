@@ -109,6 +109,13 @@ const doctorProfileSchema = new Schema(
     rejectionReason: { type: String },
     slug: { type: String, unique: true, sparse: true, lowercase: true },
     isListed: { type: Boolean, default: false },
+    /** Payout destination for admin-initiated manual payouts. */
+    bankAccount: {
+      accountTitle: String,
+      accountNumber: String,
+      bankName: String,
+      iban: String,
+    },
     /**
      * Missed-consult accountability. `currentMonth*` is a denormalized cache for fast
      * display/decisions; the source of truth is the DoctorMiss strike log.
@@ -146,6 +153,7 @@ applyFieldEncryption(doctorProfileSchema, {
     },
     { path: "rejectionReason", kind: "string" },
     { path: "homeVisitLocation.area", kind: "string" },
+    { path: "bankAccount", kind: "object" },
   ],
 });
 

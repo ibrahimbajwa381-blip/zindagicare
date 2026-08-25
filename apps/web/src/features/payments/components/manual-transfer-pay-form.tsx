@@ -81,13 +81,13 @@ export function ManualTransferPayForm({
 
   const handleSubmit = async () => {
     const tid = transactionId.trim();
-    if (!file && !tid) {
+    if (!file) {
       setLocalError(copy.proofRequired ?? copy.uploadHint);
       return;
     }
     setLocalError(null);
     await onSubmitReceipt({
-      file: file ?? undefined,
+      file,
       transactionId: tid || undefined,
     });
   };
@@ -141,7 +141,7 @@ export function ManualTransferPayForm({
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700" htmlFor="receipt-file">
-              {copy.uploadLabel}
+              {copy.uploadLabel} <span className="text-red-600">*</span>
             </label>
             <p className="text-xs text-slate-500">{copy.uploadHint}</p>
             <label
@@ -157,6 +157,7 @@ export function ManualTransferPayForm({
                 type="file"
                 accept="image/jpeg,image/png,image/webp,application/pdf"
                 className="sr-only"
+                required
                 disabled={submitting}
                 onChange={(e) => {
                   const next = e.target.files?.[0] ?? null;
@@ -172,7 +173,7 @@ export function ManualTransferPayForm({
               {copy.tidLabel ?? "JazzCash TID (optional)"}
             </label>
             <p className="text-xs text-slate-500">
-              {copy.tidHint ?? "If you do not have a screenshot, enter the JazzCash transaction ID."}
+              {copy.tidHint ?? "Add the JazzCash transaction ID if you have it, in addition to the receipt above."}
             </p>
             <Input
               id="jazzcash-tid"
