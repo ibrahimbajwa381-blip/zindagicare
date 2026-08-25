@@ -32,6 +32,8 @@ import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii
 import {
   calculateStaffNetEarnings,
   getDoctorCommissionRatesByProfileId,
+  getReferredPatientIdSet,
+  resolveEffectiveCommissionPercent,
 } from "./commission.service";
 import { VideoSessionService } from "./video-session.service";
 
@@ -127,6 +129,8 @@ export type DoctorEarningRow = {
   commissionPercent: number;
   currency: string;
   patient: { id: string; name: string };
+  /** True when the referral bonus was applied (patient was referred by this doctor). */
+  isReferralBonus: boolean;
 };
 
 export type DoctorConsultCounts = {
@@ -372,6 +376,21 @@ async function buildDoctorEarningsDetail(
 
   const paymentMap = await resolveGrossAmounts(paymentIds, paymentFallbacks);
 
+  const referredPatientIds = [
+    ...new Set([
+      ...completedAppts
+        .map((a) => (a.patientId as { _id?: { toString(): string } } | null)?._id?.toString())
+        .filter((id): id is string => Boolean(id)),
+      ...completedHomeVisits
+        .map((v) => (v.patientId as { _id?: { toString(): string } } | null)?._id?.toString())
+        .filter((id): id is string => Boolean(id)),
+    ]),
+  ];
+  const referredPatientIdSet = await getReferredPatientIdSet(
+    profileId,
+    referredPatientIds,
+  );
+
   let totalGrossRevenue = 0;
   let grossRevenueThisMonth = 0;
   let totalEarnings = 0;
@@ -389,10 +408,16 @@ async function buildDoctorEarningsDetail(
     const grossAmount = payment?.amount ?? 0;
     if (!grossAmount) continue;
 
-    const netAmount = calculateStaffNetEarnings(
-      grossAmount,
+    const patient = appt.patientId as
+      | { _id?: { toString(): string }; name?: string }
+      | null;
+    const isReferred = referredPatientIdSet.has(patient?._id?.toString() ?? "");
+    const effectivePercent = resolveEffectiveCommissionPercent(
       commissionRates.online,
+      isReferred,
     );
+
+    const netAmount = calculateStaffNetEarnings(grossAmount, effectivePercent);
     const commissionAmount = grossAmount - netAmount;
     totalGrossRevenue += grossAmount;
     totalEarnings += netAmount;
@@ -407,10 +432,6 @@ async function buildDoctorEarningsDetail(
     }
     incrementConsultCount(completedConsults, appt.type);
 
-    const patient = appt.patientId as
-      | { _id?: { toString(): string }; name?: string }
-      | null;
-
     transactions.push({
       id: appt._id.toString(),
       type: appt.type,
@@ -418,12 +439,13 @@ async function buildDoctorEarningsDetail(
       amount: netAmount,
       grossAmount,
       commissionAmount,
-      commissionPercent: commissionRates.online,
+      commissionPercent: effectivePercent,
       currency: payment?.currency ?? "PKR",
       patient: {
         id: patient?._id?.toString() ?? "",
         name: safeDisplayText(patient?.name) ?? "Patient",
       },
+      isReferralBonus: isReferred,
     });
   }
 
@@ -433,10 +455,16 @@ async function buildDoctorEarningsDetail(
     const grossAmount = payment?.amount ?? visit.pricing?.total ?? 0;
     if (!grossAmount) continue;
 
-    const netAmount = calculateStaffNetEarnings(
-      grossAmount,
+    const patient = visit.patientId as
+      | { _id?: { toString(): string }; name?: string }
+      | null;
+    const isReferred = referredPatientIdSet.has(patient?._id?.toString() ?? "");
+    const effectivePercent = resolveEffectiveCommissionPercent(
       commissionRates.homeVisit,
+      isReferred,
     );
+
+    const netAmount = calculateStaffNetEarnings(grossAmount, effectivePercent);
     const commissionAmount = grossAmount - netAmount;
     totalGrossRevenue += grossAmount;
     totalEarnings += netAmount;
@@ -454,10 +482,6 @@ async function buildDoctorEarningsDetail(
     }
     incrementConsultCount(completedConsults, HomeVisitServiceTypes.DOCTOR_VISIT);
 
-    const patient = visit.patientId as
-      | { _id?: { toString(): string }; name?: string }
-      | null;
-
     transactions.push({
       id: visit._id.toString(),
       type: HomeVisitServiceTypes.DOCTOR_VISIT,
@@ -465,12 +489,13 @@ async function buildDoctorEarningsDetail(
       amount: netAmount,
       grossAmount,
       commissionAmount,
-      commissionPercent: commissionRates.homeVisit,
+      commissionPercent: effectivePercent,
       currency: payment?.currency ?? visit.pricing?.currency ?? "PKR",
       patient: {
         id: patient?._id?.toString() ?? "",
         name: safeDisplayText(patient?.name) ?? "Patient",
       },
+      isReferralBonus: isReferred,
     });
   }
 

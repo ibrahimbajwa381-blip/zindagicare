@@ -19,7 +19,11 @@ import {
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
-import { getDoctorCommissionRatesByProfileIds } from "./commission.service";
+import {
+  getDoctorCommissionRatesByProfileIds,
+  getReferredPatientDoctorMap,
+  resolveEffectiveCommissionPercent,
+} from "./commission.service";
 
 export type PlatformEarningsDoctorRow = {
   id: string;
@@ -106,7 +110,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
         $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
       }),
     )
-      .select("doctorId paymentId completedAt")
+      .select("doctorId patientId paymentId completedAt")
       .lean(),
     HomeVisitModel.find(
       mongoFilter({
@@ -116,7 +120,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
         $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
       }),
     )
-      .select("assignedStaffId paymentId pricing completedAt")
+      .select("assignedStaffId patientId paymentId pricing completedAt")
       .lean(),
   ]);
 
@@ -166,6 +170,8 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     : [];
   const paymentAmountById = new Map(payments.map((p) => [p._id.toString(), p.amount ?? 0]));
 
+  const referredPatientDoctorMap = await getReferredPatientDoctorMap(profileIds);
+
   const rowsByProfile = new Map(profileIds.map((id) => [id, EMPTY_ROW()]));
 
   for (const appt of completedAppointments) {
@@ -176,7 +182,11 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     if (!gross) continue;
 
     const rate = rates.get(profileId) ?? { online: 70, homeVisit: 70 };
-    const net = calculateStaffNetEarnings(gross, rate.online);
+    const isReferred = referredPatientDoctorMap.get(appt.patientId?.toString() ?? "") === profileId;
+    const net = calculateStaffNetEarnings(
+      gross,
+      resolveEffectiveCommissionPercent(rate.online, isReferred),
+    );
 
     const row = rowsByProfile.get(profileId) ?? EMPTY_ROW();
     row.grossRevenue += gross;
@@ -200,7 +210,11 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     if (!gross) continue;
 
     const rate = rates.get(profileId) ?? { online: 70, homeVisit: 70 };
-    const net = calculateStaffNetEarnings(gross, rate.homeVisit);
+    const isReferred = referredPatientDoctorMap.get(visit.patientId?.toString() ?? "") === profileId;
+    const net = calculateStaffNetEarnings(
+      gross,
+      resolveEffectiveCommissionPercent(rate.homeVisit, isReferred),
+    );
 
     const row = rowsByProfile.get(profileId) ?? EMPTY_ROW();
     row.grossRevenue += gross;

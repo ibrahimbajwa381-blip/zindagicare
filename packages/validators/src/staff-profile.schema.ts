@@ -95,3 +95,10 @@ export const adminPhysiotherapistNotesSchema = adminNurseNotesSchema;
 export type AdminPhysiotherapistNotesInput = z.infer<
   typeof adminPhysiotherapistNotesSchema
 >;
+
+export const convertDoctorToPhysiotherapistSchema = z.object({
+  doctorProfileId: z.string().min(1),
+});
+export type ConvertDoctorToPhysiotherapistInput = z.infer<
+  typeof convertDoctorToPhysiotherapistSchema
+>;

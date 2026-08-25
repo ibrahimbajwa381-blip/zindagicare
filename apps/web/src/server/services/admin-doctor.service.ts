@@ -39,6 +39,8 @@ import { decideDoctorVerification } from "./doctor-verification.service";
 import {
   calculateStaffNetEarnings,
   getDoctorCommissionRatesByProfileIds,
+  getReferredPatientDoctorMap,
+  resolveEffectiveCommissionPercent,
   type DoctorCommissionRates,
 } from "./commission.service";
 import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
@@ -282,7 +284,7 @@ async function loadDoctorStatsBatch(
         paymentId: { $exists: true, $ne: null },
       }),
     )
-      .select("doctorId paymentId completedAt")
+      .select("doctorId patientId paymentId completedAt")
       .lean(),
     HomeVisitModel.find(
       mongoFilter({
@@ -294,9 +296,11 @@ async function loadDoctorStatsBatch(
         $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
       }),
     )
-      .select("assignedStaffId paymentId pricing completedAt")
+      .select("assignedStaffId patientId paymentId pricing completedAt")
       .lean(),
   ]);
+
+  const referredPatientDoctorMap = await getReferredPatientDoctorMap(doctorProfileIds);
 
   for (const appt of appointments) {
     const id = appt.doctorId?.toString();
@@ -353,14 +357,18 @@ async function loadDoctorStatsBatch(
     grossAmount: number,
     completedAt: Date | null | undefined,
     channel: "online" | "homeVisit",
+    isReferred: boolean,
   ) => {
     if (!grossAmount) return;
     const rates = commissionRatesByProfile.get(profileId) ?? {
       online: 70,
       homeVisit: 70,
     };
-    const commissionPercent = channel === "online" ? rates.online : rates.homeVisit;
-    const netAmount = calculateStaffNetEarnings(grossAmount, commissionPercent);
+    const baseCommissionPercent = channel === "online" ? rates.online : rates.homeVisit;
+    const netAmount = calculateStaffNetEarnings(
+      grossAmount,
+      resolveEffectiveCommissionPercent(baseCommissionPercent, isReferred),
+    );
     const current = statsMap.get(profileId) ?? { ...EMPTY_STATS };
     current.totalEarnings += netAmount;
     if (completedAt && completedAt >= startOfMonth) {
@@ -373,11 +381,13 @@ async function loadDoctorStatsBatch(
     const doctorId = appt.doctorId?.toString();
     const paymentId = appt.paymentId?.toString();
     if (!doctorId || !paymentId) continue;
+    const isReferred = referredPatientDoctorMap.get(appt.patientId?.toString() ?? "") === doctorId;
     addEarnings(
       doctorId,
       paymentAmounts.get(paymentId) ?? 0,
       appt.completedAt,
       "online",
+      isReferred,
     );
   }
 
@@ -390,7 +400,8 @@ async function loadDoctorStatsBatch(
     const grossAmount = paymentId
       ? (paymentAmounts.get(paymentId) ?? visit.pricing?.total ?? 0)
       : (visit.pricing?.total ?? 0);
-    addEarnings(profileId, grossAmount, visit.completedAt, "homeVisit");
+    const isReferred = referredPatientDoctorMap.get(visit.patientId?.toString() ?? "") === profileId;
+    addEarnings(profileId, grossAmount, visit.completedAt, "homeVisit", isReferred);
   }
 
   return statsMap;

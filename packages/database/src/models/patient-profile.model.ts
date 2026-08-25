@@ -29,6 +29,17 @@ const patientProfileSchema = new Schema(
       phone: String,
       relation: String,
     },
+    /**
+     * Doctor who referred this patient (via their personal referral link), set once at
+     * profile creation and never mutated afterward. Drives a lifetime commission bonus
+     * for that doctor on this patient's appointments.
+     */
+    referredByDoctorId: {
+      type: Schema.Types.ObjectId,
+      ref: "DoctorProfile",
+      default: null,
+    },
+    referredAt: { type: Date, default: null },
     deletedAt: { type: Date },
   },
   { timestamps: true },

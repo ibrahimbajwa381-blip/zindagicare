@@ -111,6 +111,11 @@ const doctorProfileSchema = new Schema(
     verifiedAt: { type: Date },
     rejectionReason: { type: String },
     slug: { type: String, unique: true, sparse: true, lowercase: true },
+    /**
+     * Private referral token for the doctor's personal patient-invite link (/r/[code]).
+     * Deliberately distinct from `slug`, which is public/marketing-facing.
+     */
+    referralCode: { type: String, unique: true, sparse: true, index: true },
     isListed: { type: Boolean, default: false },
     /** Payout destination for admin-initiated manual payouts. */
     bankAccount: {

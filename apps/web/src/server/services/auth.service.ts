@@ -25,10 +25,20 @@ import { mongoFilter } from "@/lib/mongo/query";
 
 const BCRYPT_ROUNDS = 12;
 
-async function ensurePatientProfile(userId: { toString(): string }) {
+async function ensurePatientProfile(
+  userId: { toString(): string },
+  referredByDoctorId?: string | null,
+) {
   await PatientProfileModel.findOneAndUpdate(
     mongoFilter({ userId: userId.toString() }),
-    { $setOnInsert: { userId } },
+    {
+      $setOnInsert: {
+        userId,
+        ...(referredByDoctorId
+          ? { referredByDoctorId, referredAt: new Date() }
+          : {}),
+      },
+    },
     { upsert: true },
   );
 }
@@ -220,14 +230,17 @@ export async function signInWithPhoneOtp(phone: string) {
   return loadAuthUserPayload(user._id.toString());
 }
 
-export async function registerWithCredentials(input: {
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-  accountType?: AccountType;
-  city?: string;
-}) {
+export async function registerWithCredentials(
+  input: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    accountType?: AccountType;
+    city?: string;
+  },
+  referredByDoctorId?: string | null,
+) {
   await connectDatabase();
   const accountType = input.accountType ?? "patient";
   const city = input.city?.trim() || "Lahore";
@@ -279,15 +292,15 @@ export async function registerWithCredentials(input: {
 
   try {
     if (accountType === "patient") {
-      await ensurePatientProfile(user._id);
+      await ensurePatientProfile(user._id, referredByDoctorId);
     } else if (accountType === "doctor") {
-      await ensurePatientProfile(user._id);
+      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureDoctorProfile(user._id, city);
     } else if (accountType === "nurse") {
-      await ensurePatientProfile(user._id);
+      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureNurseProfile(user._id, city);
     } else {
-      await ensurePatientProfile(user._id);
+      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensurePhysiotherapistProfile(user._id, city);
     }
   } catch (error) {
@@ -345,7 +358,11 @@ export async function addStaffRoleToUser(
   return loadAuthUserPayload(userId);
 }
 
-export async function findOrCreatePhoneUser(phone: string, name?: string) {
+export async function findOrCreatePhoneUser(
+  phone: string,
+  name?: string,
+  referredByDoctorId?: string | null,
+) {
   await connectDatabase();
   const normalized = normalizePakistaniPhone(phone);
   let user = await UserModel.findOne({ phoneLookup: phoneLookupHash(normalized) });
@@ -359,7 +376,7 @@ export async function findOrCreatePhoneUser(phone: string, name?: string) {
       phoneVerified: new Date(),
       onboardingCompleted: false,
     });
-    await ensurePatientProfile(user._id);
+    await ensurePatientProfile(user._id, referredByDoctorId);
   } else {
     user.phoneVerified = new Date();
     if (!user.authProviders.includes("phone")) {
@@ -372,11 +389,14 @@ export async function findOrCreatePhoneUser(phone: string, name?: string) {
   return user;
 }
 
-export async function findOrCreateGoogleUser(input: {
-  email: string;
-  name: string;
-  image?: string | null;
-}) {
+export async function findOrCreateGoogleUser(
+  input: {
+    email: string;
+    name: string;
+    image?: string | null;
+  },
+  referredByDoctorId?: string | null,
+) {
   await connectDatabase();
   const email = input.email.toLowerCase();
   let user = await UserModel.findOne({ emailLookup: emailLookupHash(email) });
@@ -391,7 +411,7 @@ export async function findOrCreateGoogleUser(input: {
       emailVerified: new Date(),
       onboardingCompleted: false,
     });
-    await ensurePatientProfile(user._id);
+    await ensurePatientProfile(user._id, referredByDoctorId);
   } else {
     if (!user.authProviders.includes("google")) {
       user.authProviders.push("google");

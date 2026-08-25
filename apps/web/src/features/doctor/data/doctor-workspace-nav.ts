@@ -1,6 +1,7 @@
 import {
   CalendarClock,
   FileText,
+  Gift,
   Home,
   LayoutDashboard,
   MessageSquare,
@@ -111,6 +112,12 @@ export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         label: "Earnings",
         description: "Paid consult & home visit revenue",
         icon: Wallet,
+      },
+      {
+        href: "/doctor/referrals",
+        label: "Referrals",
+        description: "Invite patients & earn a bigger share",
+        icon: Gift,
       },
     ],
   },

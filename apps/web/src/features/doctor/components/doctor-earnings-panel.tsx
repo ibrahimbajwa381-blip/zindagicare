@@ -292,6 +292,14 @@ export function DoctorEarningsPanel({ earnings }: Props) {
                   meta={`Completed ${formatDateTime(tx.completedAt)}`}
                   badge={formatCurrency(tx.amount, tx.currency)}
                 />
+                {tx.isReferralBonus && (
+                  <Badge
+                    variant="outline"
+                    className="mt-2 border-brand/30 bg-brand/[0.06] text-brand"
+                  >
+                    Referral bonus applied ({tx.commissionPercent}%)
+                  </Badge>
+                )}
               </div>
             ))}
           </div>

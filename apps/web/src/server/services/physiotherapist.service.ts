@@ -1,5 +1,6 @@
 import {
   connectDatabase,
+  DoctorProfileModel,
   HomeVisitModel,
   StaffProfileModel,
   UserModel,
@@ -461,6 +462,90 @@ export async function decidePhysiotherapistVerification(
     id: staff._id.toString(),
     verificationStatus: staff.verificationStatus,
   };
+}
+
+/**
+ * Admin: reclassify a doctor application that was actually a physiotherapist —
+ * some physiotherapists mistakenly join via the MBBS doctor signup link.
+ * Moves the user's role and credentials into the Physiotherapist (StaffProfile)
+ * flow and drops the DoctorProfile, so they show up correctly under
+ * physiotherapist review instead of the MBBS doctor queue.
+ */
+export async function convertDoctorApplicationToPhysiotherapist(
+  adminUserId: string,
+  doctorProfileId: string,
+) {
+  await connectDatabase();
+
+  const doctorProfile = await DoctorProfileModel.findById(doctorProfileId).select("+cnicHash");
+  if (!doctorProfile) {
+    throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
+  }
+  if (doctorProfile.verificationStatus !== VerificationStatuses.PENDING) {
+    throw new AppError(
+      "Only pending applications can be moved to physiotherapist",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
+  const user = await UserModel.findById(doctorProfile.userId);
+  if (!user) {
+    throw new AppError("User not found", "NOT_FOUND", 404);
+  }
+
+  const existingStaff = await StaffProfileModel.findOne(
+    mongoFilter({ userId: user._id, staffType: Roles.PHYSIOTHERAPIST }),
+  );
+  if (existingStaff) {
+    throw new AppError(
+      "This user already has a physiotherapist application",
+      "CONFLICT",
+      409,
+    );
+  }
+
+  const city = doctorProfile.hospitals?.[0]?.city ?? doctorProfile.coverageCities?.[0] ?? LAUNCH_CITY;
+
+  const staff = await StaffProfileModel.create({
+    userId: user._id.toString(),
+    staffType: Roles.PHYSIOTHERAPIST,
+    isAvailable: true,
+    verificationStatus: VerificationStatuses.PENDING,
+    licenseNumber: doctorProfile.pmdcNumber ?? undefined,
+    cnicHash: doctorProfile.cnicHash ?? undefined,
+    cnicLast4: doctorProfile.cnicLast4 ?? undefined,
+    qualification: doctorProfile.medicalDegree ?? undefined,
+    experienceYears: doctorProfile.experienceYears ?? undefined,
+    verificationDocuments: {
+      licenseCertificate: doctorProfile.verificationDocuments?.pmdcCertificate ?? undefined,
+      cnicFront: doctorProfile.verificationDocuments?.cnicFront ?? undefined,
+      cnicBack: doctorProfile.verificationDocuments?.cnicBack ?? undefined,
+    },
+    verificationSubmittedAt: doctorProfile.verificationSubmittedAt ?? new Date(),
+    platformAgreementAcceptedAt: doctorProfile.platformAgreementAcceptedAt ?? undefined,
+    platformAgreementVersion: doctorProfile.platformAgreementVersion ?? undefined,
+    homeVisitEnabled: doctorProfile.homeVisitEnabled ?? false,
+    serviceAreas: [
+      {
+        city,
+        geo: { type: "Point", coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat] },
+        radiusKm: 15,
+      },
+    ],
+    adminNotes: `Moved from doctor application ${doctorProfile._id.toString()} by admin ${adminUserId}.`,
+  });
+
+  user.roles = [...user.roles.filter((r) => r !== Roles.DOCTOR), Roles.PHYSIOTHERAPIST];
+  await user.save();
+
+  doctorProfile.verificationStatus = VerificationStatuses.REJECTED;
+  doctorProfile.rejectionReason = "Reclassified as physiotherapist by admin";
+  doctorProfile.isListed = false;
+  doctorProfile.deletedAt = new Date();
+  await doctorProfile.save();
+
+  return { staffProfileId: staff._id.toString() };
 }
 
 export type { AdminPhysiotherapistDetailDto, AdminPhysiotherapistVisitRow } from "@/features/admin/types/physiotherapist-admin";

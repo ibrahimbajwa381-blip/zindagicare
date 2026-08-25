@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
@@ -33,6 +34,10 @@ import {
   resolveLoginRedirectPath,
   type PostAuthUser,
 } from "@/lib/auth/routes";
+import {
+  REFERRAL_COOKIE_NAME,
+  resolveReferralDoctorId,
+} from "@/server/services/doctor-referral.service";
 
 async function resolveSignedInUser(
   provider: "credentials" | "phone-otp",
@@ -142,7 +147,11 @@ export async function registerAction(
   const accountType = (formData.get("accountType") ?? "patient") as AccountType;
 
   try {
-    await registerWithCredentials(parsed.data);
+    const cookieStore = await cookies();
+    const referredByDoctorId = await resolveReferralDoctorId(
+      cookieStore.get(REFERRAL_COOKIE_NAME)?.value,
+    );
+    await registerWithCredentials(parsed.data, referredByDoctorId);
     redirect(AUTH_ROUTES.login);
   } catch (e) {
     if (isRedirectError(e)) throw e;

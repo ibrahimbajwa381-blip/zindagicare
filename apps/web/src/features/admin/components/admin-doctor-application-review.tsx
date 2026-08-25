@@ -15,6 +15,7 @@ import {
   FileText,
   Mail,
   Phone,
+  Stethoscope,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -78,6 +79,7 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
   const [interviewConfirmed, setInterviewConfirmed] = useState(false);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string>();
+  const [convertPending, setConvertPending] = useState(false);
 
   const isPending = profile.verificationStatus === VerificationStatuses.PENDING;
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
@@ -153,6 +155,37 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
     router.refresh();
   }
 
+  async function convertToPhysiotherapist() {
+    if (
+      !window.confirm(
+        `Move ${profile.user.name} to the physiotherapist queue? Their doctor application will be closed and a physiotherapist application will be created instead.`,
+      )
+    ) {
+      return;
+    }
+
+    setConvertPending(true);
+    setActionError(undefined);
+
+    const res = await fetch("/api/v1/admin/doctors/convert-to-physiotherapist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ doctorProfileId: profile.id }),
+    });
+    const json = await res.json();
+    setConvertPending(false);
+
+    if (!res.ok || !json.success) {
+      const msg = json?.error?.message ?? "Could not move to physiotherapist";
+      setActionError(msg);
+      return;
+    }
+
+    dispatchAdminNavCountsRefresh();
+    router.push(`/admin/physiotherapists/review/${json.data.staffProfileId}`);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
@@ -214,6 +247,17 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/admin/doctors/manage/${profile.id}/edit`}>Edit profile</Link>
               </Button>
+              {isPending && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={convertPending}
+                  onClick={convertToPhysiotherapist}
+                >
+                  <Stethoscope className="h-4 w-4" />
+                  {convertPending ? "Moving…" : "This is a physiotherapist"}
+                </Button>
+              )}
             </div>
           </div>
         </div>

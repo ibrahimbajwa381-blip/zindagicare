@@ -20,7 +20,11 @@ import {
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
-import { getDoctorCommissionRatesByProfileId } from "./commission.service";
+import {
+  getDoctorCommissionRatesByProfileId,
+  getReferredPatientIdSet,
+  resolveEffectiveCommissionPercent,
+} from "./commission.service";
 
 export type DoctorBankAccount = {
   accountTitle?: string;
@@ -207,11 +211,16 @@ async function buildDoctorFinanceAppointments(
     prescriptions.map((p) => p.appointmentId?.toString()).filter(Boolean),
   );
 
+  const patientIds = appointments
+    .map((a) => (a.patientId as { _id?: { toString(): string } } | null)?._id?.toString())
+    .filter((id): id is string => Boolean(id));
+  const referredPatientIdSet = await getReferredPatientIdSet(profileId, patientIds);
+
   let totalEarnings = 0;
   let earningsThisMonth = 0;
 
   const appointmentRows: DoctorFinanceAppointmentRow[] = appointments.map((a) => {
-    const patient = a.patientId as { name?: string } | null;
+    const patient = a.patientId as { _id?: { toString(): string }; name?: string } | null;
     const payment = a.paymentId as { amount?: number; status?: string } | null;
     const videoSession = videoSessionByAppointment.get(a._id.toString());
     const hasPrescription = prescribedAppointmentIds.has(a._id.toString());
@@ -219,8 +228,13 @@ async function buildDoctorFinanceAppointments(
     const isCompleted = a.status === AppointmentStatuses.COMPLETED;
     const isPaid = payment?.status === PaymentStatuses.PAID;
     const earningCounted = isCompleted && isPaid && Boolean(payment?.amount);
-    const commissionPercent =
+    const baseCommissionPercent =
       a.type === "home_visit" ? rates.homeVisit : rates.online;
+    const isReferred = referredPatientIdSet.has(patient?._id?.toString() ?? "");
+    const commissionPercent = resolveEffectiveCommissionPercent(
+      baseCommissionPercent,
+      isReferred,
+    );
     const earningAmount = earningCounted
       ? calculateStaffNetEarnings(payment?.amount ?? 0, commissionPercent)
       : 0;

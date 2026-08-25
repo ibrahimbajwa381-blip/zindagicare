@@ -1,10 +1,13 @@
 import { registerSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { registerWithCredentials } from "@/server/services/auth.service";
+import { REFERRAL_COOKIE_NAME, resolveReferralDoctorId } from "@/server/services/doctor-referral.service";
 
 export const POST = withApiHandler(
-  async ({ body }) => {
-    const user = await registerWithCredentials(body);
+  async ({ body, req }) => {
+    const referralCode = req.cookies.get(REFERRAL_COOKIE_NAME)?.value;
+    const referredByDoctorId = await resolveReferralDoctorId(referralCode);
+    const user = await registerWithCredentials(body, referredByDoctorId);
     return {
       id: user._id.toString(),
       email: user.email,
