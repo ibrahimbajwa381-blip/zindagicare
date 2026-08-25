@@ -3,6 +3,7 @@ import {
   AppointmentModel,
   DoctorPayoutModel,
   DoctorProfileModel,
+  PatientProfileModel,
   PaymentModel,
   PrescriptionModel,
   SundayFreeRequestModel,
@@ -64,6 +65,8 @@ export type DoctorFinanceAppointmentRow = {
   earningCounted: boolean;
   earningAmount: number;
   reason: string;
+  /** True when the referral bonus commission rate was applied to this appointment. */
+  isReferred: boolean;
 };
 
 export type AdminDoctorFinanceDetail = {
@@ -75,6 +78,8 @@ export type AdminDoctorFinanceDetail = {
     email?: string;
     phone?: string;
     verificationStatus: string;
+    /** Patients who signed up via this doctor's referral link. */
+    referredPatientCount: number;
   };
   earnings: {
     totalEarnings: number;
@@ -268,6 +273,7 @@ async function buildDoctorFinanceAppointments(
       amountPkr: payment?.amount ?? undefined,
       videoSessionStatus: videoSession?.status ?? undefined,
       reason: reasonForAppointment(base),
+      isReferred,
       ...base,
     };
   });
@@ -295,12 +301,16 @@ export async function getAdminDoctorFinanceDetail(
   const [
     { appointments: appointmentRows, totalEarnings, earningsThisMonth },
     payoutDocs,
+    referredPatientCount,
   ] = await Promise.all([
     buildDoctorFinanceAppointments(doctorProfileId, rates),
     DoctorPayoutModel.find(mongoFilter({ doctorProfileId: profile._id }))
       .populate("paidBy", "name")
       .sort({ paidAt: -1 })
       .lean(),
+    PatientProfileModel.countDocuments(
+      mongoFilter({ referredByDoctorId: doctorProfileId }),
+    ),
   ]);
 
   const payouts: DoctorPayoutRow[] = payoutDocs.map((p) => {
@@ -333,6 +343,7 @@ export async function getAdminDoctorFinanceDetail(
       email: pii.email,
       phone: pii.phone,
       verificationStatus: profile.verificationStatus ?? VerificationStatuses.PENDING,
+      referredPatientCount,
     },
     earnings: {
       totalEarnings,

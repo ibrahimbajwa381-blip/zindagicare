@@ -42,6 +42,8 @@ const staffProfileSchema = new Schema(
     cnicLast4: { type: String },
     qualification: { type: String },
     experienceYears: { type: Number },
+    /** Physiotherapy sub-specialties (physiotherapist only). */
+    specialties: [{ type: String }],
     verificationDocuments: {
       licenseCertificate: { type: String },
       cnicFront: { type: String },

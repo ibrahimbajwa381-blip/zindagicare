@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_PHYSIOTHERAPY_SPECIALTIES } from "@zindagi/shared";
 import { geoPointInputSchema } from "./geo.schema";
 import { pakistaniPhoneSchema } from "./auth.schema";
 
@@ -76,12 +77,20 @@ export const adminNurseNotesSchema = z.object({
 
 export type AdminNurseNotesInput = z.infer<typeof adminNurseNotesSchema>;
 
-export const updatePhysiotherapistProfileSchema = updateNurseProfileSchema;
+const physiotherapySpecialtiesSchema = z
+  .array(z.string().min(1))
+  .max(MAX_PHYSIOTHERAPY_SPECIALTIES, `Select up to ${MAX_PHYSIOTHERAPY_SPECIALTIES} specialties`);
+
+export const updatePhysiotherapistProfileSchema = updateNurseProfileSchema.extend({
+  specialties: physiotherapySpecialtiesSchema.optional(),
+});
 export type UpdatePhysiotherapistProfileInput = z.infer<
   typeof updatePhysiotherapistProfileSchema
 >;
 
-export const physiotherapistVerificationSchema = nurseVerificationSchema;
+export const physiotherapistVerificationSchema = nurseVerificationSchema.extend({
+  specialties: physiotherapySpecialtiesSchema.min(1, "Select at least one specialty"),
+});
 export type PhysiotherapistVerificationInput = z.infer<
   typeof physiotherapistVerificationSchema
 >;

@@ -124,6 +124,7 @@ export function AdminPlatformEarnings() {
                     <th className="px-3 py-2 font-medium">Paid to doctor</th>
                     <th className="px-3 py-2 font-medium">ZindagiCare commission</th>
                     <th className="px-3 py-2 font-medium">Commission %</th>
+                    <th className="px-3 py-2 font-medium">Referrals</th>
                     <th className="px-3 py-2 font-medium" />
                   </tr>
                 </thead>
@@ -158,6 +159,15 @@ export function AdminPlatformEarnings() {
                       <td className="px-3 py-3 text-slate-600">
                         {doctor.platformOnlineCommissionPercent}% online ·{" "}
                         {doctor.platformHomeVisitCommissionPercent}% in-house
+                      </td>
+                      <td className="px-3 py-3">
+                        {doctor.referredPatientCount > 0 ? (
+                          <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand">
+                            {doctor.referredPatientCount} referred
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <Link

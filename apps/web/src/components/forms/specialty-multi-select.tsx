@@ -17,6 +17,7 @@ type SpecialtyMultiSelectProps = {
   max?: number;
   className?: string;
   placeholder?: string;
+  options?: readonly string[];
 };
 
 export function SpecialtyMultiSelect({
@@ -27,6 +28,7 @@ export function SpecialtyMultiSelect({
   max = MAX_ADDITIONAL_SPECIALTIES,
   className,
   placeholder = "Add additional specialties",
+  options: optionsProp = SPECIALTIES_ALPHABETICAL,
 }: SpecialtyMultiSelectProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -39,10 +41,10 @@ export function SpecialtyMultiSelect({
   const atLimit = values.length >= max;
 
   const options = useMemo(() => {
-    return SPECIALTIES_ALPHABETICAL.filter(
+    return optionsProp.filter(
       (item) => !excludeSet.has(item) && !selectedSet.has(item),
     );
-  }, [excludeSet, selectedSet]);
+  }, [optionsProp, excludeSet, selectedSet]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -218,6 +218,18 @@ export async function getReferredPatientDoctorMap(
   return map;
 }
 
+/** Number of patients referred by each of the given doctors, keyed by doctor profile id. */
+export async function getReferredPatientCountsByDoctorIds(
+  doctorProfileIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  const referredPatientDoctorMap = await getReferredPatientDoctorMap(doctorProfileIds);
+  for (const doctorId of referredPatientDoctorMap.values()) {
+    counts.set(doctorId, (counts.get(doctorId) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** Adds the referral bonus (if applicable) on top of a resolved base commission %. */
 export function resolveEffectiveCommissionPercent(
   basePercent: number,

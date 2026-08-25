@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import {
+  HOME_CARE_MATCH_RADIUS_KM,
+  MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
+} from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
@@ -28,6 +33,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
+  const [specialties, setSpecialties] = useState<string[]>([]);
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -51,6 +57,12 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
       return;
     }
 
+    if (!specialties.length) {
+      setError("Select at least one physiotherapy specialty.");
+      setPending(false);
+      return;
+    }
+
     if (!acceptedAgreement) {
       setError("You must accept the ZindagiCare Provider Agreement to submit.");
       setPending(false);
@@ -62,6 +74,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
+      specialties,
       serviceArea: {
         city: form.get("city"),
         area: form.get("area"),
@@ -155,6 +168,21 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
             defaultValue={defaults?.experienceYears ?? 0}
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="specialties">Specialties</Label>
+          <SpecialtyMultiSelect
+            id="specialties"
+            values={specialties}
+            onChange={setSpecialties}
+            max={MAX_PHYSIOTHERAPY_SPECIALTIES}
+            options={PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL}
+            placeholder="Add your physiotherapy specialties"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Required. Select up to {MAX_PHYSIOTHERAPY_SPECIALTIES} areas of physiotherapy you
+            specialize in.
+          </p>
         </div>
       </section>
 

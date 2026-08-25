@@ -39,6 +39,7 @@ import { decideDoctorVerification } from "./doctor-verification.service";
 import {
   calculateStaffNetEarnings,
   getDoctorCommissionRatesByProfileIds,
+  getReferredPatientCountsByDoctorIds,
   getReferredPatientDoctorMap,
   resolveEffectiveCommissionPercent,
   type DoctorCommissionRates,
@@ -110,6 +111,8 @@ export type AdminDoctorRow = {
   stats: AdminDoctorStats;
   accountability: AdminDoctorAccountability;
   platformAgreementAcceptedAt?: string;
+  /** Patients who signed up via this doctor's referral link. */
+  referredPatientCount: number;
 };
 
 export type AdminDoctorAccountability = {
@@ -172,6 +175,7 @@ function mapDoctorRow(
   },
   stats: AdminDoctorStats = EMPTY_STATS,
   effectiveRates: DoctorCommissionRates = { online: 70, homeVisit: 70 },
+  referredPatientCount = 0,
 ): AdminDoctorRow {
   const user = profile.userId ?? {};
   const pii = mapUserPii(user);
@@ -221,6 +225,7 @@ function mapDoctorRow(
     platformAgreementAcceptedAt: profile.platformAgreementAcceptedAt
       ? new Date(profile.platformAgreementAcceptedAt).toISOString()
       : undefined,
+    referredPatientCount,
   };
 }
 
@@ -413,9 +418,10 @@ async function buildAdminDoctorRow(profileId: string): Promise<AdminDoctorRow> {
 
   const userId = profile.userId?.toString();
   const users = userId ? await loadUsersById([userId]) : new Map();
-  const [statsMap, commissionRates] = await Promise.all([
+  const [statsMap, commissionRates, referredCounts] = await Promise.all([
     loadDoctorStatsBatch([profileId]),
     getDoctorCommissionRatesByProfileIds([profileId]),
+    getReferredPatientCountsByDoctorIds([profileId]),
   ]);
 
   return mapDoctorRow(
@@ -425,6 +431,7 @@ async function buildAdminDoctorRow(profileId: string): Promise<AdminDoctorRow> {
     } as Parameters<typeof mapDoctorRow>[0],
     statsMap.get(profileId) ?? EMPTY_STATS,
     commissionRates.get(profileId) ?? { online: 70, homeVisit: 70 },
+    referredCounts.get(profileId) ?? 0,
   );
 }
 
@@ -463,10 +470,11 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
   const userIds = profiles.map((p) => p.userId?.toString()).filter(Boolean) as string[];
   const profileIds = profiles.map((p) => p._id.toString());
 
-  const [userMap, statsMap, commissionRates] = await Promise.all([
+  const [userMap, statsMap, commissionRates, referredCounts] = await Promise.all([
     loadUsersById(userIds),
     loadDoctorStatsBatch(profileIds),
     getDoctorCommissionRatesByProfileIds(profileIds),
+    getReferredPatientCountsByDoctorIds(profileIds),
   ]);
 
   return profiles.map((profile) => {
@@ -479,6 +487,7 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
       } as Parameters<typeof mapDoctorRow>[0],
       statsMap.get(id) ?? EMPTY_STATS,
       commissionRates.get(id) ?? { online: 70, homeVisit: 70 },
+      referredCounts.get(id) ?? 0,
     );
   });
 }

@@ -402,6 +402,14 @@ export function AdminDoctorsManagement() {
                         <p className="text-xs text-slate-500">
                           {formatCurrency(doc.stats.earningsThisMonth)} this month
                         </p>
+                        {doc.referredPatientCount > 0 && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 border-brand/30 bg-brand/[0.06] text-[10px] text-brand"
+                          >
+                            {doc.referredPatientCount} referred
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-2">

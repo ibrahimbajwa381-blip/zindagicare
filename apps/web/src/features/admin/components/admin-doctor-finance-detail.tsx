@@ -108,7 +108,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <Stat label="Total earned" value={formatCurrency(earnings.totalEarnings)} />
             <Stat label="This month" value={formatCurrency(earnings.earningsThisMonth)} />
             <Stat
@@ -116,6 +116,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
               value={formatCurrency(balanceDue)}
               accent={balanceDue > 0}
             />
+            <Stat label="Patients referred" value={String(doctor.referredPatientCount)} />
           </div>
         </CardContent>
       </Card>
@@ -311,7 +312,14 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
                           timeZone: "Asia/Karachi",
                         })}
                       </td>
-                      <td className="px-3 py-3 font-medium text-slate-900">{a.patientName}</td>
+                      <td className="px-3 py-3 font-medium text-slate-900">
+                        {a.patientName}
+                        {a.isReferred && (
+                          <span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                            Referral
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 capitalize text-slate-600">{a.status}</td>
                       <td className="px-3 py-3 text-slate-600">
                         {a.amountPkr != null ? formatCurrency(a.amountPkr) : "—"}

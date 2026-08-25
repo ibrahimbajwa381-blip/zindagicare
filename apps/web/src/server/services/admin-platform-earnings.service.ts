@@ -36,6 +36,8 @@ export type PlatformEarningsDoctorRow = {
   platformCommission: number;
   platformOnlineCommissionPercent: number;
   platformHomeVisitCommissionPercent: number;
+  /** Patients who signed up via this doctor's referral link. */
+  referredPatientCount: number;
 };
 
 export type UnresolvedPaymentRow = {
@@ -171,6 +173,10 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
   const paymentAmountById = new Map(payments.map((p) => [p._id.toString(), p.amount ?? 0]));
 
   const referredPatientDoctorMap = await getReferredPatientDoctorMap(profileIds);
+  const referredCountByProfile = new Map<string, number>();
+  for (const doctorId of referredPatientDoctorMap.values()) {
+    referredCountByProfile.set(doctorId, (referredCountByProfile.get(doctorId) ?? 0) + 1);
+  }
 
   const rowsByProfile = new Map(profileIds.map((id) => [id, EMPTY_ROW()]));
 
@@ -246,6 +252,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
         platformCommission: row.grossRevenue - row.doctorEarnings,
         platformOnlineCommissionPercent: 100 - rate.online,
         platformHomeVisitCommissionPercent: 100 - rate.homeVisit,
+        referredPatientCount: referredCountByProfile.get(id) ?? 0,
       };
     })
     .filter((row) => row.consultCount > 0)
