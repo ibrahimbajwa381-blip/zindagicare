@@ -22,6 +22,7 @@ export type AdminPhysiotherapistDetailDto = {
   };
   verificationStatus: string;
   verificationSubmittedAt?: string;
+  platformAgreementAcceptedAt?: string;
   verifiedAt?: string;
   rejectionReason?: string;
   adminNotes?: string;

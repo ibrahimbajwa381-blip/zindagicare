@@ -107,6 +107,7 @@ export type AdminDoctorRow = {
   weeklyAvailability: { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string }[];
   stats: AdminDoctorStats;
   accountability: AdminDoctorAccountability;
+  platformAgreementAcceptedAt?: string;
 };
 
 export type AdminDoctorAccountability = {
@@ -165,6 +166,7 @@ function mapDoctorRow(
       lastWarningAt?: Date | string;
       autoRestrictedAt?: Date | string;
     };
+    platformAgreementAcceptedAt?: Date | string;
   },
   stats: AdminDoctorStats = EMPTY_STATS,
   effectiveRates: DoctorCommissionRates = { online: 70, homeVisit: 70 },
@@ -214,6 +216,9 @@ function mapDoctorRow(
             : undefined,
         }
       : { ...EMPTY_ACCOUNTABILITY },
+    platformAgreementAcceptedAt: profile.platformAgreementAcceptedAt
+      ? new Date(profile.platformAgreementAcceptedAt).toISOString()
+      : undefined,
   };
 }
 
@@ -425,21 +430,22 @@ export async function listAllDoctors(search?: string): Promise<AdminDoctorRow[]>
 
   let userFilter: Record<string, unknown> | undefined;
   if (search?.trim()) {
-    const q = search.trim();
-    const users = await UserModel.find({
-      $or: [
-        { name: { $regex: q, $options: "i" } },
-        { email: { $regex: q, $options: "i" } },
-        { phone: { $regex: q, $options: "i" } },
-      ],
-      roles: Roles.DOCTOR,
-    })
-      .select("_id")
+    // name/email/phone are encrypted at rest, so a Mongo-side regex can't match
+    // plaintext queries — fetch doctor users and filter in memory post-decryption.
+    const q = search.trim().toLowerCase();
+    const users = await UserModel.find({ roles: Roles.DOCTOR })
+      .select("_id name email phone")
       .lean();
-    userFilter = { userId: { $in: users.map((u) => u._id) } };
+    const matched = users.filter((u) =>
+      [u.name, u.email, u.phone].some((v) => v?.toLowerCase().includes(q)),
+    );
+    userFilter = { userId: { $in: matched.map((u) => u._id) } };
   }
 
-  const profiles = await DoctorProfileModel.find(userFilter ?? {})
+  const profiles = await DoctorProfileModel.find({
+    ...userFilter,
+    verificationStatus: { $ne: VerificationStatuses.PENDING },
+  })
     .sort({ createdAt: -1 })
     .lean();
 

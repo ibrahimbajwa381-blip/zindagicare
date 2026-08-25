@@ -55,6 +55,9 @@ export const nurseVerificationSchema = z.object({
     cnicFront: z.string().min(1, "CNIC front image required"),
     cnicBack: z.string().min(1, "CNIC back image required"),
   }),
+  acceptedProviderAgreement: z.literal(true, {
+    message: "You must accept the ZindagiCare Provider Agreement",
+  }),
 });
 
 export type NurseVerificationInput = z.infer<typeof nurseVerificationSchema>;

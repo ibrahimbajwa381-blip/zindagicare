@@ -13,7 +13,7 @@ export type AppointmentDetail = {
   scheduledEnd?: string;
   isOnline?: boolean;
   patient: { name: string; phone?: string; email?: string };
-  doctor: { id: string; name: string; specialty?: string };
+  doctor: { id: string; name: string; specialty?: string; phone?: string; email?: string };
   patientNotes?: string;
   clinic?: { hospitalName?: string; address?: string; city?: string };
   amountPkr?: number;
@@ -122,9 +122,11 @@ export function AdminAppointmentDetailModal({
                 <Row label="Date & time" value={formatKarachiDateTime(a.scheduledStart)} />
                 <Row label="Doctor" value={a.doctor.name} />
                 <Row label="Specialty" value={a.doctor.specialty} />
+                <Row label="Doctor phone" value={a.doctor.phone} />
+                <Row label="Doctor email" value={a.doctor.email} />
                 <Row label="Patient" value={a.patient.name} />
-                <Row label="Phone" value={a.patient.phone} />
-                <Row label="Email" value={a.patient.email} />
+                <Row label="Patient phone" value={a.patient.phone} />
+                <Row label="Patient email" value={a.patient.email} />
                 {a.clinic && (
                   <Row
                     label="Clinic"

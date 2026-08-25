@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { UnifiedHeader } from "@/components/layout/unified-header";
 import { DoctorMobilePracticeNav } from "@/features/doctor/components/doctor-mobile-practice-nav";
 import { DoctorSidebar } from "@/features/doctor/components/doctor-sidebar";
+import { ProviderAgreementGate } from "@/features/legal/components/provider-agreement-gate";
 
 export type DoctorAccountabilityBanner = {
   level: "info" | "warning" | "danger";
@@ -112,6 +113,7 @@ export function DoctorShell({
         >
           <div className="mx-auto w-full max-w-[100rem]">
             <AutoBreadcrumbs variant="workspace" />
+            {showFullNav && <ProviderAgreementGate role="doctor" />}
             {accountabilityBanner && (
               <AccountabilityBanner banner={accountabilityBanner} />
             )}

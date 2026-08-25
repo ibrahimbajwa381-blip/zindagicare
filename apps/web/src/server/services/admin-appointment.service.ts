@@ -10,7 +10,14 @@ import {
   AppointmentTypes,
   SlotStatuses,
 } from "@zindagi/shared";
-import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
+
+/** Doctor display names in the DB are inconsistently stored with/without a "Dr" prefix. */
+function normalizeDoctorName(rawName?: string): string {
+  const name = safeDisplayText(rawName) ?? "Doctor";
+  const stripped = name.replace(/^dr\.?\s+/i, "").trim();
+  return stripped ? `Dr. ${stripped}` : name;
+}
 
 export type AdminAppointmentRow = {
   id: string;
@@ -20,7 +27,7 @@ export type AdminAppointmentRow = {
   scheduledEnd: string;
   isOnline: boolean;
   patient: { id: string; name: string; phone?: string; email?: string };
-  doctor: { id: string; name: string; specialty?: string };
+  doctor: { id: string; name: string; specialty?: string; phone?: string; email?: string };
   cancellationReason?: string;
   patientNotes?: string;
   clinic?: { hospitalName?: string; address?: string; city?: string };
@@ -64,7 +71,7 @@ export async function listAdminAppointments(filters?: {
     .populate("patientId", "name phone email")
     .populate({
       path: "doctorId",
-      populate: { path: "userId", select: "name" },
+      populate: { path: "userId", select: "name phone email" },
       select: "specialties",
     })
     .populate(
@@ -84,7 +91,7 @@ export async function listAdminAppointments(filters?: {
     } | null;
     const doctorProfile = a.doctorId as {
       _id?: { toString(): string };
-      userId?: { name?: string };
+      userId?: { name?: string; phone?: string; email?: string };
       specialties?: string[];
     } | null;
     const payment = a.paymentId as {
@@ -115,8 +122,10 @@ export async function listAdminAppointments(filters?: {
       },
       doctor: {
         id: doctorProfile?._id?.toString() ?? "",
-        name: doctorProfile?.userId?.name ?? "Doctor",
+        name: normalizeDoctorName(doctorProfile?.userId?.name),
         specialty: doctorProfile?.specialties?.[0] ?? undefined,
+        phone: formatPhoneForDisplay(doctorProfile?.userId?.phone),
+        email: safeDisplayText(doctorProfile?.userId?.email),
       },
       cancellationReason: a.cancellationReason ?? undefined,
       patientNotes: a.patientNotes ?? undefined,

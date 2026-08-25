@@ -209,6 +209,9 @@ export const doctorVerificationSchema = z.object({
         });
       }
     }),
+  acceptedProviderAgreement: z.literal(true, {
+    message: "You must accept the ZindagiCare Provider Agreement",
+  }),
 }).and(doctorSpecialtySelectionSchema);
 
 export const adminDoctorDecisionSchema = z.object({

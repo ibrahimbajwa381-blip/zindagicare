@@ -5,6 +5,7 @@ export const legalRoutes = {
   terms: "/terms",
   refundPolicy: "/refund-policy",
   telemedicineConsent: "/telemedicine-consent",
+  providerAgreement: "/provider-agreement",
 } as const satisfies Record<LegalDocumentSlug, string>;
 
 export function getLegalRelatedLinks(

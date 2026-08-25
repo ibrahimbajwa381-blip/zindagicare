@@ -211,6 +211,7 @@ export const ur: Dictionary = {
       terms: "سروس کی شرائط",
       refundPolicy: "ریفنڈ اور منسوخی",
       telemedicineConsent: "آن لائن علاج کی اجازت",
+      providerAgreement: "فراہم کنندہ پلیٹ فارم معاہدہ",
     },
     registerAcceptanceBefore: "میں",
     registerAcceptanceAnd: "اور",

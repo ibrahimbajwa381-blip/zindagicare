@@ -376,9 +376,64 @@ const telemedicineConsent: LegalDocument = {
   ],
 };
 
+const providerAgreement: LegalDocument = {
+  title: "Provider Platform Agreement",
+  lastUpdated: LAST_UPDATED,
+  intro:
+    "This Provider Platform Agreement (“Agreement”) applies to every doctor, nurse, and physiotherapist listed on ZindagiCare. By submitting your verification application, you accept this Agreement and confirm you will bring all patients you meet through ZindagiCare through the platform for booking and payment.",
+  sections: [
+    {
+      id: "no-circumvention",
+      title: "1. No off-platform booking or payment",
+      paragraphs: [
+        "Every patient you consult, treat, or visit as a result of a ZindagiCare listing, booking, referral, or introduction must be booked and paid for through ZindagiCare, for the full duration of your relationship with that patient — including follow-up visits.",
+        "You must not ask, encourage, or allow a patient met through ZindagiCare to pay you directly (cash, bank transfer, JazzCash, Easypaisa, or any other method) or to book a consultation, home visit, or follow-up outside the platform, without ZindagiCare's prior written consent.",
+        "You must not share personal contact details (phone number, personal WhatsApp, personal clinic address) with the specific purpose of moving a ZindagiCare patient off-platform to avoid platform fees.",
+      ],
+    },
+    {
+      id: "why",
+      title: "2. Why this matters",
+      paragraphs: [
+        "ZindagiCare invests in verifying your credentials, marketing your profile, handling patient support, secure payments, and dispute resolution. The platform commission funds this investment and keeps the service free or low-cost for patients.",
+        "Circumventing the platform after a patient was acquired through ZindagiCare deprives the platform of its agreed commission and undermines the trust and safety systems (payment protection, consult records, reviews) that protect both you and the patient.",
+      ],
+    },
+    {
+      id: "reporting",
+      title: "3. Report a payment issue instead",
+      paragraphs: [
+        "If a patient asks to pay you directly, or if you are unable to complete a booking through the app for any reason, do not accept payment outside the platform. Contact ZindagiCare support immediately so we can resolve the booking or payment issue.",
+      ],
+    },
+    {
+      id: "consequences",
+      title: "4. Consequences of violation",
+      paragraphs: [
+        "A confirmed violation of this Agreement is treated as a serious breach of your provider agreement with ZindagiCare and may result in any or all of the following, at ZindagiCare's discretion:",
+      ],
+      bullets: [
+        "Immediate suspension or permanent removal of your provider account and listing.",
+        "Forfeiture of any pending payouts or earnings held on the platform.",
+        "Recovery of the platform commission owed on the diverted booking(s).",
+        "Legal action for breach of contract and, where applicable, referral to PMDC, the Pakistan Nursing Council, or other relevant regulatory or law-enforcement authorities.",
+      ],
+    },
+    {
+      id: "acknowledgement",
+      title: "5. Acknowledgement",
+      paragraphs: [
+        "By checking the acceptance box during verification, you confirm you have read and understood this Agreement, and you agree to bring all patients acquired through ZindagiCare through the platform for booking and payment, for as long as you remain listed or continue treating that patient.",
+        `Questions about this Agreement: ${CONTACT}.`,
+      ],
+    },
+  ],
+};
+
 export const legalDocumentsEn = {
   privacy,
   terms,
   refundPolicy,
   telemedicineConsent,
+  providerAgreement,
 } satisfies Record<LegalDocumentSlug, LegalDocument>;

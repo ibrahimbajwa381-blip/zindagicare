@@ -24,7 +24,7 @@ type Props = {
 };
 
 const SERVICE_LABELS: Record<string, string> = {
-  Physiotherapist: "Nursing care",
+  physiotherapy: "Physiotherapy",
   iv_drip: "IV drip",
   injection: "Injection",
   wound_care: "Wound care",
@@ -206,6 +206,17 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
                 })}
               </p>
             )}
+            <p className="mt-1 text-xs text-slate-500">
+              Provider agreement:{" "}
+              {profile.platformAgreementAcceptedAt ? (
+                <span className="font-medium text-emerald-700">
+                  Accepted{" "}
+                  {new Date(profile.platformAgreementAcceptedAt).toLocaleDateString("en-PK")}
+                </span>
+              ) : (
+                <span className="font-medium text-red-600">Not accepted</span>
+              )}
+            </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.user.phone && (
                 <Button variant="outline" size="sm" asChild>
@@ -272,7 +283,7 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
             onChange={(e) => setNotes(e.target.value)}
             rows={5}
             maxLength={5000}
-            placeholder="e.g. Interviewed on 13 Jun — verified PNC license verbally, 5 yrs ICU experience at Services Hospital…"
+            placeholder="e.g. Interviewed on 13 Jun — verified PPTA license verbally, 5 yrs experience at Services Hospital…"
             className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-light/30"
           />
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -297,7 +308,7 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900">Professional details</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <InfoBlock label="License / PNC" value={profile.licenseNumber ?? "—"} />
+          <InfoBlock label="License / PPTA" value={profile.licenseNumber ?? "—"} />
           <InfoBlock label="Qualification" value={profile.qualification ?? "—"} />
           <InfoBlock
             label="Experience"

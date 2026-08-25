@@ -210,6 +210,7 @@ export const en = {
       terms: "Terms of Service",
       refundPolicy: "Refund & Cancellation",
       telemedicineConsent: "Telemedicine Consent",
+      providerAgreement: "Provider Platform Agreement",
     },
     registerAcceptanceBefore: "I agree to the",
     registerAcceptanceAnd: "and",

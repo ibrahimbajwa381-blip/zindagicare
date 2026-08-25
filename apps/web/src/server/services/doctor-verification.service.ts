@@ -6,6 +6,7 @@ import {
 } from "@zindagi/database";
 import {
   AppError,
+  PROVIDER_AGREEMENT_VERSION,
   Roles,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
@@ -167,6 +168,8 @@ export async function submitDoctorVerification(
   profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
   profile.verificationDocuments = input.documentUrls;
   profile.verificationSubmittedAt = new Date();
+  profile.platformAgreementAcceptedAt = new Date();
+  profile.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
   profile.verificationStatus = VerificationStatuses.PENDING;
   profile.isListed = false;
   profile.sundayConsultEnabled = false;
@@ -327,4 +330,35 @@ export async function decideDoctorVerification(
   }
 
   return profile;
+}
+
+export async function getDoctorAgreementStatus(userId: string): Promise<{
+  accepted: boolean;
+  acceptedAt?: string;
+  version?: string;
+  currentVersion: string;
+}> {
+  await connectDatabase();
+  const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }))
+    .select("platformAgreementAcceptedAt platformAgreementVersion")
+    .lean();
+  if (!profile) throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
+
+  return {
+    accepted: Boolean(profile.platformAgreementAcceptedAt),
+    acceptedAt: profile.platformAgreementAcceptedAt?.toISOString(),
+    version: profile.platformAgreementVersion ?? undefined,
+    currentVersion: PROVIDER_AGREEMENT_VERSION,
+  };
+}
+
+/** Retroactive acceptance for doctors approved before the Provider Agreement existed. */
+export async function acceptDoctorAgreement(userId: string): Promise<void> {
+  await connectDatabase();
+  const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
+  if (!profile) throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
+
+  profile.platformAgreementAcceptedAt = new Date();
+  profile.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
+  await profile.save();
 }

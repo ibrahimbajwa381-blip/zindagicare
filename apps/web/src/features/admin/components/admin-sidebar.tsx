@@ -26,6 +26,7 @@ import {
   Users,
   X,
   BarChart3,
+  Wallet,
 } from "lucide-react";
 
 type AdminNavCountKey = keyof AdminNavCounts;
@@ -59,6 +60,13 @@ const NAV_SECTIONS: AdminNavSection[] = [
         label: "Finances",
         description: "Payments and payouts",
         icon: Banknote,
+      },
+      {
+        href: "/admin/platform-earnings",
+        label: "ZindagiCare earnings",
+        description: "Commission earned per doctor",
+        icon: Wallet,
+        exact: true,
       },
       {
         href: "/admin/sunday-consult",

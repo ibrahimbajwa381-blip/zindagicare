@@ -9,6 +9,7 @@ import {
   HomeVisitStatuses,
   LAHORE_GEO,
   LAUNCH_CITY,
+  PROVIDER_AGREEMENT_VERSION,
   Roles,
   VerificationStatuses,
   phoneLookupHash,
@@ -309,6 +310,8 @@ export async function submitPhysiotherapistVerification(
   staff.experienceYears = input.experienceYears;
   staff.verificationDocuments = input.documentUrls;
   staff.verificationSubmittedAt = new Date();
+  staff.platformAgreementAcceptedAt = new Date();
+  staff.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
   staff.verificationStatus = VerificationStatuses.PENDING;
   staff.rejectionReason = undefined;
 
@@ -581,6 +584,7 @@ export async function getPhysiotherapistProfileForAdmin(
     },
     verificationStatus: staff.verificationStatus ?? VerificationStatuses.PENDING,
     verificationSubmittedAt: staff.verificationSubmittedAt?.toISOString(),
+    platformAgreementAcceptedAt: staff.platformAgreementAcceptedAt?.toISOString(),
     verifiedAt: staff.verifiedAt?.toISOString(),
     rejectionReason: staff.rejectionReason ?? undefined,
     adminNotes: staff.adminNotes ?? undefined,
@@ -628,4 +632,39 @@ export async function updatePhysiotherapistAdminNotes(
   await staff.save();
 
   return { adminNotes: staff.adminNotes ?? "" };
+}
+
+export async function getPhysiotherapistAgreementStatus(userId: string): Promise<{
+  accepted: boolean;
+  acceptedAt?: string;
+  version?: string;
+  currentVersion: string;
+}> {
+  await connectDatabase();
+  const staff = await StaffProfileModel.findOne(
+    mongoFilter({ userId, staffType: Roles.PHYSIOTHERAPIST }),
+  )
+    .select("platformAgreementAcceptedAt platformAgreementVersion")
+    .lean();
+  if (!staff) throw new AppError("Physiotherapist profile not found", "NOT_FOUND", 404);
+
+  return {
+    accepted: Boolean(staff.platformAgreementAcceptedAt),
+    acceptedAt: staff.platformAgreementAcceptedAt?.toISOString(),
+    version: staff.platformAgreementVersion ?? undefined,
+    currentVersion: PROVIDER_AGREEMENT_VERSION,
+  };
+}
+
+/** Retroactive acceptance for physiotherapists approved before the Provider Agreement existed. */
+export async function acceptPhysiotherapistAgreement(userId: string): Promise<void> {
+  await connectDatabase();
+  const staff = await StaffProfileModel.findOne(
+    mongoFilter({ userId, staffType: Roles.PHYSIOTHERAPIST }),
+  );
+  if (!staff) throw new AppError("Physiotherapist profile not found", "NOT_FOUND", 404);
+
+  staff.platformAgreementAcceptedAt = new Date();
+  staff.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
+  await staff.save();
 }

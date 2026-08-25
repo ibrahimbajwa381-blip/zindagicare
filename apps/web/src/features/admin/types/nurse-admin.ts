@@ -22,6 +22,7 @@ export type AdminNurseDetailDto = {
   };
   verificationStatus: string;
   verificationSubmittedAt?: string;
+  platformAgreementAcceptedAt?: string;
   verifiedAt?: string;
   rejectionReason?: string;
   adminNotes?: string;

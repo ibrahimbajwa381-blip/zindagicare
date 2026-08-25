@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
@@ -92,6 +93,7 @@ export function DoctorVerificationForm() {
 
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [acceptedAgreement, setAcceptedAgreement] = useState(false);
   const [draftApplied, setDraftApplied] = useState(false);
   const [showRestoredNotice, setShowRestoredNotice] = useState(false);
 
@@ -270,6 +272,12 @@ export function DoctorVerificationForm() {
       return;
     }
 
+    if (!acceptedAgreement) {
+      setError("You must accept the ZindagiCare Provider Agreement to submit.");
+      setPending(false);
+      return;
+    }
+
     const body = {
       pmdcNumber: fields.pmdcNumber,
       cnic: fields.cnic,
@@ -309,6 +317,7 @@ export function DoctorVerificationForm() {
         endTimeLocal: sundayEnabled ? sundayEnd : undefined,
         slotDurationMins,
       },
+      acceptedProviderAgreement: acceptedAgreement,
     };
 
     const res = await fetch("/api/v1/doctor/verification/submit", {
@@ -819,6 +828,33 @@ export function DoctorVerificationForm() {
             });
           }}
         />
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-amber-200/60 bg-amber-50/40 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Provider agreement</h2>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={acceptedAgreement}
+            onChange={(e) => setAcceptedAgreement(e.target.checked)}
+            className="mt-1"
+            required
+          />
+          <span className="text-sm text-slate-700">
+            I agree to the{" "}
+            <Link
+              href="/provider-agreement"
+              target="_blank"
+              className="font-medium text-brand hover:underline"
+            >
+              ZindagiCare Provider Platform Agreement
+            </Link>
+            . I will bring every patient I meet through ZindagiCare through the platform for
+            booking and payment, and will not accept direct payment or take bookings
+            off-platform. I understand that violating this may lead to account suspension,
+            forfeiture of earnings, and legal action.
+          </span>
+        </label>
       </section>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { workspaceSidebarTop } from "@/lib/ui/surfaces";
 import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
+import { ProviderAgreementGate } from "@/features/legal/components/provider-agreement-gate";
 import { UnifiedHeader } from "@/components/layout/unified-header";
 import {
   ChevronRight,
@@ -228,6 +229,7 @@ export function PhysiotherapistShell({ children, showFullNav }: PhysiotherapistS
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
           <div className="mx-auto w-full max-w-[100rem]">
             <AutoBreadcrumbs variant="workspace" />
+            {showFullNav && <ProviderAgreementGate role="physiotherapist" />}
             {children}
           </div>
         </main>

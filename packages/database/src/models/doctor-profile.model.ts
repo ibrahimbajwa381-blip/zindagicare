@@ -33,6 +33,9 @@ const doctorProfileSchema = new Schema(
       degreeCertificate: String,
     },
     verificationSubmittedAt: { type: Date },
+    /** Anti-circumvention / off-platform payment policy acceptance, captured at verification submit. */
+    platformAgreementAcceptedAt: { type: Date },
+    platformAgreementVersion: { type: String },
     /**
      * Doctor-chosen primary specialty (required after verification submit).
      * Patient-facing listing uses `specialties` (admin-verified) only.

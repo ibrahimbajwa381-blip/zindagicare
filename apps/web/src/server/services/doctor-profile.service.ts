@@ -120,6 +120,7 @@ function mapProfileToDto(
     },
     verificationStatus: profile.verificationStatus,
     verificationSubmittedAt: profile.verificationSubmittedAt?.toISOString(),
+    platformAgreementAcceptedAt: profile.platformAgreementAcceptedAt?.toISOString(),
     rejectionReason: profile.rejectionReason ?? undefined,
     isListed: profile.isListed ?? false,
     slug: profile.slug ?? undefined,

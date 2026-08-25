@@ -16,4 +16,5 @@ export type LegalDocumentSlug =
   | "privacy"
   | "terms"
   | "refundPolicy"
-  | "telemedicineConsent";
+  | "telemedicineConsent"
+  | "providerAgreement";

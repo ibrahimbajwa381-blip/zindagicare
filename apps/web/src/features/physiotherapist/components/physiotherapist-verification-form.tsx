@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
@@ -27,6 +28,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
+  const [acceptedAgreement, setAcceptedAgreement] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,6 +51,12 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
       return;
     }
 
+    if (!acceptedAgreement) {
+      setError("You must accept the ZindagiCare Provider Agreement to submit.");
+      setPending(false);
+      return;
+    }
+
     const body = {
       licenseNumber: form.get("licenseNumber"),
       cnic: form.get("cnic"),
@@ -65,6 +73,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
         cnicFront: documents.cnicFront,
         cnicBack: documents.cnicBack,
       },
+      acceptedProviderAgreement: acceptedAgreement,
     };
 
     const res = await fetch("/api/v1/physiotherapist/verification/submit", {
@@ -107,7 +116,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
         <h2 className="text-sm font-semibold text-slate-900">Identity & registration</h2>
         <div>
           <Label htmlFor="licenseNumber">
-            Nursing license / PNC registration number
+            Physiotherapy license / PPTA registration number
           </Label>
           <Input
             id="licenseNumber"
@@ -126,7 +135,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
         <h2 className="text-sm font-semibold text-slate-900">Qualifications</h2>
         <div>
           <Label htmlFor="qualification">
-            Qualification (e.g. BSN, General Nursing diploma)
+            Qualification (e.g. DPT, BS Physical Therapy)
           </Label>
           <Input
             id="qualification"
@@ -213,7 +222,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
           </p>
         </div>
         <VerificationDocumentUpload
-          label="Nursing license / PNC certificate"
+          label="Physiotherapy license / PPTA certificate"
           docKey="licenseCertificate"
           value={documents.licenseCertificate}
           fileName={documentNames.licenseCertificate}
@@ -239,6 +248,33 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
           onUploaded={(url, name) => setDocument("cnicBack", url, name)}
           onClear={() => clearDocument("cnicBack")}
         />
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-amber-200/60 bg-amber-50/40 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Provider agreement</h2>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={acceptedAgreement}
+            onChange={(e) => setAcceptedAgreement(e.target.checked)}
+            className="mt-1"
+            required
+          />
+          <span className="text-sm text-slate-700">
+            I agree to the{" "}
+            <Link
+              href="/provider-agreement"
+              target="_blank"
+              className="font-medium text-brand hover:underline"
+            >
+              ZindagiCare Provider Platform Agreement
+            </Link>
+            . I will bring every patient I meet through ZindagiCare through the platform for
+            booking and payment, and will not accept direct payment or take bookings
+            off-platform. I understand that violating this may lead to account suspension,
+            forfeiture of earnings, and legal action.
+          </span>
+        </label>
       </section>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

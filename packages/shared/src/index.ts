@@ -10,6 +10,7 @@ export * from "./constants/video-consult";
 export * from "./constants/home-care";
 export * from "./constants/staff-commission";
 export * from "./constants/medical-intake";
+export * from "./constants/provider-agreement";
 export * from "./errors/app-error";
 export * from "./utils/cn";
 export * from "./utils/chat-direct-key";

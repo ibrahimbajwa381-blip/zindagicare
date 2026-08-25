@@ -15,6 +15,7 @@ import {
   Ban,
   CalendarDays,
   CheckCircle2,
+  FileWarning,
   Mail,
   Pencil,
   Phone,
@@ -304,6 +305,7 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
       </div>
 
       <AccountabilityCard doctor={doctor} />
+      <ProviderAgreementCard doctor={doctor} />
 
       <Card className="rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>
@@ -590,6 +592,39 @@ function AccountabilityCard({ doctor }: { doctor: AdminDoctorRow }) {
           <p className="text-xs font-medium text-red-600">
             Auto-restricted for missed consults on {formatDateTime(a.autoRestrictedAt)}.
             Use “Restore approved” above to reinstate.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProviderAgreementCard({ doctor }: { doctor: AdminDoctorRow }) {
+  const accepted = Boolean(doctor.platformAgreementAcceptedAt);
+
+  return (
+    <Card
+      className={cn(
+        "rounded-2xl shadow-sm",
+        accepted ? "border-slate-200/80 bg-white" : "border-red-200 bg-red-50/60",
+      )}
+    >
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0">
+        <FileWarning className={cn("h-5 w-5", accepted ? "text-emerald-600" : "text-red-600")} />
+        <CardTitle className="text-base">Provider Platform Agreement</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {accepted ? (
+          <p className="text-sm text-slate-700">
+            <span className="font-semibold text-emerald-700">Signed</span> on{" "}
+            {formatDateTime(doctor.platformAgreementAcceptedAt)}. This doctor has agreed not to
+            take patients off-platform or accept direct payment without going through
+            ZindagiCare.
+          </p>
+        ) : (
+          <p className="text-sm font-medium text-red-700">
+            Not signed yet. This doctor has not accepted the anti-circumvention Provider
+            Platform Agreement — they will be prompted the next time they log in.
           </p>
         )}
       </CardContent>

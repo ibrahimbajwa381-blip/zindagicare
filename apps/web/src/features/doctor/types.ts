@@ -51,6 +51,7 @@ export type DoctorProfileDto = {
   homeVisit: DoctorHomeVisitDto;
   verificationStatus: string;
   verificationSubmittedAt?: string;
+  platformAgreementAcceptedAt?: string;
   rejectionReason?: string;
   isListed: boolean;
   slug?: string;

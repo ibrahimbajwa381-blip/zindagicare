@@ -43,7 +43,7 @@ export default async function PhysiotherapistVerificationPage() {
             Your account will be active after admin approval
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm text-sky-900/80">
-            We&apos;ve received your nursing license, service area, and identity
+            We&apos;ve received your physiotherapy license, service area, and identity
             documents. You&apos;ll be able to receive in-house visit assignments once
             an admin approves your profile.
           </p>
@@ -60,7 +60,7 @@ export default async function PhysiotherapistVerificationPage() {
       <PhysiotherapistPageHeader
         eyebrow="Verification"
         title={isRejected ? "Resubmit your application" : "Verify your credentials"}
-        description="Submit your nursing license, service area, and identity documents. An admin will review your application before you can receive in-house visit assignments."
+        description="Submit your physiotherapy license, service area, and identity documents. An admin will review your application before you can receive in-house visit assignments."
       />
 
       {isRejected && profile.verification.rejectionReason && (

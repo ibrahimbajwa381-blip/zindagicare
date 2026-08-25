@@ -122,23 +122,33 @@ export function AdminAppointmentsBoard() {
               )}
             >
               <CardContent className="space-y-2 pt-6">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <p className="font-medium capitalize">
-                      {a.type.replace(/_/g, " ")}
-                      {a.isOnline ? " · Online" : ""} · {a.patient.name}
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium capitalize">
+                        {a.type.replace(/_/g, " ")}
+                        {a.isOnline ? " · Online" : ""} · {a.patient.name}
+                      </p>
+                      <Badge variant="outline">{a.status}</Badge>
+                    </div>
                     <p className="text-sm text-slate-500">
                       {formatKarachiDateTime(a.scheduledStart)}
                       {a.scheduledEnd
                         ? ` – ${new Date(a.scheduledEnd).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
                         : ""}
-                      {" · Dr. "}
+                      {" · "}
                       {a.doctor.name}
                       {a.doctor.specialty ? ` (${a.doctor.specialty})` : ""}
                     </p>
+                    {(a.doctor.phone || a.doctor.email) && (
+                      <p className="text-sm text-slate-500">
+                        <span className="text-slate-400">Doctor: </span>
+                        {[a.doctor.phone, a.doctor.email].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
                     {(a.patient.phone || a.patient.email) && (
                       <p className="text-sm text-slate-500">
+                        <span className="text-slate-400">Patient: </span>
                         {[a.patient.phone, a.patient.email].filter(Boolean).join(" · ")}
                       </p>
                     )}
@@ -159,6 +169,7 @@ export function AdminAppointmentsBoard() {
                       <p className="text-sm text-slate-500">
                         Rs. {a.amountPkr.toLocaleString()}
                         {a.paymentStatus ? ` · ${a.paymentStatus}` : ""}
+                        {a.transactionId ? ` · TID ${a.transactionId}` : ""}
                       </p>
                     )}
                     {a.status === "cancelled" && a.cancellationReason && (
@@ -167,7 +178,13 @@ export function AdminAppointmentsBoard() {
                       </p>
                     )}
                   </div>
-                  <Badge variant="outline">{a.status}</Badge>
+
+                  {a.receiptUploaded && a.paymentId && (
+                    <ReceiptThumbnail
+                      paymentId={a.paymentId}
+                      onClick={() => setDetailFor(a)}
+                    />
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -229,5 +246,33 @@ export function AdminAppointmentsBoard() {
       )}
       <AdminAppointmentDetailModal appointment={detailFor} onClose={() => setDetailFor(null)} />
     </div>
+  );
+}
+
+function ReceiptThumbnail({
+  paymentId,
+  onClick,
+}: {
+  paymentId: string;
+  onClick: () => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 overflow-hidden rounded-lg border border-slate-200 transition hover:border-brand"
+      title="View receipt"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/api/v1/payments/${paymentId}/receipt`}
+        alt="Payment receipt"
+        className="h-20 w-20 object-cover bg-slate-50"
+        onError={() => setFailed(true)}
+      />
+    </button>
   );
 }

@@ -8,7 +8,6 @@ import {
   ClipboardList,
   FileText,
   MessageSquare,
-  Phone,
   Search,
   Star,
   Stethoscope,
@@ -421,13 +420,6 @@ export function DoctorConsultRequestsPanel({ requests }: Props) {
                             {formatType(request.type)}
                           </span>
                         </div>
-
-                        {request.patient.phone ? (
-                          <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
-                            <Phone className="size-3.5 shrink-0 text-slate-400" aria-hidden />
-                            {request.patient.phone}
-                          </p>
-                        ) : null}
 
                         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                           <span className="inline-flex items-center gap-1">

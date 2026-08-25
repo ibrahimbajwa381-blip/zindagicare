@@ -48,6 +48,9 @@ const staffProfileSchema = new Schema(
       cnicBack: { type: String },
     },
     verificationSubmittedAt: { type: Date },
+    /** Anti-circumvention / off-platform payment policy acceptance, captured at verification submit. */
+    platformAgreementAcceptedAt: { type: Date },
+    platformAgreementVersion: { type: String },
     verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
     verifiedAt: { type: Date },
     rejectionReason: { type: String },

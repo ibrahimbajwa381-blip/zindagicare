@@ -206,6 +206,17 @@ export function AdminNurseApplicationReview({ profile }: Props) {
                 })}
               </p>
             )}
+            <p className="mt-1 text-xs text-slate-500">
+              Provider agreement:{" "}
+              {profile.platformAgreementAcceptedAt ? (
+                <span className="font-medium text-emerald-700">
+                  Accepted{" "}
+                  {new Date(profile.platformAgreementAcceptedAt).toLocaleDateString("en-PK")}
+                </span>
+              ) : (
+                <span className="font-medium text-red-600">Not accepted</span>
+              )}
+            </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {profile.user.phone && (
                 <Button variant="outline" size="sm" asChild>
