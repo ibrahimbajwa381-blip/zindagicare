@@ -3,7 +3,9 @@ import {
   AppointmentModel,
   DoctorPayoutModel,
   DoctorProfileModel,
+  PaymentModel,
   PrescriptionModel,
+  SundayFreeRequestModel,
   UserModel,
   VideoSessionModel,
   type DoctorProfileDocument,
@@ -140,6 +142,42 @@ async function buildDoctorFinanceAppointments(
     .sort({ scheduledStart: -1 })
     .limit(100)
     .lean();
+
+  // Sunday-free-consult appointments created before assignment linked the contribution
+  // payment onto the appointment itself only via SundayFreeRequest.paymentId — backfill
+  // that link here so historical rows still show payment/earnings correctly.
+  const unlinkedAppointmentIds = appointments
+    .filter((a) => !a.paymentId)
+    .map((a) => a._id.toString());
+  if (unlinkedAppointmentIds.length) {
+    const linkedRequests = await SundayFreeRequestModel.find(
+      mongoFilter({
+        appointmentId: { $in: mongoObjectIds(unlinkedAppointmentIds) },
+        paymentId: { $exists: true, $ne: null },
+      }),
+    )
+      .select("appointmentId paymentId")
+      .lean();
+    const paymentIdByAppointmentId = new Map(
+      linkedRequests.map((r) => [r.appointmentId?.toString(), r.paymentId?.toString()]),
+    );
+    if (paymentIdByAppointmentId.size) {
+      const payments = await PaymentModel.find(
+        mongoFilter({
+          _id: { $in: mongoObjectIds([...paymentIdByAppointmentId.values()].filter(Boolean) as string[]) },
+        }),
+      )
+        .select("amount status")
+        .lean();
+      const paymentById = new Map(payments.map((p) => [p._id.toString(), p]));
+      for (const a of appointments as Array<{ _id: { toString(): string }; paymentId?: unknown }>) {
+        const paymentId = paymentIdByAppointmentId.get(a._id.toString());
+        if (paymentId && paymentById.has(paymentId)) {
+          a.paymentId = paymentById.get(paymentId);
+        }
+      }
+    }
+  }
 
   const appointmentIds = appointments.map((a) => a._id.toString());
   const [videoSessions, prescriptions] = await Promise.all([

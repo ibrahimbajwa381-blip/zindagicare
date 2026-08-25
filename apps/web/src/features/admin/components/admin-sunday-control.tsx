@@ -39,6 +39,33 @@ type SundayOverview = {
   }[];
 };
 
+function SundayReceiptThumbnail({ paymentId }: { paymentId: string }) {
+  const [failed, setFailed] = useState(false);
+  const href = `/api/v1/payments/${paymentId}/receipt`;
+
+  if (failed) {
+    return <span className="text-xs text-slate-400">No receipt</span>;
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="block h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+      title="View payment receipt"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={href}
+        alt="Payment receipt"
+        className="h-full w-full object-cover"
+        onError={() => setFailed(true)}
+      />
+    </a>
+  );
+}
+
 export function AdminSundayControl() {
   const [data, setData] = useState<SundayOverview | null>(null);
   const [requests, setRequests] = useState<SundayAdminRequestDto[]>([]);
@@ -163,22 +190,28 @@ export function AdminSundayControl() {
                       {request.doctor ? ` · Dr. ${request.doctor.name}` : ""}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={
-                        request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                          : "border-sky-200 bg-sky-50 text-sky-800"
-                      }
-                    >
-                      {request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
-                        ? `Paid Rs. ${request.contributionFeePkr ?? SUNDAY_CONSULT_CONFIG.contributionFeePkr}`
-                        : "Cannot afford (free)"}
-                    </Badge>
-                    <Badge variant={awaiting ? "default" : "outline"}>
-                      {awaiting ? "Awaiting assignment" : "Doctor assigned"}
-                    </Badge>
+                  <div className="flex items-start gap-3">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Badge
+                        variant="outline"
+                        className={
+                          request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : "border-sky-200 bg-sky-50 text-sky-800"
+                        }
+                      >
+                        {request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE
+                          ? `Paid Rs. ${request.contributionFeePkr ?? SUNDAY_CONSULT_CONFIG.contributionFeePkr}`
+                          : "Cannot afford (free)"}
+                      </Badge>
+                      <Badge variant={awaiting ? "default" : "outline"}>
+                        {awaiting ? "Awaiting assignment" : "Doctor assigned"}
+                      </Badge>
+                    </div>
+                    {request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE &&
+                      request.paymentId && (
+                        <SundayReceiptThumbnail paymentId={request.paymentId} />
+                      )}
                   </div>
                 </div>
                 {awaiting && (

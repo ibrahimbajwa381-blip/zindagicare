@@ -4,6 +4,7 @@ import {
   DoctorProfileModel,
   HomeVisitModel,
   PaymentModel,
+  SundayFreeRequestModel,
   UserModel,
   VideoSessionModel,
 } from "@zindagi/database";
@@ -102,7 +103,6 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
       mongoFilter({
         doctorId: { $in: mongoObjectIds(profileIds) },
         status: AppointmentStatuses.COMPLETED,
-        paymentId: { $exists: true, $ne: null },
         $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
       }),
     )
@@ -121,6 +121,34 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
   ]);
 
   const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+  // Sunday-free-consult appointments assigned before the appointment/payment link was
+  // wired up only carry the contribution payment on SundayFreeRequest.paymentId — backfill
+  // it here so historical consults still count toward revenue and doctor earnings.
+  const unlinkedAppointmentIds = completedAppointments
+    .filter((a) => !a.paymentId)
+    .map((a) => a._id.toString());
+  if (unlinkedAppointmentIds.length) {
+    const linkedRequests = await SundayFreeRequestModel.find(
+      mongoFilter({
+        appointmentId: { $in: mongoObjectIds(unlinkedAppointmentIds) },
+        paymentId: { $exists: true, $ne: null },
+      }),
+    )
+      .select("appointmentId paymentId")
+      .lean();
+    const paymentIdByAppointmentId = new Map(
+      linkedRequests.map((r) => [r.appointmentId?.toString(), r.paymentId?.toString()]),
+    );
+    for (const a of completedAppointments as Array<{
+      _id: { toString(): string };
+      paymentId?: unknown;
+    }>) {
+      if (a.paymentId) continue;
+      const paymentId = paymentIdByAppointmentId.get(a._id.toString());
+      if (paymentId) a.paymentId = paymentId;
+    }
+  }
 
   const paymentIds = [
     ...new Set([

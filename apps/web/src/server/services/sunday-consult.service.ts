@@ -1451,6 +1451,7 @@ export class SundayConsultService {
         status: AppointmentStatuses.CONFIRMED,
         patientId: request.patientId,
         doctorId: doctor._id,
+        paymentId: request.paymentId,
         scheduledStart,
         scheduledEnd,
         timezone: SUNDAY_CONSULT_CONFIG.timezone,
@@ -1473,6 +1474,7 @@ export class SundayConsultService {
         {
           $set: {
             doctorId: doctor._id,
+            paymentId: request.paymentId,
             scheduledStart,
             scheduledEnd,
             status: AppointmentStatuses.CONFIRMED,
