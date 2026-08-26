@@ -39,6 +39,18 @@ const patientProfileSchema = new Schema(
       ref: "DoctorProfile",
       default: null,
     },
+    /** Referring herbalist (from their /r/[code] invite link). */
+    referredByHerbalistId: {
+      type: Schema.Types.ObjectId,
+      ref: "HerbalistProfile",
+      default: null,
+    },
+    /** Referring nutritionist (from their /r/[code] invite link). */
+    referredByNutritionistId: {
+      type: Schema.Types.ObjectId,
+      ref: "NutritionistProfile",
+      default: null,
+    },
     referredAt: { type: Date, default: null },
     deletedAt: { type: Date },
   },

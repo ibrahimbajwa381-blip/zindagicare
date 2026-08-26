@@ -127,6 +127,12 @@ export const ur: Dictionary = {
     registerNurseDescription:
       "نرس اکاؤنٹ بنائیں۔ سائن اپ کے بعد آپ لائسنس، سروس ایریا اور شناختی کاغذات اپ لوڈ کریں گے۔",
     registerPhysiotherapist: "فزیو تھراپسٹ کے طور پر رجسٹر",
+    registerHerbalist: "حکیم کے طور پر رجسٹر",
+    registerHerbalistDescription:
+      "تصدیق شدہ حکیم کے طور پر زندگی کیئر میں شامل ہوں اور محفوظ ویڈیو مشاورت فراہم کریں۔",
+    registerNutritionist: "ماہرِ غذائیت کے طور پر رجسٹر",
+    registerNutritionistDescription:
+      "تصدیق شدہ ماہرِ غذائیت کے طور پر زندگی کیئر میں شامل ہوں اور محفوظ ویڈیو مشاورت فراہم کریں۔",
     registerPhysiotherapistDescription:
       "فزیو تھراپسٹ اکاؤنٹ بنائیں۔ سائن اپ کے بعد آپ رجسٹریشن، سروس ایریا اور شناختی کاغذات اپ لوڈ کریں گے۔",
     staffSignupTitle: "طبی عملے کے طور پر شامل ہو رہے ہیں؟",
@@ -157,6 +163,14 @@ export const ur: Dictionary = {
     addPhysiotherapistProfileDescription:
       "آپ سائن ان ہیں۔ تصدیق شروع کرنے کے لیے اپنے موجودہ اکاؤنٹ میں فزیو تھراپسٹ پروفائل شامل کریں۔",
     addPhysiotherapistProfileButton: "تصدیق کی طرف جائیں",
+    addHerbalistProfileTitle: "حکیم پروفائل شامل کریں",
+    addHerbalistProfileDescription:
+      "آپ سائن اِن ہیں۔ تصدیق شروع کرنے کے لیے اپنے موجودہ اکاؤنٹ میں حکیم پروفائل شامل کریں۔",
+    addHerbalistProfileButton: "تصدیق کی طرف جائیں",
+    addNutritionistProfileTitle: "ماہرِ غذائیت پروفائل شامل کریں",
+    addNutritionistProfileDescription:
+      "آپ سائن اِن ہیں۔ تصدیق شروع کرنے کے لیے اپنے موجودہ اکاؤنٹ میں ماہرِ غذائیت پروفائل شامل کریں۔",
+    addNutritionistProfileButton: "تصدیق کی طرف جائیں",
     addingProfile: "پروفائل تیار ہو رہی ہے…",
     signedInAs: "سائن ان بطور",
     signInAfterRegisterFailed:

@@ -330,6 +330,10 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
             label="In-house visits"
             value={profile.homeVisitEnabled ? "Enabled" : "Not enabled"}
           />
+          <InfoBlock
+            label="Specialties"
+            value={profile.specialties?.length ? profile.specialties.join(", ") : "—"}
+          />
         </div>
       </section>
 

@@ -10,6 +10,8 @@ declare module "next-auth" {
     doctorVerificationStatus?: VerificationStatus | string;
     nurseVerificationStatus?: VerificationStatus | string;
     physiotherapistVerificationStatus?: VerificationStatus | string;
+    herbalistVerificationStatus?: VerificationStatus | string;
+    nutritionistVerificationStatus?: VerificationStatus | string;
   }
 
   interface Session {
@@ -25,6 +27,8 @@ declare module "next-auth" {
       doctorVerificationStatus?: VerificationStatus | string;
       nurseVerificationStatus?: VerificationStatus | string;
       physiotherapistVerificationStatus?: VerificationStatus | string;
+      herbalistVerificationStatus?: VerificationStatus | string;
+      nutritionistVerificationStatus?: VerificationStatus | string;
     };
   }
 }
@@ -38,5 +42,7 @@ declare module "next-auth/jwt" {
     doctorVerificationStatus?: VerificationStatus | string;
     nurseVerificationStatus?: VerificationStatus | string;
     physiotherapistVerificationStatus?: VerificationStatus | string;
+    herbalistVerificationStatus?: VerificationStatus | string;
+    nutritionistVerificationStatus?: VerificationStatus | string;
   }
 }

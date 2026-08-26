@@ -1,0 +1,7 @@
+import { withApiHandler } from "@/server/api/with-api-handler";
+import { getHerbalistDashboardSummary } from "@/server/services/herbalist-dashboard.service";
+
+export const GET = withApiHandler(
+  async ({ session }) => getHerbalistDashboardSummary(session!.user.id),
+  { auth: true, roles: ["herbalist"] },
+);

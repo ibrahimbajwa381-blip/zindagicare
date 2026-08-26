@@ -16,6 +16,7 @@ import {
   PaymentStatuses,
 } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
+import { REFERRAL_COOKIE_NAME } from "@/lib/doctors/referral-cookie";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import {
@@ -23,8 +24,7 @@ import {
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
 
-/** Cookie set by /r/[code] and read at signup time to attribute a new patient to a doctor. */
-export const REFERRAL_COOKIE_NAME = "zc_ref";
+export { REFERRAL_COOKIE_NAME };
 
 function generateRandomCode(): string {
   return randomBytes(6).toString("base64url");

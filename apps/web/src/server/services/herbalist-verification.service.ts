@@ -1,0 +1,274 @@
+import {
+  connectDatabase,
+  HerbalistProfileModel,
+  UserModel,
+  type HerbalistProfileDocument,
+} from "@zindagi/database";
+import {
+  AppError,
+  PROVIDER_AGREEMENT_VERSION,
+  Roles,
+  VerificationStatuses,
+  claimedSpecialties,
+  normalizeAdditionalSpecialties,
+} from "@zindagi/shared";
+import type { HerbalistVerificationInput } from "@zindagi/validators";
+import type { HydratedDocument } from "mongoose";
+import { mongoFilter } from "@/lib/mongo/query";
+import { mapUserPii } from "@/server/lib/decrypt-pii";
+import { isHerbalistAvatarUrlForUser } from "@/server/services/herbalist-avatar.storage";
+import { generateUniqueHerbalistSlug } from "@/server/services/herbalist-slug.service";
+import { cnicLast4, hashCnic } from "./auth.service";
+
+/** Ensure a HerbalistProfile row exists (covers legacy / admin-seeded accounts). */
+export async function ensureHerbalistProfile(
+  userId: string,
+): Promise<HydratedDocument<HerbalistProfileDocument>> {
+  await connectDatabase();
+  const existing = (await HerbalistProfileModel.findOne(
+    mongoFilter({ userId }),
+  )) as HydratedDocument<HerbalistProfileDocument> | null;
+  if (existing) return existing;
+
+  return (await HerbalistProfileModel.create({
+    userId,
+    verificationStatus: VerificationStatuses.PENDING,
+  })) as HydratedDocument<HerbalistProfileDocument>;
+}
+
+export async function submitHerbalistVerification(
+  userId: string,
+  input: HerbalistVerificationInput,
+) {
+  await connectDatabase();
+  const user = await UserModel.findById(userId);
+  if (!user?.roles.includes(Roles.HERBALIST)) {
+    throw new AppError("Forbidden", "FORBIDDEN", 403);
+  }
+
+  const profile = await ensureHerbalistProfile(userId);
+
+  if (profile.verificationStatus === VerificationStatuses.APPROVED) {
+    throw new AppError("Already verified", "CONFLICT", 409);
+  }
+
+  if (!isHerbalistAvatarUrlForUser(userId, input.avatarUrl)) {
+    throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+  }
+
+  user.avatarUrl = input.avatarUrl;
+  await user.save();
+
+  const coverageCities = [
+    ...new Set(input.clinics.map((clinic) => clinic.city.trim())),
+  ];
+
+  profile.licenseNumber = input.licenseNumber;
+  profile.cnicHash = hashCnic(input.cnic);
+  profile.cnicLast4 = cnicLast4(input.cnic);
+  profile.degree = input.degree;
+  profile.qualifications = input.qualifications ?? [];
+  profile.institute = input.institute;
+  profile.graduationYear = input.graduationYear;
+  profile.experienceYears = input.experienceYears;
+  profile.primarySpecialty = input.primarySpecialty;
+  profile.additionalSpecialties = normalizeAdditionalSpecialties(
+    input.primarySpecialty,
+    input.additionalSpecialties ?? [],
+  );
+  // Patient-visible specialties stay empty until an admin verifies them.
+  profile.specialties = [];
+  profile.bio = input.bio;
+  profile.languages = input.languages ?? ["English", "Urdu"];
+  profile.consultationFee = input.consultationFee ?? 0;
+
+  profile.set(
+    "clinics",
+    input.clinics.map((clinic) => ({
+      name: clinic.name,
+      city: clinic.city,
+      address: clinic.address,
+      geo: clinic.geo
+        ? {
+            type: "Point" as const,
+            coordinates: [clinic.geo.lng, clinic.geo.lat] as [number, number],
+          }
+        : undefined,
+    })),
+  );
+
+  profile.set("weeklyAvailability", input.weeklyAvailability);
+  profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
+  profile.verificationDocuments = input.documentUrls;
+  profile.verificationSubmittedAt = new Date();
+  profile.platformAgreementAcceptedAt = new Date();
+  profile.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
+  profile.verificationStatus = VerificationStatuses.PENDING;
+  profile.isListed = false;
+  // Video consults only go live once an admin approves the application.
+  profile.videoConsultEnabled = false;
+  profile.rejectionReason = undefined;
+
+  await profile.save();
+
+  return profile;
+}
+
+export async function listPendingHerbalistVerifications() {
+  await connectDatabase();
+  const profiles = await HerbalistProfileModel.find({
+    verificationStatus: VerificationStatuses.PENDING,
+    deletedAt: { $exists: false },
+  })
+    .sort({ verificationSubmittedAt: -1, createdAt: -1 })
+    .lean();
+
+  const userIds = profiles
+    .map((p) => p.userId?.toString())
+    .filter(Boolean) as string[];
+  const users = userIds.length
+    ? await UserModel.find(mongoFilter({ _id: { $in: userIds } }))
+        .select("name email phone avatarUrl")
+        .lean()
+    : [];
+  const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+  return profiles.map((profile) => {
+    const userId = profile.userId?.toString() ?? "";
+    const user = userMap.get(userId);
+    const pii = user ? mapUserPii(user) : null;
+    return {
+      ...profile,
+      userId: user
+        ? {
+            _id: userId,
+            name: pii?.name ?? "Herbalist",
+            email: pii?.email,
+            phone: pii?.phone,
+            avatarUrl: user.avatarUrl,
+          }
+        : null,
+    };
+  });
+}
+
+export async function decideHerbalistVerification(
+  adminUserId: string,
+  herbalistProfileId: string,
+  action: "approve" | "reject",
+  rejectionReason?: string,
+  verifiedSpecialties?: string[],
+) {
+  await connectDatabase();
+  const profile = (await HerbalistProfileModel.findById(
+    herbalistProfileId,
+  )) as HydratedDocument<HerbalistProfileDocument> | null;
+  if (!profile) throw new AppError("Not found", "NOT_FOUND", 404);
+
+  const user = await UserModel.findById(profile.userId);
+  if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
+
+  if (action === "approve") {
+    const primary =
+      profile.primarySpecialty?.trim() || profile.specialties?.[0] || "";
+    const additional = normalizeAdditionalSpecialties(
+      primary,
+      profile.additionalSpecialties ?? profile.specialties?.slice(1) ?? [],
+    );
+    const claimed = claimedSpecialties(primary, additional);
+    if (!claimed.length) {
+      throw new AppError(
+        "Herbalist must have a primary specialty before approval",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+
+    const claimedSet = new Set(claimed);
+    let verified = verifiedSpecialties?.length
+      ? [...new Set(verifiedSpecialties.map((s) => s.trim()).filter(Boolean))]
+      : claimed;
+
+    verified = verified.filter((s) => claimedSet.has(s));
+    if (!verified.length) {
+      throw new AppError(
+        "Select at least one specialty from the herbalist's requested list to verify",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+
+    // Keep primary first in the verified list when it is included.
+    if (primary && verified.includes(primary)) {
+      verified = [primary, ...verified.filter((s) => s !== primary)];
+    }
+
+    if (!profile.primarySpecialty) profile.primarySpecialty = primary;
+    if (!profile.additionalSpecialties?.length && additional.length) {
+      profile.additionalSpecialties = additional;
+    }
+    profile.specialties = verified;
+
+    profile.verificationStatus = VerificationStatuses.APPROVED;
+    profile.licenseVerified = true;
+    profile.isListed = true;
+    profile.videoConsultEnabled = true;
+    profile.verifiedBy =
+      adminUserId as unknown as HerbalistProfileDocument["verifiedBy"];
+    profile.verifiedAt = new Date();
+    profile.rejectionReason = undefined;
+    profile.slug = await generateUniqueHerbalistSlug(
+      user.name,
+      profile._id.toString(),
+    );
+
+    await profile.save();
+
+    await UserModel.findByIdAndUpdate(profile.userId, {
+      onboardingCompleted: true,
+    });
+  } else {
+    profile.verificationStatus = VerificationStatuses.REJECTED;
+    profile.isListed = false;
+    profile.videoConsultEnabled = false;
+    profile.rejectionReason = rejectionReason ?? "Application rejected";
+    await profile.save();
+  }
+
+  return profile;
+}
+
+export async function getHerbalistAgreementStatus(userId: string): Promise<{
+  accepted: boolean;
+  acceptedAt?: string;
+  version?: string;
+  currentVersion: string;
+}> {
+  await connectDatabase();
+  const profile = await HerbalistProfileModel.findOne(mongoFilter({ userId }))
+    .select("platformAgreementAcceptedAt platformAgreementVersion")
+    .lean();
+  if (!profile) {
+    throw new AppError("Herbalist profile not found", "NOT_FOUND", 404);
+  }
+
+  return {
+    accepted: Boolean(profile.platformAgreementAcceptedAt),
+    acceptedAt: profile.platformAgreementAcceptedAt?.toISOString(),
+    version: profile.platformAgreementVersion ?? undefined,
+    currentVersion: PROVIDER_AGREEMENT_VERSION,
+  };
+}
+
+/** Retroactive acceptance for herbalists approved before the Provider Agreement existed. */
+export async function acceptHerbalistAgreement(userId: string): Promise<void> {
+  await connectDatabase();
+  const profile = await HerbalistProfileModel.findOne(mongoFilter({ userId }));
+  if (!profile) {
+    throw new AppError("Herbalist profile not found", "NOT_FOUND", 404);
+  }
+
+  profile.platformAgreementAcceptedAt = new Date();
+  profile.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
+  await profile.save();
+}

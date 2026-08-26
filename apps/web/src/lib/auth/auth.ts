@@ -109,6 +109,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.doctorVerificationStatus = user.doctorVerificationStatus;
         token.nurseVerificationStatus = user.nurseVerificationStatus;
         token.physiotherapistVerificationStatus = user.physiotherapistVerificationStatus;
+        token.herbalistVerificationStatus = user.herbalistVerificationStatus;
+        token.nutritionistVerificationStatus = user.nutritionistVerificationStatus;
         if (user.image) token.picture = user.image;
       }
 
@@ -121,6 +123,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
           physiotherapistVerificationStatus?: string;
+          herbalistVerificationStatus?: string;
+          nutritionistVerificationStatus?: string;
           image?: string;
         };
         if (patch.roles) {
@@ -151,6 +155,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
         if (patch.physiotherapistVerificationStatus) {
           token.physiotherapistVerificationStatus = patch.physiotherapistVerificationStatus;
+        }
+        if (patch.herbalistVerificationStatus) {
+          token.herbalistVerificationStatus = patch.herbalistVerificationStatus;
+        }
+        if (patch.nutritionistVerificationStatus) {
+          token.nutritionistVerificationStatus = patch.nutritionistVerificationStatus;
         }
         if (patch.image) token.picture = patch.image;
       }

@@ -14,6 +14,8 @@ export const AUTH_ROUTES = {
   registerDoctor: "/register/doctor",
   registerNurse: "/register/nurse",
   registerPhysiotherapist: "/register/physiotherapist",
+  registerHerbalist: "/register/herbalist",
+  registerNutritionist: "/register/nutritionist",
   forgotPassword: "/login/forgot-password",
   /** @deprecated Use forgotPassword — kept for old links */
   phoneLogin: "/login/forgot-password",
@@ -32,6 +34,14 @@ export const AUTH_ROUTES = {
   physiotherapistDashboard: "/physiotherapist",
   physiotherapistVerification: "/physiotherapist/verification",
   physiotherapistVisits: "/physiotherapist/visits",
+  herbalistDashboard: "/herbalist",
+  herbalistVerification: "/herbalist/verification",
+  herbalistProfile: "/herbalist/profile",
+  herbalistMessages: "/herbalist/messages",
+  nutritionistDashboard: "/nutritionist",
+  nutritionistVerification: "/nutritionist/verification",
+  nutritionistProfile: "/nutritionist/profile",
+  nutritionistMessages: "/nutritionist/messages",
   messages: "/messages",
   doctorMessages: "/doctor/messages",
   assistant: "/assistant",
@@ -47,12 +57,16 @@ export const PUBLIC_PATH_PREFIXES = [
   "/for-doctors",
   "/for-nurses",
   "/for-physiotherapists",
+  "/for-herbalists",
+  "/for-nutritionists",
   "/home-care/request",
   AUTH_ROUTES.login,
   AUTH_ROUTES.register,
   AUTH_ROUTES.registerDoctor,
   AUTH_ROUTES.registerNurse,
   AUTH_ROUTES.registerPhysiotherapist,
+  AUTH_ROUTES.registerHerbalist,
+  AUTH_ROUTES.registerNutritionist,
   AUTH_ROUTES.forgotPassword,
   "/login/phone",
   "/api/auth",
@@ -101,6 +115,12 @@ export const ONBOARDING_EXEMPT_PREFIXES = [
   "/api/v1/nurse/profile",
   "/api/v1/physiotherapist/verification",
   "/api/v1/physiotherapist/profile",
+  "/herbalist",
+  "/nutritionist",
+  "/api/v1/herbalist/verification",
+  "/api/v1/herbalist/profile",
+  "/api/v1/nutritionist/verification",
+  "/api/v1/nutritionist/profile",
   "/api/auth",
   "/logout",
 ] as const;
@@ -141,6 +161,24 @@ export const PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES = [
   "/api/v1/physiotherapist/profile",
 ] as const;
 
+/** Herbalist verification pending — can access these paths. */
+export const HERBALIST_VERIFICATION_EXEMPT_PREFIXES = [
+  AUTH_ROUTES.herbalistVerification,
+  AUTH_ROUTES.herbalistProfile,
+  AUTH_ROUTES.herbalistDashboard,
+  "/api/v1/herbalist/verification",
+  "/api/v1/herbalist/profile",
+] as const;
+
+/** Nutritionist verification pending — can access these paths. */
+export const NUTRITIONIST_VERIFICATION_EXEMPT_PREFIXES = [
+  AUTH_ROUTES.nutritionistVerification,
+  AUTH_ROUTES.nutritionistProfile,
+  AUTH_ROUTES.nutritionistDashboard,
+  "/api/v1/nutritionist/verification",
+  "/api/v1/nutritionist/profile",
+] as const;
+
 export type PostAuthUser = {
   roles?: Role[];
   activeWorkspace?: Workspace;
@@ -150,6 +188,8 @@ export type PostAuthUser = {
   doctorVerificationStatus?: string;
   nurseVerificationStatus?: string;
   physiotherapistVerificationStatus?: string;
+  herbalistVerificationStatus?: string;
+  nutritionistVerificationStatus?: string;
 };
 
 /** Patient profile incomplete until city/locale onboarding and a WhatsApp number exist. */
@@ -211,6 +251,20 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
     return AUTH_ROUTES.physiotherapistVerification;
   }
 
+  if (workspace === "herbalist" && roles.includes(Roles.HERBALIST)) {
+    if (user.herbalistVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.herbalistProfile;
+    }
+    return AUTH_ROUTES.herbalistVerification;
+  }
+
+  if (workspace === "nutritionist" && roles.includes(Roles.NUTRITIONIST)) {
+    if (user.nutritionistVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.nutritionistProfile;
+    }
+    return AUTH_ROUTES.nutritionistVerification;
+  }
+
   if (workspace === "rider" && roles.includes(Roles.RIDER)) {
     return "/rider";
   }
@@ -248,6 +302,20 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
     return AUTH_ROUTES.physiotherapistVerification;
   }
 
+  if (roles.includes(Roles.HERBALIST)) {
+    if (user.herbalistVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.herbalistProfile;
+    }
+    return AUTH_ROUTES.herbalistVerification;
+  }
+
+  if (roles.includes(Roles.NUTRITIONIST)) {
+    if (user.nutritionistVerificationStatus === VerificationStatuses.APPROVED) {
+      return AUTH_ROUTES.nutritionistProfile;
+    }
+    return AUTH_ROUTES.nutritionistVerification;
+  }
+
   if (needsPatientProfileCompletion(user)) {
     return AUTH_ROUTES.onboarding;
   }
@@ -260,6 +328,8 @@ export const ROLE_ROUTE_RULES: { prefix: string; roles: Role[] }[] = [
   { prefix: "/admin", roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
   { prefix: "/nurse", roles: [Roles.NURSE] },
   { prefix: "/physiotherapist", roles: [Roles.PHYSIOTHERAPIST] },
+  { prefix: "/herbalist", roles: [Roles.HERBALIST] },
+  { prefix: "/nutritionist", roles: [Roles.NUTRITIONIST] },
   { prefix: "/rider", roles: [Roles.RIDER] },
 ];
 
@@ -285,6 +355,8 @@ export const MIDDLEWARE_PROTECTED_PREFIXES = [
   "/admin",
   "/nurse",
   "/physiotherapist",
+  "/herbalist",
+  "/nutritionist",
   "/rider",
   "/messages",
   "/assistant",

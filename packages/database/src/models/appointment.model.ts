@@ -34,9 +34,26 @@ const appointmentSchema = new Schema(
     doctorId: {
       type: Schema.Types.ObjectId,
       ref: "DoctorProfile",
+      /**
+       * Owning provider profile. For non-doctor providers (herbalist /
+       * nutritionist) this mirrors `providerProfileId`; always read the
+       * provider through `providerRole` + `providerProfileId`.
+       */
       required: true,
       index: true,
     },
+    /**
+     * Which provider role owns this appointment. Defaults to "doctor" so every
+     * pre-existing appointment keeps its current meaning.
+     */
+    providerRole: {
+      type: String,
+      enum: ["doctor", "herbalist", "nutritionist"],
+      default: "doctor",
+      index: true,
+    },
+    /** Provider profile id for non-doctor providers (HerbalistProfile / NutritionistProfile). */
+    providerProfileId: { type: Schema.Types.ObjectId, index: true },
     /** Booked for family member without own account */
     familyMemberId: { type: Schema.Types.ObjectId, ref: "FamilyMember" },
     scheduledStart: { type: Date, required: true, index: true },
@@ -87,6 +104,7 @@ const appointmentSchema = new Schema(
 
 appointmentSchema.index({ patientId: 1, scheduledStart: -1, status: 1 });
 appointmentSchema.index({ doctorId: 1, scheduledStart: -1, status: 1 });
+appointmentSchema.index({ providerProfileId: 1, scheduledStart: -1, status: 1 });
 appointmentSchema.index({ type: 1, status: 1, scheduledStart: 1 });
 appointmentSchema.index(
   {

@@ -17,6 +17,8 @@ const WORKSPACE_LABELS: Record<Workspace, string> = {
   admin: "Admin",
   nurse: "Nurse",
   physiotherapist: "Physiotherapist",
+  herbalist: "Herbalist",
+  nutritionist: "Nutritionist",
   rider: "Rider",
 };
 
@@ -26,6 +28,8 @@ const WORKSPACE_DESCRIPTIONS: Record<Workspace, string> = {
   admin: "Review applications, dispatch visits, and run operations.",
   nurse: "Home nursing visits and availability.",
   physiotherapist: "Home physiotherapy visits and availability.",
+  herbalist: "Herbal video consultations and your practice.",
+  nutritionist: "Nutrition video consultations and your practice.",
   rider: "Deliveries and logistics.",
 };
 

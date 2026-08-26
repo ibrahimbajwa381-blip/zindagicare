@@ -3,6 +3,8 @@ export * from "./auth";
 export * from "./constants/cities";
 export * from "./constants/specialties";
 export * from "./constants/physiotherapy-specialties";
+export * from "./constants/herbalist-specialties";
+export * from "./constants/nutritionist-specialties";
 export * from "./constants/sunday-consult";
 export * from "./constants/doctor-accountability";
 export * from "./constants/online-consult";

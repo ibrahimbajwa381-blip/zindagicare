@@ -8,6 +8,8 @@ export type Workspace =
   | "admin"
   | "nurse"
   | "physiotherapist"
+  | "herbalist"
+  | "nutritionist"
   | "rider";
 
 const WORKSPACE_ROUTE_PREFIX: Record<Workspace, string | null> = {
@@ -16,6 +18,8 @@ const WORKSPACE_ROUTE_PREFIX: Record<Workspace, string | null> = {
   admin: "/admin",
   nurse: "/nurse",
   physiotherapist: "/physiotherapist",
+  herbalist: "/herbalist",
+  nutritionist: "/nutritionist",
   rider: "/rider",
 };
 
@@ -29,6 +33,8 @@ export function getAvailableWorkspaces(roles: Role[] | undefined): Workspace[] {
   if (isAdmin(list)) workspaces.push("admin");
   if (list.includes(Roles.NURSE)) workspaces.push("nurse");
   if (list.includes(Roles.PHYSIOTHERAPIST)) workspaces.push("physiotherapist");
+  if (list.includes(Roles.HERBALIST)) workspaces.push("herbalist");
+  if (list.includes(Roles.NUTRITIONIST)) workspaces.push("nutritionist");
   if (list.includes(Roles.RIDER)) workspaces.push("rider");
 
   return workspaces;
@@ -41,6 +47,8 @@ export function resolveDefaultWorkspace(roles: Role[] | undefined): Workspace {
   if (list.includes(Roles.DOCTOR)) return "doctor";
   if (list.includes(Roles.NURSE)) return "nurse";
   if (list.includes(Roles.PHYSIOTHERAPIST)) return "physiotherapist";
+  if (list.includes(Roles.HERBALIST)) return "herbalist";
+  if (list.includes(Roles.NUTRITIONIST)) return "nutritionist";
   if (list.includes(Roles.RIDER)) return "rider";
   if (isAdmin(list)) return "admin";
   return "patient";
@@ -51,6 +59,8 @@ export function workspaceForRoutePrefix(prefix: string): Workspace | null {
   if (prefix === "/admin") return "admin";
   if (prefix === "/nurse") return "nurse";
   if (prefix === "/physiotherapist") return "physiotherapist";
+  if (prefix === "/herbalist") return "herbalist";
+  if (prefix === "/nutritionist") return "nutritionist";
   if (prefix === "/rider") return "rider";
   return null;
 }

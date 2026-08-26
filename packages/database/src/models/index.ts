@@ -1,5 +1,7 @@
 export * from "./user.model";
 export * from "./doctor-profile.model";
+export * from "./herbalist-profile.model";
+export * from "./nutritionist-profile.model";
 export * from "./patient-profile.model";
 export * from "./staff-profile.model";
 export * from "./family-member.model";

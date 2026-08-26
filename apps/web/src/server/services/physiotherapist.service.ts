@@ -68,6 +68,7 @@ export type PhysiotherapistProfileDto = {
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
+    specialties?: string[];
     cnicLast4?: string;
   };
 };
@@ -156,6 +157,7 @@ export async function getPhysiotherapistProfile(userId: string): Promise<Physiot
       licenseNumber: staff.licenseNumber ?? undefined,
       qualification: staff.qualification ?? undefined,
       experienceYears: staff.experienceYears ?? undefined,
+      specialties: staff.specialties ?? undefined,
       cnicLast4: staff.cnicLast4 ?? undefined,
     },
   };
@@ -202,6 +204,10 @@ export async function updatePhysiotherapistProfile(
 
   if (data.isAvailable !== undefined) {
     staff.isAvailable = data.isAvailable;
+  }
+
+  if (data.specialties !== undefined) {
+    staff.specialties = data.specialties;
   }
 
   if (
@@ -309,6 +315,7 @@ export async function submitPhysiotherapistVerification(
   staff.cnicLast4 = cnicLast4(input.cnic);
   staff.qualification = input.qualification;
   staff.experienceYears = input.experienceYears;
+  staff.specialties = input.specialties;
   staff.verificationDocuments = input.documentUrls;
   staff.verificationSubmittedAt = new Date();
   staff.platformAgreementAcceptedAt = new Date();
@@ -356,6 +363,7 @@ export type AdminPhysiotherapistRow = {
   licenseNumber?: string;
   qualification?: string;
   experienceYears?: number;
+  specialties?: string[];
   cnicLast4?: string;
   verificationStatus: string;
   verificationSubmittedAt?: string;
@@ -416,6 +424,7 @@ export async function listPhysiotherapistsForAdmin(status?: string): Promise<Adm
         licenseNumber: p.licenseNumber ?? undefined,
         qualification: p.qualification ?? undefined,
         experienceYears: p.experienceYears ?? undefined,
+        specialties: p.specialties ?? undefined,
         cnicLast4: p.cnicLast4 ?? undefined,
         verificationStatus: p.verificationStatus ?? VerificationStatuses.PENDING,
         verificationSubmittedAt: p.verificationSubmittedAt?.toISOString(),
@@ -676,6 +685,7 @@ export async function getPhysiotherapistProfileForAdmin(
     licenseNumber: staff.licenseNumber ?? undefined,
     qualification: staff.qualification ?? undefined,
     experienceYears: staff.experienceYears ?? undefined,
+    specialties: staff.specialties ?? undefined,
     cnicLast4: staff.cnicLast4 ?? undefined,
     isAvailable: staff.isAvailable ?? true,
     homeVisitEnabled: staff.homeVisitEnabled ?? false,

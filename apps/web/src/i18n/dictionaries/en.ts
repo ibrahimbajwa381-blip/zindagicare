@@ -128,6 +128,12 @@ export const en = {
     registerPhysiotherapist: "Register as physiotherapist",
     registerPhysiotherapistDescription:
       "Join ZindagiCare as a verified physiotherapist for home physiotherapy sessions in Lahore.",
+    registerHerbalist: "Register as herbalist",
+    registerHerbalistDescription:
+      "Join ZindagiCare as a verified herbalist and offer secure video consultations across Pakistan.",
+    registerNutritionist: "Register as nutritionist",
+    registerNutritionistDescription:
+      "Join ZindagiCare as a verified nutritionist and offer secure video consultations across Pakistan.",
     staffSignupTitle: "Joining as medical staff?",
     staffSignupDescription:
       "Doctors, nurses, and physiotherapists use separate secure signup pages.",
@@ -157,6 +163,14 @@ export const en = {
     addPhysiotherapistProfileDescription:
       "You are signed in. Add a physiotherapist profile to your existing account to start verification.",
     addPhysiotherapistProfileButton: "Continue to verification",
+    addHerbalistProfileTitle: "Add herbalist profile",
+    addHerbalistProfileDescription:
+      "You are signed in. Add a herbalist profile to your existing account to start verification.",
+    addHerbalistProfileButton: "Continue to verification",
+    addNutritionistProfileTitle: "Add nutritionist profile",
+    addNutritionistProfileDescription:
+      "You are signed in. Add a nutritionist profile to your existing account to start verification.",
+    addNutritionistProfileButton: "Continue to verification",
     addingProfile: "Setting up profile…",
     signedInAs: "Signed in as",
     signInAfterRegisterFailed:

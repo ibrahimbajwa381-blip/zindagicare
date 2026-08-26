@@ -52,7 +52,9 @@ async function ensureClinicalStaffPatientAccess(
   const isClinical =
     roles.includes(Roles.DOCTOR) ||
     roles.includes(Roles.NURSE) ||
-    roles.includes(Roles.PHYSIOTHERAPIST);
+    roles.includes(Roles.PHYSIOTHERAPIST) ||
+    roles.includes(Roles.HERBALIST) ||
+    roles.includes(Roles.NUTRITIONIST);
 
   if (!isClinical) {
     return {
@@ -151,6 +153,34 @@ async function ensurePhysiotherapistProfile(userId: { toString(): string }, city
             radiusKm: 15,
           },
         ],
+      },
+    },
+    { upsert: true },
+  );
+}
+
+async function ensureHerbalistProfile(userId: { toString(): string }, city: string) {
+  const { HerbalistProfileModel } = await import("@zindagi/database");
+  await HerbalistProfileModel.updateOne(
+    { userId: userId.toString() } as Record<string, unknown>,
+    {
+      $setOnInsert: {
+        verificationStatus: VerificationStatuses.PENDING,
+        coverageCities: [city],
+      },
+    },
+    { upsert: true },
+  );
+}
+
+async function ensureNutritionistProfile(userId: { toString(): string }, city: string) {
+  const { NutritionistProfileModel } = await import("@zindagi/database");
+  await NutritionistProfileModel.updateOne(
+    { userId: userId.toString() } as Record<string, unknown>,
+    {
+      $setOnInsert: {
+        verificationStatus: VerificationStatuses.PENDING,
+        coverageCities: [city],
       },
     },
     { upsert: true },
@@ -271,6 +301,8 @@ export async function registerWithCredentials(
     doctor: [Roles.PATIENT, Roles.DOCTOR],
     nurse: [Roles.PATIENT, Roles.NURSE],
     physiotherapist: [Roles.PATIENT, Roles.PHYSIOTHERAPIST],
+    herbalist: [Roles.PATIENT, Roles.HERBALIST],
+    nutritionist: [Roles.PATIENT, Roles.NUTRITIONIST],
   };
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -299,9 +331,15 @@ export async function registerWithCredentials(
     } else if (accountType === "nurse") {
       await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureNurseProfile(user._id, city);
-    } else {
+    } else if (accountType === "physiotherapist") {
       await ensurePatientProfile(user._id, referredByDoctorId);
       await ensurePhysiotherapistProfile(user._id, city);
+    } else if (accountType === "herbalist") {
+      await ensurePatientProfile(user._id, referredByDoctorId);
+      await ensureHerbalistProfile(user._id, city);
+    } else {
+      await ensurePatientProfile(user._id, referredByDoctorId);
+      await ensureNutritionistProfile(user._id, city);
     }
   } catch (error) {
     await UserModel.findByIdAndDelete(user._id);
@@ -315,6 +353,8 @@ const STAFF_ROLE_BY_ACCOUNT_TYPE: Record<StaffAccountType, Role> = {
   doctor: Roles.DOCTOR,
   nurse: Roles.NURSE,
   physiotherapist: Roles.PHYSIOTHERAPIST,
+  herbalist: Roles.HERBALIST,
+  nutritionist: Roles.NUTRITIONIST,
 };
 
 /** Add a staff role to an existing user (keeps patient and other roles). */
@@ -478,6 +518,28 @@ export async function loadAuthUserPayload(userId: string) {
     physiotherapistVerificationStatus = staff?.verificationStatus;
   }
 
+  let herbalistVerificationStatus: string | undefined;
+  if (roles.includes(Roles.HERBALIST)) {
+    const { HerbalistProfileModel } = await import("@zindagi/database");
+    const profile = await HerbalistProfileModel.findOne(
+      mongoFilter({ userId: user._id }),
+    )
+      .select("verificationStatus")
+      .lean();
+    herbalistVerificationStatus = profile?.verificationStatus;
+  }
+
+  let nutritionistVerificationStatus: string | undefined;
+  if (roles.includes(Roles.NUTRITIONIST)) {
+    const { NutritionistProfileModel } = await import("@zindagi/database");
+    const profile = await NutritionistProfileModel.findOne(
+      mongoFilter({ userId: user._id }),
+    )
+      .select("verificationStatus")
+      .lean();
+    nutritionistVerificationStatus = profile?.verificationStatus;
+  }
+
   return {
     id,
     email: user.email ?? undefined,
@@ -490,6 +552,8 @@ export async function loadAuthUserPayload(userId: string) {
     doctorVerificationStatus,
     nurseVerificationStatus,
     physiotherapistVerificationStatus,
+    herbalistVerificationStatus,
+    nutritionistVerificationStatus,
   };
 }
 
@@ -504,6 +568,8 @@ export async function syncSessionRoles(userId: string) {
     doctorVerificationStatus: payload.doctorVerificationStatus,
     nurseVerificationStatus: payload.nurseVerificationStatus,
     physiotherapistVerificationStatus: payload.physiotherapistVerificationStatus,
+    herbalistVerificationStatus: payload.herbalistVerificationStatus,
+    nutritionistVerificationStatus: payload.nutritionistVerificationStatus,
   };
 }
 

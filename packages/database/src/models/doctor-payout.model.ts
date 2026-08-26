@@ -13,6 +13,15 @@ const doctorPayoutSchema = new Schema(
       required: true,
       index: true,
     },
+    /** Which provider role this payout belongs to. Defaults to "doctor". */
+    providerRole: {
+      type: String,
+      enum: ["doctor", "herbalist", "nutritionist"],
+      default: "doctor",
+      index: true,
+    },
+    /** Provider profile id for non-doctor providers. */
+    providerProfileId: { type: Schema.Types.ObjectId, index: true },
     amount: { type: Number, required: true, min: 0 },
     method: {
       type: String,
@@ -33,6 +42,7 @@ const doctorPayoutSchema = new Schema(
 );
 
 doctorPayoutSchema.index({ doctorProfileId: 1, paidAt: -1 });
+doctorPayoutSchema.index({ providerProfileId: 1, paidAt: -1 });
 
 export type DoctorPayoutDocument = InferSchemaType<typeof doctorPayoutSchema> & {
   _id: Schema.Types.ObjectId;

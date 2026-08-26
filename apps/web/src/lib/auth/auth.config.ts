@@ -45,6 +45,12 @@ export const authConfig = {
         token.physiotherapistVerificationStatus = (
           user as { physiotherapistVerificationStatus?: string }
         ).physiotherapistVerificationStatus;
+        token.herbalistVerificationStatus = (
+          user as { herbalistVerificationStatus?: string }
+        ).herbalistVerificationStatus;
+        token.nutritionistVerificationStatus = (
+          user as { nutritionistVerificationStatus?: string }
+        ).nutritionistVerificationStatus;
         if (user.image) token.picture = user.image;
       }
 
@@ -57,6 +63,8 @@ export const authConfig = {
           doctorVerificationStatus?: string;
           nurseVerificationStatus?: string;
           physiotherapistVerificationStatus?: string;
+          herbalistVerificationStatus?: string;
+          nutritionistVerificationStatus?: string;
           image?: string;
         };
         if (patch.roles) {
@@ -88,6 +96,12 @@ export const authConfig = {
         if (patch.physiotherapistVerificationStatus) {
           token.physiotherapistVerificationStatus = patch.physiotherapistVerificationStatus;
         }
+        if (patch.herbalistVerificationStatus) {
+          token.herbalistVerificationStatus = patch.herbalistVerificationStatus;
+        }
+        if (patch.nutritionistVerificationStatus) {
+          token.nutritionistVerificationStatus = patch.nutritionistVerificationStatus;
+        }
         if (patch.image) token.picture = patch.image;
       }
 
@@ -111,6 +125,10 @@ export const authConfig = {
           | undefined;
         session.user.physiotherapistVerificationStatus =
           token.physiotherapistVerificationStatus as string | undefined;
+        session.user.herbalistVerificationStatus =
+          token.herbalistVerificationStatus as string | undefined;
+        session.user.nutritionistVerificationStatus =
+          token.nutritionistVerificationStatus as string | undefined;
         session.user.image = (token.picture as string | undefined) ?? session.user.image;
       }
       return session;

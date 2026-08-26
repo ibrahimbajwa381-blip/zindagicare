@@ -31,10 +31,23 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export const accountTypes = ["patient", "doctor", "nurse", "physiotherapist"] as const;
+export const accountTypes = [
+  "patient",
+  "doctor",
+  "nurse",
+  "physiotherapist",
+  "herbalist",
+  "nutritionist",
+] as const;
 export type AccountType = (typeof accountTypes)[number];
 
-export const staffAccountTypes = ["doctor", "nurse", "physiotherapist"] as const;
+export const staffAccountTypes = [
+  "doctor",
+  "nurse",
+  "physiotherapist",
+  "herbalist",
+  "nutritionist",
+] as const;
 export type StaffAccountType = (typeof staffAccountTypes)[number];
 
 /** Add a staff role to an existing logged-in account (keeps patient role). */

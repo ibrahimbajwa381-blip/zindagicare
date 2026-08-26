@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { cn, HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import {
+  cn,
+  HOME_CARE_MATCH_RADIUS_KM,
+  MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
+} from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import type { PhysiotherapistProfileDto } from "@/server/services/physiotherapist.service";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
@@ -42,6 +48,9 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
   const [geo, setGeo] = useState<GeoCoordinates | null>(
     profile.staff.serviceArea.geo ?? null,
   );
+  const [specialties, setSpecialties] = useState<string[]>(
+    profile.verification.specialties ?? [],
+  );
 
   const badge =
     VERIFICATION_BADGE[profile.staff.verificationStatus] ??
@@ -69,6 +78,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
       radiusKm: radiusRaw ? Number(radiusRaw) : undefined,
       homeVisitEnabled,
       geo: geo ?? undefined,
+      specialties,
     };
 
     try {
@@ -156,6 +166,21 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                 max={50}
                 defaultValue={profile.staff.serviceArea.radiusKm}
               />
+            </div>
+
+            <div>
+              <Label htmlFor="specialties">Specialties</Label>
+              <SpecialtyMultiSelect
+                id="specialties"
+                values={specialties}
+                onChange={setSpecialties}
+                max={MAX_PHYSIOTHERAPY_SPECIALTIES}
+                options={PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL}
+                placeholder="Add your physiotherapy specialties"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Up to {MAX_PHYSIOTHERAPY_SPECIALTIES} areas of physiotherapy you specialize in.
+              </p>
             </div>
 
             <div className="space-y-3 rounded-lg border border-brand-light/30 bg-brand-light/5 p-4">

@@ -22,6 +22,8 @@ const ROLE_LABELS: Record<Role, string> = {
   rider: "Rider",
   nurse: "Nurse",
   physiotherapist: "Physiotherapist",
+  herbalist: "Herbalist",
+  nutritionist: "Nutritionist",
 };
 
 function formatOtherRoles(roles: Role[]): string {

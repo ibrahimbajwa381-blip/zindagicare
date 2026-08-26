@@ -13,15 +13,23 @@ const VERIFICATION_PATH: Record<StaffAccountType, string> = {
   doctor: AUTH_ROUTES.doctorVerification,
   nurse: AUTH_ROUTES.nurseVerification,
   physiotherapist: AUTH_ROUTES.physiotherapistVerification,
+  herbalist: AUTH_ROUTES.herbalistVerification,
+  nutritionist: AUTH_ROUTES.nutritionistVerification,
 };
 
 const SESSION_PATCH_KEY: Record<
   StaffAccountType,
-  "doctorVerificationStatus" | "nurseVerificationStatus" | "physiotherapistVerificationStatus"
+  | "doctorVerificationStatus"
+  | "nurseVerificationStatus"
+  | "physiotherapistVerificationStatus"
+  | "herbalistVerificationStatus"
+  | "nutritionistVerificationStatus"
 > = {
   doctor: "doctorVerificationStatus",
   nurse: "nurseVerificationStatus",
   physiotherapist: "physiotherapistVerificationStatus",
+  herbalist: "herbalistVerificationStatus",
+  nutritionist: "nutritionistVerificationStatus",
 };
 
 type Props = {
@@ -52,6 +60,16 @@ export function AddStaffRoleForm({ accountType, defaultCity = "Lahore" }: Props)
       title: t.auth.addPhysiotherapistProfileTitle,
       description: t.auth.addPhysiotherapistProfileDescription,
       button: t.auth.addPhysiotherapistProfileButton,
+    },
+    herbalist: {
+      title: t.auth.addHerbalistProfileTitle,
+      description: t.auth.addHerbalistProfileDescription,
+      button: t.auth.addHerbalistProfileButton,
+    },
+    nutritionist: {
+      title: t.auth.addNutritionistProfileTitle,
+      description: t.auth.addNutritionistProfileDescription,
+      button: t.auth.addNutritionistProfileButton,
     },
   }[accountType];
 

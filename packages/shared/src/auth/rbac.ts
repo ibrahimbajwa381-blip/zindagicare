@@ -7,6 +7,8 @@ export const ROLE_RANK: Record<Role, number> = {
   [Roles.RIDER]: 10,
   [Roles.NURSE]: 20,
   [Roles.PHYSIOTHERAPIST]: 25,
+  [Roles.HERBALIST]: 26,
+  [Roles.NUTRITIONIST]: 27,
   [Roles.DOCTOR]: 30,
   [Roles.ADMIN]: 40,
   [Roles.SUPER_ADMIN]: 50,
@@ -40,6 +42,8 @@ export function isAdmin(userRoles: Role[] | undefined): boolean {
 export const STAFF_ROLES: Role[] = [
   Roles.NURSE,
   Roles.PHYSIOTHERAPIST,
+  Roles.HERBALIST,
+  Roles.NUTRITIONIST,
   Roles.RIDER,
   Roles.DOCTOR,
   Roles.ADMIN,
@@ -89,6 +93,10 @@ export const Permissions = {
   "admin.users.read": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.users.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.doctors.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.herbalists.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.herbalists.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.nutritionists.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.nutritionists.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.doctors.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "doctor.profile.manage": [Roles.DOCTOR],
   "doctor.sunday.manage": [Roles.DOCTOR],
@@ -96,6 +104,8 @@ export const Permissions = {
   "staff.deliveries": [Roles.RIDER],
   "staff.nursing": [Roles.NURSE],
   "staff.physiotherapy": [Roles.PHYSIOTHERAPIST],
+  "herbalist.profile.manage": [Roles.HERBALIST],
+  "nutritionist.profile.manage": [Roles.NUTRITIONIST],
 } as const satisfies Record<string, Role[]>;
 
 export type Permission = keyof typeof Permissions;

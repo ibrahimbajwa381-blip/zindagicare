@@ -24,6 +24,15 @@ const reviewSchema = new Schema(
       ref: "User",
       index: true,
     },
+    /** Which provider role the review is about. Defaults to "doctor". */
+    providerRole: {
+      type: String,
+      enum: ["doctor", "herbalist", "nutritionist"],
+      default: "doctor",
+      index: true,
+    },
+    /** Provider profile id for non-doctor providers (mirrors doctorId for doctors). */
+    providerProfileId: { type: Schema.Types.ObjectId, index: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, maxlength: 2000 },
     isModerated: { type: Boolean, default: false },

@@ -1,6 +1,8 @@
 import {
   connectDatabase,
   DoctorProfileModel,
+  HerbalistProfileModel,
+  NutritionistProfileModel,
   PatientProfileModel,
   StaffProfileModel,
 } from "@zindagi/database";
@@ -130,6 +132,158 @@ export async function getDoctorCommissionPercentsByProfileIds(
   return new Map([...rates.entries()].map(([id, value]) => [id, value.online]));
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Herbalist / Nutritionist — video-consult only, so a single "online" *
+ * rate per provider (no home-visit channel).                          *
+ * ------------------------------------------------------------------ */
+
+export type ProviderCommissionRates = {
+  online: number;
+};
+
+type OnlineOnlyCommissionProfile = {
+  onlineCommissionPercent?: number | null;
+};
+
+export async function getHerbalistCommissionRatesByProfileId(
+  profileId: string,
+): Promise<ProviderCommissionRates> {
+  await connectDatabase();
+  const [settings, profile] = await Promise.all([
+    getSystemSettings(),
+    HerbalistProfileModel.findById(profileId)
+      .select("onlineCommissionPercent")
+      .lean<OnlineOnlyCommissionProfile | null>(),
+  ]);
+
+  return {
+    online: resolveCommissionPercent(
+      profile?.onlineCommissionPercent,
+      settings.defaultHerbalistCommissionPercent ??
+        STAFF_COMMISSION_CONFIG.defaultHerbalistPercent,
+    ),
+  };
+}
+
+export async function getHerbalistCommissionRatesByProfileIds(
+  profileIds: string[],
+): Promise<Map<string, ProviderCommissionRates>> {
+  const map = new Map<string, ProviderCommissionRates>();
+  if (!profileIds.length) return map;
+
+  await connectDatabase();
+  const settings = await getSystemSettings();
+  const fallback =
+    settings.defaultHerbalistCommissionPercent ??
+    STAFF_COMMISSION_CONFIG.defaultHerbalistPercent;
+
+  const profiles = await HerbalistProfileModel.find(
+    mongoFilter({ _id: { $in: mongoObjectIds(profileIds) } }),
+  )
+    .select("onlineCommissionPercent")
+    .lean();
+
+  for (const profile of profiles) {
+    map.set(profile._id.toString(), {
+      online: resolveCommissionPercent(profile.onlineCommissionPercent, fallback),
+    });
+  }
+  for (const id of profileIds) {
+    if (!map.has(id)) map.set(id, { online: fallback });
+  }
+  return map;
+}
+
+export async function getNutritionistCommissionRatesByProfileId(
+  profileId: string,
+): Promise<ProviderCommissionRates> {
+  await connectDatabase();
+  const [settings, profile] = await Promise.all([
+    getSystemSettings(),
+    NutritionistProfileModel.findById(profileId)
+      .select("onlineCommissionPercent")
+      .lean<OnlineOnlyCommissionProfile | null>(),
+  ]);
+
+  return {
+    online: resolveCommissionPercent(
+      profile?.onlineCommissionPercent,
+      settings.defaultNutritionistCommissionPercent ??
+        STAFF_COMMISSION_CONFIG.defaultNutritionistPercent,
+    ),
+  };
+}
+
+export async function getNutritionistCommissionRatesByProfileIds(
+  profileIds: string[],
+): Promise<Map<string, ProviderCommissionRates>> {
+  const map = new Map<string, ProviderCommissionRates>();
+  if (!profileIds.length) return map;
+
+  await connectDatabase();
+  const settings = await getSystemSettings();
+  const fallback =
+    settings.defaultNutritionistCommissionPercent ??
+    STAFF_COMMISSION_CONFIG.defaultNutritionistPercent;
+
+  const profiles = await NutritionistProfileModel.find(
+    mongoFilter({ _id: { $in: mongoObjectIds(profileIds) } }),
+  )
+    .select("onlineCommissionPercent")
+    .lean();
+
+  for (const profile of profiles) {
+    map.set(profile._id.toString(), {
+      online: resolveCommissionPercent(profile.onlineCommissionPercent, fallback),
+    });
+  }
+  for (const id of profileIds) {
+    if (!map.has(id)) map.set(id, { online: fallback });
+  }
+  return map;
+}
+
+/** Patient ids (from the given set) referred by this herbalist's invite link. */
+export async function getHerbalistReferredPatientIdSet(
+  herbalistProfileId: string,
+  patientIds: string[],
+): Promise<Set<string>> {
+  const set = new Set<string>();
+  if (!patientIds.length) return set;
+  await connectDatabase();
+  const referred = await PatientProfileModel.find(
+    mongoFilter({
+      _id: { $in: mongoObjectIds(patientIds) },
+      referredByHerbalistId: herbalistProfileId,
+    }),
+  )
+    .select("_id")
+    .lean();
+  for (const patient of referred) set.add(patient._id.toString());
+  return set;
+}
+
+/** Patient ids (from the given set) referred by this nutritionist's invite link. */
+export async function getNutritionistReferredPatientIdSet(
+  nutritionistProfileId: string,
+  patientIds: string[],
+): Promise<Set<string>> {
+  const set = new Set<string>();
+  if (!patientIds.length) return set;
+  await connectDatabase();
+  const referred = await PatientProfileModel.find(
+    mongoFilter({
+      _id: { $in: mongoObjectIds(patientIds) },
+      referredByNutritionistId: nutritionistProfileId,
+    }),
+  )
+    .select("_id")
+    .lean();
+  for (const patient of referred) set.add(patient._id.toString());
+  return set;
+}
+
 export async function getNurseCommissionPercentByUserId(
   userId: string,
 ): Promise<number> {
@@ -246,5 +400,9 @@ export function getPlatformCommissionDefaults() {
     defaultNurseCommissionPercent: STAFF_COMMISSION_CONFIG.defaultNursePercent,
     defaultPhysiotherapistCommissionPercent:
       STAFF_COMMISSION_CONFIG.defaultPhysiotherapistPercent,
+    defaultHerbalistCommissionPercent:
+      STAFF_COMMISSION_CONFIG.defaultHerbalistPercent,
+    defaultNutritionistCommissionPercent:
+      STAFF_COMMISSION_CONFIG.defaultNutritionistPercent,
   };
 }

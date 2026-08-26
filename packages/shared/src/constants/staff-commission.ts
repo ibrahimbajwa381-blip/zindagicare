@@ -4,6 +4,8 @@ export const STAFF_COMMISSION_CONFIG = {
   defaultDoctorHomeVisitPercent: 70,
   defaultNursePercent: 70,
   defaultPhysiotherapistPercent: 70,
+  defaultHerbalistPercent: 70,
+  defaultNutritionistPercent: 70,
   /** @deprecated Use defaultDoctorOnlinePercent — kept for legacy settings reads */
   defaultDoctorPercent: 70,
   minPercent: 0,

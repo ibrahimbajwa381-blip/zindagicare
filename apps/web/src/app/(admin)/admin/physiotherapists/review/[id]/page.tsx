@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { isAdmin, AppError } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
-import { AdminNurseApplicationReview } from "@/features/admin/components/admin-nurse-application-review";
+import { AdminPhysiotherapistApplicationReview } from "@/features/admin/components/admin-physiotherapist-application-review";
 import { getPhysiotherapistProfileForAdmin } from "@/server/services/physiotherapist.service";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,16 +15,16 @@ export async function generateMetadata({ params }: Params) {
     const profile = await getPhysiotherapistProfileForAdmin(id);
     return {
       title: `Review · ${profile.user.name}`,
-      description: "Review nurse application, credentials, and visit history.",
+      description: "Review physiotherapist application, credentials, and visit history.",
     };
   } catch {
-    return { title: "Nurse application review" };
+    return { title: "Physiotherapist application review" };
   }
 }
 
-export default async function AdminNurseReviewPage({ params }: Params) {
+export default async function AdminPhysiotherapistReviewPage({ params }: Params) {
   const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/admin/nurses");
+  if (!session?.user) redirect("/login?callbackUrl=/admin/physiotherapists");
   if (!isAdmin(session.user.roles)) redirect("/dashboard");
 
   const { id } = await params;
@@ -45,11 +45,11 @@ export default async function AdminNurseReviewPage({ params }: Params) {
         description="Review credentials and documents, record interview notes, then approve or reject."
         actions={
           <Button variant="outline" size="sm" asChild>
-            <Link href="/admin/nurses">Back to queue</Link>
+            <Link href="/admin/physiotherapists">Back to queue</Link>
           </Button>
         }
       />
-      <AdminNurseApplicationReview profile={profile} />
+      <AdminPhysiotherapistApplicationReview profile={profile} />
     </>
   );
 }

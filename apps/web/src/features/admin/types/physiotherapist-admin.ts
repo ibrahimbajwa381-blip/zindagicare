@@ -29,6 +29,7 @@ export type AdminPhysiotherapistDetailDto = {
   licenseNumber?: string;
   qualification?: string;
   experienceYears?: number;
+  specialties?: string[];
   cnicLast4?: string;
   isAvailable: boolean;
   homeVisitEnabled: boolean;

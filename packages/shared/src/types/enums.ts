@@ -6,6 +6,8 @@ export const Roles = {
   RIDER: "rider",
   NURSE: "nurse",
   PHYSIOTHERAPIST: "physiotherapist",
+  HERBALIST: "herbalist",
+  NUTRITIONIST: "nutritionist",
 } as const;
 
 export type Role = (typeof Roles)[keyof typeof Roles];

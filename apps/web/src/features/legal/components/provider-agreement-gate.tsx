@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type Role = "doctor" | "nurse" | "physiotherapist";
+type Role = "doctor" | "nurse" | "physiotherapist" | "herbalist" | "nutritionist";
 
 const AGREEMENT_ENDPOINT: Record<Role, string> = {
   doctor: "/api/v1/doctor/agreement",
   nurse: "/api/v1/nurse/agreement",
   physiotherapist: "/api/v1/physiotherapist/agreement",
+  herbalist: "/api/v1/herbalist/agreement",
+  nutritionist: "/api/v1/nutritionist/agreement",
 };
 
 type AgreementStatus = {
