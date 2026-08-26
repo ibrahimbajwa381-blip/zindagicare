@@ -172,6 +172,37 @@ export const adminReassignAppointmentSchema = z.object({
   doctorId: z.string().min(1),
 });
 
+export const adminRescheduleAppointmentSchema = z
+  .object({
+    scheduledStart: z.string().datetime(),
+    scheduledEnd: z.string().datetime(),
+  })
+  .refine((data) => new Date(data.scheduledEnd) > new Date(data.scheduledStart), {
+    message: "End time must be after start time",
+    path: ["scheduledEnd"],
+  });
+
+export const adminCreateManualAppointmentSchema = z
+  .object({
+    patientId: z.string().min(1).optional(),
+    patientPhone: pakistaniPhoneSchema.optional(),
+    patientName: z.string().min(2).max(100).optional(),
+    doctorId: z.string().min(1),
+    type: z.enum(["clinic", "online", "home_visit"]),
+    scheduledStart: z.string().datetime(),
+    scheduledEnd: z.string().datetime(),
+    patientNotes: z.string().max(1000).optional(),
+    source: z.enum(["whatsapp", "phone", "walk_in"]).optional(),
+  })
+  .refine((data) => Boolean(data.patientId || data.patientPhone), {
+    message: "Select an existing patient or provide a phone number",
+    path: ["patientId"],
+  })
+  .refine((data) => new Date(data.scheduledEnd) > new Date(data.scheduledStart), {
+    message: "End time must be after start time",
+    path: ["scheduledEnd"],
+  });
+
 export const adminSundaySettingsSchema = z.object({
   sundayConsultEnabled: z.boolean().optional(),
   sundayDefaultMaxSlots: z.number().min(5).max(20).optional(),

@@ -309,6 +309,45 @@ function mapPatientProfile(profile: {
   };
 }
 
+export type BookablePatientOption = { id: string; name: string; phone?: string; email?: string };
+
+/**
+ * Patient search for admin booking/reschedule flows. Unlike listPatients (the
+ * Patient Management page), this intentionally includes users who also hold
+ * staff roles (e.g. a doctor who is also a registered patient) — anyone can
+ * be the patientId on an Appointment.
+ */
+export async function searchBookablePatients(search: string): Promise<BookablePatientOption[]> {
+  await connectDatabase();
+  const q = search.trim();
+  if (q.length < 2) return [];
+
+  const users = await UserModel.find({ roles: Roles.PATIENT, deletedAt: null })
+    .select("name email phone")
+    .sort({ createdAt: -1 })
+    .limit(3000)
+    .lean();
+
+  const needle = q.toLowerCase();
+  const needleDigits = normalizePhoneDigits(q);
+
+  return users
+    .filter((user) => {
+      const pii = mapUserPii(user);
+      const phoneDigits = pii.phone ? normalizePhoneDigits(pii.phone) : "";
+      return (
+        pii.name?.toLowerCase().includes(needle) ||
+        pii.email?.toLowerCase().includes(needle) ||
+        (needleDigits.length >= 3 && phoneDigits.includes(needleDigits))
+      );
+    })
+    .slice(0, 20)
+    .map((user) => {
+      const pii = mapUserPii(user);
+      return { id: user._id.toString(), name: pii.name ?? "Patient", phone: pii.phone, email: pii.email };
+    });
+}
+
 export async function listPatients(search?: string): Promise<AdminPatientRow[]> {
   await connectDatabase();
 
@@ -317,27 +356,36 @@ export async function listPatients(search?: string): Promise<AdminPatientRow[]> 
     deletedAt: null,
   };
 
-  if (search?.trim()) {
-    const q = search.trim();
-    filter.$or = [
-      { name: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } },
-      { phone: { $regex: q, $options: "i" } },
-    ];
-  }
-
-  const users = await UserModel.find(filter)
+  const query = UserModel.find(filter)
     .select(
       "name email phone metadata createdAt isActive emailVerified phoneVerified noShowCount bannedUntil sundayBannedUntil",
     )
-    .sort({ createdAt: -1 })
-    .limit(150)
-    .lean();
+    .sort({ createdAt: -1 });
 
-  const patientIds = users.map((u) => u._id.toString());
+  const q = search?.trim();
+  // name/email/phone are encrypted at rest, so substring matching can't happen
+  // in the database — decrypt a bounded candidate set and filter in memory.
+  const users = q ? await query.limit(3000).lean() : await query.limit(150).lean();
+
+  const needle = q?.toLowerCase();
+  const needleDigits = q ? normalizePhoneDigits(q) : "";
+  const matched = q
+    ? users.filter((user) => {
+        const pii = mapUserPii(user);
+        const phoneDigits = pii.phone ? normalizePhoneDigits(pii.phone) : "";
+        return (
+          pii.name?.toLowerCase().includes(needle!) ||
+          pii.email?.toLowerCase().includes(needle!) ||
+          (needleDigits.length >= 3 && phoneDigits.includes(needleDigits))
+        );
+      })
+    : users;
+
+  const rows = matched.slice(0, 150);
+  const patientIds = rows.map((u) => u._id.toString());
   const statsMap = await loadPatientStatsBatch(patientIds);
 
-  return users.map((user) =>
+  return rows.map((user) =>
     mapPatientRow(user, statsMap.get(user._id.toString()) ?? EMPTY_STATS),
   );
 }

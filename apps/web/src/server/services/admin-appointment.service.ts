@@ -3,13 +3,18 @@ import {
   AppointmentModel,
   DoctorProfileModel,
   SundaySlotInstanceModel,
+  UserModel,
 } from "@zindagi/database";
 import {
   AppError,
   AppointmentStatuses,
   AppointmentTypes,
+  Roles,
   SlotStatuses,
+  phoneLookupHash,
 } from "@zindagi/shared";
+import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 
 /** Doctor display names in the DB are inconsistently stored with/without a "Dr" prefix. */
@@ -55,6 +60,7 @@ export async function listAdminAppointments(filters?: {
   type?: keyof typeof TYPE_FILTERS;
   status?: string;
   limit?: number;
+  patientId?: string;
 }): Promise<AdminAppointmentRow[]> {
   await connectDatabase();
 
@@ -65,6 +71,9 @@ export async function listAdminAppointments(filters?: {
   }
   if (filters?.status) {
     query.status = filters.status;
+  }
+  if (filters?.patientId) {
+    query.patientId = filters.patientId;
   }
 
   const appointments = await AppointmentModel.find(query)
@@ -235,6 +244,130 @@ export async function adminReassignAppointment(
     doctor: {
       id: doctor._id.toString(),
       name: doctorUser?.name ?? "Doctor",
+    },
+  };
+}
+
+export async function adminRescheduleAppointment(
+  appointmentId: string,
+  scheduledStart: string,
+  scheduledEnd: string,
+) {
+  await connectDatabase();
+
+  const appointment = await AppointmentModel.findById(appointmentId);
+  if (!appointment) throw new AppError("Appointment not found", "NOT_FOUND", 404);
+
+  if (
+    appointment.status === AppointmentStatuses.CANCELLED ||
+    appointment.status === AppointmentStatuses.COMPLETED
+  ) {
+    throw new AppError("Appointment cannot be rescheduled", "CONFLICT", 409);
+  }
+
+  appointment.scheduledStart = new Date(scheduledStart);
+  appointment.scheduledEnd = new Date(scheduledEnd);
+  if (appointment.status === AppointmentStatuses.PENDING) {
+    appointment.status = AppointmentStatuses.CONFIRMED;
+  }
+  await appointment.save();
+
+  return {
+    id: appointment._id.toString(),
+    status: appointment.status,
+    scheduledStart: appointment.scheduledStart.toISOString(),
+    scheduledEnd: appointment.scheduledEnd.toISOString(),
+  };
+}
+
+async function findOrCreatePatientByPhone(phone: string, name?: string) {
+  const normalized = normalizePakistaniPhone(phone);
+  const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(phone));
+
+  const existing = await UserModel.findOne({
+    $or: [{ phoneLookup: phoneLookupHash(normalized) }, { phoneLookup: phoneLookupHash(phoneLocal) }],
+  });
+  if (existing) return existing;
+
+  return UserModel.create({
+    name: name?.trim() || "WhatsApp Patient",
+    phone: normalized,
+    roles: [Roles.PATIENT],
+    authProviders: ["credentials"],
+    onboardingCompleted: false,
+    isActive: true,
+  });
+}
+
+const MANUAL_APPOINTMENT_TYPE_MAP = {
+  clinic: AppointmentTypes.CLINIC,
+  online: AppointmentTypes.ONLINE,
+  home_visit: AppointmentTypes.HOME_VISIT,
+} as const;
+
+export async function adminCreateManualAppointment(input: {
+  patientId?: string;
+  patientPhone?: string;
+  patientName?: string;
+  doctorId: string;
+  type: keyof typeof MANUAL_APPOINTMENT_TYPE_MAP;
+  scheduledStart: string;
+  scheduledEnd: string;
+  patientNotes?: string;
+  source?: string;
+}) {
+  await connectDatabase();
+
+  const doctor = await DoctorProfileModel.findById(input.doctorId).populate(
+    "userId",
+    "name phone",
+  );
+  if (!doctor?.isListed) {
+    throw new AppError("Doctor not available", "NOT_FOUND", 404);
+  }
+
+  const patient = input.patientId
+    ? await UserModel.findById(input.patientId)
+    : input.patientPhone
+      ? await findOrCreatePatientByPhone(input.patientPhone, input.patientName)
+      : null;
+  if (!patient) throw new AppError("Patient not found", "NOT_FOUND", 404);
+
+  const appointment = (await AppointmentModel.create({
+    type: MANUAL_APPOINTMENT_TYPE_MAP[input.type],
+    status: AppointmentStatuses.CONFIRMED,
+    patientId: patient._id,
+    doctorId: doctor._id,
+    scheduledStart: new Date(input.scheduledStart),
+    scheduledEnd: new Date(input.scheduledEnd),
+    isOnline: input.type === "online",
+    patientNotes: input.source
+      ? `[${input.source}] ${input.patientNotes ?? ""}`.trim()
+      : input.patientNotes,
+  } as Record<string, unknown>)) as {
+    _id: { toString(): string };
+    status: string;
+    scheduledStart: Date;
+    scheduledEnd: Date;
+  };
+
+  const doctorUser = doctor.userId as { name?: string; phone?: string } | null;
+  return {
+    id: appointment._id.toString(),
+    status: appointment.status,
+    scheduledStart: appointment.scheduledStart.toISOString(),
+    scheduledEnd: appointment.scheduledEnd.toISOString(),
+    type: input.type,
+    patient: {
+      id: patient._id.toString(),
+      name: safeDisplayText(patient.name) ?? "Patient",
+      phone: formatPhoneForDisplay(patient.phone),
+    },
+    doctor: {
+      id: doctor._id.toString(),
+      name: doctorUser?.name ?? "Doctor",
+      phone: formatPhoneForDisplay(doctorUser?.phone),
+      specialty: doctor.specialties?.[0],
     },
   };
 }

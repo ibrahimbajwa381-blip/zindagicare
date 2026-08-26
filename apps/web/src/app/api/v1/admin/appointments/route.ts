@@ -11,9 +11,11 @@ export const GET = withApiHandler(
       | "clinic"
       | null;
     const status = searchParams.get("status") ?? undefined;
+    const patientId = searchParams.get("patientId") ?? undefined;
     const appointments = await listAdminAppointments({
       type: type ?? undefined,
       status,
+      patientId,
     });
     return { appointments };
   },
