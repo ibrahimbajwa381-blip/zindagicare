@@ -3,9 +3,9 @@ import { auth } from "@/lib/auth";
 import { apiError } from "@/server/api/response";
 import { contentTypeFromKey, validateStorageKey } from "@/server/lib/object-storage";
 import {
-  canAccessNurseDocument,
-  readNurseDocument,
-} from "@/server/services/nurse-documents.storage";
+  canAccessPhysiotherapistDocument,
+  readPhysiotherapistDocument,
+} from "@/server/services/physiotherapist-documents.storage";
 import { AppError } from "@zindagi/shared";
 
 type Params = { params: Promise<{ key: string[] }> };
@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: Params) {
     validateStorageKey(storageKey);
 
     if (
-      !canAccessNurseDocument(
+      !canAccessPhysiotherapistDocument(
         session.user.id,
         session.user.roles ?? [],
         storageKey,
@@ -31,7 +31,7 @@ export async function GET(_req: Request, { params }: Params) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }
 
-    const raw = await readNurseDocument(storageKey);
+    const raw = await readPhysiotherapistDocument(storageKey);
     const buffer = unwrapEncryptedFile(raw);
 
     return new Response(new Uint8Array(buffer), {
