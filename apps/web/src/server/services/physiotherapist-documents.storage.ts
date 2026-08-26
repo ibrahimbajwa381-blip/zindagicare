@@ -42,7 +42,7 @@ export async function savePhysiotherapistDocument(
 
   return {
     storageKey,
-    url: `/api/v1/Physiotherapist/verification/documents/${encodeURIComponent(storageKey)}`,
+    url: `/api/v1/physiotherapist/verification/documents/${encodeURIComponent(storageKey)}`,
     originalName: file.name,
     mimeType: file.type,
   };
