@@ -159,7 +159,15 @@ export async function getReferredPatientsSummary(
     };
   });
 
-  // Appointment/HomeVisit `patientId` references User, not PatientProfile.
+  const doctorProfile = await DoctorProfileModel.findById(doctorProfileId)
+    .select("userId")
+    .lean();
+  const doctorUserId = doctorProfile?.userId?.toString();
+
+  // Appointment/HomeVisit `patientId` references User, not PatientProfile. HomeVisit has
+  // no `doctorId` — it's scoped to this doctor via `assignedStaffId` (a User id), not by
+  // service type alone, otherwise a home visit assigned to a *different* doctor for the
+  // same patient would be miscounted here.
   const [completedAppts, completedHomeVisits] = await Promise.all([
     AppointmentModel.find(
       mongoFilter({
@@ -171,15 +179,18 @@ export async function getReferredPatientsSummary(
     )
       .select("paymentId")
       .lean(),
-    HomeVisitModel.find(
-      mongoFilter({
-        serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
-        patientId: { $in: mongoObjectIds(userIds) },
-        status: HomeVisitStatuses.COMPLETED,
-      }),
-    )
-      .select("paymentId pricing")
-      .lean(),
+    doctorUserId
+      ? HomeVisitModel.find(
+          mongoFilter({
+            serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
+            assignedStaffId: doctorUserId,
+            patientId: { $in: mongoObjectIds(userIds) },
+            status: HomeVisitStatuses.COMPLETED,
+          }),
+        )
+          .select("paymentId pricing")
+          .lean()
+      : [],
   ]);
   const rates = await getDoctorCommissionRatesByProfileId(doctorProfileId);
 
