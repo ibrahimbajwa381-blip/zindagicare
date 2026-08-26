@@ -254,6 +254,11 @@ export function AdminAppointmentsBoard() {
                         {a.isOnline ? " · Online" : ""} · {a.patient.name}
                       </p>
                       <Badge variant="outline">{a.status}</Badge>
+                      {a.isReferred && (
+                        <Badge className="border-brand/30 bg-brand/10 text-brand" variant="outline">
+                          Referred
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-slate-500">
                       {formatKarachiDateTime(a.scheduledStart)}

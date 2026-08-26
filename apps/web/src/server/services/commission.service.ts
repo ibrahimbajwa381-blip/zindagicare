@@ -319,35 +319,39 @@ export async function getPhysiotherapistCommissionPercentByUserId(
 export { calculateStaffNetEarnings } from "@zindagi/shared";
 
 /**
- * Patient ids (from the given set) that were referred by this doctor via their
- * personal referral link. Used to grant the lifetime referral commission bonus.
+ * User ids (from the given set) that were referred by this doctor via their personal
+ * referral link. Used to grant the lifetime referral commission bonus.
+ *
+ * NOTE: Appointment/HomeVisit `patientId` fields reference `User`, not `PatientProfile` —
+ * always match against `PatientProfile.userId`, never `PatientProfile._id`, here.
  */
 export async function getReferredPatientIdSet(
   doctorProfileId: string,
-  patientIds: string[],
+  userIds: string[],
 ): Promise<Set<string>> {
   const set = new Set<string>();
-  if (!patientIds.length) return set;
+  if (!userIds.length) return set;
 
   await connectDatabase();
   const referred = await PatientProfileModel.find(
     mongoFilter({
-      _id: { $in: mongoObjectIds(patientIds) },
+      userId: { $in: mongoObjectIds(userIds) },
       referredByDoctorId: doctorProfileId,
     }),
   )
-    .select("_id")
+    .select("userId")
     .lean();
 
   for (const patient of referred) {
-    set.add(patient._id.toString());
+    if (patient.userId) set.add(patient.userId.toString());
   }
   return set;
 }
 
 /**
- * Bulk lookup for admin/platform-wide earnings views: maps each referred patient id to
- * the doctor profile id that referred them, scoped to the given doctors.
+ * Bulk lookup for admin/platform-wide earnings views: maps each referred patient's
+ * *user* id (matching Appointment/HomeVisit `patientId`) to the doctor profile id that
+ * referred them, scoped to the given doctors.
  */
 export async function getReferredPatientDoctorMap(
   doctorProfileIds: string[],
@@ -361,12 +365,12 @@ export async function getReferredPatientDoctorMap(
       referredByDoctorId: { $in: mongoObjectIds(doctorProfileIds) },
     }),
   )
-    .select("_id referredByDoctorId")
+    .select("userId referredByDoctorId")
     .lean();
 
   for (const patient of referred) {
-    if (patient.referredByDoctorId) {
-      map.set(patient._id.toString(), patient.referredByDoctorId.toString());
+    if (patient.referredByDoctorId && patient.userId) {
+      map.set(patient.userId.toString(), patient.referredByDoctorId.toString());
     }
   }
   return map;

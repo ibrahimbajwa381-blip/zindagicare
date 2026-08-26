@@ -27,6 +27,7 @@ export type AppointmentDetail = {
   failureReason?: string;
   receiptUploaded?: boolean;
   cancellationReason?: string;
+  isReferred?: boolean;
 };
 
 function Row({ label, value }: { label: string; value?: string | number | null }) {
@@ -127,6 +128,7 @@ export function AdminAppointmentDetailModal({
                 <Row label="Patient" value={a.patient.name} />
                 <Row label="Patient phone" value={a.patient.phone} />
                 <Row label="Patient email" value={a.patient.email} />
+                <Row label="Referral" value={a.isReferred ? "Yes — referred by this doctor" : undefined} />
                 {a.clinic && (
                   <Row
                     label="Clinic"

@@ -77,6 +77,30 @@ export async function resolveReferralDoctorId(
   return profile?._id?.toString() ?? null;
 }
 
+/**
+ * Attributes a patient to a doctor at booking time, not just signup — covers patients
+ * who already had an account before clicking the doctor's referral link (the common
+ * case in practice) as well as brand-new signups whose referral capture at registration
+ * time was for some reason missed. First referral wins: never overwrites an existing
+ * `referredByDoctorId`, and only attributes when the referral cookie's doctor matches
+ * the doctor actually being booked (so browsing one doctor's link doesn't tag a booking
+ * with a different doctor).
+ */
+export async function attributeReferralIfEligible(
+  patientUserId: string,
+  bookedDoctorProfileId: string,
+  referralCode: string | undefined | null,
+): Promise<void> {
+  const referredDoctorId = await resolveReferralDoctorId(referralCode);
+  if (!referredDoctorId || referredDoctorId !== bookedDoctorProfileId) return;
+
+  await connectDatabase();
+  await PatientProfileModel.updateOne(
+    mongoFilter({ userId: patientUserId, referredByDoctorId: null }),
+    { $set: { referredByDoctorId: referredDoctorId, referredAt: new Date() } },
+  );
+}
+
 export async function getDoctorReferralInfo(
   doctorProfileId: string,
 ): Promise<{ code: string; url: string }> {
@@ -135,14 +159,12 @@ export async function getReferredPatientsSummary(
     };
   });
 
-  const patientIds = referredPatients.map((p) => p._id.toString());
-  const rates = await getDoctorCommissionRatesByProfileId(doctorProfileId);
-
+  // Appointment/HomeVisit `patientId` references User, not PatientProfile.
   const [completedAppts, completedHomeVisits] = await Promise.all([
     AppointmentModel.find(
       mongoFilter({
         doctorId: doctorProfileId,
-        patientId: { $in: mongoObjectIds(patientIds) },
+        patientId: { $in: mongoObjectIds(userIds) },
         status: AppointmentStatuses.COMPLETED,
         paymentId: { $exists: true, $ne: null },
       }),
@@ -152,13 +174,14 @@ export async function getReferredPatientsSummary(
     HomeVisitModel.find(
       mongoFilter({
         serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
-        patientId: { $in: mongoObjectIds(patientIds) },
+        patientId: { $in: mongoObjectIds(userIds) },
         status: HomeVisitStatuses.COMPLETED,
       }),
     )
       .select("paymentId pricing")
       .lean(),
   ]);
+  const rates = await getDoctorCommissionRatesByProfileId(doctorProfileId);
 
   const paymentIds = [
     ...new Set([

@@ -16,6 +16,8 @@ import {
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
+import { mongoFilter } from "@/lib/mongo/query";
+import { getReferredPatientDoctorMap } from "@/server/services/commission.service";
 
 /** Doctor display names in the DB are inconsistently stored with/without a "Dr" prefix. */
 function normalizeDoctorName(rawName?: string): string {
@@ -47,6 +49,8 @@ export type AdminAppointmentRow = {
   failureReason?: string;
   receiptUploaded?: boolean;
   createdAt: string;
+  /** True when this patient was referred by this doctor via their referral link. */
+  isReferred: boolean;
 };
 
 const TYPE_FILTERS = {
@@ -76,7 +80,7 @@ export async function listAdminAppointments(filters?: {
     query.patientId = filters.patientId;
   }
 
-  const appointments = await AppointmentModel.find(query)
+  const appointments = await AppointmentModel.find(mongoFilter(query))
     .populate("patientId", "name phone email")
     .populate({
       path: "doctorId",
@@ -90,6 +94,15 @@ export async function listAdminAppointments(filters?: {
     .sort({ scheduledStart: -1 })
     .limit(filters?.limit ?? 100)
     .lean();
+
+  const doctorProfileIds = [
+    ...new Set(
+      appointments
+        .map((a) => (a.doctorId as { _id?: { toString(): string } } | null)?._id?.toString())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const referredPatientDoctorMap = await getReferredPatientDoctorMap(doctorProfileIds);
 
   return appointments.map((a) => {
     const patient = a.patientId as {
@@ -161,6 +174,9 @@ export async function listAdminAppointments(filters?: {
       failureReason: payment?.failureReason ?? undefined,
       receiptUploaded: Boolean(payment?.metadata?.receipt),
       createdAt: (a.createdAt as Date | undefined)?.toISOString() ?? a.scheduledStart.toISOString(),
+      isReferred:
+        referredPatientDoctorMap.get(patient?._id?.toString() ?? "") ===
+        doctorProfile?._id?.toString(),
     };
   });
 }
@@ -333,23 +349,71 @@ export async function adminCreateManualAppointment(input: {
       : null;
   if (!patient) throw new AppError("Patient not found", "NOT_FOUND", 404);
 
-  const appointment = (await AppointmentModel.create({
-    type: MANUAL_APPOINTMENT_TYPE_MAP[input.type],
-    status: AppointmentStatuses.CONFIRMED,
-    patientId: patient._id,
-    doctorId: doctor._id,
-    scheduledStart: new Date(input.scheduledStart),
-    scheduledEnd: new Date(input.scheduledEnd),
-    isOnline: input.type === "online",
-    patientNotes: input.source
-      ? `[${input.source}] ${input.patientNotes ?? ""}`.trim()
-      : input.patientNotes,
-  } as Record<string, unknown>)) as {
+  const scheduledStart = new Date(input.scheduledStart);
+  const scheduledEnd = new Date(input.scheduledEnd);
+
+  // Reuse an existing unfinished appointment for the same patient/doctor/slot
+  // instead of inserting a duplicate document — otherwise a stale PENDING
+  // record left behind gets auto-cancelled later and lingers in the
+  // patient's history as an unexplained "Cancelled" entry alongside the
+  // new confirmed booking.
+  const duplicates = await AppointmentModel.find(
+    mongoFilter({
+      patientId: patient._id,
+      doctorId: doctor._id,
+      scheduledStart,
+      scheduledEnd,
+      deletedAt: null,
+    }),
+  );
+
+  const reusable = duplicates.find(
+    (a) =>
+      a.status !== AppointmentStatuses.CANCELLED &&
+      a.status !== AppointmentStatuses.COMPLETED,
+  );
+
+  for (const stale of duplicates) {
+    if (reusable && stale._id.toString() === reusable._id.toString()) continue;
+    stale.deletedAt = new Date();
+    await stale.save();
+  }
+
+  let appointment: {
     _id: { toString(): string };
     status: string;
     scheduledStart: Date;
     scheduledEnd: Date;
   };
+
+  if (reusable) {
+    reusable.type = MANUAL_APPOINTMENT_TYPE_MAP[input.type];
+    reusable.status = AppointmentStatuses.CONFIRMED;
+    reusable.isOnline = input.type === "online";
+    reusable.patientNotes = input.source
+      ? `[${input.source}] ${input.patientNotes ?? ""}`.trim()
+      : input.patientNotes;
+    await reusable.save();
+    appointment = reusable;
+  } else {
+    appointment = (await AppointmentModel.create({
+      type: MANUAL_APPOINTMENT_TYPE_MAP[input.type],
+      status: AppointmentStatuses.CONFIRMED,
+      patientId: patient._id,
+      doctorId: doctor._id,
+      scheduledStart,
+      scheduledEnd,
+      isOnline: input.type === "online",
+      patientNotes: input.source
+        ? `[${input.source}] ${input.patientNotes ?? ""}`.trim()
+        : input.patientNotes,
+    } as Record<string, unknown>)) as {
+      _id: { toString(): string };
+      status: string;
+      scheduledStart: Date;
+      scheduledEnd: Date;
+    };
+  }
 
   const doctorUser = doctor.userId as { name?: string; phone?: string } | null;
   return {
