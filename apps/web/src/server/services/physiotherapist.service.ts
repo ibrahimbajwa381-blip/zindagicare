@@ -391,7 +391,7 @@ export async function listPhysiotherapistsForAdmin(status?: string): Promise<Adm
 
   const profiles = await StaffProfileModel.find(filter)
     .populate("userId", "name email phone metadata")
-    .sort({ verificationSubmittedAt: 1, createdAt: 1 })
+    .sort({ verificationSubmittedAt: -1, createdAt: -1 })
     .lean();
 
   return profiles
