@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceMuted } from "@/lib/ui/surfaces";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/config/site";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
@@ -67,6 +68,8 @@ function DoctorsListSkeleton({ label }: { label: string }) {
   );
 }
 
+const INITIAL_VISIBLE_DOCTORS = 30;
+
 type DoctorsConsultClientProps = {
   initialSpecialty?: string;
   initialCity?: string;
@@ -85,6 +88,7 @@ export function DoctorsConsultClient({
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const specialtySlug = searchParams.get("specialty");
   const conditionSlug = searchParams.get("condition");
@@ -171,6 +175,15 @@ export function DoctorsConsultClient({
     });
   }, [activeSpecialty, doctors, searchQuery]);
 
+  useEffect(() => {
+    setShowAll(false);
+  }, [visibleDoctors]);
+
+  const displayedDoctors = showAll
+    ? visibleDoctors
+    : visibleDoctors.slice(0, INITIAL_VISIBLE_DOCTORS);
+  const hasMoreDoctors = visibleDoctors.length > displayedDoctors.length;
+
   return (
     <PageSection id="browse-doctors" variant="brand" spacing="lg" flipBlur>
       {booking && (
@@ -195,8 +208,9 @@ export function DoctorsConsultClient({
         {loading ? (
           <DoctorsListSkeleton label={copy.loading} />
         ) : visibleDoctors.length > 0 ? (
+          <>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-            {visibleDoctors.map((doc) => (
+            {displayedDoctors.map((doc) => (
               <DoctorCard
                 key={doc.doctorId}
                 href={doctorProfilePath(doc.slug, doc.doctorId)}
@@ -226,6 +240,14 @@ export function DoctorsConsultClient({
               />
             ))}
           </div>
+          {hasMoreDoctors && (
+            <div className="mt-8 flex justify-center">
+              <Button variant="outline" onClick={() => setShowAll(true)}>
+                {t.common.viewAll}
+              </Button>
+            </div>
+          )}
+          </>
         ) : hasSearchQuery ? (
           <div className={`rounded-2xl border border-dashed p-8 text-center sm:p-10 ${surfaceMuted}`}>
             <p className="font-display text-lg font-semibold text-slate-800">

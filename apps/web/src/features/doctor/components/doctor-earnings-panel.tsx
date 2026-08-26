@@ -4,6 +4,7 @@ import {
   Banknote,
   ChevronRight,
   CircleDollarSign,
+  Gift,
   Stethoscope,
   TrendingUp,
   Wallet,
@@ -185,6 +186,32 @@ export function DoctorEarningsPanel({ earnings }: Props) {
             accent="emerald"
           />
         </div>
+      </EarningsSection>
+
+      <EarningsSection
+        icon={Gift}
+        title="Earnings from referrals"
+        description="Extra amount earned from the +15pp bonus on patients you referred."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Referral bonus (all time)"
+            value={formatCurrency(earnings.referralBonusEarnings)}
+            hint="Included in your total earnings above"
+          />
+          <StatCard
+            label="Referral bonus (this month)"
+            value={formatCurrency(earnings.referralBonusEarningsThisMonth)}
+            accent="sky"
+          />
+        </div>
+        <Link
+          href="/doctor/referrals"
+          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
+        >
+          View your referral link and referred patients
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </EarningsSection>
 
       <EarningsSection

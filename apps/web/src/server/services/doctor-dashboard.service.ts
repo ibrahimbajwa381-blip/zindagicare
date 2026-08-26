@@ -160,6 +160,9 @@ export type DoctorEarningsDetail = {
   earningsThisMonth: number;
   totalPlatformCommission: number;
   platformCommissionThisMonth: number;
+  /** Portion of totalEarnings/earningsThisMonth attributable to the referral bonus. */
+  referralBonusEarnings: number;
+  referralBonusEarningsThisMonth: number;
   completedPaidConsults: number;
   completedConsults: DoctorConsultCounts;
   completedConsultsThisMonth: DoctorConsultCounts;
@@ -397,6 +400,8 @@ async function buildDoctorEarningsDetail(
   let earningsThisMonth = 0;
   let totalPlatformCommission = 0;
   let platformCommissionThisMonth = 0;
+  let referralBonusEarnings = 0;
+  let referralBonusEarningsThisMonth = 0;
   const completedConsults = emptyConsultCounts();
   const completedConsultsThisMonth = emptyConsultCounts();
   const transactions: DoctorEarningRow[] = [];
@@ -419,15 +424,20 @@ async function buildDoctorEarningsDetail(
 
     const netAmount = calculateStaffNetEarnings(grossAmount, effectivePercent);
     const commissionAmount = grossAmount - netAmount;
+    const bonusAmount = isReferred
+      ? netAmount - calculateStaffNetEarnings(grossAmount, commissionRates.online)
+      : 0;
     totalGrossRevenue += grossAmount;
     totalEarnings += netAmount;
     totalPlatformCommission += commissionAmount;
+    referralBonusEarnings += bonusAmount;
     const completedAt = appt.completedAt ?? appt.scheduledStart;
     const isThisMonth = completedAt >= startOfMonth;
     if (isThisMonth) {
       grossRevenueThisMonth += grossAmount;
       earningsThisMonth += netAmount;
       platformCommissionThisMonth += commissionAmount;
+      referralBonusEarningsThisMonth += bonusAmount;
       incrementConsultCount(completedConsultsThisMonth, appt.type);
     }
     incrementConsultCount(completedConsults, appt.type);
@@ -466,15 +476,20 @@ async function buildDoctorEarningsDetail(
 
     const netAmount = calculateStaffNetEarnings(grossAmount, effectivePercent);
     const commissionAmount = grossAmount - netAmount;
+    const bonusAmount = isReferred
+      ? netAmount - calculateStaffNetEarnings(grossAmount, commissionRates.homeVisit)
+      : 0;
     totalGrossRevenue += grossAmount;
     totalEarnings += netAmount;
     totalPlatformCommission += commissionAmount;
+    referralBonusEarnings += bonusAmount;
     const completedAt = visit.completedAt ?? visit.scheduledAt;
     const isThisMonth = completedAt >= startOfMonth;
     if (isThisMonth) {
       grossRevenueThisMonth += grossAmount;
       earningsThisMonth += netAmount;
       platformCommissionThisMonth += commissionAmount;
+      referralBonusEarningsThisMonth += bonusAmount;
       incrementConsultCount(
         completedConsultsThisMonth,
         HomeVisitServiceTypes.DOCTOR_VISIT,
@@ -531,6 +546,8 @@ async function buildDoctorEarningsDetail(
     earningsThisMonth,
     totalPlatformCommission,
     platformCommissionThisMonth,
+    referralBonusEarnings,
+    referralBonusEarningsThisMonth,
     completedPaidConsults: transactions.length,
     completedConsults,
     completedConsultsThisMonth,
