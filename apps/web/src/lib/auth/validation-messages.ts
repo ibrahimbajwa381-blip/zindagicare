@@ -4,7 +4,7 @@ import { getDictionary } from "@/i18n";
 import type { Dictionary } from "@/i18n/dictionaries/en";
 import type { AppErrorField } from "@zindagi/shared";
 
-export type AuthFormField = AppErrorField;
+export type AuthFormField = AppErrorField | "dateOfBirth" | "confirmPassword";
 
 export function authValidationMessage(
   locale: Locale,
@@ -22,6 +22,10 @@ export function authValidationMessage(
       return v.name;
     case "city":
       return v.city;
+    case "dateOfBirth":
+      return v.dateOfBirth;
+    case "confirmPassword":
+      return v.confirmPassword;
     case "code":
       return v.otp;
     default:
@@ -34,9 +38,18 @@ export function fieldErrorsFromZodIssues(
   issues: ZodIssue[],
 ): Partial<Record<AuthFormField, string>> {
   const errors: Partial<Record<AuthFormField, string>> = {};
+  const knownFields = {
+    name: 1,
+    email: 1,
+    phone: 1,
+    password: 1,
+    city: 1,
+    dateOfBirth: 1,
+    confirmPassword: 1,
+  };
   for (const issue of issues) {
     const field = issue.path[0]?.toString() as AuthFormField | undefined;
-    if (field && field in { name: 1, email: 1, phone: 1, password: 1 } && !errors[field]) {
+    if (field && field in knownFields && !errors[field]) {
       errors[field] = authValidationMessage(locale, field);
     }
   }

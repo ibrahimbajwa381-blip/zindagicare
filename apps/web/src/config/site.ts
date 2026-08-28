@@ -39,8 +39,8 @@ export const siteConfig = {
   ] as const,
   /** JazzCash wallet for manual patient transfers (no payment gateway yet). */
   jazzCash: {
-    number: "03277661515",
-    numberDisplay: "0327 7661515",
+    number: "03074583567",
+    numberDisplay: "0307 4583567",
     accountTitle: "Ibrahim Aslam",
   },
   url: (process.env.NEXT_PUBLIC_APP_URL ?? PRODUCTION_URL).trim(),

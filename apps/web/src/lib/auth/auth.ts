@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
@@ -6,16 +5,12 @@ import { canUseWorkspace, resolveDefaultWorkspace, Roles, type Role, type Worksp
 import { authConfig } from "./auth.config";
 import { isGoogleAuthConfigured } from "./google";
 import {
-  findOrCreateGoogleUser,
+  findGoogleLoginUser,
   loadAuthUserPayload,
   signInWithPhoneOtp,
   verifyCredentialsLogin,
 } from "@/server/services/auth.service";
 import { otpService } from "@/server/services/otp.service";
-import {
-  REFERRAL_COOKIE_NAME,
-  resolveReferralDoctorId,
-} from "@/server/services/doctor-referral.service";
 
 const googleProvider = isGoogleAuthConfigured()
   ? [
@@ -79,18 +74,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
-        const cookieStore = await cookies();
-        const referredByDoctorId = await resolveReferralDoctorId(
-          cookieStore.get(REFERRAL_COOKIE_NAME)?.value,
-        );
-        const dbUser = await findOrCreateGoogleUser(
-          {
-            email: user.email,
-            name: user.name ?? "Google User",
-            image: user.image,
-          },
-          referredByDoctorId,
-        );
+        const dbUser = await findGoogleLoginUser({
+          email: user.email,
+          googleId: account.providerAccountId,
+          image: user.image,
+        });
+        if (!dbUser) {
+          return "/login?error=NoAccountGoogle";
+        }
         const payload = await loadAuthUserPayload(dbUser._id.toString());
         if (!payload) return false;
         Object.assign(user, payload);

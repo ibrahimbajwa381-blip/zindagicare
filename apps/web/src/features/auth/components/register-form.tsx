@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { PAKISTAN_CITIES } from "@zindagi/shared";
 import { pakistaniPhoneSchema, type AccountType } from "@zindagi/validators";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
@@ -14,7 +15,7 @@ type RegisterFormProps = {
   accountType?: AccountType;
 };
 
-export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
+export function RegisterForm({ accountType: defaultAccountType = "patient" }: RegisterFormProps) {
   const t = useTranslations();
   const [state, action, pending] = useActionState<RegisterFormState | undefined, FormData>(
     registerAction,
@@ -22,10 +23,31 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
   );
   const [clientPhoneError, setClientPhoneError] = useState<string>();
   const [termsError, setTermsError] = useState<string>();
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string>();
+  const [accountType, setAccountType] = useState<AccountType>(defaultAccountType);
 
   const phoneError = state?.fieldErrors?.phone ?? clientPhoneError;
   const termsFieldError = state?.fieldErrors?.termsAccepted ?? termsError;
-  const showCity = accountType !== "patient";
+  const confirmPasswordFieldError = state?.fieldErrors?.confirmPassword ?? confirmPasswordError;
+
+  const accountTypeLabels: Record<AccountType, string> = {
+    patient: t.auth.registerAs.patient,
+    doctor: t.auth.registerAs.doctor,
+    nurse: t.auth.registerAs.nurse,
+    physiotherapist: t.auth.registerAs.physiotherapist,
+    herbalist: t.auth.registerAs.other,
+    nutritionist: t.auth.registerAs.other,
+    lab: t.auth.registerAs.lab,
+    other: t.auth.registerAs.other,
+  };
+  const selectableAccountTypes: AccountType[] = [
+    "patient",
+    "doctor",
+    "nurse",
+    "physiotherapist",
+    "lab",
+    "other",
+  ];
 
   function validatePhoneValue(value: string) {
     const result = pakistaniPhoneSchema.safeParse(value);
@@ -45,11 +67,20 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
       onSubmit={(e) => {
         const form = e.currentTarget;
         const phone = (form.elements.namedItem("phone") as HTMLInputElement)?.value ?? "";
+        const password = (form.elements.namedItem("password") as HTMLInputElement)?.value ?? "";
+        const confirmPassword =
+          (form.elements.namedItem("confirmPassword") as HTMLInputElement)?.value ?? "";
         const termsAccepted = (form.elements.namedItem("termsAccepted") as HTMLInputElement)
           ?.checked;
         let blocked = false;
         if (!validatePhoneValue(phone)) {
           blocked = true;
+        }
+        if (password !== confirmPassword) {
+          setConfirmPasswordError(t.auth.validation.confirmPassword);
+          blocked = true;
+        } else {
+          setConfirmPasswordError(undefined);
         }
         if (!termsAccepted) {
           setTermsError(t.legal.registerTermsRequired);
@@ -62,7 +93,24 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
         }
       }}
     >
-      <input type="hidden" name="accountType" value={accountType} />
+      <div>
+        <Label htmlFor="accountType" className="text-base font-semibold text-slate-800">
+          {t.auth.iAmRegisteringAs}
+        </Label>
+        <select
+          id="accountType"
+          name="accountType"
+          value={accountType}
+          onChange={(e) => setAccountType(e.target.value as AccountType)}
+          className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm"
+        >
+          {selectableAccountTypes.map((option) => (
+            <option key={option} value={option}>
+              {accountTypeLabels[option]}
+            </option>
+          ))}
+        </select>
+      </div>
       <FormField
         label={t.auth.fullName}
         hint={t.auth.fullNameHint}
@@ -101,15 +149,33 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
         }}
         required
       />
-      {showCity ? (
-        <FormField
-          label={t.onboarding.city}
+      <div>
+        <Label htmlFor="city" className="text-base font-semibold text-slate-800">
+          {t.onboarding.city}
+        </Label>
+        <select
+          id="city"
           name="city"
           defaultValue="Lahore"
-          error={state?.fieldErrors?.city}
-          required
-        />
-      ) : null}
+          aria-invalid={!!state?.fieldErrors?.city}
+          className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm"
+        >
+          {PAKISTAN_CITIES.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
+        </select>
+        <FieldError message={state?.fieldErrors?.city} />
+      </div>
+      <FormField
+        label={t.auth.dateOfBirth}
+        name="dateOfBirth"
+        type="date"
+        max={new Date().toISOString().slice(0, 10)}
+        error={state?.fieldErrors?.dateOfBirth}
+        required
+      />
       <div>
         <Label htmlFor="password" className="text-base font-semibold text-slate-800">
           {t.auth.password}
@@ -123,6 +189,23 @@ export function RegisterForm({ accountType = "patient" }: RegisterFormProps) {
           required
         />
         <FieldError message={state?.fieldErrors?.password} />
+      </div>
+      <div>
+        <Label htmlFor="confirmPassword" className="text-base font-semibold text-slate-800">
+          {t.auth.confirmPassword}
+        </Label>
+        <p className="mb-1.5 text-sm text-slate-500">{t.auth.confirmPasswordHint}</p>
+        <PasswordInput
+          id="confirmPassword"
+          name="confirmPassword"
+          autoComplete="new-password"
+          minLength={6}
+          onChange={() => {
+            if (confirmPasswordError) setConfirmPasswordError(undefined);
+          }}
+          required
+        />
+        <FieldError message={confirmPasswordFieldError} />
       </div>
       <div>
         <label className="flex items-start gap-3 text-sm leading-relaxed text-slate-700">

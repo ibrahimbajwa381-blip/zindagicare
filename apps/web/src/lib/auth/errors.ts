@@ -22,6 +22,8 @@ export function resolveAuthErrorMessage(code?: string): string | undefined {
       return "Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment.";
     case "AccessDenied":
       return "Access denied. Please try again.";
+    case "NoAccountGoogle":
+      return "No account found. Please sign up manually first.";
     default:
       return code ? "Sign-in failed. Please try again." : undefined;
   }

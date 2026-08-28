@@ -72,6 +72,7 @@ export async function verifyGoogleIdToken(idToken: string) {
 
   return {
     email: payload.email,
+    sub: typeof payload.sub === "string" ? payload.sub : undefined,
     name: typeof payload.name === "string" ? payload.name : "Google User",
     picture: typeof payload.picture === "string" ? payload.picture : undefined,
   };

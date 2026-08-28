@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Roles } from "@zindagi/shared";
-import { RegisterForm } from "@/features/auth/components/register-form";
 import { AddStaffRoleForm } from "@/features/auth/components/add-staff-role-form";
 import { auth } from "@/lib/auth";
 import { AUTH_ROUTES, resolvePostAuthPath } from "@/lib/auth/routes";
@@ -18,52 +16,26 @@ export default async function NurseRegisterPage() {
     redirect(resolvePostAuthPath(session.user));
   }
 
-  const isLoggedIn = Boolean(session?.user);
+  // Signup happens on the single unified /register form; this route now only
+  // handles "add a nurse profile to my existing account".
+  if (!session?.user) {
+    redirect(AUTH_ROUTES.register);
+  }
 
   return (
     <Card className="w-full max-w-md shadow-premium">
       <CardHeader>
-        <CardTitle className="text-2xl">
-          {isLoggedIn ? t.auth.addNurseProfileTitle : t.auth.registerNurse}
-        </CardTitle>
+        <CardTitle className="text-2xl">{t.auth.addNurseProfileTitle}</CardTitle>
         <CardDescription className="text-base text-slate-600">
-          {isLoggedIn
-            ? t.auth.addNurseProfileDescription
-            : t.auth.registerNurseDescription}
+          {t.auth.addNurseProfileDescription}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoggedIn ? (
-          <AddStaffRoleForm accountType="nurse" />
-        ) : (
-          <RegisterForm accountType="nurse" />
-        )}
+        <AddStaffRoleForm accountType="nurse" />
         <p className="mt-4 text-center text-sm text-slate-600">
-          {isLoggedIn ? (
-            <>
-              {t.auth.signedInAs}{" "}
-              <span className="font-medium text-slate-800">{session?.user?.email}</span>
-            </>
-          ) : (
-            <>
-              {t.auth.alreadyHaveAccount}{" "}
-              <Link
-                href={`${AUTH_ROUTES.login}?callbackUrl=${encodeURIComponent(AUTH_ROUTES.registerNurse)}`}
-                className="font-medium text-brand"
-              >
-                {t.auth.login}
-              </Link>
-            </>
-          )}
+          {t.auth.signedInAs}{" "}
+          <span className="font-medium text-slate-800">{session.user.email}</span>
         </p>
-        {!isLoggedIn ? (
-          <p className="mt-3 text-center text-sm text-slate-500">
-            {t.auth.patientInstead}{" "}
-            <Link href={AUTH_ROUTES.register} className="font-medium text-brand">
-              {t.auth.registerPatient}
-            </Link>
-          </p>
-        ) : null}
       </CardContent>
     </Card>
   );

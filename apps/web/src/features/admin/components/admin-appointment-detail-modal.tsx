@@ -28,6 +28,7 @@ export type AppointmentDetail = {
   receiptUploaded?: boolean;
   cancellationReason?: string;
   isReferred?: boolean;
+  createdAt?: string;
 };
 
 function Row({ label, value }: { label: string; value?: string | number | null }) {
@@ -121,6 +122,10 @@ export function AdminAppointmentDetailModal({
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 px-3">
                 <Row label="Status" value={a.status} />
                 <Row label="Date & time" value={formatKarachiDateTime(a.scheduledStart)} />
+                <Row
+                  label="Booked at"
+                  value={a.createdAt ? formatKarachiDateTime(a.createdAt) : undefined}
+                />
                 <Row label="Doctor" value={a.doctor.name} />
                 <Row label="Specialty" value={a.doctor.specialty} />
                 <Row label="Doctor phone" value={a.doctor.phone} />

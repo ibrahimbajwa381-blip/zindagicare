@@ -37,6 +37,9 @@ const userSchema = new Schema(
     },
     emailVerified: { type: Date },
     phoneVerified: { type: Date },
+    dateOfBirth: { type: Date },
+    /** Google account id (sub) — set when a Google login is linked to this user. */
+    googleId: { type: String, select: false },
     onboardingCompleted: { type: Boolean, default: false },
     /** Points to family account head for dependents without their own login */
     familyHeadId: { type: Schema.Types.ObjectId, ref: "User", index: true },

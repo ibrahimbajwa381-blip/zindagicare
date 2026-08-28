@@ -121,6 +121,13 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: Users,
         exact: true,
       },
+      {
+        href: "/admin/users",
+        label: "User analytics",
+        description: "All accounts — growth, roles, cities, ages",
+        icon: BarChart3,
+        exact: true,
+      },
     ],
   },
   {

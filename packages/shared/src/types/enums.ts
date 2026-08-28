@@ -8,6 +8,8 @@ export const Roles = {
   PHYSIOTHERAPIST: "physiotherapist",
   HERBALIST: "herbalist",
   NUTRITIONIST: "nutritionist",
+  LAB: "lab",
+  OTHER: "other",
 } as const;
 
 export type Role = (typeof Roles)[keyof typeof Roles];

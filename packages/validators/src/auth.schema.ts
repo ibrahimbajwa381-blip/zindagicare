@@ -38,6 +38,8 @@ export const accountTypes = [
   "physiotherapist",
   "herbalist",
   "nutritionist",
+  "lab",
+  "other",
 ] as const;
 export type AccountType = (typeof accountTypes)[number];
 
@@ -56,6 +58,27 @@ export const addStaffRoleSchema = z.object({
   city: z.string().trim().min(2, "City is required"),
 });
 
+const MIN_AGE_YEARS = 13;
+const MAX_AGE_YEARS = 120;
+
+export const dateOfBirthSchema = z
+  .string()
+  .trim()
+  .min(1, "Date of birth is required")
+  .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+    message: "Enter a valid date of birth",
+  })
+  .refine(
+    (value) => {
+      const dob = new Date(value);
+      const now = new Date();
+      const ageMs = now.getTime() - dob.getTime();
+      const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25);
+      return ageYears >= MIN_AGE_YEARS && ageYears <= MAX_AGE_YEARS;
+    },
+    { message: `Age must be between ${MIN_AGE_YEARS} and ${MAX_AGE_YEARS} years` },
+  );
+
 export const registerSchema = z
   .object({
     name: z.string().min(2, "Name is required"),
@@ -67,16 +90,18 @@ export const registerSchema = z
     password: z
       .string()
       .min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(1, "Confirm your password"),
     phone: pakistaniPhone,
     accountType: z.enum(accountTypes).default("patient"),
-    city: z.string().trim().optional(),
+    city: z.string().trim().min(2, "City is required"),
+    dateOfBirth: dateOfBirthSchema,
   })
   .superRefine((data, ctx) => {
-    if (data.accountType !== "patient" && (!data.city || data.city.length < 2)) {
+    if (data.password !== data.confirmPassword) {
       ctx.addIssue({
         code: "custom",
-        message: "City is required",
-        path: ["city"],
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
       });
     }
   });

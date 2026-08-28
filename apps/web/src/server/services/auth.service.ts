@@ -267,13 +267,15 @@ export async function registerWithCredentials(
     password: string;
     phone: string;
     accountType?: AccountType;
-    city?: string;
+    city: string;
+    dateOfBirth: string;
   },
   referredByDoctorId?: string | null,
 ) {
   await connectDatabase();
   const accountType = input.accountType ?? "patient";
-  const city = input.city?.trim() || "Lahore";
+  const city = input.city.trim();
+  const dateOfBirth = new Date(input.dateOfBirth);
   const email = input.email.toLowerCase();
   const phone = normalizePakistaniPhone(input.phone);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
@@ -303,6 +305,8 @@ export async function registerWithCredentials(
     physiotherapist: [Roles.PATIENT, Roles.PHYSIOTHERAPIST],
     herbalist: [Roles.PATIENT, Roles.HERBALIST],
     nutritionist: [Roles.PATIENT, Roles.NUTRITIONIST],
+    lab: [Roles.PATIENT, Roles.LAB],
+    other: [Roles.PATIENT, Roles.OTHER],
   };
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -311,15 +315,14 @@ export async function registerWithCredentials(
     email,
     phone,
     passwordHash,
+    dateOfBirth,
     roles: roleByAccountType[accountType],
     authProviders: ["credentials"],
     emailVerified: new Date(),
     // Staff already provide phone + city at signup; skip patient onboarding gate.
     onboardingCompleted: accountType !== "patient",
     isActive: true,
-    ...(accountType !== "patient"
-      ? { metadata: { city, locale: "en" as const } }
-      : {}),
+    metadata: { city, locale: "en" as const },
   });
 
   try {
@@ -337,9 +340,12 @@ export async function registerWithCredentials(
     } else if (accountType === "herbalist") {
       await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureHerbalistProfile(user._id, city);
-    } else {
+    } else if (accountType === "nutritionist") {
       await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureNutritionistProfile(user._id, city);
+    } else {
+      // lab / other: no dedicated clinical profile yet — patient dashboard only.
+      await ensurePatientProfile(user._id, referredByDoctorId);
     }
   } catch (error) {
     await UserModel.findByIdAndDelete(user._id);
@@ -429,40 +435,34 @@ export async function findOrCreatePhoneUser(
   return user;
 }
 
-export async function findOrCreateGoogleUser(
-  input: {
-    email: string;
-    name: string;
-    image?: string | null;
-  },
-  referredByDoctorId?: string | null,
-) {
+/**
+ * Google is login-only: never creates an account. Looks up an existing user by
+ * email and links the Google provider/id to it; returns null if no account exists.
+ */
+export async function findGoogleLoginUser(input: {
+  email: string;
+  googleId?: string | null;
+  image?: string | null;
+}) {
   await connectDatabase();
   const email = input.email.toLowerCase();
-  let user = await UserModel.findOne({ emailLookup: emailLookupHash(email) });
+  const user = await UserModel.findOne({ emailLookup: emailLookupHash(email) }).select(
+    "+googleId",
+  );
+  if (!user) return null;
 
-  if (!user) {
-    user = await UserModel.create({
-      name: input.name,
-      email,
-      avatarUrl: input.image ?? undefined,
-      roles: [Roles.PATIENT],
-      authProviders: ["google"],
-      emailVerified: new Date(),
-      onboardingCompleted: false,
-    });
-    await ensurePatientProfile(user._id, referredByDoctorId);
-  } else {
-    if (!user.authProviders.includes("google")) {
-      user.authProviders.push("google");
-    }
-    if (input.image && !user.avatarUrl) {
-      user.avatarUrl = input.image;
-    }
-    user.emailVerified = user.emailVerified ?? new Date();
-    await user.save();
-    await ensurePatientProfile(user._id);
+  if (!user.authProviders.includes("google")) {
+    user.authProviders.push("google");
   }
+  if (input.googleId && !user.googleId) {
+    user.googleId = input.googleId;
+  }
+  if (input.image && !user.avatarUrl) {
+    user.avatarUrl = input.image;
+  }
+  user.emailVerified = user.emailVerified ?? new Date();
+  await user.save();
+  await ensurePatientProfile(user._id);
 
   return user;
 }

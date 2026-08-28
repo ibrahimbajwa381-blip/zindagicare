@@ -117,7 +117,7 @@ export function DoctorReferralCard({
             <p className="mt-1 text-2xl font-semibold text-slate-900">{referredPatientCount}</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs text-slate-500">Lifetime bonus earned</p>
+            <p className="text-xs text-slate-500">Total earned from referral visits</p>
             <p className="mt-1 text-2xl font-semibold text-slate-900">
               PKR {lifetimeBonusEarnings.toLocaleString()}
             </p>

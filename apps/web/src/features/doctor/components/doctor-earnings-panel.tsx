@@ -250,14 +250,14 @@ export function DoctorEarningsPanel({ earnings }: Props) {
           />
         </div>
 
-        <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-          <p className="flex items-center gap-2 font-medium text-slate-800">
-            <ArrowDownToLine className="h-4 w-4 text-brand" />
-            Payout requests
+        <div className="mt-4 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-3 text-sm text-slate-600">
+          <p className="flex items-center gap-2 font-medium text-emerald-900">
+            <ArrowDownToLine className="h-4 w-4 text-emerald-700" />
+            You get paid every Sunday
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Payouts are sent by ZindagiCare admin to your registered bank account. Keep your
-            bank details up to date below so payments reach you.
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            ZindagiCare admin sends your available balance to your registered bank account every
+            Sunday. Keep your bank details up to date below so payments reach you.
           </p>
         </div>
 

@@ -135,9 +135,11 @@ export async function registerAction(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
     phone: formData.get("phone"),
     accountType: formData.get("accountType") ?? "patient",
     city: formData.get("city") || undefined,
+    dateOfBirth: formData.get("dateOfBirth") || undefined,
   });
 
   if (!parsed.success) {

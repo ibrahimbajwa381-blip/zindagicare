@@ -97,7 +97,7 @@ export function HerbalistReferralCard({
           </div>
           <div className="rounded-2xl border border-slate-200/80 bg-slate-50 p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Lifetime bonus earned
+              Total earned from referral visits
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
               {formatPkr(lifetimeBonusEarnings)}

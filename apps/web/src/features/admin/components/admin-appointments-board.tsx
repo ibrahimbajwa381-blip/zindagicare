@@ -306,6 +306,11 @@ export function AdminAppointmentsBoard() {
                         Cancelled: {a.cancellationReason}
                       </p>
                     )}
+                    {a.createdAt && (
+                      <p className="text-sm text-slate-400">
+                        Booked: {formatKarachiDateTime(a.createdAt)}
+                      </p>
+                    )}
                   </div>
 
                   {a.receiptUploaded && a.paymentId && (

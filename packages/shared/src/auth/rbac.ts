@@ -9,6 +9,8 @@ export const ROLE_RANK: Record<Role, number> = {
   [Roles.PHYSIOTHERAPIST]: 25,
   [Roles.HERBALIST]: 26,
   [Roles.NUTRITIONIST]: 27,
+  [Roles.LAB]: 28,
+  [Roles.OTHER]: 5,
   [Roles.DOCTOR]: 30,
   [Roles.ADMIN]: 40,
   [Roles.SUPER_ADMIN]: 50,
