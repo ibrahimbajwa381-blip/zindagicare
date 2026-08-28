@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { Session } from "next-auth";
-import { auth } from "@/lib/auth";
+import { resolveSession } from "./resolve-session";
 import { apiError, apiSuccess } from "./response";
 import { AppError } from "@zindagi/shared";
 import type { ZodType } from "zod";
@@ -26,9 +26,7 @@ export function withApiHandler<TBody = unknown>(
 ) {
   return async (req: NextRequest) => {
     try {
-      const session = options.public
-        ? null
-        : ((await auth()) as Session | null);
+      const session = options.public ? null : await resolveSession(req);
 
       if (options.auth && !session?.user?.id) {
         throw new AppError("Unauthorized", "UNAUTHORIZED", 401);

@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "ZindagiCare",
+    "slug": "zindagicare-mobile",
+    "scheme": "zindagicare",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zindagicare.mobile"
+    },
+    "android": {
+      "package": "com.zindagicare.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0FA79B",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.ico"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      "expo-dev-client",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "@react-native-google-signin/google-signin",
+      "expo-sharing"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "16b2add5-867a-4798-89e2-95915873b43e"
+      }
+    },
+    "owner": "ibrahim1065"
+  }
+}

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { connectDatabase, PaymentModel } from "@zindagi/database";
 import { AppError, ErrorCodes, PaymentProviders, Roles } from "@zindagi/shared";
 import { apiError, apiSuccess } from "@/server/api/response";
@@ -38,7 +38,7 @@ async function assertCanAccessPayment(paymentId: string, userId: string, roles: 
 /** Upload JazzCash transfer receipt and confirm the pending manual payment. */
 export async function POST(req: Request, { params }: Params) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) {
       throw new AppError("Unauthorized", ErrorCodes.UNAUTHORIZED, 401);
     }
@@ -91,9 +91,9 @@ export async function POST(req: Request, { params }: Params) {
 }
 
 /** Serve the uploaded receipt for the payment owner or admin. */
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) {
       throw new AppError("Unauthorized", ErrorCodes.UNAUTHORIZED, 401);
     }

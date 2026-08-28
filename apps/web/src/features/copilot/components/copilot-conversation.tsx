@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import type { BookingSuggestionPayload } from "@zindagi/validators";
 import type { CheckoutResult } from "@/features/consult/types";
 import { ConsultReviewPaymentModal } from "@/features/consult/components/consult-review-payment-modal";
@@ -105,6 +106,9 @@ export function CopilotConversation({
     null,
   );
   const [patientNotes, setPatientNotes] = useState("");
+  const { data: session } = useSession();
+  const needsPhone = session?.user?.hasPhone === false;
+  const [phone, setPhone] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const { defaultProvider } = usePaymentProviders();
@@ -142,7 +146,7 @@ export function CopilotConversation({
   }, [messages, streamingText]);
 
   const runCheckout = useCallback(
-    async (suggestion: BookingSuggestionPayload, notes = "") => {
+    async (suggestion: BookingSuggestionPayload, notes = "", checkoutPhone = "") => {
       setBookingSuggestion(suggestion);
       setCheckoutLoading(true);
       setCheckoutError(null);
@@ -158,6 +162,7 @@ export function CopilotConversation({
             patientNotes: notes.trim() || undefined,
             locale,
             paymentProvider,
+            phone: checkoutPhone.trim() || undefined,
           }),
         });
         const json = await res.json();
@@ -200,8 +205,12 @@ export function CopilotConversation({
 
   const startCheckout = useCallback(async () => {
     if (!bookingSuggestion) return;
-    await runCheckout(bookingSuggestion, patientNotes);
-  }, [bookingSuggestion, patientNotes, runCheckout]);
+    if (needsPhone && !phone.trim()) {
+      setCheckoutError("Please add your mobile number to continue");
+      return;
+    }
+    await runCheckout(bookingSuggestion, patientNotes, phone);
+  }, [bookingSuggestion, needsPhone, patientNotes, phone, runCheckout]);
 
   const handleSend = useCallback(
     async (content: string, options?: SendOptions) => {
@@ -332,6 +341,9 @@ export function CopilotConversation({
           slotFormatted={mounted}
           patientNotes={patientNotes}
           onPatientNotesChange={setPatientNotes}
+          needsPhone={needsPhone}
+          phone={phone}
+          onPhoneChange={setPhone}
           loading={checkoutLoading}
           error={checkoutError}
           paymentProvider={paymentProvider}

@@ -52,7 +52,9 @@ function DoctorAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string })
 export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   const mounted = useMounted();
   const { locale } = useLocale();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const needsPhone = status === "authenticated" && session?.user?.hasPhone === false;
+  const [phone, setPhone] = useState("");
   const [slots, setSlots] = useState<
     { slotId: string; startAt: string; endAt: string; status: string }[]
   >([]);
@@ -120,6 +122,10 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
 
   const startCheckout = async () => {
     if (!selectedSlotId) return;
+    if (needsPhone && !phone.trim()) {
+      setError("Please add your mobile number to continue");
+      return;
+    }
     setLoading(true);
     setError(null);
     setGatewayRedirect(null);
@@ -134,6 +140,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
           patientNotes: patientNotes.trim() || undefined,
           locale,
           paymentProvider,
+          phone: needsPhone ? phone.trim() : undefined,
         }),
       });
       const json = await res.json();
@@ -186,6 +193,9 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
         slotFormatted={mounted}
         patientNotes={patientNotes}
         onPatientNotesChange={setPatientNotes}
+        needsPhone={needsPhone}
+        phone={phone}
+        onPhoneChange={setPhone}
         loading={loading}
         error={error}
         paymentProvider={paymentProvider}

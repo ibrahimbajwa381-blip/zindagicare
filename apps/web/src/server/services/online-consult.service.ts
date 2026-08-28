@@ -29,6 +29,9 @@ import {
   type WeeklyWindow,
 } from "@/lib/consult/slot-utils";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
+import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { phoneLookupHash } from "@zindagi/shared";
 import {
   buildGatewayCheckout,
   gatewayIntegrationLabel,
@@ -595,12 +598,54 @@ export class OnlineConsultService {
     };
   }
 
+  /**
+   * Patients who signed up via Google can have no phone on file. Booking requires one —
+   * either already stored, or supplied on checkout (and saved to the account).
+   */
+  static async ensurePatientPhone(patientId: string, phone?: string): Promise<void> {
+    const user = await UserModel.findById(patientId).select("phone");
+    if (!user) throw new AppError("User not found", ErrorCodes.NOT_FOUND, 404);
+    if (user.phone) return;
+
+    if (!phone) {
+      throw new AppError(
+        "A mobile number is required to book an appointment",
+        ErrorCodes.VALIDATION,
+        400,
+        "phone",
+      );
+    }
+
+    const normalized = normalizePakistaniPhone(phone);
+    const normalizedLocal = toPakistaniLocalPhone(normalizePhoneDigits(phone));
+    const existing = await UserModel.findOne({
+      _id: { $ne: user._id },
+      $or: [
+        { phoneLookup: phoneLookupHash(normalized) },
+        { phoneLookup: phoneLookupHash(normalizedLocal) },
+      ],
+    });
+    if (existing) {
+      throw new AppError(
+        "This mobile number is already registered",
+        ErrorCodes.CONFLICT,
+        409,
+        "phone",
+      );
+    }
+
+    user.phone = normalized;
+    await user.save();
+  }
+
   static async initiateCheckout(
     patientId: string,
     input: ConsultCheckoutInput,
   ): Promise<CheckoutResult> {
     await OnlineConsultService.ensureConnected();
     await OnlineConsultService.expireStalePendingBookings();
+
+    await OnlineConsultService.ensurePatientPhone(patientId, input.phone);
 
     const validated = await OnlineConsultService.validateSlotForBooking(
       input.doctorId,

@@ -31,17 +31,16 @@ export const siteConfig = {
   },
   launchCity: LAUNCH_CITY,
   supportEmail: "info.zindagicare@gmail.com",
-  supportWhatsApp: "923074583567",
-  supportWhatsAppDisplay: "0307 458 3567",
+  supportWhatsApp: "923277661515",
+  supportWhatsAppDisplay: "0327 7661515",
   /** Direct call numbers shown after Sunday free-consult requests. */
   supportPhones: [
-    { display: "0307 458 3567", tel: "03074583567" },
-    { display: "0336 7000304", tel: "03367000304" },
+    { display: "0327 7661515", tel: "03277661515" },
   ] as const,
   /** JazzCash wallet for manual patient transfers (no payment gateway yet). */
   jazzCash: {
-    number: "03074583567",
-    numberDisplay: "0307 458 3567",
+    number: "03277661515",
+    numberDisplay: "0327 7661515",
     accountTitle: "Ibrahim Aslam",
   },
   url: (process.env.NEXT_PUBLIC_APP_URL ?? PRODUCTION_URL).trim(),

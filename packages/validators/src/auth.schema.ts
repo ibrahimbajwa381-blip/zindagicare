@@ -234,3 +234,12 @@ export const adminDoctorDecisionSchema = z.object({
   /** On approve: specialties to make patient-visible. Defaults to all claimed. */
   verifiedSpecialties: verifiedSpecialtiesSchema.optional(),
 });
+
+/** Mobile app: Google ID token obtained on-device (expo-auth-session), exchanged for our own tokens. */
+export const mobileGoogleSignInSchema = z.object({
+  idToken: z.string().min(1, "Missing Google ID token"),
+});
+
+export const mobileRefreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "Missing refresh token"),
+});

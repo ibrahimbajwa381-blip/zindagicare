@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pakistaniPhoneSchema } from "./auth.schema";
 
 export const paymentProviderSchema = z.enum(["jazzcash", "easypaisa"]);
 
@@ -8,6 +9,8 @@ export const consultCheckoutSchema = z.object({
   patientNotes: z.string().max(500).optional(),
   locale: z.enum(["en", "ur"]).optional(),
   paymentProvider: paymentProviderSchema.optional(),
+  /** Required when the account has no phone yet (e.g. Google signup). */
+  phone: pakistaniPhoneSchema.optional(),
 });
 
 export const jazzcashIpnSchema = z

@@ -24,6 +24,9 @@ type Props = {
   slotFormatted: boolean;
   patientNotes: string;
   onPatientNotesChange: (value: string) => void;
+  needsPhone: boolean;
+  phone: string;
+  onPhoneChange: (value: string) => void;
   loading: boolean;
   error: string | null;
   paymentProvider: PaymentProviderInput;
@@ -62,6 +65,9 @@ export function ConsultReviewPaymentModal({
   slotFormatted,
   patientNotes,
   onPatientNotesChange,
+  needsPhone,
+  phone,
+  onPhoneChange,
   loading,
   error,
   paymentProvider,
@@ -189,6 +195,24 @@ export function ConsultReviewPaymentModal({
               </fieldset>
             )}
 
+            {needsPhone && (
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium">Mobile number</span>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => onPhoneChange(e.target.value)}
+                  disabled={loading}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm disabled:opacity-60"
+                  placeholder="03XXXXXXXXX"
+                />
+                <span className="block text-xs text-slate-500">
+                  We need this to confirm your booking and send updates.
+                </span>
+              </label>
+            )}
+
             <label className="block space-y-1.5">
               <span className="text-sm font-medium">Symptoms or notes (optional)</span>
               <textarea
@@ -235,7 +259,7 @@ export function ConsultReviewPaymentModal({
             <Button
               variant="default"
               className="flex-1 bg-brand text-white hover:bg-brand-dark"
-              disabled={loading}
+              disabled={loading || (needsPhone && !phone.trim())}
               onClick={onPay}
             >
               {loading ? "Starting…" : `Pay Rs. ${consultationFee.toLocaleString()}`}

@@ -9,3 +9,6 @@ dist
 .DS_Store
 .vercel
 .uploads
+.expo
+.claude/settings.local.json
+.claude/worktrees/
