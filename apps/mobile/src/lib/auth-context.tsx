@@ -1,36 +1,76 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { GoogleSignin, isSuccessResponse } from "@react-native-google-signin/google-signin";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { API_URL } from "./config";
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from "./token-storage";
 import type { AuthUser } from "@/api/client";
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-});
+/**
+ * @react-native-google-signin/google-signin is a third-party native module —
+ * unlike expo-sharing/expo-location/etc. it's never bundled into the Expo Go
+ * client, so importing/calling it there throws "Cannot find native module".
+ * Guard it so the rest of the app (email/password auth included) still works
+ * when testing in plain Expo Go; only Google sign-in itself is unavailable.
+ */
+export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+type GoogleSigninModule = typeof import("@react-native-google-signin/google-signin");
+
+let GoogleSignin: GoogleSigninModule["GoogleSignin"] | null = null;
+let isSuccessResponse: GoogleSigninModule["isSuccessResponse"] | null = null;
+
+if (!isExpoGo) {
+  const googleSignInModule = require("@react-native-google-signin/google-signin") as GoogleSigninModule;
+  const { GoogleSignin: NativeGoogleSignin, isSuccessResponse: nativeIsSuccessResponse } = googleSignInModule;
+  NativeGoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+  });
+  GoogleSignin = NativeGoogleSignin;
+  isSuccessResponse = nativeIsSuccessResponse;
+}
+
+type RegisterInput = {
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+};
 
 type AuthState = {
   user: AuthUser | null;
   isLoading: boolean;
   isSigningIn: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithCredentials: (email: string, password: string) => Promise<void>;
+  registerWithCredentials: (input: RegisterInput) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-async function exchangeGoogleIdToken(idToken: string): Promise<AuthUser> {
-  const res = await fetch(`${API_URL}/api/v1/mobile/auth/google`, {
+async function postJson(path: string, body: unknown) {
+  const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify(body),
   });
   const json = await res.json();
   if (!json.success) {
-    throw new Error(json.error?.message ?? "Google sign-in failed");
+    throw new Error(json.error?.message ?? "Something went wrong");
   }
-  await setStoredTokens(json.data.accessToken, json.data.refreshToken);
-  return json.data.user as AuthUser;
+  return json.data;
+}
+
+async function exchangeGoogleIdToken(idToken: string): Promise<AuthUser> {
+  const data = await postJson("/api/v1/mobile/auth/google", { idToken });
+  await setStoredTokens(data.accessToken, data.refreshToken);
+  return data.user as AuthUser;
+}
+
+async function loginWithCredentials(email: string, password: string): Promise<AuthUser> {
+  const data = await postJson("/api/v1/mobile/auth/login", { email, password });
+  await setStoredTokens(data.accessToken, data.refreshToken);
+  return data.user as AuthUser;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -64,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isSigningIn,
       signInWithGoogle: async () => {
+        if (!GoogleSignin || !isSuccessResponse) {
+          console.warn("Google sign-in isn't available in Expo Go — use email/password, or run a dev client build.");
+          return;
+        }
         setIsSigningIn(true);
         try {
           await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -79,10 +123,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsSigningIn(false);
         }
       },
+      signInWithCredentials: async (email: string, password: string) => {
+        setIsSigningIn(true);
+        try {
+          const authedUser = await loginWithCredentials(email, password);
+          setUser(authedUser);
+        } finally {
+          setIsSigningIn(false);
+        }
+      },
+      registerWithCredentials: async (input: RegisterInput) => {
+        setIsSigningIn(true);
+        try {
+          await postJson("/api/v1/auth/register", { ...input, accountType: "patient" });
+          const authedUser = await loginWithCredentials(input.email, input.password);
+          setUser(authedUser);
+        } finally {
+          setIsSigningIn(false);
+        }
+      },
       signOut: async () => {
         await clearStoredTokens();
         try {
-          await GoogleSignin.signOut();
+          await GoogleSignin?.signOut();
         } catch {
           // Not signed in via GoogleSignin (e.g. session restored from stored tokens) — fine.
         }
