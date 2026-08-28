@@ -27,6 +27,51 @@ export function listConsultDoctors(params: { city?: string; specialty?: string }
   return apiFetch<ConsultDoctorRow[]>(`/api/v1/consult/doctors${qs ? `?${qs}` : ""}`);
 }
 
+export type ConsultDoctorHospital = {
+  name: string;
+  city: string;
+  address?: string;
+};
+
+export type ConsultDoctorProfile = {
+  doctorId: string;
+  slug: string;
+  name: string;
+  avatarUrl?: string;
+  specialties: string[];
+  bio?: string;
+  experienceYears: number;
+  languages: string[];
+  medicalDegree?: string;
+  qualifications: string[];
+  medicalCollege?: string;
+  graduationYear?: number;
+  hospitals: ConsultDoctorHospital[];
+  pmdcVerified: boolean;
+  consultationFee: number;
+  ratingAvg: number;
+  ratingCount: number;
+  availableSlots: number;
+  isFull: boolean;
+  videoConsultEnabled: boolean;
+};
+
+export type ConsultDoctorReview = {
+  id: string;
+  rating: number;
+  comment?: string;
+  patientName: string;
+  createdAt: string;
+};
+
+export function getConsultDoctor(doctorId: string) {
+  return apiFetch<{
+    doctor: ConsultDoctorProfile;
+    reviews: ConsultDoctorReview[];
+    reviewTotal: number;
+  }>(`/api/v1/consult/doctors/${doctorId}`);
+}
+
 /** Mirrors packages/shared/src/types/enums.ts's SlotStatuses. */
 export type ConsultSlot = {
   slotId: string;

@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
@@ -36,6 +37,12 @@ const VISIT_STATUS_LABEL: Record<string, string> = {
 };
 
 const ACTIVE_VISIT_STATUSES = new Set(["requested", "assigned", "en_route", "arrived"]);
+
+function greetingForHour(hour: number) {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -101,116 +108,144 @@ export default function HomeScreen() {
 
   const avatarUri = resolveMediaUrl(booking?.doctor.avatarUrl);
   const canJoin = booking?.status === "confirmed" || booking?.status === "in_progress";
+  const firstName = user?.name ? user.name.split(" ")[0] : "";
+  const greeting = greetingForHour(new Date().getHours());
+  const hasActivity = Boolean(booking) || Boolean(nextVisit);
 
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.brand.DEFAULT} />}
     >
-      <View>
-        <Text style={styles.greeting}>Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</Text>
-        <Text style={styles.hint}>Your consultations, home visits, and prescriptions — all in one place.</Text>
-      </View>
-
-      <View style={styles.quickActions}>
-        {QUICK_ACTIONS.map((action) => (
-          <Pressable
-            key={action.href}
-            style={({ pressed }) => [styles.quickAction, pressed && styles.cardPressed]}
-            onPress={() => router.push(action.href)}
-          >
-            <View style={styles.quickActionIcon}>
-              <Ionicons name={action.icon} size={22} color={colors.brand.DEFAULT} />
-            </View>
-            <Text style={styles.quickActionLabel}>{action.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Section title="Your consultation">
-        {booking ? (
-          <View style={styles.card}>
-            <View style={styles.doctorRow}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Text style={styles.avatarInitial}>{booking.doctor.name[0]}</Text>
-                </View>
-              )}
-              <View style={styles.cardBody}>
-                <Text style={styles.doctorName}>{booking.doctor.name}</Text>
-                <Text style={styles.meta}>{booking.doctor.specialty}</Text>
-                <Text style={styles.meta}>{formatKarachi(booking.scheduledStart)}</Text>
-              </View>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusText}>{ONLINE_STATUS_LABEL[booking.status] ?? booking.status}</Text>
-              </View>
-            </View>
-            {canJoin ? (
-              <Pressable style={styles.primaryButton} onPress={onJoin} disabled={isJoining}>
-                <Text style={styles.primaryButtonText}>{isJoining ? "Joining…" : "Join call"}</Text>
-              </Pressable>
-            ) : null}
+      <LinearGradient
+        colors={[colors.accent.DEFAULT, colors.brand.dark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <View style={styles.heroTopRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroEyebrow}>{greeting}</Text>
+            <Text style={styles.heroGreeting}>{firstName || "there"}</Text>
           </View>
-        ) : (
-          <EmptyCard
-            icon="videocam-outline"
-            title="No upcoming consultation"
-            hint="Find a doctor and book an online video consult."
-            actionLabel="Find a doctor"
-            onPress={() => router.push("/(tabs)/doctors")}
-            error={hasBookingError}
-          />
-        )}
-      </Section>
+          <View style={styles.heroAvatar}>
+            <Text style={styles.heroAvatarInitial}>{(firstName[0] ?? "Z").toUpperCase()}</Text>
+          </View>
+        </View>
+        <Text style={styles.heroHint}>
+          {hasActivity ? "Here's what's happening with your care today." : "Your consultations, home visits, and prescriptions — all in one place."}
+        </Text>
 
-      <Section title="Home visits">
-        {nextVisit ? (
-          <Pressable style={styles.card} onPress={() => router.push("/home-visit")}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.doctorName}>{nextVisit.serviceType.replace("_", " ")}</Text>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusText}>{VISIT_STATUS_LABEL[nextVisit.status] ?? nextVisit.status}</Text>
+        <View style={styles.quickActions}>
+          {QUICK_ACTIONS.map((action) => (
+            <Pressable
+              key={action.href}
+              style={({ pressed }) => [styles.quickAction, pressed && styles.cardPressed]}
+              onPress={() => router.push(action.href)}
+            >
+              <View style={styles.quickActionIcon}>
+                <Ionicons name={action.icon} size={20} color={colors.brand.foreground} />
               </View>
-            </View>
-            <Text style={styles.meta} numberOfLines={1}>{nextVisit.address.line}</Text>
-            <Text style={styles.meta}>{formatKarachi(nextVisit.scheduledAt)}</Text>
-          </Pressable>
-        ) : (
-          <EmptyCard
-            icon="home-outline"
-            title="No home visits scheduled"
-            hint="Doctor, nurse, or physiotherapy — right at your doorstep."
-            actionLabel="Request a visit"
-            onPress={() => router.push("/home-visit/request")}
-          />
-        )}
-      </Section>
+              <Text style={styles.quickActionLabel}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </LinearGradient>
 
-      {recentRx.length > 0 ? (
-        <Section title="Recent prescriptions" onSeeAll={() => router.push("/prescription")}>
-          <View style={{ gap: 10 }}>
-            {recentRx.map((rx) => (
-              <Pressable
-                key={rx.id}
-                style={styles.rxRow}
-                onPress={() => router.push({ pathname: "/prescription/[id]", params: { id: rx.id } })}
-              >
-                <View style={styles.rxIconWrap}>
-                  <Text style={styles.rxIcon}>Rx</Text>
-                </View>
+      <View style={styles.body}>
+        <Section title="Your consultation">
+          {booking ? (
+            <View style={styles.card}>
+              <View style={styles.doctorRow}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarInitial}>{booking.doctor.name[0]}</Text>
+                  </View>
+                )}
                 <View style={styles.cardBody}>
-                  <Text style={styles.doctorName}>{rx.doctorName}</Text>
-                  <Text style={styles.meta}>{formatKarachi(rx.issuedAt)}</Text>
+                  <Text style={styles.doctorName}>{booking.doctor.name}</Text>
+                  <Text style={styles.meta}>{booking.doctor.specialty}</Text>
+                  <Text style={styles.meta}>{formatKarachi(booking.scheduledStart)}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#ccc" />
-              </Pressable>
-            ))}
-          </View>
+                <View style={styles.statusPill}>
+                  <Text style={styles.statusText}>{ONLINE_STATUS_LABEL[booking.status] ?? booking.status}</Text>
+                </View>
+              </View>
+              {canJoin ? (
+                <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.cardPressed]} onPress={onJoin} disabled={isJoining}>
+                  <Ionicons name="videocam" size={16} color={colors.brand.foreground} />
+                  <Text style={styles.primaryButtonText}>{isJoining ? "Joining…" : "Join call"}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : (
+            <EmptyCard
+              icon="videocam-outline"
+              title="No upcoming consultation"
+              hint="Find a doctor and book an online video consult."
+              actionLabel="Find a doctor"
+              onPress={() => router.push("/(tabs)/doctors")}
+              error={hasBookingError}
+            />
+          )}
         </Section>
-      ) : null}
+
+        <Section title="Home visits">
+          {nextVisit ? (
+            <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} onPress={() => router.push("/home-visit")}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.doctorName}>{nextVisit.serviceType.replace("_", " ")}</Text>
+                <View style={styles.statusPill}>
+                  <Text style={styles.statusText}>{VISIT_STATUS_LABEL[nextVisit.status] ?? nextVisit.status}</Text>
+                </View>
+              </View>
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={14} color="#8A8F98" />
+                <Text style={styles.meta} numberOfLines={1}>{nextVisit.address.line}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Ionicons name="time-outline" size={14} color="#8A8F98" />
+                <Text style={styles.meta}>{formatKarachi(nextVisit.scheduledAt)}</Text>
+              </View>
+            </Pressable>
+          ) : (
+            <EmptyCard
+              icon="home-outline"
+              title="No home visits scheduled"
+              hint="Doctor, nurse, or physiotherapy — right at your doorstep."
+              actionLabel="Request a visit"
+              onPress={() => router.push("/home-visit/request")}
+            />
+          )}
+        </Section>
+
+        {recentRx.length > 0 ? (
+          <Section title="Recent prescriptions" onSeeAll={() => router.push("/prescription")}>
+            <View style={{ gap: 10 }}>
+              {recentRx.map((rx) => (
+                <Pressable
+                  key={rx.id}
+                  style={({ pressed }) => [styles.rxRow, pressed && styles.cardPressed]}
+                  onPress={() => router.push({ pathname: "/prescription/[id]", params: { id: rx.id } })}
+                >
+                  <View style={styles.rxIconWrap}>
+                    <Text style={styles.rxIcon}>Rx</Text>
+                  </View>
+                  <View style={styles.cardBody}>
+                    <Text style={styles.doctorName}>{rx.doctorName}</Text>
+                    <Text style={styles.meta}>{formatKarachi(rx.issuedAt)}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#ccc" />
+                </Pressable>
+              ))}
+            </View>
+          </Section>
+        ) : null}
+      </View>
     </ScrollView>
   );
 }
@@ -249,7 +284,7 @@ function EmptyCard({
   return (
     <View style={styles.card}>
       <View style={styles.emptyRow}>
-        <View style={styles.quickActionIcon}>
+        <View style={styles.quickActionIconLight}>
           <Ionicons name={icon} size={22} color={colors.brand.DEFAULT} />
         </View>
         <View style={styles.cardBody}>
@@ -257,8 +292,9 @@ function EmptyCard({
           <Text style={styles.meta}>{error ? "Pull down to try again." : hint}</Text>
         </View>
       </View>
-      <Pressable style={styles.secondaryButton} onPress={onPress}>
+      <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]} onPress={onPress}>
         <Text style={styles.secondaryButtonText}>{actionLabel}</Text>
+        <Ionicons name="arrow-forward" size={14} color={colors.brand.DEFAULT} />
       </Pressable>
     </View>
   );
@@ -266,21 +302,52 @@ function EmptyCard({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.neutral.muted },
-  content: { padding: 20, gap: 24, paddingBottom: 40 },
-  greeting: { fontSize: 22, fontFamily: fonts.bold, color: colors.neutral.foreground },
-  hint: { color: "#666", fontFamily: fonts.regular, marginTop: 2 },
+  content: { paddingBottom: 40 },
+  hero: {
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    gap: 16,
+  },
+  heroTopRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  heroEyebrow: { fontFamily: fonts.medium, fontSize: 13, color: "rgba(255,255,255,0.75)" },
+  heroGreeting: { fontFamily: fonts.bold, fontSize: 24, color: "#fff", marginTop: 2 },
+  heroHint: { fontFamily: fonts.regular, fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 19 },
+  heroAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroAvatarInitial: { fontFamily: fonts.bold, fontSize: 16, color: "#fff" },
+  body: { padding: 20, gap: 24, marginTop: -8 },
   quickActions: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
   quickAction: {
     flex: 1,
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
     borderRadius: 14,
     paddingVertical: 12,
-    ...cardShadow,
   },
   cardPressed: { opacity: 0.85 },
   quickActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionIconLight: {
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -291,7 +358,7 @@ const styles = StyleSheet.create({
   quickActionLabel: {
     fontFamily: fonts.medium,
     fontSize: 11,
-    color: colors.neutral.foreground,
+    color: "#fff",
     textAlign: "center",
   },
   section: { gap: 10 },
@@ -300,7 +367,7 @@ const styles = StyleSheet.create({
   seeAll: { fontFamily: fonts.medium, fontSize: 13, color: colors.brand.DEFAULT },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     gap: 12,
     ...cardShadow,
@@ -313,13 +380,30 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, gap: 2 },
   doctorName: { fontFamily: fonts.semibold, fontSize: 15, color: colors.neutral.foreground, textTransform: "capitalize" },
   meta: { fontFamily: fonts.regular, fontSize: 13, color: "#666" },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   statusPill: { backgroundColor: colors.brand.muted, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   statusText: { fontFamily: fonts.semibold, fontSize: 11, color: colors.brand.mutedForeground },
-  primaryButton: { backgroundColor: colors.brand.DEFAULT, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
+  primaryButton: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: colors.brand.DEFAULT,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   primaryButtonText: { color: colors.brand.foreground, fontFamily: fonts.semibold, fontSize: 14 },
   emptyRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  secondaryButton: { backgroundColor: colors.neutral.muted, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  secondaryButtonText: { color: colors.neutral.foreground, fontFamily: fonts.medium, fontSize: 13 },
+  secondaryButton: {
+    flexDirection: "row",
+    gap: 6,
+    backgroundColor: colors.brand.muted,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryButtonText: { color: colors.brand.mutedForeground, fontFamily: fonts.semibold, fontSize: 13 },
   rxRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 14, padding: 12, ...cardShadow },
   rxIconWrap: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.brand.muted, alignItems: "center", justifyContent: "center" },
   rxIcon: { fontFamily: fonts.bold, fontSize: 13, color: colors.brand.mutedForeground },

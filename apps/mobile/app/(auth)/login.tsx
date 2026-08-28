@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect, Link } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isExpoGo, useAuth } from "@/lib/auth-context";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts } from "@/lib/theme";
@@ -9,12 +10,13 @@ const logo = require("../../assets/logo.png");
 
 export default function LoginScreen() {
   const { user, isSigningIn, signInWithGoogle, signInWithCredentials } = useAuth();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   if (user) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href={user.activeWorkspace === "doctor" ? "/(doctor)" : "/(tabs)"} />;
   }
 
   const onSignIn = async () => {
@@ -27,7 +29,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}
+      keyboardShouldPersistTaps="handled"
+    >
       <Image source={logo} resizeMode="contain" style={styles.logo} />
       <Text style={styles.subtitle}>Sign in to book care and get suggestions tailored to you.</Text>
 
@@ -67,7 +72,18 @@ export default function LoginScreen() {
           Google sign-in needs a dev client build — use email/password to test in Expo Go.
         </Text>
       ) : (
-        <Pressable style={styles.googleButton} onPress={signInWithGoogle} disabled={isSigningIn}>
+        <Pressable
+          style={styles.googleButton}
+          onPress={async () => {
+            setError(null);
+            try {
+              await signInWithGoogle();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Couldn't sign in with Google. Please try again.");
+            }
+          }}
+          disabled={isSigningIn}
+        >
           {isSigningIn ? (
             <Spinner size="sm" color={colors.brand.DEFAULT} />
           ) : (

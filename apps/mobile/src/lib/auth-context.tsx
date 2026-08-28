@@ -33,7 +33,11 @@ type RegisterInput = {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
   phone: string;
+  city: string;
+  dateOfBirth: string;
+  accountType: string;
 };
 
 type AuthState = {
@@ -105,8 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSigningIn,
       signInWithGoogle: async () => {
         if (!GoogleSignin || !isSuccessResponse) {
-          console.warn("Google sign-in isn't available in Expo Go — use email/password, or run a dev client build.");
-          return;
+          throw new Error("Google sign-in isn't available in Expo Go — use email/password, or run a dev client build.");
         }
         setIsSigningIn(true);
         try {
@@ -117,8 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           const authedUser = await exchangeGoogleIdToken(response.data.idToken);
           setUser(authedUser);
-        } catch (err) {
-          console.warn("Google sign-in failed", err);
         } finally {
           setIsSigningIn(false);
         }
@@ -135,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerWithCredentials: async (input: RegisterInput) => {
         setIsSigningIn(true);
         try {
-          await postJson("/api/v1/auth/register", { ...input, accountType: "patient" });
+          await postJson("/api/v1/auth/register", input);
           const authedUser = await loginWithCredentials(input.email, input.password);
           setUser(authedUser);
         } finally {

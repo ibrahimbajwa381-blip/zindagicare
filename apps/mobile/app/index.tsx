@@ -9,5 +9,6 @@ export default function RootIndex() {
     return <BrandLoadingScreen />;
   }
 
-  return <Redirect href={user ? "/(tabs)" : "/(auth)/login"} />;
+  if (!user) return <Redirect href="/(auth)/login" />;
+  return <Redirect href={user.activeWorkspace === "doctor" ? "/(doctor)" : "/(tabs)"} />;
 }

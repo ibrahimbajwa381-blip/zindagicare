@@ -1,10 +1,16 @@
 import { Tabs, Redirect, useRouter } from "expo-router";
-import { Pressable } from "react-native";
+import { Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import { colors, fonts } from "@/lib/theme";
 
+const logo = require("../../assets/logo.png");
+
 type IconName = keyof typeof Ionicons.glyphMap;
+
+function HeaderLogo() {
+  return <Image source={logo} resizeMode="contain" style={styles.headerLogo} />;
+}
 
 function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   return (
@@ -28,6 +34,10 @@ export default function TabsLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
+  if (user?.activeWorkspace === "doctor") {
+    return <Redirect href="/(doctor)" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -43,6 +53,9 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Home",
+          headerTitle: () => <HeaderLogo />,
+          headerTitleAlign: "left",
+          headerTitleContainerStyle: { marginLeft: 4 },
           tabBarIcon: ({ focused }) => <TabIcon name={focused ? "home" : "home-outline"} focused={focused} />,
           headerRight: () => <NotificationsButton />,
         }}
@@ -77,3 +90,7 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerLogo: { width: 176, height: 40 },
+});
