@@ -298,7 +298,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
       populate: { path: "userId", select: "name" },
     })
     .populate("paymentId", "amount status")
-    .sort({ scheduledStart: 1 })
+    .sort({ scheduledStart: -1 })
     .limit(200)
     .lean();
 

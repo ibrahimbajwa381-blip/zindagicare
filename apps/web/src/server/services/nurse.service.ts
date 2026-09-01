@@ -383,7 +383,7 @@ export async function listNursesForAdmin(status?: string): Promise<AdminNurseRow
 
   const profiles = await StaffProfileModel.find(filter)
     .populate("userId", "name email phone metadata")
-    .sort({ verificationSubmittedAt: 1, createdAt: 1 })
+    .sort({ verificationSubmittedAt: -1, createdAt: -1 })
     .lean();
 
   return profiles

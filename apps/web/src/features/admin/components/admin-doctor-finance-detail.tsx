@@ -25,6 +25,8 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
   const [data, setData] = useState<FinanceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [referralPendingId, setReferralPendingId] = useState<string | null>(null);
+  const [referralError, setReferralError] = useState<string | null>(null);
 
   const [method, setMethod] = useState("bank_transfer");
   const [note, setNote] = useState("");
@@ -80,6 +82,33 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
     setFile(null);
     setNote("");
     await load();
+  };
+
+  const toggleReferral = async (appointmentId: string, patientName: string, currentlyReferred: boolean) => {
+    const nextIsReferral = !currentlyReferred;
+    const warning = nextIsReferral
+      ? `Mark ${patientName} as referred by ${doctor.name}? This applies the referral commission bonus (+15%) to ALL of this patient's appointments with this doctor, not just this one.`
+      : `Remove the referral link between ${patientName} and ${doctor.name}? This affects ALL of their appointments, not just this one.`;
+    if (!window.confirm(warning)) return;
+
+    setReferralPendingId(appointmentId);
+    setReferralError(null);
+    try {
+      const res = await fetch(`/api/v1/admin/appointments/${appointmentId}/referral`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isReferral: nextIsReferral }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message ?? "Failed to update referral status");
+      }
+      await load();
+    } catch (err) {
+      setReferralError(err instanceof Error ? err.message : "Failed to update referral status");
+    } finally {
+      setReferralPendingId(null);
+    }
   };
 
   if (loading || !data) {
@@ -291,6 +320,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
             <p className="text-sm text-slate-500">No appointments yet.</p>
           ) : (
             <div className="overflow-x-auto">
+              {referralError && <p className="mb-2 text-sm text-red-600">{referralError}</p>}
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
@@ -302,6 +332,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
                     <th className="px-3 py-2 font-medium">Doctor joined</th>
                     <th className="px-3 py-2 font-medium">Earning</th>
                     <th className="px-3 py-2 font-medium">Reason</th>
+                    <th className="px-3 py-2 font-medium">Referral</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -355,6 +386,20 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
                         )}
                       </td>
                       <td className="max-w-xs px-3 py-3 text-xs text-slate-500">{a.reason}</td>
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleReferral(a.id, a.patientName, a.isReferred)}
+                          disabled={referralPendingId === a.id}
+                          className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          {referralPendingId === a.id
+                            ? "Saving…"
+                            : a.isReferred
+                              ? "Remove referral"
+                              : "Mark as referral"}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
