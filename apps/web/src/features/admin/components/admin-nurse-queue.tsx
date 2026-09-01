@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,8 +45,10 @@ export function AdminNurseQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
+    if (!hasLoadedRef.current) setLoading(true);
     const qs = filter ? `?status=${filter}` : "";
     fetch(`/api/v1/admin/nurses${qs}`)
       .then((res) => res.json())
@@ -58,11 +60,13 @@ export function AdminNurseQueue() {
         } else {
           setError(json?.error?.message ?? "Failed to load nurses");
         }
+        hasLoadedRef.current = true;
         setLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
         setError("Failed to load nurses");
+        hasLoadedRef.current = true;
         setLoading(false);
       });
     return () => {
@@ -77,10 +81,7 @@ export function AdminNurseQueue() {
           <button
             key={f.value}
             type="button"
-            onClick={() => {
-              setLoading(true);
-              setFilter(f.value);
-            }}
+            onClick={() => setFilter(f.value)}
             className={cn(
               "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
               filter === f.value

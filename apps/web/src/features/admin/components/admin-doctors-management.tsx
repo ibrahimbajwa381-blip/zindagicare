@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import {
   ChevronDown,
   Eye,
@@ -83,12 +83,14 @@ export function AdminDoctorsManagement() {
     sundayConsultEnabled: false,
   });
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const q = search ? `?search=${encodeURIComponent(search)}` : "";
     const res = await fetch(`/api/v1/admin/doctors/manage${q}`);
     const json = await res.json();
     if (json.success) setDoctors(json.data?.doctors ?? []);
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [search]);
 

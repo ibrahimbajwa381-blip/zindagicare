@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,8 +77,9 @@ export function AdminSundayControl() {
   const [maxSlots, setMaxSlots] = useState(10);
   const [duration, setDuration] = useState(10);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const [overviewRes, requestsRes] = await Promise.all([
       fetch("/api/v1/admin/sunday"),
       fetch("/api/v1/admin/sunday/requests"),
@@ -94,6 +95,7 @@ export function AdminSundayControl() {
       setRequests(requestsJson.data?.requests ?? []);
       setTeamDoctors(requestsJson.data?.doctors ?? []);
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   }, []);
 

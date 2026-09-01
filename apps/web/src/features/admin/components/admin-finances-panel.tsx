@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Banknote, Percent, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,9 @@ export function AdminFinancesPanel() {
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError(undefined);
     const res = await fetch("/api/v1/admin/finances");
     const json = await res.json();
@@ -39,6 +40,7 @@ export function AdminFinancesPanel() {
     } else {
       setError(json?.error?.message ?? "Could not load finances settings");
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   }, []);
 

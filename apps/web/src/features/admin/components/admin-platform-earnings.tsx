@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Banknote, TrendingUp, Wallet, Stethoscope } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +20,9 @@ export function AdminPlatformEarnings() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError(undefined);
     const res = await fetch("/api/v1/admin/platform-earnings");
     const json = await res.json();
@@ -30,6 +31,7 @@ export function AdminPlatformEarnings() {
     } else {
       setError(json?.error?.message ?? "Could not load platform earnings");
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   }, []);
 

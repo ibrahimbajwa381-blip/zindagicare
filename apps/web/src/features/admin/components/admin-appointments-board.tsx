@@ -166,13 +166,15 @@ export function AdminAppointmentsBoard() {
   const [formMode, setFormMode] = useState<"new" | "reschedule">("new");
   const [cardState, setCardState] = useState<CardState | null>(null);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const params = new URLSearchParams();
     if (typeFilter) params.set("type", typeFilter);
     const res = await fetch(`/api/v1/admin/appointments?${params}`);
     const json = await res.json();
     if (json.success) setAppointments(json.data?.appointments ?? []);
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [typeFilter]);
 

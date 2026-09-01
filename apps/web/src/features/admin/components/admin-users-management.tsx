@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Shield, ShieldOff, UserPlus } from "lucide-react";
 import { Roles, type Role } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
@@ -51,12 +51,14 @@ export function AdminUsersManagement() {
   const [error, setError] = useState<string>();
   const [success, setSuccess] = useState<string>();
 
+  const hasLoadedRef = useRef(false);
   const loadAdmins = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError(undefined);
     const q = search ? `?search=${encodeURIComponent(search)}` : "";
     const res = await fetch(`/api/v1/admin/admins${q}`);
     const json = await res.json();
+    hasLoadedRef.current = true;
     setLoading(false);
     if (!json.success) {
       setError(json?.error?.message ?? "Failed to load admins");

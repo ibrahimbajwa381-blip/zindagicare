@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Banknote, CheckCircle2, Landmark, ListChecks, Receipt, Upload, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,8 +37,9 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
   const [payError, setPayError] = useState<string>();
   const [paySuccess, setPaySuccess] = useState(false);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError(undefined);
     const res = await fetch(`/api/v1/admin/doctors/${doctorProfileId}/finance`);
     const json = await res.json();
@@ -47,6 +48,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
     } else {
       setError(json?.error?.message ?? "Could not load finance details");
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [doctorProfileId]);
 
