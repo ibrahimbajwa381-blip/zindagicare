@@ -7,6 +7,7 @@ import { siteConfig } from "@/config/site";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageTitle } from "@/components/layout/page-title";
 import { Button } from "@/components/ui/button";
+import { Undo2 } from "lucide-react";
 import { PatientDashboardMessagesSection } from "@/features/patient/components/patient-dashboard-messages-section";
 import { PatientSundayBookingSection } from "@/features/sunday-consult/components/patient-sunday-booking-section";
 import { PatientVisitsSection } from "@/features/home-care/components/patient-visits-section";
@@ -38,7 +39,7 @@ export default async function PatientDashboardPage() {
     redirect("/login");
   }
 
-  if (!canUsePatientWorkspace(session.user.roles, session.user.activeWorkspace)) {
+  if (!canUsePatientWorkspace(session.user.roles)) {
     redirect(resolvePostAuthPath(session.user));
   }
 
@@ -65,6 +66,26 @@ export default async function PatientDashboardPage() {
         title={t.dashboard.pageTitle}
         description={formatMessage(t.dashboard.welcomeMessage, { name: displayName })}
       />
+
+      <Link
+        href={siteConfig.links.refundRequest}
+        className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-red-100 bg-red-50/60 px-5 py-4 transition-colors hover:bg-red-50"
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <Undo2 className="h-5 w-5" aria-hidden />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Need a refund?</p>
+            <p className="text-xs text-slate-600">
+              Cancel an appointment and get your money back — full refund, sent manually to your account.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-100">
+          Request refund
+        </Button>
+      </Link>
 
       <section className="mt-8 min-w-0 space-y-8">
         <div>

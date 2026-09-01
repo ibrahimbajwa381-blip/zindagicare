@@ -3,8 +3,10 @@ import {
   connectDatabase,
 } from "@zindagi/database";
 import {
+  AppError,
   AppointmentStatuses,
   AppointmentTypes,
+  CancellationRequestStatuses,
   VIDEO_CONSULT_CONFIG,
   getVideoJoinWindow,
 } from "@zindagi/shared";
@@ -33,6 +35,9 @@ export type PatientAppointmentHistoryItem = {
   isMissed: boolean;
   canJoin: boolean;
   canReview: boolean;
+  /** Can the patient request to cancel + be refunded for this booking right now. */
+  canRequestCancellation: boolean;
+  cancellationRequestStatus: string;
   review?: {
     rating: number;
     comment?: string;
@@ -230,6 +235,14 @@ export class PatientAppointmentsService {
         isMissed,
         canJoin,
         canReview,
+        canRequestCancellation:
+          appointment.cancellationRequestStatus !== CancellationRequestStatuses.PENDING &&
+          appointment.cancellationRequestStatus !== CancellationRequestStatuses.APPROVED &&
+          (appointment.status === AppointmentStatuses.PENDING ||
+            appointment.status === AppointmentStatuses.CONFIRMED) &&
+          !isMissed,
+        cancellationRequestStatus:
+          appointment.cancellationRequestStatus ?? CancellationRequestStatuses.NONE,
         review: existingReview
           ? {
               rating: existingReview.rating,
@@ -242,5 +255,55 @@ export class PatientAppointmentsService {
     }
 
     return items;
+  }
+
+  /** Patient requests to cancel a booked appointment and be refunded; admin reviews it. */
+  static async requestCancellation(
+    appointmentId: string,
+    patientId: string,
+    input: {
+      reason: string;
+      refundMethod: string;
+      refundAccountTitle: string;
+      refundAccountNumber: string;
+      refundBankName?: string;
+    },
+  ) {
+    await PatientAppointmentsService.ensureConnected();
+
+    const appointment = await AppointmentModel.findById(appointmentId);
+    if (!appointment || appointment.deletedAt || appointment.patientId.toString() !== patientId) {
+      throw new AppError("Appointment not found", "NOT_FOUND", 404);
+    }
+
+    if (
+      appointment.status !== AppointmentStatuses.PENDING &&
+      appointment.status !== AppointmentStatuses.CONFIRMED
+    ) {
+      throw new AppError(
+        "This appointment can no longer be cancelled",
+        "CONFLICT",
+        409,
+      );
+    }
+
+    if (appointment.cancellationRequestStatus === CancellationRequestStatuses.PENDING) {
+      throw new AppError("A cancellation request is already pending", "CONFLICT", 409);
+    }
+
+    appointment.cancellationRequestStatus = CancellationRequestStatuses.PENDING;
+    appointment.cancellationRequestedAt = new Date();
+    appointment.set("cancellationRequestedBy", patientId);
+    appointment.cancellationRequestReason = input.reason;
+    appointment.set("refundMethod", input.refundMethod);
+    appointment.refundAccountTitle = input.refundAccountTitle;
+    appointment.refundAccountNumber = input.refundAccountNumber;
+    appointment.refundBankName = input.refundBankName;
+    await appointment.save();
+
+    return {
+      id: appointment._id.toString(),
+      cancellationRequestStatus: appointment.cancellationRequestStatus,
+    };
   }
 }

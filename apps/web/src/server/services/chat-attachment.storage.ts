@@ -7,35 +7,42 @@ import {
 } from "@/server/lib/object-storage";
 
 const NAMESPACE: StorageNamespace = "chat-attachments";
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024;
 const ALLOWED_MIME_EXT: Record<string, string> = {
   "audio/webm": "webm",
   "audio/ogg": "ogg",
   "audio/mp4": "m4a",
   "audio/mpeg": "mp3",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
-export type StoredVoiceNote = {
+export type StoredChatAttachment = {
   storageKey: string;
   url: string;
   mimeType: string;
 };
 
-export async function saveChatVoiceNote(
+export async function saveChatAttachment(
   threadId: string,
   buffer: Buffer,
   mimeType: string,
-): Promise<StoredVoiceNote> {
+): Promise<StoredChatAttachment> {
   if (buffer.length === 0) {
-    throw new Error("Voice note is empty");
+    throw new Error("Attachment is empty");
   }
   if (buffer.length > MAX_BYTES) {
-    throw new Error("Voice note must be 10 MB or smaller");
+    throw new Error("Attachment must be 20 MB or smaller");
   }
 
   const ext = ALLOWED_MIME_EXT[mimeType];
   if (!ext) {
-    throw new Error("Unsupported voice note format");
+    throw new Error("Unsupported attachment format");
   }
 
   const storageKey = `${threadId}/${randomUUID()}.${ext}`;
@@ -49,6 +56,6 @@ export async function saveChatVoiceNote(
   };
 }
 
-export async function readChatVoiceNote(storageKey: string): Promise<Buffer> {
+export async function readChatAttachment(storageKey: string): Promise<Buffer> {
   return getObject(NAMESPACE, storageKey);
 }

@@ -13,7 +13,14 @@ export type AppointmentDetail = {
   scheduledEnd?: string;
   isOnline?: boolean;
   patient: { name: string; phone?: string; email?: string };
-  doctor: { id: string; name: string; specialty?: string; phone?: string; email?: string };
+  doctor: {
+    id: string;
+    name: string;
+    specialty?: string;
+    phone?: string;
+    email?: string;
+    avatarUrl?: string;
+  };
   patientNotes?: string;
   clinic?: { hospitalName?: string; address?: string; city?: string };
   amountPkr?: number;
@@ -29,6 +36,21 @@ export type AppointmentDetail = {
   cancellationReason?: string;
   isReferred?: boolean;
   createdAt?: string;
+  cancellationRequestStatus?: string;
+  cancellationRequestReason?: string;
+  cancellationRequestedAt?: string;
+  refundMethod?: string;
+  refundAccountTitle?: string;
+  refundAccountNumber?: string;
+  refundBankName?: string;
+  patientJoinedAt?: string;
+  doctorJoinedAt?: string;
+};
+
+const REFUND_METHOD_LABEL: Record<string, string> = {
+  bank: "Bank transfer",
+  jazzcash: "JazzCash",
+  easypaisa: "Easypaisa",
 };
 
 function Row({ label, value }: { label: string; value?: string | number | null }) {
@@ -44,12 +66,16 @@ function Row({ label, value }: { label: string; value?: string | number | null }
 export function AdminAppointmentDetailModal({
   appointment,
   onClose,
+  onReferralChange,
 }: {
   appointment: AppointmentDetail | null;
   onClose: () => void;
+  onReferralChange?: (appointmentId: string, isReferred: boolean) => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [receiptFailed, setReceiptFailed] = useState(false);
+  const [referralPending, setReferralPending] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -58,6 +84,7 @@ export function AdminAppointmentDetailModal({
       if (!dialog.open) dialog.showModal();
       document.body.style.overflow = "hidden";
       setReceiptFailed(false);
+      setReferralError(null);
     } else {
       if (dialog.open) dialog.close();
       document.body.style.overflow = "";
@@ -74,6 +101,33 @@ export function AdminAppointmentDetailModal({
   }
 
   const a = appointment;
+
+  const toggleReferral = async () => {
+    const nextIsReferral = !a.isReferred;
+    const warning = nextIsReferral
+      ? `Mark ${a.patient.name} as referred by ${a.doctor.name}? This applies the referral commission bonus to ALL of this patient's appointments with this doctor, not just this one.`
+      : `Remove the referral link between ${a.patient.name} and ${a.doctor.name}? This affects ALL of their appointments, not just this one.`;
+    if (!window.confirm(warning)) return;
+
+    setReferralPending(true);
+    setReferralError(null);
+    try {
+      const res = await fetch(`/api/v1/admin/appointments/${a.id}/referral`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isReferral: nextIsReferral }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message ?? "Failed to update referral status");
+      }
+      onReferralChange?.(a.id, Boolean(json.data?.isReferred));
+    } catch (err) {
+      setReferralError(err instanceof Error ? err.message : "Failed to update referral status");
+    } finally {
+      setReferralPending(false);
+    }
+  };
 
   return (
     <dialog
@@ -133,7 +187,7 @@ export function AdminAppointmentDetailModal({
                 <Row label="Patient" value={a.patient.name} />
                 <Row label="Patient phone" value={a.patient.phone} />
                 <Row label="Patient email" value={a.patient.email} />
-                <Row label="Referral" value={a.isReferred ? "Yes — referred by this doctor" : undefined} />
+                <Row label="Referral" value={a.isReferred ? "Yes — referred by this doctor" : "No"} />
                 {a.clinic && (
                   <Row
                     label="Clinic"
@@ -146,8 +200,54 @@ export function AdminAppointmentDetailModal({
                 {a.status === "cancelled" && (
                   <Row label="Cancellation reason" value={a.cancellationReason} />
                 )}
+                {a.cancellationRequestStatus && a.cancellationRequestStatus !== "none" && (
+                  <>
+                    <Row label="Cancellation request" value={a.cancellationRequestStatus} />
+                    <Row label="Request reason" value={a.cancellationRequestReason} />
+                    <Row
+                      label="Requested at"
+                      value={
+                        a.cancellationRequestedAt
+                          ? formatKarachiDateTime(a.cancellationRequestedAt)
+                          : undefined
+                      }
+                    />
+                  </>
+                )}
+              </div>
+              <div className="mt-2 space-y-1.5">
+                <button
+                  type="button"
+                  onClick={toggleReferral}
+                  disabled={referralPending}
+                  className="rounded-lg border border-brand/30 bg-brand/5 px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:bg-brand/10 disabled:opacity-60"
+                >
+                  {referralPending
+                    ? "Updating…"
+                    : a.isReferred
+                      ? "Remove referral"
+                      : "Mark as referral"}
+                </button>
+                {referralError && <p className="text-sm text-red-500">{referralError}</p>}
               </div>
             </section>
+
+            {a.refundMethod && (
+              <section>
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Refund payout details
+                </h3>
+                <div className="divide-y divide-slate-100 rounded-xl border border-amber-100 bg-amber-50/40 px-3">
+                  <Row label="Method" value={REFUND_METHOD_LABEL[a.refundMethod] ?? a.refundMethod} />
+                  <Row label="Account title" value={a.refundAccountTitle} />
+                  <Row
+                    label={a.refundMethod === "bank" ? "Account / IBAN" : "Mobile number"}
+                    value={a.refundAccountNumber}
+                  />
+                  {a.refundMethod === "bank" && <Row label="Bank name" value={a.refundBankName} />}
+                </div>
+              </section>
+            )}
 
             <section>
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">

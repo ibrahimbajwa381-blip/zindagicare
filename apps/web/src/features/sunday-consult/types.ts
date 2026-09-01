@@ -98,4 +98,10 @@ export type SundayAdminRequestDto = {
   scheduledStart?: string;
   scheduledEnd?: string;
   doctor?: Pick<SundayDoctorSummary, "doctorId" | "name" | "specialty" | "pmdcVerified">;
+  patientJoinedAt?: string;
+  doctorJoinedAt?: string;
+  review?: {
+    rating: number;
+    comment?: string;
+  };
 };

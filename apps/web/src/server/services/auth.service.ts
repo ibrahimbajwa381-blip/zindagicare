@@ -12,12 +12,11 @@ import {
   Roles,
   VerificationStatuses,
   LAHORE_GEO,
-  resolveDefaultWorkspace,
   type Role,
   emailLookupHash,
   phoneLookupHash,
 } from "@zindagi/shared";
-import type { AccountType, StaffAccountType } from "@zindagi/validators";
+import type { AccountType } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { syncAdminRoleFromAllowlist } from "@/lib/auth/admin-allowlist";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
@@ -41,62 +40,6 @@ async function ensurePatientProfile(
     },
     { upsert: true },
   );
-}
-
-/** Doctors/nurses/physios can also use the patient dashboard on the same account. */
-async function ensureClinicalStaffPatientAccess(
-  userId: string,
-  roles: Role[],
-  opts: { phone?: string | null; onboardingCompleted?: boolean },
-): Promise<{ roles: Role[]; onboardingCompleted: boolean }> {
-  const isClinical =
-    roles.includes(Roles.DOCTOR) ||
-    roles.includes(Roles.NURSE) ||
-    roles.includes(Roles.PHYSIOTHERAPIST) ||
-    roles.includes(Roles.HERBALIST) ||
-    roles.includes(Roles.NUTRITIONIST);
-
-  if (!isClinical) {
-    return {
-      roles,
-      onboardingCompleted: opts.onboardingCompleted ?? false,
-    };
-  }
-
-  const needsPatientRole = !roles.includes(Roles.PATIENT);
-  const canCompleteOnboarding =
-    !(opts.onboardingCompleted ?? false) && Boolean(opts.phone);
-
-  if (!needsPatientRole && !canCompleteOnboarding) {
-    await ensurePatientProfile({ toString: () => userId });
-    return {
-      roles,
-      onboardingCompleted: opts.onboardingCompleted ?? false,
-    };
-  }
-
-  const user = await UserModel.findById(userId);
-  if (!user) {
-    return {
-      roles,
-      onboardingCompleted: opts.onboardingCompleted ?? false,
-    };
-  }
-
-  if (!user.roles.includes(Roles.PATIENT)) {
-    user.roles.push(Roles.PATIENT);
-  }
-  // Staff already collected phone at signup — don't force patient onboarding.
-  if (!user.onboardingCompleted && user.phone) {
-    user.onboardingCompleted = true;
-  }
-  await user.save();
-  await ensurePatientProfile(user._id);
-
-  return {
-    roles: user.roles as Role[],
-    onboardingCompleted: user.onboardingCompleted ?? false,
-  };
 }
 
 async function ensureDoctorProfile(userId: { toString(): string }, city: string) {
@@ -299,12 +242,11 @@ export async function registerWithCredentials(
 
   const roleByAccountType: Record<AccountType, Role[]> = {
     patient: [Roles.PATIENT],
-    // Clinical staff can also book care as patients on the same account.
-    doctor: [Roles.PATIENT, Roles.DOCTOR],
-    nurse: [Roles.PATIENT, Roles.NURSE],
-    physiotherapist: [Roles.PATIENT, Roles.PHYSIOTHERAPIST],
-    herbalist: [Roles.PATIENT, Roles.HERBALIST],
-    nutritionist: [Roles.PATIENT, Roles.NUTRITIONIST],
+    doctor: [Roles.DOCTOR],
+    nurse: [Roles.NURSE],
+    physiotherapist: [Roles.PHYSIOTHERAPIST],
+    herbalist: [Roles.HERBALIST],
+    nutritionist: [Roles.NUTRITIONIST],
     lab: [Roles.PATIENT, Roles.LAB],
     other: [Roles.PATIENT, Roles.OTHER],
   };
@@ -329,19 +271,14 @@ export async function registerWithCredentials(
     if (accountType === "patient") {
       await ensurePatientProfile(user._id, referredByDoctorId);
     } else if (accountType === "doctor") {
-      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureDoctorProfile(user._id, city);
     } else if (accountType === "nurse") {
-      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureNurseProfile(user._id, city);
     } else if (accountType === "physiotherapist") {
-      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensurePhysiotherapistProfile(user._id, city);
     } else if (accountType === "herbalist") {
-      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureHerbalistProfile(user._id, city);
     } else if (accountType === "nutritionist") {
-      await ensurePatientProfile(user._id, referredByDoctorId);
       await ensureNutritionistProfile(user._id, city);
     } else {
       // lab / other: no dedicated clinical profile yet — patient dashboard only.
@@ -353,55 +290,6 @@ export async function registerWithCredentials(
   }
 
   return user;
-}
-
-const STAFF_ROLE_BY_ACCOUNT_TYPE: Record<StaffAccountType, Role> = {
-  doctor: Roles.DOCTOR,
-  nurse: Roles.NURSE,
-  physiotherapist: Roles.PHYSIOTHERAPIST,
-  herbalist: Roles.HERBALIST,
-  nutritionist: Roles.NUTRITIONIST,
-};
-
-/** Add a staff role to an existing user (keeps patient and other roles). */
-export async function addStaffRoleToUser(
-  userId: string,
-  accountType: StaffAccountType,
-  city: string,
-) {
-  await connectDatabase();
-  const user = await UserModel.findById(userId);
-  if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
-
-  const role = STAFF_ROLE_BY_ACCOUNT_TYPE[accountType];
-  if (user.roles.includes(role)) {
-    throw new AppError("You already have this profile", "CONFLICT", 409);
-  }
-
-  const cityValue = city.trim() || user.metadata?.city || "Lahore";
-  user.roles.push(role);
-  user.metadata = {
-    ...user.metadata,
-    city: user.metadata?.city ?? cityValue,
-    locale: user.metadata?.locale ?? "en",
-  };
-  await user.save();
-
-  try {
-    if (accountType === "doctor") {
-      await ensureDoctorProfile(user._id, cityValue);
-    } else if (accountType === "nurse") {
-      await ensureNurseProfile(user._id, cityValue);
-    } else {
-      await ensurePhysiotherapistProfile(user._id, cityValue);
-    }
-  } catch (error) {
-    user.roles = user.roles.filter((r) => r !== role);
-    await user.save();
-    throw error;
-  }
-
-  return loadAuthUserPayload(userId);
 }
 
 export async function findOrCreatePhoneUser(
@@ -482,13 +370,7 @@ export async function loadAuthUserPayload(userId: string) {
   const id = user._id.toString();
   let roles = (user.roles ?? [Roles.PATIENT]) as Role[];
   roles = await syncAdminRoleFromAllowlist(id, user.email, roles);
-
-  const patientAccess = await ensureClinicalStaffPatientAccess(id, roles, {
-    phone: user.phone,
-    onboardingCompleted: user.onboardingCompleted ?? false,
-  });
-  roles = patientAccess.roles;
-  const onboardingCompleted = patientAccess.onboardingCompleted;
+  const onboardingCompleted = user.onboardingCompleted ?? false;
 
   let doctorVerificationStatus: string | undefined;
   if (roles.includes(Roles.DOCTOR)) {
@@ -546,7 +428,6 @@ export async function loadAuthUserPayload(userId: string) {
     name: user.name,
     image: user.avatarUrl ?? undefined,
     roles,
-    activeWorkspace: resolveDefaultWorkspace(roles),
     onboardingCompleted,
     hasPhone: Boolean(user.phone),
     doctorVerificationStatus,
@@ -557,7 +438,7 @@ export async function loadAuthUserPayload(userId: string) {
   };
 }
 
-/** Refresh roles for an existing session without resetting activeWorkspace. */
+/** Refresh roles/verification statuses for an existing session. */
 export async function syncSessionRoles(userId: string) {
   const payload = await loadAuthUserPayload(userId);
   if (!payload) return null;
@@ -641,4 +522,23 @@ export async function completeOnboarding(
   );
 
   return loadAuthUserPayload(userId);
+}
+
+/**
+ * Self-service account deletion (required by App Store/Play Store account-deletion
+ * policies). Soft-deletes so appointment/payment/prescription records tied to this
+ * user stay intact for the other party and for financial record-keeping; deactivating
+ * + stamping deletedAt is enough to immediately revoke all sessions, since every
+ * request re-validates through loadAuthUserPayload.
+ */
+export async function deleteOwnAccount(userId: string) {
+  await connectDatabase();
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new AppError("Account not found", "NOT_FOUND", 404);
+  }
+
+  user.isActive = false;
+  user.deletedAt = new Date();
+  await user.save();
 }

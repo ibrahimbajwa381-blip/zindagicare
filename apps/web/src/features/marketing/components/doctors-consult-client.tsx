@@ -19,7 +19,7 @@ import { doctorProfilePath } from "@/lib/doctors/profile-path";
 import { formatQualificationsList } from "@/lib/doctors/qualifications";
 import { conditionDoctorPath, getConditionBySlug } from "@/lib/seo/conditions";
 import { findSpecialtiesForKeyword } from "@/lib/seo/disease-specialty-map";
-import { getSpecialtyBySlug, specialtyDoctorPath } from "@/lib/seo/specialties";
+import { getSpecialtyBySlug, slugifySpecialty, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
 
@@ -69,6 +69,8 @@ function DoctorsListSkeleton({ label }: { label: string }) {
 }
 
 const INITIAL_VISIBLE_DOCTORS = 30;
+const TOP_RATED_COUNT = 6;
+const PER_SPECIALTY_COUNT = 6;
 
 type DoctorsConsultClientProps = {
   initialSpecialty?: string;
@@ -184,6 +186,58 @@ export function DoctorsConsultClient({
     : visibleDoctors.slice(0, INITIAL_VISIBLE_DOCTORS);
   const hasMoreDoctors = visibleDoctors.length > displayedDoctors.length;
 
+  const isBrowsingAll = !activeSpecialty && !hasSearchQuery;
+
+  const topRated = useMemo(
+    () => (isBrowsingAll ? visibleDoctors.slice(0, TOP_RATED_COUNT) : []),
+    [isBrowsingAll, visibleDoctors],
+  );
+
+  const bySpecialty = useMemo(() => {
+    if (!isBrowsingAll) return [];
+    const topRatedIds = new Set(topRated.map((doc) => doc.doctorId));
+    const groups = new Map<string, DoctorRow[]>();
+    for (const doc of visibleDoctors) {
+      if (topRatedIds.has(doc.doctorId)) continue;
+      const specialty = doc.specialties[0];
+      if (!specialty) continue;
+      const group = groups.get(specialty) ?? [];
+      group.push(doc);
+      groups.set(specialty, group);
+    }
+    return Array.from(groups.entries())
+      .map(([specialty, docs]) => ({ specialty, docs }))
+      .sort((a, b) => b.docs.length - a.docs.length);
+  }, [isBrowsingAll, topRated, visibleDoctors]);
+
+  const renderDoctorCard = useCallback(
+    (doc: DoctorRow) => (
+      <DoctorCard
+        key={doc.doctorId}
+        href={doctorProfilePath(doc.slug, doc.doctorId)}
+        name={doc.name}
+        specialty={doc.specialties[0] ?? ""}
+        hospital={doc.hospital ?? ""}
+        rating={doc.ratingAvg}
+        reviews={doc.ratingCount}
+        fee={doc.consultationFee}
+        pmdcVerified={doc.pmdcVerified}
+        imageUrl={resolveDoctorPortrait(doc.name, doc.avatarUrl) ?? undefined}
+        credentials={formatQualificationsList(doc.medicalDegree, doc.qualifications ?? [])}
+        pmdcLabel={t.common.pmdc}
+        isFull={doc.isFull}
+        slotsOpenLabel={
+          doc.isFull
+            ? undefined
+            : formatMessage(copy.slotsOpen, { count: String(doc.availableSlots) })
+        }
+        noSlotsLabel={copy.noSlots}
+        bookLabel={copy.bookCta}
+      />
+    ),
+    [copy.bookCta, copy.noSlots, copy.slotsOpen, t.common.pmdc],
+  );
+
   return (
     <PageSection id="browse-doctors" variant="brand" spacing="lg" flipBlur>
       {booking && (
@@ -207,38 +261,42 @@ export function DoctorsConsultClient({
       <div className="mt-8 sm:mt-12">
         {loading ? (
           <DoctorsListSkeleton label={copy.loading} />
+        ) : visibleDoctors.length > 0 && isBrowsingAll ? (
+          <div className="space-y-10 sm:space-y-14">
+            {topRated.length > 0 && (
+              <div>
+                <h3 className="mb-4 font-display text-lg font-semibold text-slate-900 sm:mb-6 sm:text-xl">
+                  Top rated doctors
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                  {topRated.map(renderDoctorCard)}
+                </div>
+              </div>
+            )}
+
+            {bySpecialty.map(({ specialty, docs }) => (
+              <div key={specialty}>
+                <div className="mb-4 flex items-center justify-between gap-3 sm:mb-6">
+                  <h3 className="font-display text-lg font-semibold text-slate-900 sm:text-xl">
+                    {specialty}
+                  </h3>
+                  <Link
+                    href={specialtyDoctorPath(slugifySpecialty(specialty))}
+                    className="shrink-0 text-sm font-medium text-brand-dark underline-offset-2 hover:underline"
+                  >
+                    {t.common.viewAll}
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                  {docs.slice(0, PER_SPECIALTY_COUNT).map(renderDoctorCard)}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : visibleDoctors.length > 0 ? (
           <>
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-            {displayedDoctors.map((doc) => (
-              <DoctorCard
-                key={doc.doctorId}
-                href={doctorProfilePath(doc.slug, doc.doctorId)}
-                name={doc.name}
-                specialty={doc.specialties[0] ?? ""}
-                hospital={doc.hospital ?? ""}
-                rating={doc.ratingAvg}
-                reviews={doc.ratingCount}
-                fee={doc.consultationFee}
-                pmdcVerified={doc.pmdcVerified}
-                imageUrl={resolveDoctorPortrait(doc.name, doc.avatarUrl) ?? undefined}
-                credentials={formatQualificationsList(
-                  doc.medicalDegree,
-                  doc.qualifications ?? [],
-                )}
-                pmdcLabel={t.common.pmdc}
-                isFull={doc.isFull}
-                slotsOpenLabel={
-                  doc.isFull
-                    ? undefined
-                    : formatMessage(copy.slotsOpen, {
-                        count: String(doc.availableSlots),
-                      })
-                }
-                noSlotsLabel={copy.noSlots}
-                bookLabel={copy.bookCta}
-              />
-            ))}
+            {displayedDoctors.map(renderDoctorCard)}
           </div>
           {hasMoreDoctors && (
             <div className="mt-8 flex justify-center">

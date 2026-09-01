@@ -63,7 +63,7 @@ export function HeroServiceCards({
       pin.style.height = "";
       track.style.transform = "";
       sticky.style.overflowX = "auto";
-      sticky.style.touchAction = "pan-x pinch-zoom";
+      sticky.style.touchAction = "pan-x pan-y pinch-zoom";
     };
 
     const onResize = () => {

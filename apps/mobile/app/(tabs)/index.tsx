@@ -15,11 +15,16 @@ import { ApiRequestError } from "@/api/client";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const QUICK_ACTIONS: { icon: IconName; label: string; href: "/(tabs)/doctors" | "/home-visit" | "/prescription" | "/(tabs)/appointments" }[] = [
+const QUICK_ACTIONS: {
+  icon: IconName;
+  label: string;
+  href: "/(tabs)/doctors" | "/home-visit" | "/prescription" | "/(tabs)/appointments" | "/refund-request";
+}[] = [
   { icon: "medkit-outline", label: "Book\nconsult", href: "/(tabs)/doctors" },
   { icon: "home-outline", label: "Home\nvisit", href: "/home-visit" },
   { icon: "document-text-outline", label: "Prescrip-\ntions", href: "/prescription" },
   { icon: "calendar-outline", label: "Appoint-\nments", href: "/(tabs)/appointments" },
+  { icon: "cash-outline", label: "Request\nrefund", href: "/refund-request" },
 ];
 
 const ONLINE_STATUS_LABEL: Record<string, string> = {
@@ -181,6 +186,13 @@ export default function HomeScreen() {
                   <Text style={styles.primaryButtonText}>{isJoining ? "Joining…" : "Join call"}</Text>
                 </Pressable>
               ) : null}
+              <Pressable
+                style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]}
+                onPress={() => router.push({ pathname: "/intake/[appointmentId]", params: { appointmentId: booking.appointmentId } })}
+              >
+                <Text style={styles.secondaryButtonText}>Share medical history</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.brand.DEFAULT} />
+              </Pressable>
             </View>
           ) : (
             <EmptyCard
@@ -223,6 +235,8 @@ export default function HomeScreen() {
           )}
         </Section>
 
+        <TrustBadges />
+
         {recentRx.length > 0 ? (
           <Section title="Recent prescriptions" onSeeAll={() => router.push("/prescription")}>
             <View style={{ gap: 10 }}>
@@ -247,6 +261,38 @@ export default function HomeScreen() {
         ) : null}
       </View>
     </ScrollView>
+  );
+}
+
+const TRUST_BADGES: { icon: IconName; label: string; hint: string }[] = [
+  { icon: "shield-checkmark-outline", label: "PMC Verified Doctors", hint: "Every doctor is verified." },
+  { icon: "cash-outline", label: "100% Secure Payment", hint: "Your card details are never stored." },
+  {
+    icon: "refresh-circle-outline",
+    label: "Full Refund Guarantee",
+    hint: "Refunded in full if your doctor is unavailable or you cancel before the consult.",
+  },
+  { icon: "headset-outline", label: "Support on Call", hint: "We're here to help 24/7." },
+];
+
+function TrustBadges() {
+  return (
+    <View style={styles.trustCard}>
+      {TRUST_BADGES.map((badge, index) => (
+        <View
+          key={badge.label}
+          style={[styles.trustRow, index === TRUST_BADGES.length - 1 && { marginBottom: 0 }]}
+        >
+          <View style={styles.trustIconWrap}>
+            <Ionicons name={badge.icon} size={18} color={colors.brand.DEFAULT} />
+          </View>
+          <View style={styles.cardBody}>
+            <Text style={styles.doctorName}>{badge.label}</Text>
+            <Text style={styles.meta}>{badge.hint}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -327,9 +373,10 @@ const styles = StyleSheet.create({
   },
   heroAvatarInitial: { fontFamily: fonts.bold, fontSize: 16, color: "#fff" },
   body: { padding: 20, gap: 24, marginTop: -8 },
-  quickActions: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
+  quickActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 10 },
   quickAction: {
-    flex: 1,
+    flexBasis: "18%",
+    flexGrow: 1,
     alignItems: "center",
     gap: 6,
     backgroundColor: "rgba(255,255,255,0.12)",
@@ -404,6 +451,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryButtonText: { color: colors.brand.mutedForeground, fontFamily: fonts.semibold, fontSize: 13 },
+  trustCard: { backgroundColor: "#fff", borderRadius: 18, padding: 16, ...cardShadow },
+  trustRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 14 },
+  trustIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: colors.brand.muted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rxRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderRadius: 14, padding: 12, ...cardShadow },
   rxIconWrap: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.brand.muted, alignItems: "center", justifyContent: "center" },
   rxIcon: { fontFamily: fonts.bold, fontSize: 13, color: colors.brand.mutedForeground },

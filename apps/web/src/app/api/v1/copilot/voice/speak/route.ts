@@ -2,7 +2,7 @@ import { z } from "zod";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { CopilotService } from "@/server/services/copilot.service";
 import { synthesizeSpeech } from "@/server/services/gemini-voice.service";
-import { canUsePatientWorkspace, type Role, type Workspace } from "@zindagi/shared";
+import { canUsePatientWorkspace, type Role } from "@zindagi/shared";
 import { AppError } from "@zindagi/shared";
 
 const speakSchema = z.object({
@@ -10,18 +10,11 @@ const speakSchema = z.object({
   locale: z.enum(["en", "ur"]).optional(),
 });
 
-function assertPatient(session: {
-  user?: { id?: string; roles?: string[]; activeWorkspace?: string };
-}) {
+function assertPatient(session: { user?: { id?: string; roles?: string[] } }) {
   if (!session.user?.id) {
     throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
   }
-  if (
-    !canUsePatientWorkspace(
-      session.user.roles as Role[],
-      session.user.activeWorkspace as Workspace | undefined,
-    )
-  ) {
+  if (!canUsePatientWorkspace(session.user.roles as Role[])) {
     throw new AppError("Forbidden", "FORBIDDEN", 403);
   }
 }

@@ -9,6 +9,7 @@ import {
 import type { z } from "zod";
 import type { adminGrantSchema } from "@zindagi/validators";
 import { formatPhoneForDisplay, mapUserPii } from "@/server/lib/decrypt-pii";
+import { recordAdminActivity } from "@/server/services/admin-activity.service";
 
 type GrantInput = z.infer<typeof adminGrantSchema>;
 
@@ -158,6 +159,14 @@ export async function grantAdminAccess(
   target.roles = [...target.roles, Roles.ADMIN];
   await target.save();
 
+  await recordAdminActivity({
+    actor: actorUserId,
+    action: "admin.access_granted",
+    entityType: "User",
+    entityId: target._id.toString(),
+    targetLabel: mapUserPii(target).name,
+  });
+
   return mapAdminRow(target);
 }
 
@@ -217,6 +226,14 @@ export async function revokeAdminAccess(
   }
 
   await target.save();
+
+  await recordAdminActivity({
+    actor: actorUserId,
+    action: "admin.access_revoked",
+    entityType: "User",
+    entityId: target._id.toString(),
+    targetLabel: mapUserPii(target).name,
+  });
 
   return { revoked: true };
 }

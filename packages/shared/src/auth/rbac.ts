@@ -1,5 +1,4 @@
 import { Roles, type Role } from "../types/enums";
-import type { Workspace } from "./workspace";
 
 /** Ordered from least to most privileged (for hierarchy checks). */
 export const ROLE_RANK: Record<Role, number> = {
@@ -62,22 +61,12 @@ export function isPatientOnly(userRoles: Role[] | undefined): boolean {
   return roles.includes(Roles.PATIENT) && !isStaff(roles);
 }
 
-/**
- * Patient dashboard access.
- * Dual-role staff (doctor + patient, etc.) may use it only while activeWorkspace is "patient",
- * so doctor/admin routes are not redirected into patient onboarding.
- */
-export function canUsePatientWorkspace(
-  userRoles: Role[] | undefined,
-  activeWorkspace?: Workspace,
-): boolean {
-  const roles = userRoles ?? [];
-  if (!roles.includes(Roles.PATIENT)) return false;
-  if (!isStaff(roles)) return true;
-  return activeWorkspace === "patient";
+/** Patient dashboard access. */
+export function canUsePatientWorkspace(userRoles: Role[] | undefined): boolean {
+  return (userRoles ?? []).includes(Roles.PATIENT);
 }
 
-/** Health Assistant is available to any account with the patient role, even in another workspace. */
+/** Health Assistant is available to any account with the patient role. */
 export function canAccessHealthAssistant(userRoles: Role[] | undefined): boolean {
   return (userRoles ?? []).includes(Roles.PATIENT);
 }

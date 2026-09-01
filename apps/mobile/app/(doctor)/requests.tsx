@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { listDoctorRequests, type DoctorRequestOutcome, type DoctorRequestRow } from "@/api/doctor";
@@ -61,7 +61,12 @@ function formatDateTime(iso: string) {
   });
 }
 
+function canWritePrescription(item: DoctorRequestRow) {
+  return !item.hasPrescription && (item.outcome === "completed" || item.outcome === "in_progress" || item.outcome === "upcoming");
+}
+
 export default function DoctorRequestsScreen() {
+  const router = useRouter();
   const [requests, setRequests] = useState<DoctorRequestRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -206,6 +211,26 @@ export default function DoctorRequestsScreen() {
                 ) : null}
               </View>
             ) : null}
+            <View style={styles.cardActions}>
+              {item.type !== "urgent_online" ? (
+                <Pressable
+                  style={styles.secondaryAction}
+                  onPress={() => router.push({ pathname: "/(doctor)/intake", params: { appointmentId: item.id } })}
+                >
+                  <Ionicons name="clipboard-outline" size={14} color={colors.neutral.foreground} />
+                  <Text style={styles.secondaryActionText}>Intake</Text>
+                </Pressable>
+              ) : null}
+              {canWritePrescription(item) ? (
+                <Pressable
+                  style={styles.prescribeButton}
+                  onPress={() => router.push({ pathname: "/(doctor)/prescription-new", params: { appointmentId: item.id } })}
+                >
+                  <Ionicons name="document-text-outline" size={14} color={colors.brand.foreground} />
+                  <Text style={styles.prescribeButtonText}>Write prescription</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
         )}
       />
@@ -269,4 +294,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reviewComment: { fontFamily: fonts.regular, fontSize: 12.5, color: "#555" },
+  cardActions: { flexDirection: "row", gap: 8, marginTop: 4 },
+  secondaryAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.neutral.muted,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  secondaryActionText: { fontFamily: fonts.semibold, fontSize: 12.5, color: colors.neutral.foreground },
+  prescribeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.brand.DEFAULT,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  prescribeButtonText: { fontFamily: fonts.semibold, fontSize: 12.5, color: colors.brand.foreground },
 });

@@ -23,6 +23,7 @@ import {
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { formatPhoneForDisplay, mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
+import { recordAdminActivity } from "@/server/services/admin-activity.service";
 import type {
   AdminNurseDetailDto,
   AdminNurseVisitRow,
@@ -456,6 +457,15 @@ export async function decideNurseVerification(
   }
 
   await staff.save();
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action:
+      action === "approve" ? "nurse.verification_approved" : "nurse.verification_rejected",
+    entityType: "StaffProfile",
+    entityId: staffProfileId,
+    changes: action === "approve" ? undefined : { rejectionReason: staff.rejectionReason },
+  });
 
   return {
     id: staff._id.toString(),

@@ -15,7 +15,8 @@ import {
 import type { HerbalistVerificationInput } from "@zindagi/validators";
 import type { HydratedDocument } from "mongoose";
 import { mongoFilter } from "@/lib/mongo/query";
-import { mapUserPii } from "@/server/lib/decrypt-pii";
+import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
+import { recordAdminActivity } from "@/server/services/admin-activity.service";
 import { isHerbalistAvatarUrlForUser } from "@/server/services/herbalist-avatar.storage";
 import { generateUniqueHerbalistSlug } from "@/server/services/herbalist-slug.service";
 import { cnicLast4, hashCnic } from "./auth.service";
@@ -234,6 +235,18 @@ export async function decideHerbalistVerification(
     profile.rejectionReason = rejectionReason ?? "Application rejected";
     await profile.save();
   }
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action:
+      action === "approve"
+        ? "herbalist.verification_approved"
+        : "herbalist.verification_rejected",
+    entityType: "HerbalistProfile",
+    entityId: herbalistProfileId,
+    targetLabel: safeDisplayText(user.name) ?? undefined,
+    changes: action === "approve" ? undefined : { rejectionReason: profile.rejectionReason },
+  });
 
   return profile;
 }

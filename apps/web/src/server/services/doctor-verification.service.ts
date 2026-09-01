@@ -23,6 +23,8 @@ import {
 } from "@/server/services/doctor-avatar.storage";
 import { mongoFilter } from "@/lib/mongo/query";
 import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
+import { recordAdminActivity } from "@/server/services/admin-activity.service";
+import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import type { HydratedDocument } from "mongoose";
 import type { DoctorProfileDocument } from "@zindagi/database";
 
@@ -328,6 +330,15 @@ export async function decideDoctorVerification(
     profile.rejectionReason = rejectionReason ?? "Application rejected";
     await profile.save();
   }
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action: action === "approve" ? "doctor.verification_approved" : "doctor.verification_rejected",
+    entityType: "DoctorProfile",
+    entityId: doctorProfileId,
+    targetLabel: safeDisplayText(user.name) ?? undefined,
+    changes: action === "approve" ? undefined : { rejectionReason: profile.rejectionReason },
+  });
 
   return profile;
 }

@@ -14,6 +14,10 @@ const testimonialSchema = new Schema(
     },
     /** Free-text display name — used for admin-entered testimonials with no linked account. */
     patientName: { type: String, required: true, maxlength: 100 },
+    /** Reviewer's profession/title, e.g. "Patient", "Software Engineer". */
+    patientTitle: { type: String, maxlength: 120 },
+    /** Optional reviewer photo URL. */
+    avatarUrl: { type: String, maxlength: 500 },
     rating: { type: Number, min: 1, max: 5 },
     content: { type: String, required: true, maxlength: 3000 },
     isVisible: { type: Boolean, default: true },

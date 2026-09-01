@@ -128,6 +128,20 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: BarChart3,
         exact: true,
       },
+      {
+        href: "/admin/activity",
+        label: "Activity log",
+        description: "Feature usage and friction across patients & doctors",
+        icon: Activity,
+        exact: true,
+      },
+      {
+        href: "/admin/admin-activity",
+        label: "Admin activity",
+        description: "Audit trail of admin actions",
+        icon: ShieldCheck,
+        exact: true,
+      },
     ],
   },
   {

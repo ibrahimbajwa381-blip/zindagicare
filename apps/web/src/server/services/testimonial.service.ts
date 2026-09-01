@@ -10,6 +10,8 @@ import { mongoFilter } from "@/lib/mongo/query";
 export type PublicTestimonialDto = {
   id: string;
   patientName: string;
+  patientTitle?: string;
+  avatarUrl?: string;
   rating?: number;
   content: string;
   createdAt: string;
@@ -19,6 +21,8 @@ export type AdminTestimonialRow = {
   id: string;
   patientId?: string;
   patientName: string;
+  patientTitle?: string;
+  avatarUrl?: string;
   rating?: number;
   content: string;
   isVisible: boolean;
@@ -44,6 +48,8 @@ export class TestimonialService {
     return rows.map((row) => ({
       id: row._id.toString(),
       patientName: row.patientName,
+      patientTitle: row.patientTitle ?? undefined,
+      avatarUrl: row.avatarUrl ?? undefined,
       rating: row.rating ?? undefined,
       content: row.content,
       createdAt: row.createdAt.toISOString(),
@@ -87,6 +93,8 @@ export class TestimonialService {
 
     const testimonial = await TestimonialModel.create({
       patientName: input.patientName.trim(),
+      patientTitle: input.patientTitle?.trim() || undefined,
+      avatarUrl: input.avatarUrl?.trim() || undefined,
       rating: input.rating,
       content: input.content.trim(),
       source: "public",
@@ -96,6 +104,8 @@ export class TestimonialService {
     return {
       id: testimonial._id.toString(),
       patientName: testimonial.patientName,
+      patientTitle: testimonial.patientTitle ?? undefined,
+      avatarUrl: testimonial.avatarUrl ?? undefined,
       rating: testimonial.rating ?? undefined,
       content: testimonial.content,
       createdAt: testimonial.createdAt.toISOString(),
@@ -111,6 +121,8 @@ export class TestimonialService {
 
     const testimonial = await TestimonialModel.create({
       patientName: input.patientName.trim(),
+      patientTitle: input.patientTitle?.trim() || undefined,
+      avatarUrl: input.avatarUrl?.trim() || undefined,
       rating: input.rating,
       content: input.content.trim(),
       source: "admin",
@@ -122,6 +134,8 @@ export class TestimonialService {
     return {
       id: testimonial._id.toString(),
       patientName: testimonial.patientName,
+      patientTitle: testimonial.patientTitle ?? undefined,
+      avatarUrl: testimonial.avatarUrl ?? undefined,
       rating: testimonial.rating ?? undefined,
       content: testimonial.content,
       isVisible: testimonial.isVisible ?? true,
@@ -151,6 +165,8 @@ export class TestimonialService {
       id: row._id.toString(),
       patientId: row.patientId?.toString(),
       patientName: row.patientName,
+      patientTitle: row.patientTitle ?? undefined,
+      avatarUrl: row.avatarUrl ?? undefined,
       rating: row.rating ?? undefined,
       content: row.content,
       isVisible: row.isVisible ?? true,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FileText, Download } from "lucide-react";
 import { cn, localizeIntakeSystemMessage, type IntakeLocale } from "@zindagi/shared";
 import type { ChatMessageDto } from "@/features/chat/types";
 import { useLocale, useTranslations } from "@/i18n/locale-provider";
@@ -52,15 +53,66 @@ function VoiceNotePlayer({ url, className }: { url: string; className?: string }
   );
 }
 
+function fileLabelFromMime(mime: string): string {
+  if (mime === "application/pdf") return "PDF document";
+  if (mime === "application/msword" || mime.includes("wordprocessingml")) return "Word document";
+  return "File";
+}
+
+function AttachmentContent({
+  url,
+  mime,
+  className,
+}: {
+  url: string;
+  mime: string;
+  className?: string;
+}) {
+  if (mime.startsWith("image/")) {
+    return (
+      <Link href={url} target="_blank" rel="noopener noreferrer" className={cn("block", className)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="Attachment"
+          className="max-h-64 w-auto max-w-full rounded-lg object-cover"
+        />
+      </Link>
+    );
+  }
+
+  if (mime.startsWith("audio/")) {
+    return <VoiceNotePlayer url={url} className={className} />;
+  }
+
+  return (
+    <Link
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100",
+        className,
+      )}
+    >
+      <FileText className="h-5 w-5 shrink-0 text-slate-500" />
+      <span className="flex-1 truncate">{fileLabelFromMime(mime)}</span>
+      <Download className="h-4 w-4 shrink-0 text-slate-400" />
+    </Link>
+  );
+}
+
 function IncomingMessageBubble({
   body,
   attachmentUrl,
+  attachmentMime,
   createdAt,
   showTail,
   intakeLinkLabel,
 }: {
   body: string;
   attachmentUrl?: string;
+  attachmentMime?: string;
   createdAt: string;
   showTail?: boolean;
   intakeLinkLabel: string;
@@ -74,7 +126,9 @@ function IncomingMessageBubble({
           showTail && "rounded-bl-sm",
         )}
       >
-        {attachmentUrl && <VoiceNotePlayer url={attachmentUrl} className="mb-1" />}
+        {attachmentUrl && (
+          <AttachmentContent url={attachmentUrl} mime={attachmentMime ?? "audio/webm"} className="mb-1" />
+        )}
         {body && (
           <p className="whitespace-pre-wrap break-words">
             <LinkifiedText text={body} intakeLinkLabel={intakeLinkLabel} />
@@ -111,6 +165,7 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
       <IncomingMessageBubble
         body={message.body}
         attachmentUrl={message.attachmentUrl}
+        attachmentMime={message.attachmentMime}
         createdAt={message.createdAt}
         showTail={showTail}
         intakeLinkLabel={intakeLinkLabel}
@@ -128,7 +183,11 @@ export function ChatMessageBubble({ message, showTail = true }: ChatMessageBubbl
         )}
       >
         {message.attachmentUrl && (
-          <VoiceNotePlayer url={message.attachmentUrl} className="mb-1" />
+          <AttachmentContent
+            url={message.attachmentUrl}
+            mime={message.attachmentMime ?? "audio/webm"}
+            className="mb-1"
+          />
         )}
         {message.body && (
           <p className="whitespace-pre-wrap break-words">{message.body}</p>

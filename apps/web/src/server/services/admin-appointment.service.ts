@@ -2,13 +2,18 @@ import {
   connectDatabase,
   AppointmentModel,
   DoctorProfileModel,
+  PatientProfileModel,
+  PaymentModel,
   SundaySlotInstanceModel,
   UserModel,
+  VideoSessionModel,
 } from "@zindagi/database";
 import {
   AppError,
   AppointmentStatuses,
   AppointmentTypes,
+  CancellationRequestStatuses,
+  PaymentStatuses,
   Roles,
   SlotStatuses,
   phoneLookupHash,
@@ -18,6 +23,10 @@ import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter } from "@/lib/mongo/query";
 import { getReferredPatientDoctorMap } from "@/server/services/commission.service";
+import {
+  recordAdminActivity,
+  type AdminActivityActor,
+} from "@/server/services/admin-activity.service";
 
 /** Doctor display names in the DB are inconsistently stored with/without a "Dr" prefix. */
 function normalizeDoctorName(rawName?: string): string {
@@ -34,7 +43,14 @@ export type AdminAppointmentRow = {
   scheduledEnd: string;
   isOnline: boolean;
   patient: { id: string; name: string; phone?: string; email?: string };
-  doctor: { id: string; name: string; specialty?: string; phone?: string; email?: string };
+  doctor: {
+    id: string;
+    name: string;
+    specialty?: string;
+    phone?: string;
+    email?: string;
+    avatarUrl?: string;
+  };
   cancellationReason?: string;
   patientNotes?: string;
   clinic?: { hospitalName?: string; address?: string; city?: string };
@@ -51,6 +67,15 @@ export type AdminAppointmentRow = {
   createdAt: string;
   /** True when this patient was referred by this doctor via their referral link. */
   isReferred: boolean;
+  cancellationRequestStatus?: string;
+  cancellationRequestReason?: string;
+  cancellationRequestedAt?: string;
+  refundMethod?: string;
+  refundAccountTitle?: string;
+  refundAccountNumber?: string;
+  refundBankName?: string;
+  patientJoinedAt?: string;
+  doctorJoinedAt?: string;
 };
 
 const TYPE_FILTERS = {
@@ -84,7 +109,7 @@ export async function listAdminAppointments(filters?: {
     .populate("patientId", "name phone email")
     .populate({
       path: "doctorId",
-      populate: { path: "userId", select: "name phone email" },
+      populate: { path: "userId", select: "name phone email avatarUrl" },
       select: "specialties",
     })
     .populate(
@@ -104,6 +129,16 @@ export async function listAdminAppointments(filters?: {
   ];
   const referredPatientDoctorMap = await getReferredPatientDoctorMap(doctorProfileIds);
 
+  const appointmentIds = appointments.map((a) => a._id.toString());
+  const videoSessions = appointmentIds.length
+    ? await VideoSessionModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
+        .select("appointmentId patientJoinedAt doctorJoinedAt")
+        .lean()
+    : [];
+  const videoSessionByAppointment = new Map(
+    videoSessions.map((session) => [session.appointmentId?.toString(), session]),
+  );
+
   return appointments.map((a) => {
     const patient = a.patientId as {
       _id?: { toString(): string };
@@ -113,7 +148,7 @@ export async function listAdminAppointments(filters?: {
     } | null;
     const doctorProfile = a.doctorId as {
       _id?: { toString(): string };
-      userId?: { name?: string; phone?: string; email?: string };
+      userId?: { name?: string; phone?: string; email?: string; avatarUrl?: string };
       specialties?: string[];
     } | null;
     const payment = a.paymentId as {
@@ -148,6 +183,7 @@ export async function listAdminAppointments(filters?: {
         specialty: doctorProfile?.specialties?.[0] ?? undefined,
         phone: formatPhoneForDisplay(doctorProfile?.userId?.phone),
         email: safeDisplayText(doctorProfile?.userId?.email),
+        avatarUrl: doctorProfile?.userId?.avatarUrl ?? undefined,
       },
       cancellationReason: a.cancellationReason ?? undefined,
       patientNotes: a.patientNotes ?? undefined,
@@ -177,6 +213,21 @@ export async function listAdminAppointments(filters?: {
       isReferred:
         referredPatientDoctorMap.get(patient?._id?.toString() ?? "") ===
         doctorProfile?._id?.toString(),
+      cancellationRequestStatus: a.cancellationRequestStatus ?? undefined,
+      cancellationRequestReason: a.cancellationRequestReason ?? undefined,
+      cancellationRequestedAt: a.cancellationRequestedAt
+        ? new Date(a.cancellationRequestedAt).toISOString()
+        : undefined,
+      refundMethod: a.refundMethod ?? undefined,
+      refundAccountTitle: a.refundAccountTitle ?? undefined,
+      refundAccountNumber: a.refundAccountNumber ?? undefined,
+      refundBankName: a.refundBankName ?? undefined,
+      patientJoinedAt: videoSessionByAppointment
+        .get(a._id.toString())
+        ?.patientJoinedAt?.toISOString(),
+      doctorJoinedAt: videoSessionByAppointment
+        .get(a._id.toString())
+        ?.doctorJoinedAt?.toISOString(),
     };
   });
 }
@@ -185,6 +236,7 @@ export async function adminCancelAppointment(
   appointmentId: string,
   adminUserId: string,
   reason?: string,
+  actor?: AdminActivityActor,
 ) {
   await connectDatabase();
 
@@ -202,6 +254,17 @@ export async function adminCancelAppointment(
   appointment.cancellationReason = reason ?? "Cancelled by admin";
   appointment.set("cancelledBy", adminUserId);
   await appointment.save();
+
+  if (actor) {
+    await recordAdminActivity({
+      actor,
+      action: "appointment.cancelled",
+      entityType: "Appointment",
+      entityId: appointmentId,
+      targetLabel: appointment.cancellationReason,
+      changes: { reason: appointment.cancellationReason },
+    });
+  }
 
   if (
     appointment.type === AppointmentTypes.SUNDAY_FREE &&
@@ -226,9 +289,83 @@ export async function adminCancelAppointment(
   return { id: appointment._id.toString(), status: appointment.status };
 }
 
+/**
+ * Admin resolves a patient's pending cancellation request: "approve" cancels the
+ * appointment and fully refunds its payment; "deny" leaves the booking as-is.
+ */
+export async function adminResolveCancellationRequest(
+  appointmentId: string,
+  adminUserId: string,
+  action: "approve" | "deny",
+  reason?: string,
+  actor?: AdminActivityActor,
+) {
+  await connectDatabase();
+
+  const appointment = await AppointmentModel.findById(appointmentId);
+  if (!appointment) throw new AppError("Appointment not found", "NOT_FOUND", 404);
+
+  if (appointment.cancellationRequestStatus !== CancellationRequestStatuses.PENDING) {
+    throw new AppError("No pending cancellation request", "CONFLICT", 409);
+  }
+
+  if (action === "deny") {
+    appointment.cancellationRequestStatus = CancellationRequestStatuses.DENIED;
+    appointment.cancellationRequestResolvedAt = new Date();
+    appointment.set("cancellationRequestResolvedBy", adminUserId);
+    await appointment.save();
+    if (actor) {
+      await recordAdminActivity({
+        actor,
+        action: "appointment.cancellation_request_denied",
+        entityType: "Appointment",
+        entityId: appointmentId,
+        changes: { reason },
+      });
+    }
+    return { id: appointment._id.toString(), cancellationRequestStatus: appointment.cancellationRequestStatus };
+  }
+
+  appointment.cancellationRequestStatus = CancellationRequestStatuses.APPROVED;
+  appointment.cancellationRequestResolvedAt = new Date();
+  appointment.set("cancellationRequestResolvedBy", adminUserId);
+  await appointment.save();
+
+  if (actor) {
+    await recordAdminActivity({
+      actor,
+      action: "appointment.cancellation_request_approved",
+      entityType: "Appointment",
+      entityId: appointmentId,
+    });
+  }
+
+  await adminCancelAppointment(
+    appointmentId,
+    adminUserId,
+    reason ?? "Cancelled at patient's request — full refund issued",
+  );
+
+  if (appointment.paymentId) {
+    const payment = await PaymentModel.findById(appointment.paymentId);
+    if (payment && payment.status === PaymentStatuses.PAID) {
+      payment.status = PaymentStatuses.REFUNDED;
+      payment.refundedAt = new Date();
+      await payment.save();
+    }
+  }
+
+  return {
+    id: appointment._id.toString(),
+    status: AppointmentStatuses.CANCELLED,
+    cancellationRequestStatus: CancellationRequestStatuses.APPROVED,
+  };
+}
+
 export async function adminReassignAppointment(
   appointmentId: string,
   newDoctorProfileId: string,
+  actor?: AdminActivityActor,
 ) {
   await connectDatabase();
 
@@ -241,6 +378,8 @@ export async function adminReassignAppointment(
   ) {
     throw new AppError("Appointment cannot be reassigned", "CONFLICT", 409);
   }
+
+  const previousDoctorId = appointment.doctorId?.toString();
 
   const doctor = await DoctorProfileModel.findById(newDoctorProfileId).populate(
     "userId",
@@ -255,11 +394,24 @@ export async function adminReassignAppointment(
   });
 
   const doctorUser = doctor.userId as { name?: string } | null;
+  const doctorName = doctorUser?.name ?? "Doctor";
+
+  if (actor) {
+    await recordAdminActivity({
+      actor,
+      action: "appointment.reassigned",
+      entityType: "Appointment",
+      entityId: appointmentId,
+      targetLabel: doctorName,
+      changes: { previousDoctorId, newDoctorId: newDoctorProfileId },
+    });
+  }
+
   return {
     id: appointmentId,
     doctor: {
       id: doctor._id.toString(),
-      name: doctorUser?.name ?? "Doctor",
+      name: doctorName,
     },
   };
 }
@@ -294,6 +446,84 @@ export async function adminRescheduleAppointment(
     scheduledStart: appointment.scheduledStart.toISOString(),
     scheduledEnd: appointment.scheduledEnd.toISOString(),
   };
+}
+
+/**
+ * Admin marks (or unmarks) this appointment's patient as referred by this appointment's
+ * doctor. This is a PATIENT-level change: `PatientProfile.referredByDoctorId` drives the
+ * referral commission bonus for *every* appointment between this patient and this doctor,
+ * not just the one being viewed — the caller/UI must make that scope clear.
+ */
+export async function adminSetAppointmentReferral(
+  appointmentId: string,
+  isReferral: boolean,
+  actor: AdminActivityActor,
+): Promise<{ isReferred: boolean }> {
+  await connectDatabase();
+
+  const appointment = await AppointmentModel.findById(appointmentId)
+    .populate("patientId", "name")
+    .populate({ path: "doctorId", populate: { path: "userId", select: "name" } });
+  if (!appointment) throw new AppError("Appointment not found", "NOT_FOUND", 404);
+
+  if (appointment.providerRole !== "doctor") {
+    throw new AppError(
+      "Only doctor appointments support the referral toggle",
+      "UNSUPPORTED",
+      400,
+    );
+  }
+
+  const patient = appointment.patientId as { _id?: { toString(): string }; name?: string } | null;
+  const doctorProfile = appointment.doctorId as {
+    _id?: { toString(): string };
+    userId?: { name?: string };
+  } | null;
+  const doctorProfileId = doctorProfile?._id?.toString();
+  if (!patient?._id || !doctorProfileId) {
+    throw new AppError("Appointment is missing patient or doctor", "CONFLICT", 409);
+  }
+
+  const patientProfile = await PatientProfileModel.findOne(
+    mongoFilter({ userId: patient._id.toString() }),
+  );
+  if (!patientProfile) throw new AppError("Patient profile not found", "NOT_FOUND", 404);
+
+  const previousReferredByDoctorId = patientProfile.referredByDoctorId?.toString() ?? null;
+  const patientName = safeDisplayText(patient.name) ?? "Patient";
+  const doctorName = normalizeDoctorName(doctorProfile?.userId?.name);
+
+  let isReferred: boolean;
+  if (isReferral) {
+    patientProfile.set("referredByDoctorId", doctorProfileId as never);
+    patientProfile.set("referredAt", new Date());
+    await patientProfile.save();
+    isReferred = true;
+  } else if (previousReferredByDoctorId === doctorProfileId) {
+    patientProfile.set("referredByDoctorId", null);
+    patientProfile.set("referredAt", null);
+    await patientProfile.save();
+    isReferred = false;
+  } else {
+    // Nothing to clear — this patient isn't currently marked as referred by this doctor.
+    isReferred = false;
+  }
+
+  await recordAdminActivity({
+    actor,
+    action: isReferral ? "appointment.referral_set" : "appointment.referral_cleared",
+    entityType: "Appointment",
+    entityId: appointmentId,
+    targetLabel: `${patientName} ↔ ${doctorName}`,
+    changes: {
+      patientProfileId: patientProfile._id.toString(),
+      doctorProfileId,
+      previousReferredByDoctorId,
+      newReferredByDoctorId: isReferred ? doctorProfileId : null,
+    },
+  });
+
+  return { isReferred };
 }
 
 async function findOrCreatePatientByPhone(phone: string, name?: string) {

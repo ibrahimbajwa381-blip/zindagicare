@@ -11,6 +11,7 @@ import {
   fetchMessages,
   markThreadRead,
   sendMessage,
+  uploadChatFile,
   uploadVoiceNote,
 } from "@/features/chat/lib/chat-api";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
@@ -146,6 +147,40 @@ export function ChatConversation({
     }
   }
 
+  async function handleSendFile(file: File) {
+    const tempId = `pending-${Date.now()}`;
+    const tempUrl = URL.createObjectURL(file);
+    const optimisticMessage: ChatMessageDto = {
+      id: tempId,
+      threadId: thread.id,
+      senderId: currentUserId,
+      kind: "user",
+      body: "",
+      attachmentUrl: tempUrl,
+      attachmentMime: file.type,
+      createdAt: new Date().toISOString(),
+      isMine: true,
+      readBy: [currentUserId],
+    };
+
+    onMessageSent(optimisticMessage);
+    scrollToBottom("auto");
+
+    try {
+      const uploaded = await uploadChatFile(thread.id, file);
+      const message = await sendMessage(thread.id, "", locale, {
+        url: uploaded.url,
+        mime: uploaded.mimeType,
+      });
+      onMessageReplaced(tempId, message);
+      scrollToBottom("smooth");
+    } catch {
+      onMessageFailed(tempId);
+    } finally {
+      URL.revokeObjectURL(tempUrl);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-[#e5ddd5]">
       <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-[#f0f2f5] px-3 py-3 sm:px-4">
@@ -221,6 +256,7 @@ export function ChatConversation({
       <ChatComposer
         onSend={handleSend}
         onSendVoiceNote={handleSendVoiceNote}
+        onSendFile={handleSendFile}
         placeholder={placeholder}
         disabled={thread.isClosed}
       />

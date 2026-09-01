@@ -21,8 +21,9 @@ export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+  const [cityQuery, setCityQuery] = useState("");
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
-  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [age, setAge] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accountType, setAccountType] = useState<(typeof ACCOUNT_TYPES)[number]["value"]>("patient");
@@ -42,8 +43,9 @@ export default function SignupScreen() {
       setError("Select your city.");
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
-      setError("Enter your date of birth as YYYY-MM-DD.");
+    const ageValue = Number(age.trim());
+    if (!age.trim() || !Number.isInteger(ageValue) || ageValue < 13 || ageValue > 120) {
+      setError("Enter a valid age (13-120).");
       return;
     }
     if (password.length < 6) {
@@ -55,6 +57,7 @@ export default function SignupScreen() {
       return;
     }
     try {
+      const birthYear = new Date().getFullYear() - ageValue;
       await registerWithCredentials({
         name: name.trim(),
         email: email.trim().toLowerCase(),
@@ -62,7 +65,7 @@ export default function SignupScreen() {
         confirmPassword,
         phone: phone.trim(),
         city: city.trim(),
-        dateOfBirth: dateOfBirth.trim(),
+        dateOfBirth: `${birthYear}-01-01`,
         accountType,
       });
     } catch (e) {
@@ -104,37 +107,58 @@ export default function SignupScreen() {
           />
 
           <Text style={styles.label}>City</Text>
-          <Pressable style={styles.input} onPress={() => setCityPickerOpen((v) => !v)}>
-            <Text style={city ? styles.selectValue : styles.selectPlaceholder}>
-              {city || "Select your city"}
-            </Text>
-          </Pressable>
+          <TextInput
+            style={styles.input}
+            value={cityPickerOpen ? cityQuery : city}
+            onFocus={() => {
+              setCityQuery("");
+              setCityPickerOpen(true);
+            }}
+            onChangeText={(text) => {
+              setCityQuery(text);
+              setCity("");
+            }}
+            onBlur={() => setCityPickerOpen(false)}
+            placeholder="Type to search your city"
+            placeholderTextColor="#9AA5B1"
+          />
           {cityPickerOpen ? (
             <View style={styles.cityList}>
-              <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled>
-                {PAKISTAN_CITIES.map((c) => (
+              <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+                {PAKISTAN_CITIES.filter((c) =>
+                  c.toLowerCase().includes(cityQuery.trim().toLowerCase()),
+                ).map((c) => (
                   <Pressable
                     key={c}
                     style={styles.cityOption}
                     onPress={() => {
                       setCity(c);
+                      setCityQuery(c);
                       setCityPickerOpen(false);
                     }}
                   >
                     <Text style={styles.cityOptionText}>{c}</Text>
                   </Pressable>
                 ))}
+                {PAKISTAN_CITIES.filter((c) =>
+                  c.toLowerCase().includes(cityQuery.trim().toLowerCase()),
+                ).length === 0 ? (
+                  <View style={styles.cityOption}>
+                    <Text style={styles.cityOptionText}>No matching city</Text>
+                  </View>
+                ) : null}
               </ScrollView>
             </View>
           ) : null}
 
           <TextInput
             style={styles.input}
-            value={dateOfBirth}
-            onChangeText={setDateOfBirth}
-            placeholder="Date of birth (YYYY-MM-DD)"
+            value={age}
+            onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ""))}
+            placeholder="Age"
             placeholderTextColor="#9AA5B1"
-            keyboardType="numbers-and-punctuation"
+            keyboardType="number-pad"
+            maxLength={3}
           />
 
           <TextInput

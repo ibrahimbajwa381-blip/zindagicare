@@ -101,7 +101,7 @@ export type HerbalistReferralSummary = {
 
 /**
  * Referrals page summary: patients who signed up through this herbalist's link and
- * the lifetime commission bonus earned from them (bonus portion only).
+ * the herbalist's lifetime full earnings (at the boosted referral rate) from them.
  */
 export async function getHerbalistReferredPatientsSummary(
   herbalistProfileId: string,
@@ -180,16 +180,14 @@ export async function getHerbalistReferredPatientsSummary(
     payments.map((p) => [p._id.toString(), p.amount ?? 0]),
   );
 
-  // Bonus-only portion: effective% (with referral bonus) minus the base %.
+  // Full earnings (at the boosted referral rate) from appointments with referred patients.
   let lifetimeBonusEarnings = 0;
   const effectivePercent = resolveEffectiveCommissionPercent(rates.online, true);
 
   for (const appt of completedAppts) {
     const gross = paymentAmountById.get(appt.paymentId?.toString() ?? "") ?? 0;
     if (!gross) continue;
-    lifetimeBonusEarnings +=
-      calculateStaffNetEarnings(gross, effectivePercent) -
-      calculateStaffNetEarnings(gross, rates.online);
+    lifetimeBonusEarnings += calculateStaffNetEarnings(gross, effectivePercent);
   }
 
   return {

@@ -25,6 +25,7 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
   const [termsError, setTermsError] = useState<string>();
   const [confirmPasswordError, setConfirmPasswordError] = useState<string>();
   const [accountType, setAccountType] = useState<AccountType>(defaultAccountType);
+  const [dateOfBirth, setDateOfBirth] = useState("");
 
   const phoneError = state?.fieldErrors?.phone ?? clientPhoneError;
   const termsFieldError = state?.fieldErrors?.termsAccepted ?? termsError;
@@ -74,6 +75,9 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
           ?.checked;
         let blocked = false;
         if (!validatePhoneValue(phone)) {
+          blocked = true;
+        }
+        if (!dateOfBirth) {
           blocked = true;
         }
         if (password !== confirmPassword) {
@@ -168,14 +172,34 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
         </select>
         <FieldError message={state?.fieldErrors?.city} />
       </div>
-      <FormField
-        label={t.auth.dateOfBirth}
-        name="dateOfBirth"
-        type="date"
-        max={new Date().toISOString().slice(0, 10)}
-        error={state?.fieldErrors?.dateOfBirth}
-        required
-      />
+      <div>
+        <Label htmlFor="age" className="text-base font-semibold text-slate-800">
+          {t.auth.age}
+        </Label>
+        <Input
+          id="age"
+          name="age"
+          type="number"
+          inputMode="numeric"
+          min={13}
+          max={120}
+          placeholder="e.g. 28"
+          className="h-12 text-base"
+          aria-invalid={!!state?.fieldErrors?.dateOfBirth}
+          onChange={(e) => {
+            const age = Number(e.target.value);
+            if (!e.target.value || !Number.isInteger(age) || age < 13 || age > 120) {
+              setDateOfBirth("");
+              return;
+            }
+            const birthYear = new Date().getFullYear() - age;
+            setDateOfBirth(`${birthYear}-01-01`);
+          }}
+          required
+        />
+        <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
+        <FieldError message={state?.fieldErrors?.dateOfBirth} />
+      </div>
       <div>
         <Label htmlFor="password" className="text-base font-semibold text-slate-800">
           {t.auth.password}

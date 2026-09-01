@@ -12,9 +12,11 @@ import { HowItWorksSection } from "@/features/marketing/components/how-it-works"
 import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-section";
 import { TopDoctorsSectionSkeleton } from "@/features/marketing/components/top-doctors-section-skeleton";
+import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
 import { ProviderOnboardingPreview } from "@/features/marketing/components/provider-onboarding-preview";
 import { TestimonialsSection } from "@/features/marketing/components/testimonials-section";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
+import { RefundGuaranteeBar } from "@/features/marketing/components/refund-guarantee-bar";
 
 export const metadata: Metadata = buildRootMetadata({
   alternates: { canonical: getSiteUrl() },
@@ -29,11 +31,13 @@ export default async function HomePage() {
       <FaqJsonLd items={faqItems} />
       <HeroSection />
       <TrustBar />
+      <RefundGuaranteeBar />
       <HomeServicesPreview />
       <HomePhysioBanner />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
         <TopDoctorsSection />
       </Suspense>
+      <DoctorBrowseSection />
       <SundayBanner />
       <HowItWorksSection />
       <TestimonialsSection />

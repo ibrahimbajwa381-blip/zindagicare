@@ -25,6 +25,11 @@ const userSchema = new Schema(
     passwordHash: { type: String, select: false },
     name: { type: String, required: true },
     avatarUrl: { type: String },
+    /**
+     * Patient XOR exactly one clinical staff role (doctor, nurse, physiotherapist,
+     * herbalist, nutritionist) per account — see auth.service.ts registerWithCredentials.
+     * Rider/admin/lab/other are unaffected by this invariant.
+     */
     roles: {
       type: [String],
       enum: Object.values(Roles),

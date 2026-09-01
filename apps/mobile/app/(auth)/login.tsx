@@ -16,7 +16,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   if (user) {
-    return <Redirect href={user.activeWorkspace === "doctor" ? "/(doctor)" : "/(tabs)"} />;
+    return <Redirect href={user.roles?.includes("doctor") ? "/(doctor)" : "/(tabs)"} />;
   }
 
   const onSignIn = async () => {

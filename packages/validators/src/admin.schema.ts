@@ -168,8 +168,19 @@ export const adminCancelAppointmentSchema = z.object({
   reason: z.string().min(3).max(500).optional(),
 });
 
+/** Admin approves (cancel + full refund) or denies a patient's cancellation request. */
+export const adminResolveCancellationRequestSchema = z.object({
+  action: z.enum(["approve", "deny"]),
+  reason: z.string().min(3).max(500).optional(),
+});
+
 export const adminReassignAppointmentSchema = z.object({
   doctorId: z.string().min(1),
+});
+
+/** Admin marks (or unmarks) an appointment's patient as referred by the appointment's doctor. */
+export const adminSetAppointmentReferralSchema = z.object({
+  isReferral: z.boolean(),
 });
 
 export const adminRescheduleAppointmentSchema = z

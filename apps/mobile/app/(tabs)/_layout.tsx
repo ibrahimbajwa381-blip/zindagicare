@@ -2,6 +2,8 @@ import { Tabs, Redirect, useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
+import { useUnreadSummary } from "@/hooks/use-unread-summary";
+import { IconBadge } from "@/components/ui/icon-badge";
 import { colors, fonts } from "@/lib/theme";
 
 const logo = require("../../assets/logo.png");
@@ -18,12 +20,20 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   );
 }
 
-function NotificationsButton() {
+function HeaderActions() {
   const router = useRouter();
+  const summary = useUnreadSummary();
   return (
-    <Pressable onPress={() => router.push("/notifications")} hitSlop={8} style={{ marginRight: 4 }}>
-      <Ionicons name="notifications-outline" size={22} color={colors.neutral.foreground} />
-    </Pressable>
+    <>
+      <Pressable onPress={() => router.push("/messages")} hitSlop={8} style={styles.headerIcon}>
+        <Ionicons name="chatbubbles-outline" size={22} color={colors.neutral.foreground} />
+        <IconBadge count={summary?.chatUnreadCount ?? 0} />
+      </Pressable>
+      <Pressable onPress={() => router.push("/notifications")} hitSlop={8} style={[styles.headerIcon, { marginRight: 4 }]}>
+        <Ionicons name="notifications-outline" size={22} color={colors.neutral.foreground} />
+        <IconBadge count={summary?.unreadCount ?? 0} />
+      </Pressable>
+    </>
   );
 }
 
@@ -34,7 +44,7 @@ export default function TabsLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  if (user?.activeWorkspace === "doctor") {
+  if (user?.roles?.includes("doctor")) {
     return <Redirect href="/(doctor)" />;
   }
 
@@ -57,7 +67,7 @@ export default function TabsLayout() {
           headerTitleAlign: "left",
           headerTitleContainerStyle: { marginLeft: 4 },
           tabBarIcon: ({ focused }) => <TabIcon name={focused ? "home" : "home-outline"} focused={focused} />,
-          headerRight: () => <NotificationsButton />,
+          headerRight: () => <HeaderActions />,
         }}
       />
       <Tabs.Screen
@@ -93,4 +103,5 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   headerLogo: { width: 176, height: 40 },
+  headerIcon: { marginRight: 16 },
 });

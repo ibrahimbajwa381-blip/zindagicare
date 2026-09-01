@@ -167,6 +167,10 @@ export function DoctorEarningsPanel({ earnings }: Props) {
           {earnings.homeVisitCommissionPercent}%
         </span>{" "}
         on in-house visits. Amounts below are what is credited to you.
+        <br />
+        <span className="mt-1 inline-block font-medium text-slate-700">
+          Note: Your weekly earnings will be shifted to your given account every Sunday.
+        </span>
       </div>
 
       <EarningsSection

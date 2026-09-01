@@ -64,6 +64,7 @@ export const siteConfig = {
     privacy: "/privacy",
     terms: "/terms",
     refundPolicy: "/refund-policy",
+    refundRequest: "/refund",
     telemedicineConsent: "/telemedicine-consent",
     providerAgreement: "/provider-agreement",
     dashboard: "/dashboard",

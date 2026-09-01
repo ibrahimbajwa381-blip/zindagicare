@@ -9,6 +9,7 @@ type AccountSectionLabels = {
   doctorDashboard: string;
   adminDashboard: string;
   healthAssistant: string;
+  prescriptions: string;
   signOut: string;
   login: string;
   createAccount: string;
@@ -36,7 +37,10 @@ export function buildAccountMobileSection(
 
   const patientLinks =
     session.user.roles?.includes(Roles.PATIENT) ?
-      [{ href: siteConfig.links.assistant, label: labels.healthAssistant }]
+      [
+        { href: siteConfig.links.assistant, label: labels.healthAssistant },
+        { href: "/prescriptions", label: labels.prescriptions },
+      ]
     : [];
 
   return {
@@ -45,7 +49,6 @@ export function buildAccountMobileSection(
       ...dashboardLinks.map((link) => ({
         href: link.href,
         label: link.label,
-        workspace: link.workspace,
       })),
       { label: labels.signOut, action: "sign-out" as const },
     ],
@@ -68,6 +71,7 @@ export function buildMarketingMobileNav(
     doctorDashboard: string;
     adminDashboard: string;
     healthAssistant: string;
+    prescriptions: string;
     signOut: string;
     login: string;
     createAccount: string;
@@ -98,6 +102,7 @@ export function buildMarketingMobileNav(
     doctorDashboard: labels.doctorDashboard,
     adminDashboard: labels.adminDashboard,
     healthAssistant: labels.healthAssistant,
+    prescriptions: labels.prescriptions,
     signOut: labels.signOut,
     login: labels.login,
     createAccount: labels.createAccount,

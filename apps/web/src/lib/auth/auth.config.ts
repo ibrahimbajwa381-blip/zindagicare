@@ -1,11 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import {
-  canUseWorkspace,
-  resolveDefaultWorkspace,
-  Roles,
-  type Role,
-  type Workspace,
-} from "@zindagi/shared";
+import { Roles, type Role } from "@zindagi/shared";
 import { isPublicPath } from "./routes";
 
 /**
@@ -29,10 +23,6 @@ export const authConfig = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.roles = (user as { roles?: string[] }).roles ?? [Roles.PATIENT];
-        const roles = (token.roles as Role[]) ?? [Roles.PATIENT];
-        token.activeWorkspace =
-          (user as { activeWorkspace?: Workspace }).activeWorkspace ??
-          resolveDefaultWorkspace(roles);
         token.onboardingCompleted =
           (user as { onboardingCompleted?: boolean }).onboardingCompleted ?? false;
         token.hasPhone = (user as { hasPhone?: boolean }).hasPhone ?? false;
@@ -57,7 +47,6 @@ export const authConfig = {
       if (trigger === "update" && session) {
         const patch = session as {
           roles?: string[];
-          activeWorkspace?: Workspace;
           onboardingCompleted?: boolean;
           hasPhone?: boolean;
           doctorVerificationStatus?: string;
@@ -68,18 +57,7 @@ export const authConfig = {
           image?: string;
         };
         if (patch.roles) {
-          const roles = patch.roles as Role[];
-          token.roles = roles;
-          const activeWs = token.activeWorkspace as Workspace | undefined;
-          if (activeWs && !canUseWorkspace(roles, activeWs)) {
-            token.activeWorkspace = resolveDefaultWorkspace(roles);
-          }
-        }
-        if (
-          patch.activeWorkspace &&
-          canUseWorkspace(token.roles as Role[], patch.activeWorkspace)
-        ) {
-          token.activeWorkspace = patch.activeWorkspace;
+          token.roles = patch.roles as Role[];
         }
         if (typeof patch.onboardingCompleted === "boolean") {
           token.onboardingCompleted = patch.onboardingCompleted;
@@ -111,9 +89,6 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.sub ?? "";
         session.user.roles = (token.roles as Role[]) ?? [Roles.PATIENT];
-        session.user.activeWorkspace =
-          (token.activeWorkspace as Workspace) ??
-          resolveDefaultWorkspace(session.user.roles);
         session.user.onboardingCompleted =
           (token.onboardingCompleted as boolean) ?? false;
         session.user.hasPhone = token.hasPhone as boolean | undefined;

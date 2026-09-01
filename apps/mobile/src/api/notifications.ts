@@ -21,3 +21,12 @@ export function markNotificationRead(id: string) {
 export function markAllNotificationsRead() {
   return apiFetch<{ success: boolean }>("/api/v1/notifications/read-all", { method: "PATCH" });
 }
+
+export type NotificationSummaryDto = {
+  unreadCount: number;
+  chatUnreadCount: number;
+};
+
+export function getNotificationSummary() {
+  return apiFetch<NotificationSummaryDto>("/api/v1/notifications/summary");
+}

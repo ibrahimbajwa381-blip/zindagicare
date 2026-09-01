@@ -17,7 +17,12 @@ export async function POST(req: Request, { params }: Params) {
 
     const { id } = await params;
     const body = adminReassignAppointmentSchema.parse(await req.json());
-    const result = await adminReassignAppointment(id, body.doctorId);
+    const result = await adminReassignAppointment(id, body.doctorId, {
+      id: session.user.id,
+      roles,
+      name: session.user.name,
+      email: session.user.email,
+    });
     return apiSuccess(result);
   } catch (error) {
     return apiError(error);

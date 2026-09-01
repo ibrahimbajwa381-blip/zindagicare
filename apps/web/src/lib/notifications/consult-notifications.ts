@@ -84,6 +84,35 @@ export async function sendDoctorConsultBooked(params: {
   }
 }
 
+export async function sendPrescriptionIssued(params: {
+  userId: string;
+  phone?: string;
+  doctorName: string;
+  prescriptionId: string;
+  appointmentId: string;
+}) {
+  await deliverUserNotification({
+    userId: params.userId,
+    phone: params.phone,
+    title: "New prescription available",
+    body: `Dr. ${params.doctorName} has issued a new prescription for you. Tap to view or download it.`,
+    payload: {
+      type: "prescription_issued",
+      prescriptionId: params.prescriptionId,
+      appointmentId: params.appointmentId,
+    },
+  });
+
+  await sendWebPushToUser(params.userId, {
+    title: "New prescription available",
+    body: `Dr. ${params.doctorName} has issued a new prescription for you.`,
+    url: "/prescriptions",
+    tag: `prescription-${params.prescriptionId}`,
+  }).catch((err) => {
+    console.error("[prescription] patient web push failed", err);
+  });
+}
+
 export async function sendUrgentConsultConfirmation(params: {
   userId: string;
   phone?: string;

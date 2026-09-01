@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { CopilotService } from "@/server/services/copilot.service";
 import { transcribeAudio } from "@/server/services/gemini-voice.service";
-import { canUsePatientWorkspace, type Role, type Workspace } from "@zindagi/shared";
+import { canUsePatientWorkspace, type Role } from "@zindagi/shared";
 
 export async function POST(req: Request) {
   try {
@@ -10,12 +10,7 @@ export async function POST(req: Request) {
     if (!session?.user?.id) {
       return apiError(new Error("Unauthorized"));
     }
-    if (
-      !canUsePatientWorkspace(
-        session.user.roles as Role[],
-        session.user.activeWorkspace as Workspace | undefined,
-      )
-    ) {
+    if (!canUsePatientWorkspace(session.user.roles as Role[])) {
       return apiError(new Error("Forbidden"));
     }
 

@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type StorageNamespace =
   | "doctor-avatars"
+  | "testimonial-avatars"
   | "doctor-verification"
   | "nurse-verification"
   | "physiotherapist-verification"
@@ -88,6 +89,12 @@ export function contentTypeFromKey(storageKey: string): string {
       return "audio/mp4";
     case "ogg":
       return "audio/ogg";
+    case "heic":
+      return "image/heic";
+    case "doc":
+      return "application/msword";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     default:
       return "application/octet-stream";
   }

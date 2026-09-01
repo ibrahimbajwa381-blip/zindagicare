@@ -24,6 +24,7 @@ import {
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { formatPhoneForDisplay, mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
+import { recordAdminActivity } from "@/server/services/admin-activity.service";
 import type {
   AdminPhysiotherapistDetailDto,
   AdminPhysiotherapistVisitRow,
@@ -466,6 +467,17 @@ export async function decidePhysiotherapistVerification(
   }
 
   await staff.save();
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action:
+      action === "approve"
+        ? "physiotherapist.verification_approved"
+        : "physiotherapist.verification_rejected",
+    entityType: "StaffProfile",
+    entityId: staffProfileId,
+    changes: action === "approve" ? undefined : { rejectionReason: staff.rejectionReason },
+  });
 
   return {
     id: staff._id.toString(),

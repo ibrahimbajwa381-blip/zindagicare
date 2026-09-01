@@ -60,22 +60,6 @@ export async function TopDoctorsSection() {
           title={t.doctors.title}
           description={t.doctors.description}
         />
-        <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-          <Button
-            className="flex h-10 w-full shrink-0 items-center gap-1.5 rounded-xl px-4 sm:w-auto"
-            asChild
-          >
-            <Link href={siteConfig.links.doctors}>
-              {t.doctors.viewAllCta}
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-          <WhatsAppCtaButton
-            size="default"
-            className="h-10 w-full rounded-xl sm:w-auto"
-            prefill={t.common.whatsappPrefillDoctors}
-          />
-        </div>
       </div>
       <div className="mt-6 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {doctors.map((doctor) => (
@@ -94,6 +78,22 @@ export async function TopDoctorsSection() {
             pmdcLabel={t.common.pmdc}
           />
         ))}
+      </div>
+      <div className="mt-6 flex w-full flex-col gap-2.5 sm:mt-8 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+        <Button
+          className="flex h-10 w-full shrink-0 items-center gap-1.5 rounded-xl px-4 sm:w-auto"
+          asChild
+        >
+          <Link href={siteConfig.links.doctors}>
+            {t.doctors.viewAllCta}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
+        <WhatsAppCtaButton
+          size="default"
+          className="h-10 w-full rounded-xl sm:w-auto"
+          prefill={t.common.whatsappPrefillDoctors}
+        />
       </div>
     </PageSection>
   );

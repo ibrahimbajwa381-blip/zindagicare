@@ -127,13 +127,21 @@ export default function DoctorDashboardScreen() {
 
       <View style={styles.quickActions}>
         <Text style={styles.sectionTitle}>Quick actions</Text>
-        <View style={styles.actionRow}>
+        <View style={styles.actionGrid}>
           <QuickAction icon="calendar" label="Consult requests" onPress={() => router.push("/(doctor)/requests")} />
+          <QuickAction icon="people" label="Patients" onPress={() => router.push("/(doctor)/patients")} />
+          <QuickAction icon="wallet" label="Earnings" onPress={() => router.push("/(doctor)/earnings")} />
+          <QuickAction icon="document-text" label="Prescriptions" onPress={() => router.push("/(doctor)/prescriptions")} />
+          <QuickAction icon="gift" label="Referrals" onPress={() => router.push("/(doctor)/referrals")} />
+          <QuickAction icon="shield-checkmark" label="Verification" onPress={() => router.push("/(doctor)/verification")} />
+          <QuickAction icon="pulse" label="Urgent calls" onPress={() => router.push("/(doctor)/urgent-calls")} />
+          <QuickAction icon="heart" label="Sunday consult" onPress={() => router.push("/(doctor)/sunday-consult")} />
+          <QuickAction icon="home" label="Home visits" onPress={() => router.push("/(doctor)/home-visits")} />
+          <QuickAction icon="chatbubbles" label="Messages" onPress={() => router.push("/(doctor)/messages")} />
           <QuickAction icon="person" label="My profile" onPress={() => router.push("/(doctor)/profile")} />
         </View>
         <Text style={styles.comingSoonHint}>
-          Earnings, prescriptions, patients, referrals, verification, urgent calls, Sunday consult and home visits
-          are coming to the app soon — use the website for those in the meantime.
+          Joining a video consult still opens on the website — native in-app calling is coming later.
         </Text>
       </View>
     </ScrollView>
@@ -186,9 +194,9 @@ const styles = StyleSheet.create({
 
   quickActions: { gap: 10 },
   sectionTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.neutral.foreground },
-  actionRow: { flexDirection: "row", gap: 10 },
+  actionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   actionCard: {
-    flex: 1,
+    width: "31%",
     backgroundColor: "#fff",
     borderRadius: 14,
     padding: 14,

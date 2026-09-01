@@ -72,6 +72,26 @@ export const PaymentStatuses = {
 export type PaymentStatus =
   (typeof PaymentStatuses)[keyof typeof PaymentStatuses];
 
+/** Patient-initiated request to cancel a booked appointment and be refunded. */
+export const CancellationRequestStatuses = {
+  NONE: "none",
+  PENDING: "pending",
+  APPROVED: "approved",
+  DENIED: "denied",
+} as const;
+
+export type CancellationRequestStatus =
+  (typeof CancellationRequestStatuses)[keyof typeof CancellationRequestStatuses];
+
+/** How a patient wants their manual refund transfer sent. */
+export const RefundMethods = {
+  BANK: "bank",
+  JAZZCASH: "jazzcash",
+  EASYPAISA: "easypaisa",
+} as const;
+
+export type RefundMethod = (typeof RefundMethods)[keyof typeof RefundMethods];
+
 export const SlotStatuses = {
   AVAILABLE: "available",
   HELD: "held",

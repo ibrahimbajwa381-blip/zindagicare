@@ -10,6 +10,7 @@ import { videoConsultPath } from "@/features/consult/paths";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
 import { PatientAppointmentReviewAction } from "@/features/patient/components/patient-appointment-review-action";
+import { PatientCancelRequestAction } from "@/features/patient/components/patient-cancel-request-action";
 import type { PatientAppointmentHistoryItem } from "@/server/services/patient-appointments.service";
 import { cn } from "@zindagi/shared";
 
@@ -161,6 +162,13 @@ export function PatientAppointmentHistorySection({
                       initialReview={item.review}
                       canReview={item.canReview}
                       onSubmitted={onReviewSubmitted}
+                    />
+                  ) : null}
+                  {(item.canRequestCancellation || item.cancellationRequestStatus === "pending") ? (
+                    <PatientCancelRequestAction
+                      appointmentId={item.appointmentId}
+                      canRequestCancellation={item.canRequestCancellation}
+                      cancellationRequestStatus={item.cancellationRequestStatus}
                     />
                   ) : null}
                 </li>

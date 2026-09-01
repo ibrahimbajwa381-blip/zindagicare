@@ -79,6 +79,20 @@ export async function uploadVoiceNote(
   return parse<{ storageKey: string; url: string; mimeType: string }>(res);
 }
 
+export async function uploadChatFile(
+  threadId: string,
+  file: File,
+): Promise<{ storageKey: string; url: string; mimeType: string }> {
+  const formData = new FormData();
+  formData.set("threadId", threadId);
+  formData.set("file", file, file.name);
+  const res = await fetch("/api/v1/chat/attachments/upload", {
+    method: "POST",
+    body: formData,
+  });
+  return parse<{ storageKey: string; url: string; mimeType: string }>(res);
+}
+
 export async function markThreadRead(threadId: string) {
   await fetch(`/api/v1/chat/threads/${threadId}/read`, { method: "PATCH" });
 }

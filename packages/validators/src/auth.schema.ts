@@ -52,12 +52,6 @@ export const staffAccountTypes = [
 ] as const;
 export type StaffAccountType = (typeof staffAccountTypes)[number];
 
-/** Add a staff role to an existing logged-in account (keeps patient role). */
-export const addStaffRoleSchema = z.object({
-  accountType: z.enum(staffAccountTypes),
-  city: z.string().trim().min(2, "City is required"),
-});
-
 const MIN_AGE_YEARS = 13;
 const MAX_AGE_YEARS = 120;
 

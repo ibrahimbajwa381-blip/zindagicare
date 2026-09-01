@@ -37,7 +37,26 @@
         }
       ],
       "@react-native-google-signin/google-signin",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ZindagiCare needs access to your photos so you can attach a profile photo, payment receipt, or verification document.",
+          "cameraPermission": "ZindagiCare needs access to your camera so you can take a photo for your profile or a document you're uploading."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ZindagiCare needs your location to find nearby staff and route them to you when you request a home visit."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "ZindagiCare needs access to your microphone so you can send voice notes in chat."
+        }
+      ]
     ],
     "extra": {
       "router": {},

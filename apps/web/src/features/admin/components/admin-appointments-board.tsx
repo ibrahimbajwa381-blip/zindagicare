@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Calendar, Check, Copy, Stethoscope, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,8 +16,95 @@ import {
 } from "./admin-appointment-detail-modal";
 import { AppointmentCardDialog } from "./appointment-card-dialog";
 import type { AppointmentCardProps } from "./appointment-card";
+import { AdminDoctorAvatar } from "./admin-doctor-avatar";
 
 type Appointment = AppointmentDetail;
+
+const STATUS_STYLES: Record<string, { border: string; badge: string; dot: string }> = {
+  confirmed: {
+    border: "border-l-4 border-l-emerald-400",
+    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    dot: "bg-emerald-500",
+  },
+  pending: {
+    border: "border-l-4 border-l-amber-400",
+    badge: "border-amber-200 bg-amber-50 text-amber-700",
+    dot: "bg-amber-500",
+  },
+  completed: {
+    border: "border-l-4 border-l-sky-400",
+    badge: "border-sky-200 bg-sky-50 text-sky-700",
+    dot: "bg-sky-500",
+  },
+  cancelled: {
+    border: "border-l-4 border-l-red-400",
+    badge: "border-red-200 bg-red-50 text-red-700",
+    dot: "bg-red-500",
+  },
+  no_show: {
+    border: "border-l-4 border-l-slate-400",
+    badge: "border-slate-200 bg-slate-100 text-slate-600",
+    dot: "bg-slate-400",
+  },
+};
+
+const DEFAULT_STATUS_STYLE = {
+  border: "border-l-4 border-l-slate-200",
+  badge: "border-slate-200 bg-slate-50 text-slate-600",
+  dot: "bg-slate-300",
+};
+
+function getStatusStyle(status: string) {
+  return STATUS_STYLES[status] ?? DEFAULT_STATUS_STYLE;
+}
+
+const REFUND_METHOD_LABEL: Record<string, string> = {
+  bank: "Bank transfer",
+  jazzcash: "JazzCash",
+  easypaisa: "Easypaisa",
+};
+
+const PAYMENT_STATUS_STYLES: Record<string, string> = {
+  paid: "text-emerald-600",
+  refunded: "text-amber-600",
+  failed: "text-red-600",
+  pending: "text-amber-600",
+  unpaid: "text-red-600",
+};
+
+function CopyableText({ value, className }: { value: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore — clipboard access can be blocked, no fallback needed here
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Copy"
+      className={cn(
+        "inline-flex items-center gap-1 rounded px-1 -mx-1 hover:bg-slate-100 transition-colors",
+        className,
+      )}
+    >
+      <span>{value}</span>
+      {copied ? (
+        <Check className="h-3 w-3 shrink-0 text-emerald-600" />
+      ) : (
+        <Copy className="h-3 w-3 shrink-0 text-slate-400" />
+      )}
+    </button>
+  );
+}
 
 type DoctorOption = { id: string; name: string; specialties?: string[] };
 
@@ -27,6 +115,16 @@ type CardState = {
   patient: { name: string; phone?: string };
   doctor: { name: string; phone?: string };
 };
+
+function formatAppointmentTypeLabel(type: string, isOnline?: boolean) {
+  const label = type.replace(/_/g, " ");
+  if (type === "online") return "Online consultation";
+  return isOnline ? `${label} · Online` : label;
+}
+
+function displayPatientName(name: string) {
+  return /^\d+$/.test(name.trim()) ? "Patient" : name;
+}
 
 function formatDateLabel(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -104,6 +202,28 @@ export function AdminAppointmentsBoard() {
     setPending(null);
     if (res.ok) await load();
     else alert("Cancel failed");
+  };
+
+  const resolveCancellationRequest = async (id: string, action: "approve" | "deny") => {
+    if (action === "approve") {
+      const confirmed = window.confirm(
+        "Approve this cancellation request? The appointment will be cancelled and the payment fully refunded.",
+      );
+      if (!confirmed) return;
+    }
+    const reason =
+      action === "deny"
+        ? (window.prompt("Reason for denying (optional):") ?? undefined)
+        : undefined;
+    setPending(id);
+    const res = await fetch(`/api/v1/admin/appointments/${id}/cancellation-request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reason }),
+    });
+    setPending(null);
+    if (res.ok) await load();
+    else alert("Couldn't resolve the cancellation request");
   };
 
   const reassign = async (id: string) => {
@@ -236,51 +356,111 @@ export function AdminAppointmentsBoard() {
         <LoadingScreen message="Loading appointments…" />
       ) : (
         <div className="space-y-3">
-          {appointments.map((a) => (
+          {appointments.map((a) => {
+            const statusStyle = getStatusStyle(a.status);
+            return (
             <Card
               key={a.id}
               ref={a.id === highlightId ? highlightRef : undefined}
               className={cn(
                 surfaceCard,
+                statusStyle.border,
                 a.id === highlightId && "ring-2 ring-brand ring-offset-2",
               )}
             >
-              <CardContent className="space-y-2 pt-6">
+              <CardContent className="space-y-3 pt-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium capitalize">
-                        {a.type.replace(/_/g, " ")}
-                        {a.isOnline ? " · Online" : ""} · {a.patient.name}
-                      </p>
-                      <Badge variant="outline">{a.status}</Badge>
-                      {a.isReferred && (
-                        <Badge className="border-brand/30 bg-brand/10 text-brand" variant="outline">
-                          Referred
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <AdminDoctorAvatar
+                      name={a.doctor.name}
+                      avatarUrl={a.doctor.avatarUrl}
+                      size="md"
+                      className="mt-0.5"
+                    />
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-base font-semibold capitalize text-slate-900">
+                          {formatAppointmentTypeLabel(a.type, a.isOnline)} ·{" "}
+                          {displayPatientName(a.patient.name)}
+                        </p>
+                        <Badge className={cn("capitalize", statusStyle.badge)} variant="outline">
+                          <span className={cn("mr-1 h-1.5 w-1.5 rounded-full", statusStyle.dot)} />
+                          {a.status.replace(/_/g, " ")}
                         </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-500">
-                      {formatKarachiDateTime(a.scheduledStart)}
-                      {a.scheduledEnd
-                        ? ` – ${new Date(a.scheduledEnd).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
-                        : ""}
-                      {" · "}
-                      {a.doctor.name}
-                      {a.doctor.specialty ? ` (${a.doctor.specialty})` : ""}
-                    </p>
-                    {(a.doctor.phone || a.doctor.email) && (
-                      <p className="text-sm text-slate-500">
-                        <span className="text-slate-400">Doctor: </span>
-                        {[a.doctor.phone, a.doctor.email].filter(Boolean).join(" · ")}
-                      </p>
+                        {a.isReferred && (
+                          <Badge className="border-brand/30 bg-brand/10 text-brand" variant="outline">
+                            Referred
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                          {formatKarachiDateTime(a.scheduledStart)}
+                          {a.scheduledEnd
+                            ? ` – ${new Date(a.scheduledEnd).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+                            : ""}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
+                          <Stethoscope className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                          {a.doctor.name}
+                          {a.doctor.specialty ? ` (${a.doctor.specialty})` : ""}
+                        </span>
+                      </div>
+
+                    {a.isOnline && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={
+                            a.patientJoinedAt
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
+                          }
+                        >
+                          {a.patientJoinedAt ? "Patient joined" : "Patient not joined"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={
+                            a.doctorJoinedAt
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
+                          }
+                        >
+                          {a.doctorJoinedAt ? "Doctor joined" : "Doctor not joined"}
+                        </Badge>
+                      </div>
                     )}
-                    {(a.patient.phone || a.patient.email) && (
-                      <p className="text-sm text-slate-500">
-                        <span className="text-slate-400">Patient: </span>
-                        {[a.patient.phone, a.patient.email].filter(Boolean).join(" · ")}
-                      </p>
+
+                    {(a.doctor.phone || a.doctor.email || a.patient.phone || a.patient.email) && (
+                      <div className="grid gap-1.5 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+                        {(a.doctor.phone || a.doctor.email) && (
+                          <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-slate-600">
+                            <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            <span className="text-slate-400">Doctor:</span>
+                            {a.doctor.phone && <CopyableText value={a.doctor.phone} />}
+                            {a.doctor.phone && a.doctor.email && (
+                              <span className="text-slate-300">·</span>
+                            )}
+                            {a.doctor.email && <CopyableText value={a.doctor.email} />}
+                          </p>
+                        )}
+                        {(a.patient.phone || a.patient.email) && (
+                          <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-slate-600">
+                            <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            <span className="text-slate-400">Patient:</span>
+                            {a.patient.phone && <CopyableText value={a.patient.phone} />}
+                            {a.patient.phone && a.patient.email && (
+                              <span className="text-slate-300">·</span>
+                            )}
+                            {a.patient.email && <CopyableText value={a.patient.email} />}
+                          </p>
+                        )}
+                      </div>
                     )}
+
                     {a.clinic && (a.clinic.hospitalName || a.clinic.address || a.clinic.city) && (
                       <p className="text-sm text-slate-500">
                         {[a.clinic.hospitalName, a.clinic.address, a.clinic.city]
@@ -288,29 +468,70 @@ export function AdminAppointmentsBoard() {
                           .join(", ")}
                       </p>
                     )}
+
                     {a.patientNotes && (
-                      <p className="text-sm text-slate-600">
-                        <span className="font-medium">Reason: </span>
+                      <div className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-600">
+                        <span className="font-medium text-slate-700">Reason: </span>
                         {a.patientNotes}
-                      </p>
+                      </div>
                     )}
+
                     {typeof a.amountPkr === "number" && (
-                      <p className="text-sm text-slate-500">
-                        Rs. {a.amountPkr.toLocaleString()}
-                        {a.paymentStatus ? ` · ${a.paymentStatus}` : ""}
-                        {a.transactionId ? ` · TID ${a.transactionId}` : ""}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 text-sm">
+                        <span className="font-semibold text-slate-900">
+                          Rs. {a.amountPkr.toLocaleString()}
+                        </span>
+                        {a.paymentStatus && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "capitalize",
+                              PAYMENT_STATUS_STYLES[a.paymentStatus]
+                                ? `${PAYMENT_STATUS_STYLES[a.paymentStatus]} border-current/20`
+                                : "text-slate-500",
+                            )}
+                          >
+                            {a.paymentStatus}
+                          </Badge>
+                        )}
+                        {a.transactionId && (
+                          <span className="text-slate-400">
+                            TID <CopyableText value={a.transactionId} className="text-slate-500" />
+                          </span>
+                        )}
+                      </div>
                     )}
+
                     {a.status === "cancelled" && a.cancellationReason && (
                       <p className="text-sm text-red-500">
                         Cancelled: {a.cancellationReason}
                       </p>
                     )}
+
+                    {a.cancellationRequestStatus === "pending" && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
+                        <p className="text-sm font-medium text-amber-700">
+                          Patient requested cancellation + refund
+                          {a.cancellationRequestReason ? `: ${a.cancellationRequestReason}` : ""}
+                        </p>
+                        {a.refundMethod && (
+                          <p className="mt-1 text-xs text-amber-700/90">
+                            Send to: {REFUND_METHOD_LABEL[a.refundMethod] ?? a.refundMethod} ·{" "}
+                            {a.refundAccountTitle} · {a.refundAccountNumber}
+                            {a.refundMethod === "bank" && a.refundBankName
+                              ? ` (${a.refundBankName})`
+                              : ""}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {a.createdAt && (
-                      <p className="text-sm text-slate-400">
+                      <p className="text-xs text-slate-400">
                         Booked: {formatKarachiDateTime(a.createdAt)}
                       </p>
                     )}
+                    </div>
                   </div>
 
                   {a.receiptUploaded && a.paymentId && (
@@ -325,6 +546,27 @@ export function AdminAppointmentsBoard() {
                   <Button size="sm" variant="outline" onClick={() => setDetailFor(a)}>
                     View details
                   </Button>
+                  {a.cancellationRequestStatus === "pending" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        disabled={pending === a.id}
+                        onClick={() => resolveCancellationRequest(a.id, "approve")}
+                      >
+                        Approve + refund
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending === a.id}
+                        onClick={() => resolveCancellationRequest(a.id, "deny")}
+                      >
+                        Deny request
+                      </Button>
+                    </>
+                  )}
                   {!["cancelled", "completed", "no_show"].includes(a.status) && (
                     <>
                     <Button
@@ -409,13 +651,21 @@ export function AdminAppointmentsBoard() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
           {appointments.length === 0 && (
             <p className="text-sm text-slate-500">No appointments found.</p>
           )}
         </div>
       )}
-      <AdminAppointmentDetailModal appointment={detailFor} onClose={() => setDetailFor(null)} />
+      <AdminAppointmentDetailModal
+        appointment={detailFor}
+        onClose={() => setDetailFor(null)}
+        onReferralChange={(id, isReferred) => {
+          setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, isReferred } : a)));
+          setDetailFor((prev) => (prev && prev.id === id ? { ...prev, isReferred } : prev));
+        }}
+      />
       {cardState && (
         <AppointmentCardDialog
           card={cardState.card}

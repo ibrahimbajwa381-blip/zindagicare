@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   Alert,
   FlatList,
@@ -47,6 +47,7 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
 };
 
 export default function AppointmentsScreen() {
+  const router = useRouter();
   const [items, setItems] = useState<AppointmentHistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -122,6 +123,9 @@ export default function AppointmentsScreen() {
             onJoin={onJoin}
             onReview={() => setReviewTarget(item)}
             onViewPrescription={() => onViewPrescription(item)}
+            onRequestCancellation={() =>
+              router.push({ pathname: "/refund-request", params: { appointmentId: item.appointmentId } })
+            }
           />
         )}
       />
@@ -142,11 +146,13 @@ function AppointmentCard({
   onJoin,
   onReview,
   onViewPrescription,
+  onRequestCancellation,
 }: {
   item: AppointmentHistoryItem;
   onJoin: (id: string) => void;
   onReview: () => void;
   onViewPrescription: () => void;
+  onRequestCancellation: () => void;
 }) {
   const avatarUri = resolveMediaUrl(item.doctor.avatarUrl);
   const statusStyle = STATUS_STYLE[item.status] ?? STATUS_STYLE.pending;
@@ -199,7 +205,19 @@ function AppointmentCard({
             )}
           </Pressable>
         ) : null}
+
+        {item.canRequestCancellation ? (
+          <Pressable style={styles.dangerButton} onPress={onRequestCancellation}>
+            <Text style={styles.dangerButtonText}>Request refund</Text>
+          </Pressable>
+        ) : null}
       </View>
+
+      {item.cancellationRequestStatus === "pending" ? (
+        <Text style={styles.cancelPendingHint}>
+          Refund requested — we'll send your money back once approved.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -334,6 +352,15 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { color: colors.neutral.foreground, fontFamily: fonts.semibold },
   reviewButton: { flexDirection: "row", alignItems: "center", gap: 4 },
+  dangerButton: {
+    backgroundColor: "#FDECEC",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  dangerButtonText: { color: "#B91C1C", fontFamily: fonts.semibold },
+  cancelPendingHint: { marginTop: 8, color: "#B45309", fontSize: 12, fontFamily: fonts.medium },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   modalCard: {
     backgroundColor: colors.neutral.background,

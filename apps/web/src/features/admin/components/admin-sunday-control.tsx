@@ -189,6 +189,38 @@ export function AdminSundayControl() {
                       Requested {formatKarachiDateTime(request.createdAt)}
                       {request.doctor ? ` · Dr. ${request.doctor.name}` : ""}
                     </p>
+                    {request.status === SundayFreeRequestStatuses.ASSIGNED && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={
+                            request.patientJoinedAt
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
+                          }
+                        >
+                          {request.patientJoinedAt ? "Patient joined" : "Patient not joined"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={
+                            request.doctorJoinedAt
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
+                          }
+                        >
+                          {request.doctorJoinedAt ? "Doctor joined" : "Doctor not joined"}
+                        </Badge>
+                      </div>
+                    )}
+                    {request.review && (
+                      <p className="mt-2 max-w-md text-xs text-slate-600">
+                        <span className="font-medium text-slate-700">
+                          Patient review: {request.review.rating}/5
+                        </span>
+                        {request.review.comment ? ` — "${request.review.comment}"` : ""}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="flex flex-wrap items-center justify-end gap-2">

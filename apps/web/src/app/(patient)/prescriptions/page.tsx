@@ -21,7 +21,7 @@ export default async function PatientPrescriptionsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/prescriptions");
 
-  if (!canUsePatientWorkspace(session.user.roles, session.user.activeWorkspace)) {
+  if (!canUsePatientWorkspace(session.user.roles)) {
     redirect(resolvePostAuthPath(session.user));
   }
 

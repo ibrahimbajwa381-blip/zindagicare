@@ -1,11 +1,9 @@
 import {
   canUsePatientWorkspace,
   isAdmin,
-  resolveDefaultWorkspace,
   Roles,
   VerificationStatuses,
   type Role,
-  type Workspace,
 } from "@zindagi/shared";
 
 export const AUTH_ROUTES = {
@@ -181,7 +179,6 @@ export const NUTRITIONIST_VERIFICATION_EXEMPT_PREFIXES = [
 
 export type PostAuthUser = {
   roles?: Role[];
-  activeWorkspace?: Workspace;
   onboardingCompleted?: boolean;
   /** False when account has no WhatsApp/mobile yet (e.g. Google signup). */
   hasPhone?: boolean;
@@ -223,60 +220,6 @@ export function resolveLoginRedirectPath(
 export function resolvePostAuthPath(user: PostAuthUser): string {
   const roles = user.roles ?? [];
   // Staff roles take priority over patient (doctor > nurse > physio > … > patient).
-  const workspace =
-    user.activeWorkspace ?? resolveDefaultWorkspace(roles);
-
-  if (workspace === "admin" && isAdmin(roles)) {
-    return AUTH_ROUTES.adminDashboard;
-  }
-
-  if (workspace === "doctor" && roles.includes(Roles.DOCTOR)) {
-    if (user.doctorVerificationStatus === VerificationStatuses.APPROVED) {
-      return AUTH_ROUTES.doctorProfile;
-    }
-    return AUTH_ROUTES.doctorVerification;
-  }
-
-  if (workspace === "nurse" && roles.includes(Roles.NURSE)) {
-    if (user.nurseVerificationStatus === VerificationStatuses.APPROVED) {
-      return AUTH_ROUTES.nurseDashboard;
-    }
-    return AUTH_ROUTES.nurseVerification;
-  }
-
-  if (workspace === "physiotherapist" && roles.includes(Roles.PHYSIOTHERAPIST)) {
-    if (user.physiotherapistVerificationStatus === VerificationStatuses.APPROVED) {
-      return AUTH_ROUTES.physiotherapistDashboard;
-    }
-    return AUTH_ROUTES.physiotherapistVerification;
-  }
-
-  if (workspace === "herbalist" && roles.includes(Roles.HERBALIST)) {
-    if (user.herbalistVerificationStatus === VerificationStatuses.APPROVED) {
-      return AUTH_ROUTES.herbalistProfile;
-    }
-    return AUTH_ROUTES.herbalistVerification;
-  }
-
-  if (workspace === "nutritionist" && roles.includes(Roles.NUTRITIONIST)) {
-    if (user.nutritionistVerificationStatus === VerificationStatuses.APPROVED) {
-      return AUTH_ROUTES.nutritionistProfile;
-    }
-    return AUTH_ROUTES.nutritionistVerification;
-  }
-
-  if (workspace === "rider" && roles.includes(Roles.RIDER)) {
-    return "/rider";
-  }
-
-  if (canUsePatientWorkspace(roles, workspace)) {
-    if (needsPatientProfileCompletion(user)) {
-      return AUTH_ROUTES.onboarding;
-    }
-    return AUTH_ROUTES.patientDashboard;
-  }
-
-  // Fallback when active workspace is stale or mismatched
   if (isAdmin(roles)) {
     return AUTH_ROUTES.adminDashboard;
   }
@@ -316,8 +259,15 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
     return AUTH_ROUTES.nutritionistVerification;
   }
 
-  if (needsPatientProfileCompletion(user)) {
-    return AUTH_ROUTES.onboarding;
+  if (roles.includes(Roles.RIDER)) {
+    return "/rider";
+  }
+
+  if (canUsePatientWorkspace(roles)) {
+    if (needsPatientProfileCompletion(user)) {
+      return AUTH_ROUTES.onboarding;
+    }
+    return AUTH_ROUTES.patientDashboard;
   }
 
   return AUTH_ROUTES.patientDashboard;

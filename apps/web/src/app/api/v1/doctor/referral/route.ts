@@ -5,6 +5,7 @@ import { DoctorProfileModel } from "@zindagi/database";
 import { mongoFilter } from "@/lib/mongo/query";
 import {
   getDoctorReferralInfo,
+  getReferredPatientsSummary,
   regenerateDoctorReferralCode,
 } from "@/server/services/doctor-referral.service";
 
@@ -20,6 +21,23 @@ async function getOwnDoctorProfileId(userId: string): Promise<string> {
     .lean();
   if (!profile) throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
   return profile._id.toString();
+}
+
+export async function GET() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
+    assertDoctor(session.user.roles ?? []);
+
+    const profileId = await getOwnDoctorProfileId(session.user.id);
+    const [referral, summary] = await Promise.all([
+      getDoctorReferralInfo(profileId),
+      getReferredPatientsSummary(profileId),
+    ]);
+    return apiSuccess({ referral, summary });
+  } catch (error) {
+    return apiError(error);
+  }
 }
 
 /** Regenerates the doctor's referral code (invalidates the old link for future signups). */

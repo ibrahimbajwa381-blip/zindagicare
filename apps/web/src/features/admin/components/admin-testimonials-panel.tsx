@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff, Plus, Star, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye, EyeOff, Plus, Star, Trash2, User } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ type AdminTestimonialRow = {
   id: string;
   patientId?: string;
   patientName: string;
+  patientTitle?: string;
+  avatarUrl?: string;
   rating?: number;
   content: string;
   isVisible: boolean;
@@ -49,10 +51,42 @@ function RatingStars({ rating }: { rating: number }) {
 function AddTestimonialForm({ onAdded }: { onAdded: () => void }) {
   const [open, setOpen] = useState(false);
   const [patientName, setPatientName] = useState("");
+  const [patientTitle, setPatientTitle] = useState("");
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string>();
+  const [avatarPreview, setAvatarPreview] = useState<string>();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarPreview(URL.createObjectURL(file));
+    setUploadingAvatar(true);
+    setError(undefined);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/v1/testimonials/avatar/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json?.error?.message ?? "Could not upload photo.");
+      }
+      setAvatarUrl(json.data.url);
+    } catch (err) {
+      setAvatarPreview(undefined);
+      setError(err instanceof Error ? err.message : "Could not upload photo.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,15 +105,24 @@ function AddTestimonialForm({ onAdded }: { onAdded: () => void }) {
       const res = await fetch("/api/v1/admin/testimonials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientName: patientName.trim(), rating, content: content.trim() }),
+        body: JSON.stringify({
+          patientName: patientName.trim(),
+          patientTitle: patientTitle.trim() || undefined,
+          avatarUrl,
+          rating,
+          content: content.trim(),
+        }),
       });
       const json = await res.json();
       if (!json.success) {
         throw new Error(json?.error?.message ?? "Failed to add testimonial");
       }
       setPatientName("");
+      setPatientTitle("");
       setContent("");
       setRating(5);
+      setAvatarUrl(undefined);
+      setAvatarPreview(undefined);
       setOpen(false);
       onAdded();
     } catch (err) {
@@ -101,12 +144,60 @@ function AddTestimonialForm({ onAdded }: { onAdded: () => void }) {
   return (
     <form onSubmit={handleSubmit} className={cn(surfaceCard, "space-y-4 p-5")}>
       <div>
+        <Label>Photo (optional)</Label>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 transition-colors hover:border-brand-light hover:text-brand-light"
+          >
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-5 w-5" />
+            )}
+          </button>
+          <div className="text-sm text-slate-500">
+            {uploadingAvatar ? (
+              "Uploading…"
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="font-medium text-brand-dark hover:underline"
+              >
+                {avatarPreview ? "Change photo" : "Add a photo"}
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+      </div>
+
+      <div>
         <Label htmlFor="patientName">Patient name</Label>
         <Input
           id="patientName"
           value={patientName}
           onChange={(e) => setPatientName(e.target.value)}
           placeholder="e.g. Seerat Hassan"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="patientTitle">Title / profession (optional)</Label>
+        <Input
+          id="patientTitle"
+          value={patientTitle}
+          onChange={(e) => setPatientTitle(e.target.value)}
+          placeholder="e.g. Patient, Software Engineer"
         />
       </div>
 
@@ -144,7 +235,7 @@ function AddTestimonialForm({ onAdded }: { onAdded: () => void }) {
       <FieldError message={error} />
 
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={submitting}>
+        <Button type="submit" size="sm" disabled={submitting || uploadingAvatar}>
           {submitting ? "Saving…" : "Publish testimonial"}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
@@ -267,7 +358,25 @@ export function AdminTestimonialsPanel() {
             <li key={row.id} className={cn(surfaceCard, "p-5")}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    {row.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={row.avatarUrl}
+                        alt=""
+                        className="h-9 w-9 shrink-0 rounded-full object-cover"
+                      />
+                    ) : null}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {row.patientName}
+                      </p>
+                      {row.patientTitle ? (
+                        <p className="truncate text-xs text-slate-500">{row.patientTitle}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     {row.rating ? <RatingStars rating={row.rating} /> : null}
                     <Badge
                       variant="outline"
@@ -297,7 +406,6 @@ export function AdminTestimonialsPanel() {
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-2 text-sm font-medium text-slate-900">{row.patientName}</p>
                   <p className="mt-1 text-xs text-slate-400">
                     {formatKarachiDateTime(row.createdAt)}
                   </p>

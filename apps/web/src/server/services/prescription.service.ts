@@ -27,6 +27,8 @@ import {
   savePrescriptionPdf,
 } from "@/server/services/prescription.storage";
 import { VideoSessionService } from "@/server/services/video-session.service";
+import { logActivity } from "@/server/services/activity-log.service";
+import { sendPrescriptionIssued } from "@/lib/notifications/consult-notifications";
 
 const ALLOWED_APPOINTMENT_STATUSES = new Set<string>([
   AppointmentStatuses.CONFIRMED,
@@ -231,6 +233,25 @@ export class PrescriptionService {
     } as Record<string, unknown>)) as { _id: { toString(): string } };
 
     await VideoSessionService.finalizeAppointmentIfAttended(appointment._id.toString());
+
+    await sendPrescriptionIssued({
+      userId: appointment.patientId.toString(),
+      phone: patientPii.phone,
+      doctorName: doctorPii.name,
+      prescriptionId: prescription._id.toString(),
+      appointmentId: appointment._id.toString(),
+    }).catch((err) => {
+      console.error("[prescription] failed to notify patient", err);
+    });
+
+    await logActivity({
+      userId: doctorUserId,
+      userRole: Roles.DOCTOR,
+      action: "prescription.issued",
+      entityType: "Prescription",
+      entityId: prescription._id.toString(),
+      metadata: { appointmentId: appointment._id.toString() },
+    });
 
     return {
       id: prescription._id.toString(),

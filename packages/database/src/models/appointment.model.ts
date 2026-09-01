@@ -1,6 +1,8 @@
 import {
   AppointmentStatuses,
   AppointmentTypes,
+  CancellationRequestStatuses,
+  RefundMethods,
   type AppointmentStatus,
   type AppointmentType,
 } from "@zindagi/shared";
@@ -97,6 +99,23 @@ const appointmentSchema = new Schema(
       doctorSundayMorning: { type: Boolean, default: false },
     },
     completedAt: { type: Date },
+    /** Patient requested to cancel + be refunded; admin reviews and resolves this. */
+    cancellationRequestStatus: {
+      type: String,
+      enum: Object.values(CancellationRequestStatuses),
+      default: CancellationRequestStatuses.NONE,
+      index: true,
+    },
+    cancellationRequestedAt: { type: Date },
+    cancellationRequestedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    cancellationRequestReason: { type: String, maxlength: 500 },
+    cancellationRequestResolvedAt: { type: Date },
+    cancellationRequestResolvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    /** Where the admin should manually send the refund if this request is approved. */
+    refundMethod: { type: String, enum: Object.values(RefundMethods) },
+    refundAccountTitle: { type: String, maxlength: 100 },
+    refundAccountNumber: { type: String, maxlength: 50 },
+    refundBankName: { type: String, maxlength: 100 },
     deletedAt: { type: Date },
   },
   { timestamps: true },

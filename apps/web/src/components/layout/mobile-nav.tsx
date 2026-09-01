@@ -3,8 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import {
   CalendarHeart,
   ChevronRight,
@@ -18,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { cn, type Workspace } from "@zindagi/shared";
+import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 
 export type MobileNavLink = {
@@ -26,7 +25,6 @@ export type MobileNavLink = {
   label: string;
   badge?: string;
   action?: "sign-out";
-  workspace?: Workspace;
 };
 
 export type MobileNavSection = {
@@ -72,11 +70,8 @@ function MobileNavItem({
   animate: boolean;
   delayMs: number;
 }) {
-  const router = useRouter();
-  const { data: session, update } = useSession();
   const Icon = navItemIcon(item);
   const isSignOut = item.action === "sign-out";
-  const hasWorkspaceSwitch = Boolean(item.workspace && item.href);
 
   const itemClassName = cn(
     "group flex min-h-[3.35rem] w-full items-center gap-3.5 rounded-2xl px-3 py-2.5 text-left text-[0.95rem] font-medium transition-all duration-200",
@@ -121,29 +116,6 @@ function MobileNavItem({
         onClick={async () => {
           onClose();
           await signOut({ callbackUrl: siteConfig.links.login });
-        }}
-        className={itemClassName}
-        style={animate ? { animationDelay: `${delayMs}ms` } : undefined}
-      >
-        {content}
-      </button>
-    );
-  }
-
-  if (hasWorkspaceSwitch && item.href && item.workspace) {
-    const href = item.href;
-    const workspace = item.workspace;
-
-    return (
-      <button
-        type="button"
-        onClick={async () => {
-          onClose();
-          if (session?.user?.activeWorkspace !== workspace) {
-            await update({ activeWorkspace: workspace });
-          }
-          router.push(href);
-          router.refresh();
         }}
         className={itemClassName}
         style={animate ? { animationDelay: `${delayMs}ms` } : undefined}

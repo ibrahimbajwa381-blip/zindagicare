@@ -8,6 +8,8 @@ import {
   SundayFreeRequestModel,
   AppointmentModel,
   PaymentModel,
+  VideoSessionModel,
+  ReviewModel,
   type EmbeddedSlot,
 } from "@zindagi/database";
 import {
@@ -1348,11 +1350,45 @@ export class SundayConsultService {
       })
       .lean();
 
+    const appointmentIds = docs
+      .map((doc) => {
+        const appointment = doc.appointmentId as { _id?: { toString(): string } } | { toString(): string } | null;
+        if (!appointment) return undefined;
+        return typeof appointment === "object" && "_id" in appointment
+          ? appointment._id?.toString()
+          : appointment.toString();
+      })
+      .filter((id): id is string => Boolean(id));
+
+    const [videoSessions, reviews] = appointmentIds.length
+      ? await Promise.all([
+          VideoSessionModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
+            .select("appointmentId patientJoinedAt doctorJoinedAt")
+            .lean(),
+          ReviewModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
+            .select("appointmentId rating comment")
+            .lean(),
+        ])
+      : [[], []];
+
+    const videoSessionByAppointment = new Map(
+      videoSessions.map((session) => [session.appointmentId?.toString(), session]),
+    );
+    const reviewByAppointment = new Map(
+      reviews.map((review) => [review.appointmentId?.toString(), review]),
+    );
+
     return docs.map((doc) => {
       const patient = doc.patientId as { name?: string; phone?: string } | null;
       const mapped = SundayConsultService.mapPatientRequest(
         doc as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
       );
+      const videoSession = mapped.appointmentId
+        ? videoSessionByAppointment.get(mapped.appointmentId)
+        : undefined;
+      const review = mapped.appointmentId
+        ? reviewByAppointment.get(mapped.appointmentId)
+        : undefined;
       return {
         requestId: mapped.requestId,
         status: mapped.status,
@@ -1375,6 +1411,11 @@ export class SundayConsultService {
               specialty: mapped.doctor.specialty,
               pmdcVerified: mapped.doctor.pmdcVerified,
             }
+          : undefined,
+        patientJoinedAt: videoSession?.patientJoinedAt?.toISOString(),
+        doctorJoinedAt: videoSession?.doctorJoinedAt?.toISOString(),
+        review: review
+          ? { rating: review.rating, comment: review.comment ?? undefined }
           : undefined,
       };
     });

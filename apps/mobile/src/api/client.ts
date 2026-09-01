@@ -1,5 +1,5 @@
 import { API_URL } from "@/lib/config";
-import type { Role, Workspace } from "@/lib/domain-types";
+import type { Role } from "@/lib/domain-types";
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from "@/lib/token-storage";
 
 export type AuthUser = {
@@ -8,7 +8,6 @@ export type AuthUser = {
   name?: string;
   image?: string;
   roles: Role[];
-  activeWorkspace: Workspace;
   onboardingCompleted: boolean;
   hasPhone: boolean;
   doctorVerificationStatus?: string;

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Star } from "lucide-react";
+import { useRef, useState } from "react";
+import { Star, User } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
@@ -9,12 +9,44 @@ import { surfaceCard } from "@/lib/ui/surfaces";
 
 export function PublicReviewForm() {
   const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
   const [website, setWebsite] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string>();
+  const [avatarPreview, setAvatarPreview] = useState<string>();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const [submitted, setSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAvatarPreview(URL.createObjectURL(file));
+    setUploadingAvatar(true);
+    setError(undefined);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/v1/testimonials/avatar/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json?.error?.message ?? "Could not upload photo.");
+      }
+      setAvatarUrl(json.data.url);
+    } catch (err) {
+      setAvatarPreview(undefined);
+      setError(err instanceof Error ? err.message : "Could not upload photo.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +67,8 @@ export function PublicReviewForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientName: name.trim(),
+          patientTitle: title.trim() || undefined,
+          avatarUrl,
           content: content.trim(),
           rating,
           website,
@@ -77,12 +111,60 @@ export function PublicReviewForm() {
       />
 
       <div>
+        <Label>Your photo (optional)</Label>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 transition-colors hover:border-brand-light hover:text-brand-light"
+          >
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarPreview} alt="Your photo" className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-6 w-6" />
+            )}
+          </button>
+          <div className="text-sm text-slate-500">
+            {uploadingAvatar ? (
+              "Uploading…"
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="font-medium text-brand-dark hover:underline"
+              >
+                {avatarPreview ? "Change photo" : "Add a photo"}
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+      </div>
+
+      <div>
         <Label htmlFor="name">Your name</Label>
         <Input
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Seerat Hassan"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="title">Your title / profession (optional)</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Patient, Software Engineer"
         />
       </div>
 
@@ -126,7 +208,7 @@ export function PublicReviewForm() {
 
       <FieldError message={error} />
 
-      <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+      <Button type="submit" disabled={submitting || uploadingAvatar} className="w-full sm:w-auto">
         {submitting ? "Posting…" : "Post my review"}
       </Button>
     </form>

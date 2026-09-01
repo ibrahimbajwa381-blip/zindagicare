@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { canUseWorkspace, resolveDefaultWorkspace, Roles, type Role, type Workspace } from "@zindagi/shared";
+import { Roles } from "@zindagi/shared";
 import { authConfig } from "./auth.config";
 import { isGoogleAuthConfigured } from "./google";
 import {
@@ -92,9 +92,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         if (user.id) token.sub = user.id;
         token.roles = user.roles ?? [Roles.PATIENT];
-        const roles = (token.roles as Role[]) ?? [Roles.PATIENT];
-        token.activeWorkspace =
-          user.activeWorkspace ?? resolveDefaultWorkspace(roles);
         token.onboardingCompleted = user.onboardingCompleted ?? false;
         token.hasPhone = user.hasPhone ?? false;
         token.doctorVerificationStatus = user.doctorVerificationStatus;
@@ -108,7 +105,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (trigger === "update" && session) {
         const patch = session as {
           roles?: string[];
-          activeWorkspace?: Workspace;
           onboardingCompleted?: boolean;
           hasPhone?: boolean;
           doctorVerificationStatus?: string;
@@ -119,18 +115,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           image?: string;
         };
         if (patch.roles) {
-          const roles = patch.roles as Role[];
-          token.roles = roles;
-          const activeWs = token.activeWorkspace as Workspace | undefined;
-          if (activeWs && !canUseWorkspace(roles, activeWs)) {
-            token.activeWorkspace = resolveDefaultWorkspace(roles);
-          }
-        }
-        if (
-          patch.activeWorkspace &&
-          canUseWorkspace(token.roles as Role[], patch.activeWorkspace)
-        ) {
-          token.activeWorkspace = patch.activeWorkspace;
+          token.roles = patch.roles;
         }
         if (typeof patch.onboardingCompleted === "boolean") {
           token.onboardingCompleted = patch.onboardingCompleted;

@@ -170,6 +170,44 @@ export function ChatApp({
     }
   }, [activeThreadId, loadMessages, messagesByThread]);
 
+  // Stopgap for realtime chat-emitter not working across serverless instances:
+  // poll the inbox and the open thread so new messages show up without a reload.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadThreads();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [loadThreads]);
+
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const interval = setInterval(async () => {
+      try {
+        const result = await fetchMessages(activeThreadId);
+        setMessagesByThread((prev) => {
+          const current = prev[activeThreadId];
+          const merged = current
+            ? [...current.messages, ...result.messages].filter(
+                (message, index, arr) =>
+                  arr.findIndex((m) => m.id === message.id) === index,
+              )
+            : result.messages;
+          return {
+            ...prev,
+            [activeThreadId]: {
+              messages: sortByCreatedAt(merged),
+              hasMore: current?.hasMore ?? result.hasMore,
+              loaded: true,
+            },
+          };
+        });
+      } catch {
+        // Ignore transient polling failures; next tick retries.
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [activeThreadId]);
+
   useChatRealtime((event) => {
     if (event.type === "read") {
       if (event.readByUserId === currentUserId) {

@@ -8,9 +8,14 @@ const auditLogSchema = new Schema(
   {
     actorId: { type: Schema.Types.ObjectId, ref: "User", index: true },
     actorRole: { type: String },
+    /** Snapshots of the actor's name/email at write time, so the log stays readable if the user is later renamed/deleted. */
+    actorName: { type: String },
+    actorEmail: { type: String },
     action: { type: String, required: true, index: true },
     entityType: { type: String, required: true, index: true },
     entityId: { type: Schema.Types.ObjectId, required: true, index: true },
+    /** Human-readable subject snapshot (e.g. a patient/doctor name) for display without extra joins. */
+    targetLabel: { type: String },
     changes: { type: Schema.Types.Mixed },
     ipAddress: { type: String },
     userAgent: { type: String },

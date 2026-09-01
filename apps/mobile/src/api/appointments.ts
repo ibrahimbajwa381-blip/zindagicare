@@ -12,6 +12,8 @@ export type AppointmentHistoryItem = {
   isMissed: boolean;
   canJoin: boolean;
   canReview: boolean;
+  canRequestCancellation: boolean;
+  cancellationRequestStatus: string;
   review?: { rating: number; comment?: string; createdAt: string };
   prescription?: { downloadUrl: string };
 };
@@ -44,6 +46,23 @@ export type VideoJoinPayload = {
   meetingTitle: string;
   canJoin: boolean;
 };
+
+export type RefundMethod = "bank" | "jazzcash" | "easypaisa";
+
+export type RequestRefundInput = {
+  reason: string;
+  refundMethod: RefundMethod;
+  refundAccountTitle: string;
+  refundAccountNumber: string;
+  refundBankName?: string;
+};
+
+export function requestAppointmentCancellation(appointmentId: string, input: RequestRefundInput) {
+  return apiFetch<{ id: string; cancellationRequestStatus: string }>(
+    `/api/v1/patient/appointments/${appointmentId}/cancel-request`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
 
 export function joinVideoSession(appointmentId: string) {
   return apiFetch<VideoJoinPayload>(`/api/v1/video/sessions/${appointmentId}/join`, {

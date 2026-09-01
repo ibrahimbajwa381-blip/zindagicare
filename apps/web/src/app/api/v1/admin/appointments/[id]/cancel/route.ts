@@ -17,7 +17,12 @@ export async function POST(req: Request, { params }: Params) {
 
     const { id } = await params;
     const body = adminCancelAppointmentSchema.parse(await req.json().catch(() => ({})));
-    const result = await adminCancelAppointment(id, session.user.id, body.reason);
+    const result = await adminCancelAppointment(id, session.user.id, body.reason, {
+      id: session.user.id,
+      roles,
+      name: session.user.name,
+      email: session.user.email,
+    });
     return apiSuccess(result);
   } catch (error) {
     return apiError(error);

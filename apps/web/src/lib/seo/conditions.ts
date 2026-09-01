@@ -3,10 +3,21 @@ import { conditionBrowse } from "@/features/marketing/data/condition-browse";
 /** Maps condition slugs to the specialty label used in doctor profiles and API filters. */
 const CONDITION_SPECIALTY_MAP: Record<string, string> = {
   fever: "General Physician",
+  "heart-attack": "Cardiologist",
   pregnancy: "Gynecologist",
   "high-blood-pressure": "Cardiologist",
-  piles: "General Surgeon",
+  breathlessness: "Pulmonologist",
   diarrhea: "Gastroenterologist",
+  hairfall: "Dermatologist",
+  "anxiety-depression": "Psychiatrist",
+  "dengue-fever": "General Physician",
+  "typhoid-fever": "General Physician",
+  piles: "General Surgeon",
+  gastritis: "Gastroenterologist",
+  hernia: "General Surgeon",
+  "vaginal-infection": "Gynecologist",
+  migraine: "Neurologist",
+  tb: "Pulmonologist",
   acne: "Dermatologist",
 };
 

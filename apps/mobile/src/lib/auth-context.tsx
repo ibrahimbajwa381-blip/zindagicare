@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { API_URL } from "./config";
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from "./token-storage";
-import type { AuthUser } from "@/api/client";
+import { apiFetch, type AuthUser } from "@/api/client";
 
 /**
  * @react-native-google-signin/google-signin is a third-party native module —
@@ -48,6 +48,7 @@ type AuthState = {
   signInWithCredentials: (email: string, password: string) => Promise<void>;
   registerWithCredentials: (input: RegisterInput) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -149,6 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await GoogleSignin?.signOut();
         } catch {
           // Not signed in via GoogleSignin (e.g. session restored from stored tokens) — fine.
+        }
+        setUser(null);
+      },
+      deleteAccount: async () => {
+        await apiFetch("/api/v1/account/delete", { method: "POST" });
+        await clearStoredTokens();
+        try {
+          await GoogleSignin?.signOut();
+        } catch {
+          // Not signed in via GoogleSignin — fine.
         }
         setUser(null);
       },

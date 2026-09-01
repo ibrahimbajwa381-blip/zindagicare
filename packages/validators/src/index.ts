@@ -21,3 +21,4 @@ export * from "./testimonial.schema";
 export * from "./prescription.schema";
 export * from "./push.schema";
 export * from "./copilot.schema";
+export * from "./patient-appointment.schema";

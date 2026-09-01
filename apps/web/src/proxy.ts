@@ -1,11 +1,6 @@
 import NextAuth from "next-auth";
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  Roles,
-  VerificationStatuses,
-  canUsePatientWorkspace,
-  workspaceMatchesRoute,
-} from "@zindagi/shared";
+import { Roles, VerificationStatuses, canUsePatientWorkspace } from "@zindagi/shared";
 import { authConfig } from "@/lib/auth/auth.config";
 import { REFERRAL_COOKIE_NAME } from "@/lib/doctors/referral-cookie";
 import {
@@ -70,13 +65,12 @@ function routeGuard(req: Parameters<Parameters<typeof auth>[0]>[0]) {
 
   const user = session!.user;
   const roles = user.roles ?? [];
-  const activeWorkspace = user.activeWorkspace;
 
   // Patient onboarding only applies to patient-only accounts. Staff/admin users
   // often have onboardingCompleted=false but must still reach their workspaces
   // (e.g. /admin/doctors) — otherwise middleware traps them on /admin.
   if (
-    canUsePatientWorkspace(roles, activeWorkspace) &&
+    canUsePatientWorkspace(roles) &&
     needsPatientProfileCompletion(user) &&
     !matchesPrefix(pathname, ONBOARDING_EXEMPT_PREFIXES)
   ) {
@@ -87,10 +81,7 @@ function routeGuard(req: Parameters<Parameters<typeof auth>[0]>[0]) {
     }
   }
 
-  if (
-    isPatientDashboardPath(pathname) &&
-    !canUsePatientWorkspace(roles, activeWorkspace)
-  ) {
+  if (isPatientDashboardPath(pathname) && !canUsePatientWorkspace(roles)) {
     const destination = resolvePostAuthPath(user);
     if (pathname !== destination) {
       return NextResponse.redirect(
@@ -183,8 +174,7 @@ function routeGuard(req: Parameters<Parameters<typeof auth>[0]>[0]) {
   for (const rule of ROLE_ROUTE_RULES) {
     if (pathname.startsWith(rule.prefix)) {
       const hasRole = rule.roles.some((r) => roles.includes(r));
-      const inWorkspace = workspaceMatchesRoute(activeWorkspace, rule.prefix);
-      if (!hasRole || !inWorkspace) {
+      if (!hasRole) {
         return NextResponse.redirect(
           new URL(resolvePostAuthPath(user), req.nextUrl.origin),
         );

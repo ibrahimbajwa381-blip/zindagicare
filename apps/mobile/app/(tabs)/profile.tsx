@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -74,7 +75,8 @@ function toForm(dto: PatientProfileDto): FormState {
 }
 
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
+  const { signOut, deleteAccount } = useAuth();
+  const [isDeleting, setIsDeleting] = useState(false);
   const [profile, setProfile] = useState<PatientProfileDto | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,6 +133,39 @@ export default function ProfileScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      "Delete your account?",
+      "This permanently deactivates your ZindagiCare account and signs you out. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert("Are you sure?", "Type nothing — just confirm to permanently delete your account.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Yes, delete my account",
+                style: "destructive",
+                onPress: async () => {
+                  setIsDeleting(true);
+                  try {
+                    await deleteAccount();
+                  } catch (e) {
+                    Alert.alert("Couldn't delete account", e instanceof ApiRequestError ? e.message : "Please try again");
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                },
+              },
+            ]);
+          },
+        },
+      ],
+    );
   };
 
   if (isLoading || !profile || !form) {
@@ -274,6 +309,24 @@ export default function ProfileScreen() {
         <Pressable style={styles.signOutButton} onPress={signOut}>
           <Ionicons name="log-out-outline" size={18} color="#e53935" />
           <Text style={styles.signOutText}>Sign out</Text>
+        </Pressable>
+
+        <View style={styles.legalRow}>
+          <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")}>
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </Pressable>
+          <Text style={styles.legalDot}>·</Text>
+          <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")}>
+            <Text style={styles.legalLink}>Terms of Service</Text>
+          </Pressable>
+        </View>
+
+        <Pressable style={styles.deleteAccountButton} onPress={confirmDeleteAccount} disabled={isDeleting}>
+          {isDeleting ? (
+            <Spinner size="sm" color="#e53935" />
+          ) : (
+            <Text style={styles.deleteAccountText}>Delete account</Text>
+          )}
         </Pressable>
       </View>
     </ScrollView>
@@ -455,4 +508,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   signOutText: { color: "#e53935", fontFamily: fonts.semibold, fontSize: 15 },
+
+  legalRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
+  legalLink: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.brand.DEFAULT },
+  legalDot: { color: "#ccc" },
+
+  deleteAccountButton: { alignItems: "center", justifyContent: "center", paddingVertical: 14 },
+  deleteAccountText: { color: "#999", fontFamily: fonts.medium, fontSize: 13, textDecorationLine: "underline" },
 });

@@ -1,6 +1,6 @@
 ================================================================================
 ZINDAGICARE — AI PROJECT CONTEXT (token-efficient)
-Verified: 2026-08-09 | Product: Lahore-first healthcare marketplace (PKR, Asia/Karachi)
+Verified: 2026-08-28 | Product: Lahore-first healthcare marketplace (PKR, Asia/Karachi)
 ================================================================================
 Read this before exploring the repo. Prefer these paths over broad searches.
 
@@ -20,15 +20,18 @@ Gemini Health Assistant. UI: English + Urdu. Currency: PKR. TZ: Asia/Karachi.
 Tool: npm workspaces (apps/*, packages/*). No Turbo/Nx.
 Root scripts → web: npm run dev|build|lint|start
 
-apps/web              Next.js App Router product (ONLY app)
+apps/web              Next.js App Router product (main web app)
+apps/mobile           Expo/React Native app (patient-facing, Android + iOS)
 packages/shared       @zindagi/shared — roles, RBAC, workspaces, constants, AppError
 packages/database     @zindagi/database — Mongoose models + connect
-packages/validators   @zindagi/validators — Zod schemas
+packages/validators   @zindagi/validators — Zod schemas (shared by web + mobile)
 
 Also: docs/, scripts/, .env.example, vercel.json
 Web UI features: apps/web/src/features/<domain>/
 Web API + domain logic: apps/web/src/server/
 App Router: apps/web/src/app/
+Mobile screens: apps/mobile/app/ (Expo Router file-based routes)
+Mobile API/data layer: apps/mobile/src/api/ (calls apps/web REST API)
 
 
 --------------------------------------------------------------------------------
@@ -167,6 +170,63 @@ Maps: GOOGLE_MAPS_API_KEY, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 
 --------------------------------------------------------------------------------
+8b. MOBILE APP (apps/mobile — Expo/React Native, Android + iOS)
+--------------------------------------------------------------------------------
+Status: early build, patient-facing only (no doctor/nurse/physio/admin mobile UI).
+Backend: NOT standalone — calls apps/web REST API (api/v1/*) over HTTP. No local
+  DB/auth server; apps/web dev server must be running and reachable on LAN.
+
+Stack: Expo SDK 57, Expo Router (file-based, app/), React Native 0.86.3,
+  React 19.2.3, TypeScript, react-native-reanimated 4.5.1 + react-native-worklets,
+  expo-secure-store (token storage), expo-location, expo-image-picker,
+  expo-file-system/expo-sharing (prescription PDFs), @react-native-google-signin,
+  Zod (@zindagi/validators shared with web).
+IMPORTANT: Expo API has changed a lot — read apps/mobile/AGENTS.md and check
+  https://docs.expo.dev/versions/v57.0.0/ before assuming any Expo convention.
+
+Structure:
+  app/(auth)/          login, signup
+  app/(tabs)/          index (home), doctors, appointments, profile
+  app/doctor/[doctorId].tsx     doctor profile
+  app/home-visit/      index, request  (Lahore home-visit booking)
+  app/checkout.tsx     payment/checkout
+  app/prescription/    list + [id] detail
+  app/notifications/   notifications list
+  src/api/             client.ts (fetch wrapper) + per-domain: appointments,
+                        consult, dashboard, home-visits, notifications,
+                        patient-profile, prescriptions
+  src/lib/             auth-context.tsx, config.ts, token-storage.ts (SecureStore),
+                        domain-types.ts, format-date.ts, download-file.ts, theme.ts
+  android/, ios/(not present yet — iOS uses Expo prebuild/managed workflow)
+  android/  native Android project (gradle) generated via `expo prebuild`/dev client
+
+Config/env: apps/mobile/.env.local (copy from .env.example)
+  EXPO_PUBLIC_API_URL — LAN IP of apps/web dev server (NOT localhost — device/
+    emulator can't reach host machine's localhost)
+  EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB/IOS/ANDROID — Google Sign-In (WEB id also
+    covers Expo Go's proxy OAuth flow in dev)
+app.json: bundle id / package = com.zindagicare.mobile, scheme "zindagicare",
+  EAS project id set (owner "ibrahim1065"), adaptive icon bg #0FA79B.
+eas.json present — EAS Build/Submit config for Android + iOS store builds.
+
+Run/dev commands (from apps/mobile/):
+  npm run start     # expo start (Expo Go / dev client, scan QR)
+  npm run android    # expo run:android (native build, needs Android SDK/emulator)
+  npm run ios        # expo run:ios (needs macOS + Xcode; not buildable from Windows)
+  npm run web        # expo start --web
+
+Android: native project checked in under apps/mobile/android/ (gradle wrapper,
+  debug keystore, release keystore .jks at apps/mobile/@ibrahim1065__zindagicare-mobile.jks
+  — do not commit new keystores/secrets). Google Sign-In native module requires a
+  dev-client/native build; guarded so it degrades gracefully under Expo Go.
+iOS: no ios/ folder checked in — relies on Expo managed/prebuild flow; iOS native
+  builds require macOS (EAS Build cloud is the practical path from Windows).
+
+NOT BUILT on mobile yet: doctor/nurse/physio/admin/rider apps, chat, Sunday free
+  consult flow, Health Assistant (Gemini) UI, push notifications wiring, i18n
+  (Urdu) — web has EN/UR, mobile currently English-only.
+
+--------------------------------------------------------------------------------
 9. AGENT RULES (product + architecture)
 --------------------------------------------------------------------------------
 1. Gate patient surfaces with canUsePatientWorkspace(roles, activeWorkspace),
@@ -189,6 +249,10 @@ npm install
 cp .env.example apps/web/.env.local   # fill AUTH_SECRET, MONGODB_URI, URLs
 npm run dev                           # http://localhost:3000
 
+Mobile (apps/mobile): cp .env.example .env.local, set EXPO_PUBLIC_API_URL to
+  web dev server's LAN IP, then `npm run start` (Expo Go) or `npm run android`.
+  Web dev server must be running first — mobile has no backend of its own.
+
 
 --------------------------------------------------------------------------------
 11. BUILD STATUS (compressed — for planning, not exhaustive)
@@ -206,6 +270,8 @@ PARTIAL / NEEDS LIVE CREDENTIALS: JazzCash/EasyPaisa gateway live mode,
 
 NOT BUILT / THIN: rider delivery app UI, pharmacy catalog, multi-city beyond
   Lahore, automated PMDC registry check, clinic in-person patient booking UI.
+  Mobile app (apps/mobile) is early/patient-only — see section 8b; no staff
+  roles, chat, Sunday-consult, Health Assistant, push, or Urdu on mobile yet.
 
 
 ================================================================================

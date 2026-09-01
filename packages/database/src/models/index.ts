@@ -22,6 +22,7 @@ export * from "./payment.model";
 export * from "./doctor-payout.model";
 export * from "./medical-intake.model";
 export * from "./audit-log.model";
+export * from "./activity-event.model";
 export * from "./doctor-miss.model";
 export * from "./system-settings.model";
 export * from "./push-subscription.model";

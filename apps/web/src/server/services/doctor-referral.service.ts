@@ -121,8 +121,8 @@ export type DoctorReferralSummary = {
 };
 
 /**
- * Summary for the doctor-facing referrals page: referred patients and the lifetime
- * commission bonus earned from them (bonus portion only, not their full earnings).
+ * Summary for the doctor-facing referrals page: referred patients and the doctor's
+ * lifetime full earnings (at the boosted referral rate) from appointments with them.
  */
 export async function getReferredPatientsSummary(
   doctorProfileId: string,
@@ -210,16 +210,14 @@ export async function getReferredPatientsSummary(
     : [];
   const paymentAmountById = new Map(payments.map((p) => [p._id.toString(), p.amount ?? 0]));
 
-  // Bonus-only portion: effective% (with referral bonus) minus the doctor's base %.
+  // Full earnings (at the boosted referral rate) from appointments with referred patients.
   let lifetimeBonusEarnings = 0;
 
   for (const appt of completedAppts) {
     const gross = paymentAmountById.get(appt.paymentId?.toString() ?? "") ?? 0;
     if (!gross) continue;
     const effectivePercent = resolveEffectiveCommissionPercent(rates.online, true);
-    lifetimeBonusEarnings +=
-      calculateStaffNetEarnings(gross, effectivePercent) -
-      calculateStaffNetEarnings(gross, rates.online);
+    lifetimeBonusEarnings += calculateStaffNetEarnings(gross, effectivePercent);
   }
 
   for (const visit of completedHomeVisits) {
@@ -227,9 +225,7 @@ export async function getReferredPatientsSummary(
       paymentAmountById.get(visit.paymentId?.toString() ?? "") ?? visit.pricing?.total ?? 0;
     if (!gross) continue;
     const effectivePercent = resolveEffectiveCommissionPercent(rates.homeVisit, true);
-    lifetimeBonusEarnings +=
-      calculateStaffNetEarnings(gross, effectivePercent) -
-      calculateStaffNetEarnings(gross, rates.homeVisit);
+    lifetimeBonusEarnings += calculateStaffNetEarnings(gross, effectivePercent);
   }
 
   return {

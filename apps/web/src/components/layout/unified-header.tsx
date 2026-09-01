@@ -73,6 +73,7 @@ export function UnifiedHeader({
     doctorDashboard: t.dashboard.header.doctorDashboard,
     adminDashboard: t.dashboard.header.adminDashboard,
     healthAssistant: t.copilot.navLabel,
+    prescriptions: t.prescriptions.title,
     signOut: t.dashboard.header.signOut,
     login: t.auth.login,
     createAccount: t.auth.createAccount,

@@ -10,5 +10,5 @@ export default function RootIndex() {
   }
 
   if (!user) return <Redirect href="/(auth)/login" />;
-  return <Redirect href={user.activeWorkspace === "doctor" ? "/(doctor)" : "/(tabs)"} />;
+  return <Redirect href={user.roles?.includes("doctor") ? "/(doctor)" : "/(tabs)"} />;
 }

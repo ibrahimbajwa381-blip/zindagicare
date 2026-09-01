@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getDoctorProfile, type DoctorProfileDto } from "@/api/doctor";
 import { ApiRequestError } from "@/api/client";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
@@ -36,9 +37,10 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function DoctorProfileScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, deleteAccount } = useAuth();
   const [profile, setProfile] = useState<DoctorProfileDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +57,39 @@ export default function DoctorProfileScreen() {
       load();
     }, [load]),
   );
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      "Delete your account?",
+      "This permanently deactivates your ZindagiCare doctor account and signs you out. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert("Are you sure?", "Confirm to permanently delete your account.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Yes, delete my account",
+                style: "destructive",
+                onPress: async () => {
+                  setIsDeleting(true);
+                  try {
+                    await deleteAccount();
+                  } catch (e) {
+                    Alert.alert("Couldn't delete account", e instanceof ApiRequestError ? e.message : "Please try again");
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                },
+              },
+            ]);
+          },
+        },
+      ],
+    );
+  };
 
   if (!profile) {
     return error ? (
@@ -162,6 +197,20 @@ export default function DoctorProfileScreen() {
         <Ionicons name="log-out-outline" size={18} color="#e53935" />
         <Text style={styles.signOutText}>Sign out</Text>
       </Pressable>
+
+      <View style={styles.legalRow}>
+        <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")}>
+          <Text style={styles.legalLink}>Privacy Policy</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")}>
+          <Text style={styles.legalLink}>Terms of Service</Text>
+        </Pressable>
+      </View>
+
+      <Pressable style={styles.deleteAccountButton} onPress={confirmDeleteAccount} disabled={isDeleting}>
+        {isDeleting ? <Spinner size="sm" color="#e53935" /> : <Text style={styles.deleteAccountText}>Delete account</Text>}
+      </Pressable>
     </ScrollView>
   );
 }
@@ -231,4 +280,11 @@ const styles = StyleSheet.create({
 
   signOutButton: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", paddingVertical: 14 },
   signOutText: { color: "#e53935", fontFamily: fonts.semibold, fontSize: 15 },
+
+  legalRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+  legalLink: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.brand.DEFAULT },
+  legalDot: { color: "#ccc" },
+
+  deleteAccountButton: { alignItems: "center", justifyContent: "center", paddingVertical: 14 },
+  deleteAccountText: { color: "#999", fontFamily: fonts.medium, fontSize: 13, textDecorationLine: "underline" },
 });
