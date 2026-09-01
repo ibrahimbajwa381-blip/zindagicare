@@ -17,6 +17,8 @@ export function AdminPlatformEarnings() {
   const [data, setData] = useState<AdminPlatformEarningsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,6 +50,30 @@ export function AdminPlatformEarnings() {
   }
 
   const { totals, byDoctor, unresolvedPayments, unresolvedPaymentsTotal } = data;
+
+  const deleteAppointment = async (appointmentId: string, doctorName: string, patientName: string) => {
+    if (
+      !window.confirm(
+        `Permanently delete this appointment (${doctorName} ↔ ${patientName})? This removes it and its payment record from the database and cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(appointmentId);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/v1/admin/appointments/${appointmentId}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message ?? "Failed to delete appointment");
+      }
+      await load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete appointment");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -210,6 +236,7 @@ export function AdminPlatformEarnings() {
             </p>
           ) : (
             <div className="overflow-x-auto">
+              {deleteError && <p className="mb-2 text-sm text-red-600">{deleteError}</p>}
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-amber-200/60 text-xs uppercase tracking-wide text-amber-800/70">
@@ -219,6 +246,7 @@ export function AdminPlatformEarnings() {
                     <th className="px-3 py-2 font-medium">Amount</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 font-medium">Age</th>
+                    <th className="px-3 py-2 font-medium" />
                     <th className="px-3 py-2 font-medium" />
                   </tr>
                 </thead>
@@ -258,6 +286,18 @@ export function AdminPlatformEarnings() {
                             Details
                           </Link>
                         )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deleteAppointment(row.appointmentId, row.doctorName, row.patientName)
+                          }
+                          disabled={deletingId === row.appointmentId}
+                          className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deletingId === row.appointmentId ? "Deleting…" : "Delete"}
+                        </button>
                       </td>
                     </tr>
                   ))}

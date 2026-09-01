@@ -27,6 +27,8 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
   const [error, setError] = useState<string>();
   const [referralPendingId, setReferralPendingId] = useState<string | null>(null);
   const [referralError, setReferralError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [method, setMethod] = useState("bank_transfer");
   const [note, setNote] = useState("");
@@ -108,6 +110,30 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
       setReferralError(err instanceof Error ? err.message : "Failed to update referral status");
     } finally {
       setReferralPendingId(null);
+    }
+  };
+
+  const deleteAppointment = async (appointmentId: string, patientName: string) => {
+    if (
+      !window.confirm(
+        `Permanently delete this appointment (${patientName} ↔ ${doctor.name})? This removes it and its payment record from the database and cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(appointmentId);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/v1/admin/appointments/${appointmentId}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message ?? "Failed to delete appointment");
+      }
+      await load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete appointment");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -321,6 +347,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
           ) : (
             <div className="overflow-x-auto">
               {referralError && <p className="mb-2 text-sm text-red-600">{referralError}</p>}
+              {deleteError && <p className="mb-2 text-sm text-red-600">{deleteError}</p>}
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
@@ -333,6 +360,7 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
                     <th className="px-3 py-2 font-medium">Earning</th>
                     <th className="px-3 py-2 font-medium">Reason</th>
                     <th className="px-3 py-2 font-medium">Referral</th>
+                    <th className="px-3 py-2 font-medium" />
                   </tr>
                 </thead>
                 <tbody>
@@ -398,6 +426,16 @@ export function AdminDoctorFinanceDetail({ doctorProfileId }: { doctorProfileId:
                             : a.isReferred
                               ? "Remove referral"
                               : "Mark as referral"}
+                        </button>
+                      </td>
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => deleteAppointment(a.id, a.patientName)}
+                          disabled={deletingId === a.id}
+                          className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deletingId === a.id ? "Deleting…" : "Delete"}
                         </button>
                       </td>
                     </tr>

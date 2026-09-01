@@ -526,6 +526,42 @@ export async function adminSetAppointmentReferral(
   return { isReferred };
 }
 
+/**
+ * Permanently deletes an appointment and its linked payment record. This is a hard delete
+ * (not the `deletedAt` soft-delete used elsewhere) intended for admin cleanup of dummy/test
+ * data — it cannot be undone, so the API layer must require explicit confirmation.
+ */
+export async function adminDeleteAppointment(appointmentId: string, actor: AdminActivityActor) {
+  await connectDatabase();
+
+  const appointment = await AppointmentModel.findById(appointmentId)
+    .populate("patientId", "name")
+    .populate({ path: "doctorId", populate: { path: "userId", select: "name" } });
+  if (!appointment) throw new AppError("Appointment not found", "NOT_FOUND", 404);
+
+  const patient = appointment.patientId as { name?: string } | null;
+  const doctorProfile = appointment.doctorId as { userId?: { name?: string } } | null;
+  const patientName = safeDisplayText(patient?.name) ?? "Patient";
+  const doctorName = normalizeDoctorName(doctorProfile?.userId?.name);
+  const paymentId = appointment.paymentId?.toString();
+
+  if (paymentId) {
+    await PaymentModel.findByIdAndDelete(paymentId);
+  }
+  await AppointmentModel.findByIdAndDelete(appointmentId);
+
+  await recordAdminActivity({
+    actor,
+    action: "appointment.deleted",
+    entityType: "Appointment",
+    entityId: appointmentId,
+    targetLabel: `${patientName} ↔ ${doctorName}`,
+    changes: { paymentId, scheduledStart: appointment.scheduledStart.toISOString() },
+  });
+
+  return { id: appointmentId, deleted: true };
+}
+
 async function findOrCreatePatientByPhone(phone: string, name?: string) {
   const normalized = normalizePakistaniPhone(phone);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(phone));
