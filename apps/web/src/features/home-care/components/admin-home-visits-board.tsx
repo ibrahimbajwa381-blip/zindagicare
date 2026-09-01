@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   HomeVisitStatuses,
   HomeVisitServiceTypes,
@@ -101,13 +101,15 @@ export function AdminHomeVisitsBoard() {
     setStaffByVisit(next);
   }, []);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const visitsRes = await fetch("/api/v1/home-visits?scope=all");
     const visitsJson = await visitsRes.json();
     const list: HomeVisitDto[] = visitsJson.success ? visitsJson.data ?? [] : [];
     setVisits(list);
     await loadStaffForVisits(list);
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [loadStaffForVisits]);
 

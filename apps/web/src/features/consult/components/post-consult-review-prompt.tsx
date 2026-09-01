@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,9 @@ export function PostConsultReviewPrompt({ appointmentId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     setError(null);
     try {
       const res = await fetch(
@@ -45,6 +46,7 @@ export function PostConsultReviewPrompt({ appointmentId }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : videoCopy.reviewLoadError);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }, [appointmentId, videoCopy.reviewLoadError]);

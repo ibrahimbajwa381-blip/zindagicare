@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, FileText, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +47,9 @@ export function InCallPrescriptionPanel({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PrescriptionDetail | null>(null);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const res = await fetch(
       `/api/v1/doctor/prescriptions/context/${appointmentId}`,
     );
@@ -58,6 +59,7 @@ export function InCallPrescriptionPanel({
     } else {
       setContext(null);
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [appointmentId]);
 

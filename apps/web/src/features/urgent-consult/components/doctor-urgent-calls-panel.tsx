@@ -24,11 +24,13 @@ export function DoctorUrgentCallsPanel() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const res = await fetch("/api/v1/doctor/urgent-calls");
     const json = await res.json();
     setRequests(json.success ? json.data ?? [] : []);
+    hasLoadedRef.current = true;
     setLoading(false);
   }, []);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HomeVisitStatuses } from "@zindagi/shared";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { HomeVisitReviewAction } from "./home-visit-review-action";
@@ -29,8 +29,9 @@ export function HomeVisitReviewSection({ visitId, copy }: Props) {
   const [state, setState] = useState<HomeVisitReviewState | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     try {
       const res = await fetch(`/api/v1/home-visits/${visitId}/review`);
       const json = await res.json();
@@ -38,6 +39,7 @@ export function HomeVisitReviewSection({ visitId, copy }: Props) {
         setState(json.data as HomeVisitReviewState);
       }
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }, [visitId]);

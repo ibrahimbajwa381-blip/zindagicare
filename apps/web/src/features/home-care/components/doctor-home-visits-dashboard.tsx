@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HomeVisitStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,8 +91,9 @@ export function DoctorHomeVisitsDashboard() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
 
+  const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const [activeRes, historyRes] = await Promise.all([
       fetch("/api/v1/home-visits?scope=assigned"),
       fetch("/api/v1/home-visits?scope=assigned-history"),
@@ -103,6 +104,7 @@ export function DoctorHomeVisitsDashboard() {
     ]);
     if (activeJson.success) setActiveVisits(activeJson.data ?? []);
     if (historyJson.success) setHistoryVisits(historyJson.data ?? []);
+    hasLoadedRef.current = true;
     setLoading(false);
   }, []);
 
