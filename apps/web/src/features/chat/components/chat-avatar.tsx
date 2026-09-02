@@ -45,6 +45,7 @@ export function ChatAvatar({
           fill
           className="object-cover object-top"
           sizes={styles.image}
+          unoptimized
         />
       </span>
     );

@@ -127,6 +127,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
                     className="object-cover object-top"
                     sizes="112px"
                     priority
+                    unoptimized
                   />
                 </span>
               ) : (

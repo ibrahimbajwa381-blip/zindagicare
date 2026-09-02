@@ -39,7 +39,7 @@ function DoctorAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string })
   if (src) {
     return (
       <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200">
-        <Image src={src} alt={name} fill className="object-cover object-top" sizes="48px" />
+        <Image src={src} alt={name} fill className="object-cover object-top" sizes="48px" unoptimized />
       </span>
     );
   }

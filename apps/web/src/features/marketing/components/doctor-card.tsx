@@ -78,6 +78,7 @@ export function DoctorCard({
                 fill
                 className="object-cover object-top"
                 sizes="56px"
+                unoptimized
               />
             </span>
           ) : (

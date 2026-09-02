@@ -54,7 +54,7 @@ function DoctorAvatar({ name, src }: { name: string; src?: string }) {
   if (src) {
     return (
       <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200/80">
-        <Image src={src} alt={name} fill className="object-cover object-top" sizes="44px" />
+        <Image src={src} alt={name} fill className="object-cover object-top" sizes="44px" unoptimized />
       </span>
     );
   }

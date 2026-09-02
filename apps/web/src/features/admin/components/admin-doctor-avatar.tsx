@@ -52,6 +52,7 @@ export function AdminDoctorAvatar({
           fill
           className="object-cover object-top"
           sizes={imageSizes[size]}
+          unoptimized
         />
       </span>
     );

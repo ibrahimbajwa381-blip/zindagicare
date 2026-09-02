@@ -50,6 +50,7 @@ export function CopilotDoctorReferralList({
                       fill
                       className="object-cover object-top"
                       sizes="48px"
+                      unoptimized
                     />
                   </span>
                 ) : (

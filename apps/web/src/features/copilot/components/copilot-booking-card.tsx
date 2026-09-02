@@ -40,6 +40,7 @@ export function CopilotBookingCard({
                 fill
                 className="object-cover object-top"
                 sizes="48px"
+                unoptimized
               />
             </span>
           ) : (
