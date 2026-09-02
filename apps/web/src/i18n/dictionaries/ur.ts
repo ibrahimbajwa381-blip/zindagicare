@@ -1401,6 +1401,9 @@ export const ur: Dictionary = {
         "آپ کی رائے دوسرے مریضوں کو صحیح ڈاکٹر چننے میں مدد دیتا ہے۔",
       loadingReview: "جائزہ کے اختیارات لوڈ ہو رہے ہیں…",
       reviewLoadError: "جائزے کے اختیارات لوڈ نہیں ہو سکے۔",
+      prescriptionTitle: "آپ کا نسخہ",
+      prescriptionDescription: "ڈاکٹر نے اس ملاقات کے لیے نسخہ جاری کر دیا ہے۔",
+      viewPrescription: "نسخہ دیکھیں / ڈاؤن لوڈ کریں",
     },
     videoSession: {
       loading: "آپ کی مشورہ لوڈ ہو رہی ہے…",

@@ -17,7 +17,9 @@ import {
   AppError,
 } from "@zindagi/shared";
 import type { DoctorReviewDto } from "@/features/marketing/types/doctor-public";
+import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
 import { mongoFilter } from "@/lib/mongo/query";
+import { PrescriptionService } from "@/server/services/prescription.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
 function maskPatientName(name: string) {
@@ -39,6 +41,7 @@ export type PatientReviewState = {
   canReview: boolean;
   doctorName: string;
   review?: PatientReviewDto;
+  prescription?: AppointmentPrescriptionLink;
 };
 
 export type AdminReviewRow = {
@@ -261,14 +264,17 @@ export class ReviewService {
     const doctorName = doctor?.userId?.name ?? "Doctor";
     const payment = appointment.paymentId as { status?: string } | null;
 
-    const existing = await ReviewModel.findOne(
-      mongoFilter({ appointmentId, deletedAt: null }),
-    ).lean();
+    const [existing, prescriptionMap] = await Promise.all([
+      ReviewModel.findOne(mongoFilter({ appointmentId, deletedAt: null })).lean(),
+      PrescriptionService.getPrescriptionsForAppointments([appointmentId]),
+    ]);
+    const prescription = prescriptionMap.get(appointmentId);
 
     if (existing) {
       return {
         canReview: false,
         doctorName,
+        prescription,
         review: {
           id: existing._id.toString(),
           appointmentId,
@@ -304,7 +310,7 @@ export class ReviewService {
       },
     );
 
-    return { canReview, doctorName };
+    return { canReview, doctorName, prescription };
   }
 
   static async submitReview(

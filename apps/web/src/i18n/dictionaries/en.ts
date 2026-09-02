@@ -1408,6 +1408,9 @@ export const en = {
         "Your feedback helps other patients choose the right doctor and helps us improve care.",
       loadingReview: "Checking if you can leave a review…",
       reviewLoadError: "Could not load review options.",
+      prescriptionTitle: "Your prescription",
+      prescriptionDescription: "The doctor has issued a prescription for this visit.",
+      viewPrescription: "View / download prescription",
     },
     videoSession: {
       loading: "Loading your consultation…",

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { FileText, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { siteConfig } from "@/config/site";
@@ -19,6 +19,10 @@ type ReviewState = {
   review?: {
     rating: number;
     comment?: string;
+  };
+  prescription?: {
+    id: string;
+    downloadUrl: string;
   };
 };
 
@@ -78,6 +82,32 @@ export function PostConsultReviewPrompt({ appointmentId }: Props) {
         <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-center text-sm text-red-700">
           {error}
         </p>
+      ) : null}
+
+      {state?.prescription && !loading && !error ? (
+        <div className="rounded-2xl border border-brand-light/30 bg-brand-muted/40 p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <FileText className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-lg font-semibold text-slate-900">
+                {videoCopy.prescriptionTitle}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">{videoCopy.prescriptionDescription}</p>
+              <Button asChild size="sm" className="mt-4 gap-1.5">
+                <a
+                  href={state.prescription.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  {videoCopy.viewPrescription}
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {showReview ? (
