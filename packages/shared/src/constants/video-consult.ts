@@ -6,6 +6,6 @@ export const VIDEO_CONSULT_CONFIG = {
    */
   joinEarlyMinutes: 720,
   /** Grace period after scheduled end to join, for the same reason as above */
-  joinLateMinutes: 720,
+  joinLateMinutes: 4320,
   defaultTimezone: "Asia/Karachi",
 } as const;
