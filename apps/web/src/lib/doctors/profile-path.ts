@@ -1,5 +1,12 @@
 const MONGO_OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
 
+/** Prefix "Dr." for display when the doctor's name doesn't already include a title. */
+export function formatDoctorDisplayName(name: string): string {
+  const trimmed = name.trim();
+  if (/^(dr|prof|professor)\.?\s/i.test(trimmed)) return trimmed;
+  return `Dr. ${trimmed}`;
+}
+
 /** URL-safe slug from display name (matches admin slug base logic). */
 export function nameToDoctorSlug(name: string) {
   return (

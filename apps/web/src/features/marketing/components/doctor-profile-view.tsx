@@ -20,7 +20,7 @@ import type {
 } from "@/features/marketing/types/doctor-public";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { formatQualificationsList } from "@/lib/doctors/qualifications";
-import { doctorProfilePath } from "@/lib/doctors/profile-path";
+import { doctorProfilePath, formatDoctorDisplayName } from "@/lib/doctors/profile-path";
 import { surfaceCard, surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { cn } from "@zindagi/shared";
 
@@ -73,6 +73,7 @@ function RatingStars({ rating }: { rating: number }) {
 
 export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props) {
   const avatarSrc = resolveDoctorPortrait(doctor.name, doctor.avatarUrl);
+  const displayName = formatDoctorDisplayName(doctor.name);
   const callbackUrl = doctorProfilePath(doctor.slug, doctor.doctorId);
   const credentialBadges = formatQualificationsList(
     doctor.medicalDegree,
@@ -91,14 +92,14 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
           </Link>
           <div className="flex items-center gap-3">
             <ShareProfileButton
-              doctorName={doctor.name}
+              doctorName={displayName}
               shareLabel={copy.shareProfile}
               copiedLabel={copy.linkCopied}
             />
             <DoctorShareCardDialog
               triggerLabel="Share card"
               card={{
-                name: doctor.name,
+                name: displayName,
                 avatarUrl: avatarSrc,
                 specialty: doctor.specialties.join(" · "),
                 qualifications: credentialBadges,
@@ -122,7 +123,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
                 <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-3xl ring-4 ring-white shadow-md">
                   <Image
                     src={avatarSrc}
-                    alt={doctor.name}
+                    alt={displayName}
                     fill
                     className="object-cover object-top"
                     sizes="112px"
@@ -143,7 +144,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start gap-2">
                   <h1 className="font-display text-2xl font-semibold text-slate-900 sm:text-3xl">
-                    {doctor.name}
+                    {displayName}
                   </h1>
                   {doctor.pmdcVerified && (
                     <Badge

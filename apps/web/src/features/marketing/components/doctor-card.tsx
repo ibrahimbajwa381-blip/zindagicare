@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Star } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Badge } from "@/components/ui/badge";
+import { formatDoctorDisplayName } from "@/lib/doctors/profile-path";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
 type DoctorCardProps = {
@@ -54,6 +55,7 @@ export function DoctorCard({
   const showSlots = slotsOpenLabel !== undefined || noSlotsLabel !== undefined;
   const showRating = reviews > 0 && rating > 0;
   const shownCredentials = credentials.filter(Boolean);
+  const displayName = formatDoctorDisplayName(name);
 
   const card = (
     <article
@@ -74,7 +76,7 @@ export function DoctorCard({
             <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl ring-1 ring-slate-200/80 transition-colors group-hover:ring-brand-light/50">
               <Image
                 src={imageUrl}
-                alt={name}
+                alt={displayName}
                 fill
                 className="object-cover object-top"
                 sizes="56px"
@@ -90,7 +92,7 @@ export function DoctorCard({
           <div className="min-w-0 flex-1">
             <h3 className="font-display text-[0.95rem] font-semibold leading-snug tracking-tight text-foreground sm:text-base">
               <span className="line-clamp-2 [overflow-wrap:normal] [word-break:normal] hyphens-none">
-                {name}
+                {displayName}
               </span>
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
