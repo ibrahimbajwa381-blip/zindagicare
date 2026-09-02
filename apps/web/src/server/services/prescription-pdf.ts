@@ -12,13 +12,22 @@ const LOGO_HEIGHT = 120;
 const LOGO_ASPECT = LOGO_WIDTH / LOGO_HEIGHT;
 
 const BRAND = {
-  header: "#062e2c",
+  header: "#ffffff",
+  headerBorder: "#e2e8f0",
   accent: "#0FA79B",
   accentNavy: "#0B3D91",
   text: "#334155",
   muted: "#64748b",
   heading: "#0f172a",
   tableHeader: "#f1f5f9",
+  cardBorder: "#e2e8f0",
+  cardFill: "#f8fafc",
+} as const;
+
+const CONTACT = {
+  phone: "0327 7661515",
+  website: "www.zindagicare.com",
+  email: "info.zindagicare@gmail.com",
 } as const;
 
 function getPDFDocument(): typeof import("pdfkit") {
@@ -86,6 +95,12 @@ function drawLetterhead(
   doc.save();
   doc.rect(0, 0, doc.page.width, headerHeight).fill(BRAND.header);
   doc.rect(0, headerHeight - 3, doc.page.width, 3).fill(BRAND.accent);
+  doc
+    .strokeColor(BRAND.headerBorder)
+    .lineWidth(0.75)
+    .moveTo(0, headerHeight - 3)
+    .lineTo(doc.page.width, headerHeight - 3)
+    .stroke();
   doc.restore();
 
   if (logoPath) {
@@ -138,45 +153,66 @@ function drawLetterhead(
   return doc.y;
 }
 
+function sectionHeading(
+  doc: InstanceType<ReturnType<typeof getPDFDocument>>,
+  pageWidth: number,
+  label: string,
+) {
+  const barWidth = 3;
+  const barHeight = 12;
+  const y = doc.y + 1;
+  doc.rect(doc.page.margins.left, y, barWidth, barHeight).fill(BRAND.accent);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10.5)
+    .fillColor(BRAND.heading)
+    .text(label.toUpperCase(), doc.page.margins.left + barWidth + 8, y - 1, {
+      width: pageWidth - barWidth - 8,
+      characterSpacing: 0.4,
+    });
+  doc.y = y + barHeight + 8;
+}
+
 function drawFooter(
   doc: InstanceType<ReturnType<typeof getPDFDocument>>,
   pageWidth: number,
 ) {
   const iconPath = resolvePublicAsset("icon-192.png");
-  const footerY = doc.page.height - doc.page.margins.bottom - 8;
+  const lineY = doc.page.height - doc.page.margins.bottom - 34;
+  const textY = lineY + 10;
 
   doc
-    .strokeColor("#e2e8f0")
-    .lineWidth(0.5)
-    .moveTo(doc.page.margins.left, footerY - 14)
-    .lineTo(doc.page.margins.left + pageWidth, footerY - 14)
+    .strokeColor(BRAND.headerBorder)
+    .lineWidth(0.75)
+    .moveTo(doc.page.margins.left, lineY)
+    .lineTo(doc.page.margins.left + pageWidth, lineY)
     .stroke();
 
+  const textX = iconPath ? doc.page.margins.left + 26 : doc.page.margins.left;
+  const textWidth = iconPath ? pageWidth - 26 : pageWidth;
+
   if (iconPath) {
-    doc.image(iconPath, doc.page.margins.left, footerY - 10, {
-      width: 20,
-      height: 20,
-    });
-    doc
-      .font("Helvetica")
-      .fontSize(7.5)
-      .fillColor(BRAND.muted)
-      .text(
-        "ZindagiCare  ·  info.zindagicare@gmail.com  ·  Verified telemedicine — Lahore, Pakistan",
-        doc.page.margins.left + 26,
-        footerY - 4,
-        { width: pageWidth - 26 },
-      );
-  } else {
-    doc
-      .font("Helvetica")
-      .fontSize(7.5)
-      .fillColor(BRAND.muted)
-      .text("ZindagiCare  ·  info.zindagicare@gmail.com", doc.page.margins.left, footerY - 4, {
-        width: pageWidth,
-        align: "center",
-      });
+    doc.image(iconPath, doc.page.margins.left, textY, { width: 20, height: 20 });
   }
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(8)
+    .fillColor(BRAND.accentNavy)
+    .text("ZindagiCare", textX, textY, { continued: true, width: textWidth })
+    .font("Helvetica")
+    .fillColor(BRAND.muted)
+    .text(`  ·  ${CONTACT.phone}  ·  ${CONTACT.website}  ·  ${CONTACT.email}`, {
+      width: textWidth,
+    });
+
+  doc
+    .font("Helvetica")
+    .fontSize(7)
+    .fillColor(BRAND.muted)
+    .text("Verified telemedicine — Lahore, Pakistan", textX, textY + 12, {
+      width: textWidth,
+    });
 }
 
 export async function generatePrescriptionPdf(
@@ -202,32 +238,65 @@ export async function generatePrescriptionPdf(
       .text(`Issued: ${formatDateTime(input.issuedAt)}`, { align: "right" });
     doc.moveDown(0.75);
 
-    doc.fontSize(11).fillColor(BRAND.heading).text("Prescribing Doctor", { underline: true });
-    doc.moveDown(0.25);
-    doc.fontSize(10).fillColor(BRAND.text);
-    doc.text(withDoctorTitle(input.doctorName));
-    if (input.pmdcNumber) {
-      doc.text(`PMDC Registration: ${input.pmdcNumber}`);
-    }
-    doc.text(`Specialty: ${input.specialty}`);
-    if (input.hospital) {
-      doc.text(`Hospital/Clinic: ${input.hospital}`);
-    }
-    doc.moveDown(0.75);
+    const colGap = 14;
+    const colW = (pageWidth - colGap) / 2;
+    const cardPad = 10;
+    const doctorLines = [
+      withDoctorTitle(input.doctorName),
+      ...(input.pmdcNumber ? [`PMDC Registration: ${input.pmdcNumber}`] : []),
+      `Specialty: ${input.specialty}`,
+      ...(input.hospital ? [`Hospital/Clinic: ${input.hospital}`] : []),
+    ];
+    const patientLines = [
+      `Name: ${input.patientName}`,
+      ...(input.patientPhone ? [`Phone: ${input.patientPhone}`] : []),
+      `Consult type: ${input.appointmentType}`,
+      `Consult date: ${formatDate(input.consultDate)}`,
+    ];
 
-    doc.fontSize(11).fillColor(BRAND.heading).text("Patient", { underline: true });
-    doc.moveDown(0.25);
-    doc.fontSize(10).fillColor(BRAND.text);
-    doc.text(`Name: ${input.patientName}`);
-    if (input.patientPhone) {
-      doc.text(`Phone: ${input.patientPhone}`);
-    }
-    doc.text(`Consult type: ${input.appointmentType}`);
-    doc.text(`Consult date: ${formatDate(input.consultDate)}`);
-    doc.moveDown(1);
+    doc.font("Helvetica").fontSize(9.5);
+    const doctorTextHeight = doc.heightOfString(doctorLines.join("\n"), {
+      width: colW - cardPad * 2,
+    });
+    const patientTextHeight = doc.heightOfString(patientLines.join("\n"), {
+      width: colW - cardPad * 2,
+    });
+    const cardTextHeight = Math.max(doctorTextHeight, patientTextHeight);
+    const cardHeaderHeight = 22;
+    const cardHeight = cardHeaderHeight + cardTextHeight + cardPad * 2;
 
-    doc.fontSize(11).fillColor(BRAND.heading).text("Medications", { underline: true });
-    doc.moveDown(0.5);
+    const cardTop = doc.y;
+    const leftX = doc.page.margins.left;
+    const rightX = leftX + colW + colGap;
+
+    [
+      { x: leftX, label: "Prescribing Doctor", lines: doctorLines },
+      { x: rightX, label: "Patient", lines: patientLines },
+    ].forEach(({ x, label, lines }) => {
+      doc
+        .roundedRect(x, cardTop, colW, cardHeight, 4)
+        .fillAndStroke(BRAND.cardFill, BRAND.cardBorder);
+      doc.rect(x, cardTop, 3, cardHeight).fill(BRAND.accent);
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(9.5)
+        .fillColor(BRAND.accentNavy)
+        .text(label.toUpperCase(), x + cardPad, cardTop + 9, {
+          width: colW - cardPad * 2,
+          characterSpacing: 0.3,
+        });
+      doc
+        .font("Helvetica")
+        .fontSize(9.5)
+        .fillColor(BRAND.text)
+        .text(lines.join("\n"), x + cardPad, cardTop + cardHeaderHeight, {
+          width: colW - cardPad * 2,
+        });
+    });
+
+    doc.y = cardTop + cardHeight + 20;
+
+    sectionHeading(doc, pageWidth, "Medications");
 
     const colWidths = [pageWidth * 0.28, pageWidth * 0.18, pageWidth * 0.22, pageWidth * 0.22];
     const startX = doc.page.margins.left;
@@ -238,22 +307,23 @@ export async function generatePrescriptionPdf(
       bold = false,
       fill?: string,
     ) => {
-      const rowHeight = 22;
+      const rowHeight = 24;
       if (tableY + rowHeight > doc.page.height - doc.page.margins.bottom - 80) {
         doc.addPage();
         tableY = doc.page.margins.top;
       }
 
-      if (fill) {
-        doc.rect(startX, tableY, pageWidth, rowHeight).fill(fill);
-      }
+      doc.rect(startX, tableY, pageWidth, rowHeight).fillAndStroke(
+        fill ?? "#ffffff",
+        BRAND.cardBorder,
+      );
 
       doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(9).fillColor(BRAND.text);
 
-      let x = startX + 4;
+      let x = startX + 8;
       cells.forEach((cell, i) => {
-        doc.text(cell, x, tableY + 6, {
-          width: colWidths[i]! - 8,
+        doc.text(cell, x, tableY + 7, {
+          width: colWidths[i]! - 12,
           lineBreak: false,
           ellipsis: true,
         });
@@ -270,26 +340,48 @@ export async function generatePrescriptionPdf(
       drawRow([med.name, med.dosage, med.frequency, med.duration]);
     }
 
-    doc.moveDown(1);
+    doc.moveDown(1.25);
 
     if (input.notes?.trim()) {
-      doc.fontSize(11).fillColor(BRAND.heading).text("Notes / Advice", { underline: true });
-      doc.moveDown(0.25);
+      sectionHeading(doc, pageWidth, "Notes / Advice");
       doc.fontSize(10).fillColor(BRAND.text).text(input.notes.trim(), {
         width: pageWidth,
       });
       doc.moveDown(1);
     }
 
+    const disclaimerText =
+      "This digital prescription was issued following a telemedicine consultation on ZindagiCare. " +
+      "Prescriptions may be limited by law, drug schedule, or clinical judgment. " +
+      "This is not a substitute for emergency care — call emergency services or visit the nearest hospital for urgent symptoms.";
+
+    const disclaimerPadding = 10;
+    doc.font("Helvetica").fontSize(8);
+    const disclaimerTextHeight = doc.heightOfString(disclaimerText, {
+      width: pageWidth - disclaimerPadding * 2,
+    });
+    const disclaimerBoxHeight = disclaimerTextHeight + disclaimerPadding * 2;
+    const footerReserve = 60;
+
+    if (
+      doc.y + disclaimerBoxHeight >
+      doc.page.height - doc.page.margins.bottom - footerReserve
+    ) {
+      doc.addPage();
+      doc.y = doc.page.margins.top;
+    }
+
+    const disclaimerX = doc.page.margins.left;
+    const disclaimerY = doc.y;
     doc
-      .fontSize(8)
+      .roundedRect(disclaimerX, disclaimerY, pageWidth, disclaimerBoxHeight, 4)
+      .fillAndStroke(BRAND.cardFill, BRAND.cardBorder);
+    doc
       .fillColor(BRAND.muted)
-      .text(
-        "This digital prescription was issued following a telemedicine consultation on ZindagiCare. " +
-          "Prescriptions may be limited by law, drug schedule, or clinical judgment. " +
-          "This is not a substitute for emergency care — call emergency services or visit the nearest hospital for urgent symptoms.",
-        { width: pageWidth, align: "justify" },
-      );
+      .text(disclaimerText, disclaimerX + disclaimerPadding, disclaimerY + disclaimerPadding, {
+        width: pageWidth - disclaimerPadding * 2,
+      });
+    doc.y = disclaimerY + disclaimerBoxHeight;
 
     drawFooter(doc, pageWidth);
 
