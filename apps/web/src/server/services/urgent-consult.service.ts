@@ -1081,6 +1081,7 @@ export class UrgentConsultService {
       .sort({ assignedAt: -1, createdAt: -1 })
       .limit(50)
       .populate("patientId", "name phone")
+      .populate("paymentId", "amount status")
       .populate("appointmentId", "scheduledStart scheduledEnd")
       .populate({
         path: "assignedDoctorId",

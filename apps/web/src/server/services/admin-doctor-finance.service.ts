@@ -26,6 +26,7 @@ import {
   getReferredPatientIdSet,
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
+import { recordAdminActivity } from "./admin-activity.service";
 
 export type DoctorBankAccount = {
   accountTitle?: string;
@@ -486,6 +487,20 @@ export async function recordDoctorPayout(
   const [payout] = await DoctorPayoutModel.create([payoutDoc]);
 
   const paidByUser = await UserModel.findById(adminUserId).select("name").lean();
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action: "doctor_payout.recorded",
+    entityType: "DoctorPayout",
+    entityId: payout._id.toString(),
+    targetLabel: detail.doctor.name,
+    changes: {
+      doctorProfileId,
+      amount: input.amount,
+      method: input.method,
+      note: input.note,
+    },
+  });
 
   return {
     id: payout._id.toString(),

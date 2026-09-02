@@ -6,6 +6,7 @@ import {
   updatePlatformCommissionSettings,
   type PlatformCommissionSettings,
 } from "./system-settings.service";
+import { recordAdminActivity } from "./admin-activity.service";
 
 export type AdminFinancesDoctorRow = {
   id: string;
@@ -52,6 +53,17 @@ export async function getAdminFinancesOverview(): Promise<AdminFinancesOverview>
 
 export async function updateAdminFinancesPlatformSettings(
   patch: Partial<PlatformCommissionSettings>,
+  adminUserId: string,
 ): Promise<PlatformCommissionSettings> {
-  return updatePlatformCommissionSettings(patch);
+  const updated = await updatePlatformCommissionSettings(patch);
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action: "platform_commission_settings.updated",
+    entityType: "SystemSettings",
+    entityId: "platform-commission",
+    changes: patch,
+  });
+
+  return updated;
 }

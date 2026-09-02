@@ -23,6 +23,7 @@ import {
   getHerbalistReferredPatientIdSet,
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
+import { recordAdminActivity } from "./admin-activity.service";
 
 export type HerbalistBankAccount = {
   accountTitle?: string;
@@ -387,7 +388,7 @@ export async function recordHerbalistPayout(
 ): Promise<HerbalistPayoutRow> {
   await connectDatabase();
   const profile = await HerbalistProfileModel.findById(herbalistProfileId)
-    .select("_id")
+    .select("_id userId")
     .lean();
   if (!profile) throw new AppError("Herbalist not found", "NOT_FOUND", 404);
   if (!(input.amount > 0)) {
@@ -407,7 +408,24 @@ export async function recordHerbalistPayout(
     paidAt: new Date(),
   } as Record<string, unknown>)) as DoctorPayoutDocument;
 
-  const admin = await UserModel.findById(adminUserId).select("name").lean();
+  const [admin, herbalistUser] = await Promise.all([
+    UserModel.findById(adminUserId).select("name").lean(),
+    profile.userId ? UserModel.findById(profile.userId).select("name").lean() : null,
+  ]);
+
+  await recordAdminActivity({
+    actor: adminUserId,
+    action: "herbalist_payout.recorded",
+    entityType: "DoctorPayout",
+    entityId: payout._id.toString(),
+    targetLabel: safeDisplayText(herbalistUser?.name) ?? undefined,
+    changes: {
+      herbalistProfileId,
+      amount: input.amount,
+      method: input.method,
+      note: input.note,
+    },
+  });
 
   return {
     id: payout._id.toString(),

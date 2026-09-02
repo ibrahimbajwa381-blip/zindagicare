@@ -3,6 +3,7 @@ import Constants, { ExecutionEnvironment } from "expo-constants";
 import { API_URL } from "./config";
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from "./token-storage";
 import { apiFetch, type AuthUser } from "@/api/client";
+import { unregisterCurrentPushToken } from "./push-notifications";
 
 /**
  * @react-native-google-signin/google-signin is a third-party native module —
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       signOut: async () => {
+        await unregisterCurrentPushToken().catch(() => undefined);
         await clearStoredTokens();
         try {
           await GoogleSignin?.signOut();
@@ -154,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       },
       deleteAccount: async () => {
+        await unregisterCurrentPushToken().catch(() => undefined);
         await apiFetch("/api/v1/account/delete", { method: "POST" });
         await clearStoredTokens();
         try {

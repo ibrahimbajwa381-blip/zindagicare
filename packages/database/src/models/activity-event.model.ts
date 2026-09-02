@@ -10,6 +10,8 @@ const activityEventSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", index: true },
     userRole: { type: String, index: true },
+    /** Anonymous-visitor cookie id — lets pre-signup visits be correlated with a later signup. */
+    visitorId: { type: String, index: true },
     action: { type: String, required: true, index: true },
     status: {
       type: String,

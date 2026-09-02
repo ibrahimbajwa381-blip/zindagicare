@@ -2,21 +2,20 @@ import { useState } from "react";
 import { Stack, Redirect, Link } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslations } from "@/lib/locale-context";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts } from "@/lib/theme";
 import { PAKISTAN_CITIES } from "@/lib/pakistan-cities";
 
-const ACCOUNT_TYPES = [
-  { value: "patient", label: "Patient" },
-  { value: "doctor", label: "Doctor" },
-  { value: "nurse", label: "Nurse" },
-  { value: "physiotherapist", label: "Physiotherapist" },
-  { value: "lab", label: "Lab / Healthcare Professional" },
-  { value: "other", label: "Other" },
-] as const;
+const ACCOUNT_TYPE_VALUES = ["patient", "doctor", "nurse", "physiotherapist", "lab", "other"] as const;
 
 export default function SignupScreen() {
   const { user, isSigningIn, registerWithCredentials } = useAuth();
+  const t = useTranslations();
+  const ACCOUNT_TYPES = ACCOUNT_TYPE_VALUES.map((value) => ({
+    value,
+    label: t.auth.signup.accountTypes[value],
+  }));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -26,7 +25,7 @@ export default function SignupScreen() {
   const [age, setAge] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [accountType, setAccountType] = useState<(typeof ACCOUNT_TYPES)[number]["value"]>("patient");
+  const [accountType, setAccountType] = useState<(typeof ACCOUNT_TYPE_VALUES)[number]>("patient");
   const [error, setError] = useState<string | null>(null);
 
   if (user) {
@@ -36,24 +35,24 @@ export default function SignupScreen() {
   const onSignUp = async () => {
     setError(null);
     if (name.trim().length < 2) {
-      setError("Enter your full name.");
+      setError(t.auth.signup.errors.nameRequired);
       return;
     }
     if (!city.trim()) {
-      setError("Select your city.");
+      setError(t.auth.signup.errors.cityRequired);
       return;
     }
     const ageValue = Number(age.trim());
     if (!age.trim() || !Number.isInteger(ageValue) || ageValue < 13 || ageValue > 120) {
-      setError("Enter a valid age (13-120).");
+      setError(t.auth.signup.errors.ageInvalid);
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(t.auth.signup.errors.passwordTooShort);
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t.auth.signup.errors.passwordMismatch);
       return;
     }
     try {
@@ -69,30 +68,30 @@ export default function SignupScreen() {
         accountType,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't create your account. Please try again.");
+      setError(e instanceof Error ? e.message : t.auth.signup.errors.generic);
     }
   };
 
   return (
     <>
-      <Stack.Screen options={{ title: "Create account", headerShown: true }} />
+      <Stack.Screen options={{ title: t.auth.signup.headerTitle, headerShown: true }} />
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Book consultations and manage your care on the go.</Text>
+        <Text style={styles.title}>{t.auth.signup.title}</Text>
+        <Text style={styles.subtitle}>{t.auth.signup.subtitle}</Text>
 
         <View style={styles.form}>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Full name"
+            placeholder={t.auth.signup.namePlaceholder}
             placeholderTextColor="#9AA5B1"
           />
           <TextInput
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="Email"
+            placeholder={t.auth.signup.emailPlaceholder}
             placeholderTextColor="#9AA5B1"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -101,12 +100,12 @@ export default function SignupScreen() {
             style={styles.input}
             value={phone}
             onChangeText={setPhone}
-            placeholder="Phone (03XXXXXXXXX)"
+            placeholder={t.auth.signup.phonePlaceholder}
             placeholderTextColor="#9AA5B1"
             keyboardType="phone-pad"
           />
 
-          <Text style={styles.label}>City</Text>
+          <Text style={styles.label}>{t.auth.signup.cityLabel}</Text>
           <TextInput
             style={styles.input}
             value={cityPickerOpen ? cityQuery : city}
@@ -119,7 +118,7 @@ export default function SignupScreen() {
               setCity("");
             }}
             onBlur={() => setCityPickerOpen(false)}
-            placeholder="Type to search your city"
+            placeholder={t.auth.signup.cityPlaceholder}
             placeholderTextColor="#9AA5B1"
           />
           {cityPickerOpen ? (
@@ -144,7 +143,7 @@ export default function SignupScreen() {
                   c.toLowerCase().includes(cityQuery.trim().toLowerCase()),
                 ).length === 0 ? (
                   <View style={styles.cityOption}>
-                    <Text style={styles.cityOptionText}>No matching city</Text>
+                    <Text style={styles.cityOptionText}>{t.auth.signup.noMatchingCity}</Text>
                   </View>
                 ) : null}
               </ScrollView>
@@ -155,7 +154,7 @@ export default function SignupScreen() {
             style={styles.input}
             value={age}
             onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ""))}
-            placeholder="Age"
+            placeholder={t.auth.signup.agePlaceholder}
             placeholderTextColor="#9AA5B1"
             keyboardType="number-pad"
             maxLength={3}
@@ -165,7 +164,7 @@ export default function SignupScreen() {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="Password (min 6 characters)"
+            placeholder={t.auth.signup.passwordPlaceholder}
             placeholderTextColor="#9AA5B1"
             secureTextEntry
           />
@@ -173,12 +172,12 @@ export default function SignupScreen() {
             style={styles.input}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            placeholder="Confirm password"
+            placeholder={t.auth.signup.confirmPasswordPlaceholder}
             placeholderTextColor="#9AA5B1"
             secureTextEntry
           />
 
-          <Text style={styles.label}>I am registering as</Text>
+          <Text style={styles.label}>{t.auth.signup.registeringAs}</Text>
           <View style={styles.chipRow}>
             {ACCOUNT_TYPES.map((option) => (
               <Pressable
@@ -196,14 +195,14 @@ export default function SignupScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Pressable style={styles.button} onPress={onSignUp} disabled={isSigningIn}>
-            {isSigningIn ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.buttonText}>Create account</Text>}
+            {isSigningIn ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.buttonText}>{t.auth.signup.createAccount}</Text>}
           </Pressable>
         </View>
 
         <View style={styles.loginRow}>
-          <Text style={styles.loginHint}>Already have an account?</Text>
+          <Text style={styles.loginHint}>{t.auth.signup.alreadyHaveAccount}</Text>
           <Link href="/(auth)/login" style={styles.loginLink}>
-            Sign in
+            {t.auth.signup.signIn}
           </Link>
         </View>
       </ScrollView>

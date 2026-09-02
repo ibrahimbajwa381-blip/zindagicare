@@ -8,6 +8,7 @@ import { WhatsAppFloatButton } from "@/components/layout/whatsapp-float-button";
 // import { AgentFloatButton } from "@/components/layout/agent-float-button";
 import { NavigationLoadingProvider } from "@/components/providers/navigation-loading";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import type { Locale } from "@/i18n/config";
 import { LocaleProvider } from "@/i18n/locale-provider";
 
@@ -26,6 +27,7 @@ export function AppProviders({ children, session, initialLocale }: AppProvidersP
           <NavigationLoadingProvider>
             {children}
           </NavigationLoadingProvider>
+          <PageViewTracker />
           <WhatsAppFloatButton />
           {/* Temporarily hidden — restore agent float mic later */}
           {/* <AgentFloatButton /> */}

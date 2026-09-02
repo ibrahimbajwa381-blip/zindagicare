@@ -144,7 +144,7 @@ export async function chatAttachmentSource(url: string) {
 }
 
 export function markChatThreadRead(threadId: string) {
-  return apiFetch<{ threadId: string }>(`/api/v1/chat/threads/${threadId}/read`, {
+  return apiFetch<{ ok: true }>(`/api/v1/chat/threads/${threadId}/read`, {
     method: "PATCH",
   });
 }

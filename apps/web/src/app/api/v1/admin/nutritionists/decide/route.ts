@@ -1,0 +1,28 @@
+import { z } from "zod";
+import { withApiHandler } from "@/server/api/with-api-handler";
+import { decideNutritionistVerification } from "@/server/services/nutritionist-verification.service";
+
+const decideSchema = z.object({
+  nutritionistProfileId: z.string().min(1),
+  action: z.enum(["approve", "reject"]),
+  rejectionReason: z.string().min(3).max(500).optional(),
+  verifiedSpecialties: z.array(z.string().min(1)).optional(),
+});
+
+export const POST = withApiHandler(
+  async ({ session, body }) => {
+    const profile = await decideNutritionistVerification(
+      session!.user.id,
+      body.nutritionistProfileId,
+      body.action,
+      body.rejectionReason,
+      body.verifiedSpecialties,
+    );
+    return { id: profile._id.toString(), status: profile.verificationStatus };
+  },
+  {
+    auth: true,
+    roles: ["admin", "super_admin"],
+    bodySchema: decideSchema,
+  },
+);

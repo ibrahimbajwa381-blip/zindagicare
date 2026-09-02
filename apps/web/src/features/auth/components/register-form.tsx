@@ -36,8 +36,8 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
     doctor: t.auth.registerAs.doctor,
     nurse: t.auth.registerAs.nurse,
     physiotherapist: t.auth.registerAs.physiotherapist,
-    herbalist: t.auth.registerAs.other,
-    nutritionist: t.auth.registerAs.other,
+    herbalist: t.auth.registerAs.herbalist,
+    nutritionist: t.auth.registerAs.nutritionist,
     lab: t.auth.registerAs.lab,
     other: t.auth.registerAs.other,
   };
@@ -46,6 +46,8 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
     "doctor",
     "nurse",
     "physiotherapist",
+    "herbalist",
+    "nutritionist",
     "lab",
     "other",
   ];

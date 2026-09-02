@@ -1,11 +1,12 @@
 import webpush from "web-push";
 import {
   connectDatabase,
+  ExpoPushTokenModel,
   NotificationModel,
   PushSubscriptionModel,
 } from "@zindagi/database";
 import { NotificationChannels } from "@zindagi/shared";
-import type { PushSubscribeInput } from "@zindagi/validators";
+import type { ExpoPushRegisterInput, PushSubscribeInput } from "@zindagi/validators";
 
 export type WebPushPayload = {
   title: string;
@@ -137,6 +138,114 @@ export async function sendWebPushToUser(
       failedAt: new Date(),
       failureReason: "All push subscriptions failed",
     }).catch(() => undefined);
+  }
+
+  return { sent, failed };
+}
+
+export async function upsertExpoPushToken(userId: string, input: ExpoPushRegisterInput) {
+  await connectDatabase();
+
+  await ExpoPushTokenModel.findOneAndUpdate(
+    { token: input.token },
+    {
+      userId,
+      token: input.token,
+      deviceId: input.deviceId ?? undefined,
+      platform: input.platform ?? undefined,
+      lastUsedAt: new Date(),
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+}
+
+export async function removeExpoPushToken(userId: string, token: string) {
+  await connectDatabase();
+  await ExpoPushTokenModel.deleteOne({ userId, token });
+}
+
+export type ExpoPushPayload = {
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+};
+
+const EXPO_PUSH_API = "https://exp.host/--/api/v2/push/send";
+const EXPO_PUSH_CHUNK_SIZE = 100;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/** Sends a push notification to every registered mobile device for a user via Expo's push service. */
+export async function sendExpoPushToUser(
+  userId: string,
+  payload: ExpoPushPayload,
+): Promise<{ sent: number; failed: number }> {
+  await connectDatabase();
+  const tokens = await ExpoPushTokenModel.find({ userId }).lean();
+
+  if (tokens.length === 0) {
+    return { sent: 0, failed: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const invalidTokens: string[] = [];
+
+  for (const batch of chunk(tokens, EXPO_PUSH_CHUNK_SIZE)) {
+    const messages = batch.map((t) => ({
+      to: t.token,
+      title: payload.title,
+      body: payload.body,
+      data: payload.data ?? {},
+      sound: "default" as const,
+    }));
+
+    try {
+      const res = await fetch(EXPO_PUSH_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Accept-Encoding": "gzip, deflate",
+        },
+        body: JSON.stringify(messages),
+      });
+
+      const json = (await res.json()) as {
+        data?: Array<{ status: "ok" | "error"; message?: string; details?: { error?: string } }>;
+      };
+
+      json.data?.forEach((ticket, i) => {
+        if (ticket.status === "ok") {
+          sent += 1;
+        } else {
+          failed += 1;
+          if (ticket.details?.error === "DeviceNotRegistered") {
+            invalidTokens.push(batch[i].token);
+          }
+        }
+      });
+    } catch (error) {
+      failed += batch.length;
+      console.error("[expo-push] send failed", error);
+    }
+  }
+
+  if (invalidTokens.length > 0) {
+    await ExpoPushTokenModel.deleteMany({ token: { $in: invalidTokens } }).catch(() => undefined);
+  }
+
+  if (sent > 0) {
+    await ExpoPushTokenModel.updateMany(
+      { userId, token: { $nin: invalidTokens } },
+      { lastUsedAt: new Date() },
+    ).catch(() => undefined);
   }
 
   return { sent, failed };

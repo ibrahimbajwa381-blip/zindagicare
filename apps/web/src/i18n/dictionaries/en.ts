@@ -153,6 +153,8 @@ export const en = {
       doctor: "Doctor",
       nurse: "Nurse",
       physiotherapist: "Physiotherapist",
+      herbalist: "Herbalist",
+      nutritionist: "Nutritionist",
       lab: "Lab / Healthcare Professional",
       other: "Other",
     },

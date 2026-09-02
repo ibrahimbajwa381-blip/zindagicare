@@ -56,6 +56,13 @@
         {
           "microphonePermission": "ZindagiCare needs access to your microphone so you can send voice notes in chat."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#0FA79B"
+        }
       ]
     ],
     "extra": {

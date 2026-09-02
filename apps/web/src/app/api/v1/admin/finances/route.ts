@@ -12,7 +12,8 @@ export const GET = withApiHandler(
 );
 
 export const PATCH = withApiHandler(
-  async ({ body }) => updateAdminFinancesPlatformSettings(body),
+  async ({ body, session }) =>
+    updateAdminFinancesPlatformSettings(body, session!.user.id),
   {
     auth: true,
     roles: [Roles.ADMIN, Roles.SUPER_ADMIN],

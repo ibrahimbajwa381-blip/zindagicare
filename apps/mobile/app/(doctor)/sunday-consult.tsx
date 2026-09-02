@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   getDoctorProfile,
@@ -23,6 +23,8 @@ const STATUS_ACTIONS: { key: "completed" | "no_show" | "cancelled"; label: strin
   { key: "cancelled", label: "Cancel", color: "#c62828" },
 ];
 
+const POLL_MS = 15_000;
+
 export default function DoctorSundayConsultScreen() {
   const [profile, setProfile] = useState<DoctorProfileDto | null>(null);
   const [queue, setQueue] = useState<SundayDoctorQueue | null>(null);
@@ -36,31 +38,47 @@ export default function DoctorSundayConsultScreen() {
   });
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedTemplate = useRef(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
       const [profileRes, queueRes] = await Promise.all([getDoctorProfile(), getSundayDoctorQueue()]);
       setProfile(profileRes);
       setQueue(queueRes);
-      if (profileRes.sundayConsult.startTimeLocal) {
+      // Only seed the editable form from the server once — a background poll shouldn't
+      // clobber a schedule edit the doctor is mid-typing.
+      if (!hasLoadedTemplate.current && profileRes.sundayConsult.startTimeLocal) {
         setTemplate({
           startTimeLocal: profileRes.sundayConsult.startTimeLocal,
           endTimeLocal: profileRes.sundayConsult.endTimeLocal ?? "13:00",
           slotDurationMins: String(profileRes.sundayConsult.slotDurationMins ?? 10),
           maxSlots: String(profileRes.sundayConsult.maxSlots ?? 15),
         });
+        hasLoadedTemplate.current = true;
       }
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load Sunday consult");
+      if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load Sunday consult");
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       load();
+      pollRef.current = setInterval(() => load(true), POLL_MS);
+      return () => {
+        if (pollRef.current) clearInterval(pollRef.current);
+      };
     }, [load]),
   );
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await load();
+    setIsRefreshing(false);
+  };
 
   const onToggle = async (value: boolean) => {
     setIsTogglingEnabled(true);
@@ -122,7 +140,11 @@ export default function DoctorSundayConsultScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+    >
       <View style={styles.card}>
         <View style={styles.switchRow}>
           <View style={{ flex: 1 }}>

@@ -133,6 +133,12 @@ export function AdminActivityLog() {
             label: "Active roles (7d)",
             value: summary?.byRole.length ?? "—",
           },
+          { label: "Signups (7d)", value: summary?.signups7d ?? "—" },
+          { label: "Site visitors (7d)", value: summary?.visitors7d ?? "—" },
+          {
+            label: "Visited, didn't sign up (7d)",
+            value: summary?.visitorsNotConverted7d ?? "—",
+          },
         ].map((s) => (
           <div
             key={s.label}

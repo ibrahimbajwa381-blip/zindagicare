@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { Redirect, Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isExpoGo, useAuth } from "@/lib/auth-context";
+import { useTranslations } from "@/lib/locale-context";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts } from "@/lib/theme";
 
@@ -10,6 +11,7 @@ const logo = require("../../assets/logo.png");
 
 export default function LoginScreen() {
   const { user, isSigningIn, signInWithGoogle, signInWithCredentials } = useAuth();
+  const t = useTranslations();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +26,7 @@ export default function LoginScreen() {
     try {
       await signInWithCredentials(email.trim().toLowerCase(), password);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't sign in. Please try again.");
+      setError(e instanceof Error ? e.message : t.auth.login.genericError);
     }
   };
 
@@ -34,14 +36,14 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Image source={logo} resizeMode="contain" style={styles.logo} />
-      <Text style={styles.subtitle}>Sign in to book care and get suggestions tailored to you.</Text>
+      <Text style={styles.subtitle}>{t.auth.login.subtitle}</Text>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder={t.auth.login.emailPlaceholder}
           placeholderTextColor="#9AA5B1"
           autoCapitalize="none"
           keyboardType="email-address"
@@ -50,27 +52,25 @@ export default function LoginScreen() {
           style={styles.input}
           value={password}
           onChangeText={setPassword}
-          placeholder="Password"
+          placeholder={t.auth.login.passwordPlaceholder}
           placeholderTextColor="#9AA5B1"
           secureTextEntry
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable style={styles.button} onPress={onSignIn} disabled={isSigningIn}>
-          {isSigningIn ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.buttonText}>Sign in</Text>}
+          {isSigningIn ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.buttonText}>{t.auth.login.signIn}</Text>}
         </Pressable>
       </View>
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
+        <Text style={styles.dividerText}>{t.auth.login.or}</Text>
         <View style={styles.dividerLine} />
       </View>
 
       {isExpoGo ? (
-        <Text style={styles.expoGoHint}>
-          Google sign-in needs a dev client build — use email/password to test in Expo Go.
-        </Text>
+        <Text style={styles.expoGoHint}>{t.auth.login.expoGoHint}</Text>
       ) : (
         <Pressable
           style={styles.googleButton}
@@ -79,7 +79,7 @@ export default function LoginScreen() {
             try {
               await signInWithGoogle();
             } catch (e) {
-              setError(e instanceof Error ? e.message : "Couldn't sign in with Google. Please try again.");
+              setError(e instanceof Error ? e.message : t.auth.login.googleError);
             }
           }}
           disabled={isSigningIn}
@@ -87,15 +87,15 @@ export default function LoginScreen() {
           {isSigningIn ? (
             <Spinner size="sm" color={colors.brand.DEFAULT} />
           ) : (
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
+            <Text style={styles.googleButtonText}>{t.auth.login.continueWithGoogle}</Text>
           )}
         </Pressable>
       )}
 
       <View style={styles.signupRow}>
-        <Text style={styles.signupHint}>Don't have an account?</Text>
+        <Text style={styles.signupHint}>{t.auth.login.noAccount}</Text>
         <Link href="/(auth)/signup" style={styles.signupLink}>
-          Sign up
+          {t.auth.login.signUp}
         </Link>
       </View>
     </ScrollView>

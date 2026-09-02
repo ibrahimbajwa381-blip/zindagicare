@@ -1,6 +1,7 @@
 import { connectDatabase, NotificationModel } from "@zindagi/database";
 import { NotificationChannels } from "@zindagi/shared";
 import { sendWhatsAppMessage } from "@/server/services/whatsapp.service";
+import { sendExpoPushToUser } from "@/server/services/push.service";
 
 export type DeliverNotificationInput = {
   userId: string;
@@ -10,10 +11,13 @@ export type DeliverNotificationInput = {
   payload: Record<string, unknown>;
   /** Skip WhatsApp even when phone + provider are available. Default false. */
   skipWhatsApp?: boolean;
+  /** Skip the mobile push notification. Default false. */
+  skipPush?: boolean;
 };
 
 /**
- * Persist an in-app notification and fan out to SMS (stub) + WhatsApp when configured.
+ * Persist an in-app notification and fan out to mobile push, SMS (stub), and
+ * WhatsApp when configured.
  */
 export async function deliverUserNotification(
   input: DeliverNotificationInput,
@@ -28,6 +32,16 @@ export async function deliverUserNotification(
     payload: input.payload,
     sentAt: new Date(),
   });
+
+  if (!input.skipPush) {
+    await sendExpoPushToUser(input.userId, {
+      title: input.title,
+      body: input.body,
+      data: input.payload,
+    }).catch((err) => {
+      console.error("[expo-push] deliver failed", err);
+    });
+  }
 
   const phone = input.phone?.trim();
   if (!phone) return;

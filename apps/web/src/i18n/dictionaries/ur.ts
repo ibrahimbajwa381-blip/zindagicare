@@ -153,6 +153,8 @@ export const ur: Dictionary = {
       doctor: "ڈاکٹر",
       nurse: "نرس",
       physiotherapist: "فزیو تھراپسٹ",
+      herbalist: "حکیم / ہربلسٹ",
+      nutritionist: "نیوٹریشنسٹ",
       lab: "لیب / ہیلتھ کیئر پروفیشنل",
       other: "دیگر",
     },

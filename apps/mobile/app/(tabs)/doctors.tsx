@@ -14,11 +14,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { listConsultDoctors, type ConsultDoctorRow } from "@/api/consult";
 import { ApiRequestError } from "@/api/client";
 import { Spinner } from "@/components/ui/spinner";
+import { useTranslations } from "@/lib/locale-context";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
+import { interpolate } from "@zindagi/i18n";
 
 export default function DoctorsScreen() {
   const router = useRouter();
+  const t = useTranslations();
   const [city, setCity] = useState("Lahore");
   const [specialty, setSpecialty] = useState("");
   const [doctors, setDoctors] = useState<ConsultDoctorRow[] | null>(null);
@@ -34,9 +37,9 @@ export default function DoctorsScreen() {
       setDoctors(data);
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load doctors");
+      setError(e instanceof ApiRequestError ? e.message : t.doctors.loadError);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load({ city, specialty });
@@ -55,7 +58,7 @@ export default function DoctorsScreen() {
           style={styles.input}
           value={city}
           onChangeText={setCity}
-          placeholder="City"
+          placeholder={t.doctors.cityPlaceholder}
           placeholderTextColor="#9AA5B1"
           onSubmitEditing={() => load({ city, specialty })}
         />
@@ -63,12 +66,12 @@ export default function DoctorsScreen() {
           style={styles.input}
           value={specialty}
           onChangeText={setSpecialty}
-          placeholder="Specialty"
+          placeholder={t.doctors.specialtyPlaceholder}
           placeholderTextColor="#9AA5B1"
           onSubmitEditing={() => load({ city, specialty })}
         />
         <Pressable style={styles.searchButton} onPress={() => load({ city, specialty })}>
-          <Text style={styles.searchButtonText}>Search</Text>
+          <Text style={styles.searchButtonText}>{t.doctors.search}</Text>
         </Pressable>
       </View>
 
@@ -84,7 +87,7 @@ export default function DoctorsScreen() {
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.centered}>
-              <Text style={styles.hint}>No doctors found for this search.</Text>
+              <Text style={styles.hint}>{t.doctors.empty}</Text>
             </View>
           }
           renderItem={({ item }) => {
@@ -110,7 +113,7 @@ export default function DoctorsScreen() {
                     {item.pmdcVerified ? (
                       <View style={styles.verifiedBadge}>
                         <Ionicons name="checkmark-circle" size={12} color={colors.brand.mutedForeground} />
-                        <Text style={styles.verifiedBadgeText}>PMDC</Text>
+                        <Text style={styles.verifiedBadgeText}>{t.doctors.verifiedBadge}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -127,13 +130,13 @@ export default function DoctorsScreen() {
                     <Text style={styles.rating}>{item.ratingAvg.toFixed(1)}</Text>
                     <Text style={styles.ratingCount}>({item.ratingCount})</Text>
                     <View style={styles.feePill}>
-                      <Text style={styles.feePillText}>Rs. {item.consultationFee}</Text>
+                      <Text style={styles.feePillText}>{interpolate(t.doctors.fee, { amount: item.consultationFee })}</Text>
                     </View>
                   </View>
                   {item.isFull ? (
-                    <Text style={styles.full}>No slots available</Text>
+                    <Text style={styles.full}>{t.doctors.noSlots}</Text>
                   ) : (
-                    <Text style={styles.available}>{item.availableSlots} slots this week</Text>
+                    <Text style={styles.available}>{interpolate(t.doctors.slotsAvailable, { count: item.availableSlots })}</Text>
                   )}
                 </View>
               </Pressable>

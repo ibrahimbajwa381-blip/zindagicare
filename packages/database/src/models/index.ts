@@ -26,5 +26,6 @@ export * from "./activity-event.model";
 export * from "./doctor-miss.model";
 export * from "./system-settings.model";
 export * from "./push-subscription.model";
+export * from "./expo-push-token.model";
 export * from "./copilot-session.model";
 export * from "./otp-challenge.model";

@@ -151,6 +151,7 @@ export function AdminPlatformEarnings() {
                     <th className="px-3 py-2 font-medium">Gross revenue</th>
                     <th className="px-3 py-2 font-medium">Paid to doctor</th>
                     <th className="px-3 py-2 font-medium">ZindagiCare commission</th>
+                    <th className="px-3 py-2 font-medium">Amount to pay doctor</th>
                     <th className="px-3 py-2 font-medium">Commission %</th>
                     <th className="px-3 py-2 font-medium">Referrals</th>
                     <th className="px-3 py-2 font-medium" />
@@ -183,6 +184,15 @@ export function AdminPlatformEarnings() {
                       </td>
                       <td className="px-3 py-3 font-semibold text-slate-900">
                         {formatCurrency(doctor.platformCommission)}
+                      </td>
+                      <td className="px-3 py-3">
+                        {doctor.balanceDue > 0 ? (
+                          <span className="font-semibold text-amber-700">
+                            {formatCurrency(doctor.balanceDue)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">Settled</span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-slate-600">
                         {doctor.platformOnlineCommissionPercent}% online ·{" "}

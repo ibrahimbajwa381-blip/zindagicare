@@ -53,7 +53,6 @@ const userSchema = new Schema(
     /** Blocks Sunday free consult only (general ban uses bannedUntil) */
     sundayBannedUntil: { type: Date },
     earlyAccessSunday: { type: Boolean, default: false },
-    fcmTokens: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
     deletedAt: { type: Date },
     metadata: {

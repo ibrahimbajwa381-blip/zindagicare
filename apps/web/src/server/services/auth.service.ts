@@ -21,6 +21,7 @@ import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators
 import { syncAdminRoleFromAllowlist } from "@/lib/auth/admin-allowlist";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
+import { logActivity } from "@/server/services/activity-log.service";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -214,6 +215,7 @@ export async function registerWithCredentials(
     dateOfBirth: string;
   },
   referredByDoctorId?: string | null,
+  visitorId?: string | null,
 ) {
   await connectDatabase();
   const accountType = input.accountType ?? "patient";
@@ -288,6 +290,16 @@ export async function registerWithCredentials(
     await UserModel.findByIdAndDelete(user._id);
     throw error;
   }
+
+  await logActivity({
+    userId: user._id.toString(),
+    userRole: roleByAccountType[accountType][0],
+    visitorId,
+    action: "user.signup",
+    entityType: "user",
+    entityId: user._id.toString(),
+    metadata: { accountType },
+  });
 
   return user;
 }

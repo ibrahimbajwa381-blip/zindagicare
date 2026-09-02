@@ -5,6 +5,7 @@ import type { adminSendNotificationSchema } from "@zindagi/validators";
 import { mongoFilter } from "@/lib/mongo/query";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { sendWhatsAppMessage } from "@/server/services/whatsapp.service";
+import { sendExpoPushToUser } from "@/server/services/push.service";
 
 type SendInput = z.infer<typeof adminSendNotificationSchema>;
 
@@ -87,6 +88,11 @@ export async function adminSendNotification(input: SendInput) {
             body: input.body,
           });
         }
+        await sendExpoPushToUser(userId, {
+          title: input.title,
+          body: input.body,
+          data: { type: "admin_broadcast" },
+        }).catch(() => undefined);
       } else {
         const user = await UserModel.findById(userId).select("email phone").lean();
         if (user) {

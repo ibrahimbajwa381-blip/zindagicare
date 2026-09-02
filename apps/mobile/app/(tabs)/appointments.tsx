@@ -24,18 +24,11 @@ import { ApiRequestError } from "@/api/client";
 import { formatKarachi } from "@/lib/format-date";
 import { Spinner } from "@/components/ui/spinner";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
+import { useTranslations } from "@/lib/locale-context";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
 import { downloadAndOpenFile } from "@/lib/download-file";
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  in_progress: "In progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "Missed",
-};
+import { interpolate, type MobileDictionary } from "@zindagi/i18n";
 
 const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
   pending: { bg: "#FFF4E5", fg: "#B45309" },
@@ -48,6 +41,7 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
 
 export default function AppointmentsScreen() {
   const router = useRouter();
+  const t = useTranslations();
   const [items, setItems] = useState<AppointmentHistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -59,9 +53,9 @@ export default function AppointmentsScreen() {
       setItems(data);
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load appointments");
+      setError(e instanceof ApiRequestError ? e.message : t.appointments.loadError);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,7 +74,7 @@ export default function AppointmentsScreen() {
       const payload = await joinVideoSession(appointmentId);
       await Linking.openURL(payload.joinUrl);
     } catch (e) {
-      Alert.alert("Couldn't join", e instanceof ApiRequestError ? e.message : "Please try again");
+      Alert.alert(t.appointments.joinErrorTitle, e instanceof ApiRequestError ? e.message : t.common.tryAgain);
     }
   };
 
@@ -89,7 +83,7 @@ export default function AppointmentsScreen() {
     try {
       await downloadAndOpenFile(item.prescription.downloadUrl, `${item.doctor.name.replace(/\s+/g, "-")}-prescription.pdf`);
     } catch (e) {
-      Alert.alert("Couldn't open prescription", e instanceof Error ? e.message : "Please try again");
+      Alert.alert(t.appointments.prescriptionErrorTitle, e instanceof Error ? e.message : t.common.tryAgain);
     }
   };
 
@@ -114,12 +108,13 @@ export default function AppointmentsScreen() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.centered}>
-            <Text style={styles.hint}>No appointments yet.</Text>
+            <Text style={styles.hint}>{t.appointments.empty}</Text>
           </View>
         }
         renderItem={({ item }) => (
           <AppointmentCard
             item={item}
+            t={t}
             onJoin={onJoin}
             onReview={() => setReviewTarget(item)}
             onViewPrescription={() => onViewPrescription(item)}
@@ -131,6 +126,7 @@ export default function AppointmentsScreen() {
       />
       <ReviewModal
         item={reviewTarget}
+        t={t}
         onClose={() => setReviewTarget(null)}
         onSubmitted={() => {
           setReviewTarget(null);
@@ -143,12 +139,14 @@ export default function AppointmentsScreen() {
 
 function AppointmentCard({
   item,
+  t,
   onJoin,
   onReview,
   onViewPrescription,
   onRequestCancellation,
 }: {
   item: AppointmentHistoryItem;
+  t: MobileDictionary;
   onJoin: (id: string) => void;
   onReview: () => void;
   onViewPrescription: () => void;
@@ -156,6 +154,7 @@ function AppointmentCard({
 }) {
   const avatarUri = resolveMediaUrl(item.doctor.avatarUrl);
   const statusStyle = STATUS_STYLE[item.status] ?? STATUS_STYLE.pending;
+  const STATUS_LABEL = t.appointments.status as Record<string, string>;
 
   return (
     <View style={styles.card}>
@@ -185,11 +184,11 @@ function AppointmentCard({
       <View style={styles.actions}>
         {item.canJoin ? (
           <Pressable style={styles.primaryButton} onPress={() => onJoin(item.appointmentId)}>
-            <Text style={styles.primaryButtonText}>Join call</Text>
+            <Text style={styles.primaryButtonText}>{t.appointments.joinCall}</Text>
           </Pressable>
         ) : item.prescription ? (
           <Pressable style={styles.secondaryButton} onPress={onViewPrescription}>
-            <Text style={styles.secondaryButtonText}>View prescription</Text>
+            <Text style={styles.secondaryButtonText}>{t.appointments.viewPrescription}</Text>
           </Pressable>
         ) : null}
 
@@ -201,22 +200,20 @@ function AppointmentCard({
                 <Text style={styles.secondaryButtonText}>{item.review.rating}</Text>
               </>
             ) : (
-              <Text style={styles.secondaryButtonText}>Leave a review</Text>
+              <Text style={styles.secondaryButtonText}>{t.appointments.leaveReview}</Text>
             )}
           </Pressable>
         ) : null}
 
         {item.canRequestCancellation ? (
           <Pressable style={styles.dangerButton} onPress={onRequestCancellation}>
-            <Text style={styles.dangerButtonText}>Request refund</Text>
+            <Text style={styles.dangerButtonText}>{t.appointments.requestRefund}</Text>
           </Pressable>
         ) : null}
       </View>
 
       {item.cancellationRequestStatus === "pending" ? (
-        <Text style={styles.cancelPendingHint}>
-          Refund requested — we'll send your money back once approved.
-        </Text>
+        <Text style={styles.cancelPendingHint}>{t.appointments.refundPending}</Text>
       ) : null}
     </View>
   );
@@ -224,10 +221,12 @@ function AppointmentCard({
 
 function ReviewModal({
   item,
+  t,
   onClose,
   onSubmitted,
 }: {
   item: AppointmentHistoryItem | null;
+  t: MobileDictionary;
   onClose: () => void;
   onSubmitted: () => void;
 }) {
@@ -244,7 +243,7 @@ function ReviewModal({
       await submitAppointmentReview(item.appointmentId, { rating, comment: comment || undefined });
       onSubmitted();
     } catch (e) {
-      Alert.alert("Couldn't submit review", e instanceof ApiRequestError ? e.message : "Please try again");
+      Alert.alert(t.appointments.reviewErrorTitle, e instanceof ApiRequestError ? e.message : t.common.tryAgain);
     } finally {
       setIsSubmitting(false);
     }
@@ -254,7 +253,7 @@ function ReviewModal({
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>Rate {item.doctor.name}</Text>
+          <Text style={styles.modalTitle}>{interpolate(t.appointments.rateDoctor, { name: item.doctor.name })}</Text>
 
           {alreadyReviewed ? (
             <View style={styles.stars}>
@@ -281,7 +280,7 @@ function ReviewModal({
               </View>
               <TextInput
                 style={styles.commentInput}
-                placeholder="Add a comment (optional)"
+                placeholder={t.appointments.commentPlaceholder}
                 value={comment}
                 onChangeText={setComment}
                 multiline
@@ -291,14 +290,14 @@ function ReviewModal({
 
           <View style={styles.modalActions}>
             <Pressable style={styles.secondaryButton} onPress={onClose}>
-              <Text style={styles.secondaryButtonText}>Close</Text>
+              <Text style={styles.secondaryButtonText}>{t.common.close}</Text>
             </Pressable>
             {!alreadyReviewed && (
               <Pressable style={styles.primaryButton} onPress={submit} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <Spinner size="sm" color={colors.brand.foreground} />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Submit</Text>
+                  <Text style={styles.primaryButtonText}>{t.appointments.submit}</Text>
                 )}
               </Pressable>
             )}

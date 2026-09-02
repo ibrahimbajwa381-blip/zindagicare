@@ -7,6 +7,7 @@ const UNKNOWN = "Unknown";
 export type LogActivityInput = {
   userId?: string | null;
   userRole?: string | null;
+  visitorId?: string | null;
   action: string;
   status?: "success" | "error";
   entityType?: string;
@@ -26,6 +27,7 @@ export async function logActivity(input: LogActivityInput): Promise<void> {
     await ActivityEventModel.create({
       userId: input.userId || undefined,
       userRole: input.userRole || undefined,
+      visitorId: input.visitorId || undefined,
       action: input.action,
       status: input.status ?? "success",
       entityType: input.entityType,
@@ -75,7 +77,11 @@ export async function listActivityForAdmin(params: {
 
   const filter: Record<string, unknown> = mongoFilter({});
   if (params.action) filter.action = params.action;
-  if (params.role) filter.userRole = params.role;
+  if (params.role === "guest") {
+    filter.userId = { $exists: false };
+  } else if (params.role) {
+    filter.userRole = params.role;
+  }
   if (params.status) filter.status = params.status;
   if (params.userId) filter.userId = params.userId;
 
@@ -120,7 +126,13 @@ export type ActivitySummary = {
   topActions: { action: string; count: number }[];
   topErrorActions: { action: string; count: number }[];
   byRole: { role: string; count: number }[];
+  signups7d: number;
+  visitors7d: number;
+  visitorsNotConverted7d: number;
 };
+
+const PAGE_VIEW_ACTION = "page.view";
+const SIGNUP_ACTION = "user.signup";
 
 export async function getActivitySummary(): Promise<ActivitySummary> {
   await connectDatabase();
@@ -129,13 +141,29 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
   const last24hStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const last7dStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalEvents, last24h, window7d] = await Promise.all([
-    ActivityEventModel.countDocuments({}),
-    ActivityEventModel.countDocuments({ createdAt: { $gte: last24hStart } }),
-    ActivityEventModel.find({ createdAt: { $gte: last7dStart } })
-      .select("action status userRole")
-      .lean(),
-  ]);
+  const [totalEvents, last24h, window7d, signups7d, visitorIds7d, signupVisitorIds7d] =
+    await Promise.all([
+      ActivityEventModel.countDocuments({}),
+      ActivityEventModel.countDocuments({ createdAt: { $gte: last24hStart } }),
+      ActivityEventModel.find({ createdAt: { $gte: last7dStart } })
+        .select("action status userRole")
+        .lean(),
+      ActivityEventModel.countDocuments({
+        action: SIGNUP_ACTION,
+        createdAt: { $gte: last7dStart },
+      }),
+      ActivityEventModel.distinct("visitorId", {
+        action: PAGE_VIEW_ACTION,
+        userId: { $exists: false },
+        visitorId: { $exists: true },
+        createdAt: { $gte: last7dStart },
+      }),
+      ActivityEventModel.distinct("visitorId", {
+        action: SIGNUP_ACTION,
+        visitorId: { $exists: true },
+        createdAt: { $gte: last7dStart },
+      }),
+    ]);
 
   const actionCounts = new Map<string, number>();
   const errorActionCounts = new Map<string, number>();
@@ -148,7 +176,7 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
       errors += 1;
       errorActionCounts.set(row.action, (errorActionCounts.get(row.action) ?? 0) + 1);
     }
-    const role = row.userRole ?? UNKNOWN;
+    const role = row.userRole ?? "guest";
     roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
   }
 
@@ -166,6 +194,11 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     .map(([role, count]) => ({ role, count }))
     .sort((a, b) => b.count - a.count);
 
+  const convertedVisitorIds = new Set(signupVisitorIds7d as string[]);
+  const visitorsNotConverted7d = (visitorIds7d as string[]).filter(
+    (id) => !convertedVisitorIds.has(id),
+  ).length;
+
   return {
     totalEvents,
     last24h,
@@ -173,5 +206,8 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     topActions,
     topErrorActions,
     byRole,
+    signups7d,
+    visitors7d: (visitorIds7d as string[]).length,
+    visitorsNotConverted7d,
   };
 }

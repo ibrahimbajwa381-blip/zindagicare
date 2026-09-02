@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
+import { useLocale } from "@/lib/locale-context";
 import {
   getPatientProfile,
   updatePatientProfile,
@@ -21,6 +22,7 @@ import { ApiRequestError } from "@/api/client";
 import { Spinner } from "@/components/ui/spinner";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
+import { interpolate, type Locale } from "@zindagi/i18n";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -76,6 +78,7 @@ function toForm(dto: PatientProfileDto): FormState {
 
 export default function ProfileScreen() {
   const { signOut, deleteAccount } = useAuth();
+  const { locale, t, setLocale } = useLocale();
   const [isDeleting, setIsDeleting] = useState(false);
   const [profile, setProfile] = useState<PatientProfileDto | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
@@ -92,7 +95,7 @@ export default function ProfileScreen() {
       setProfile(dto);
       setForm(toForm(dto));
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load profile");
+      setError(e instanceof ApiRequestError ? e.message : t.profile.loadError);
     } finally {
       setIsLoading(false);
     }
@@ -127,9 +130,9 @@ export default function ProfileScreen() {
       setForm(toForm(updated));
       setEditing(false);
     } catch (e) {
-      const message = e instanceof ApiRequestError ? e.message : "Failed to save profile";
+      const message = e instanceof ApiRequestError ? e.message : t.profile.saveError;
       setError(message);
-      Alert.alert("Couldn't save changes", message);
+      Alert.alert(t.profile.saveErrorTitle, message);
     } finally {
       setIsSaving(false);
     }
@@ -137,25 +140,25 @@ export default function ProfileScreen() {
 
   const confirmDeleteAccount = () => {
     Alert.alert(
-      "Delete your account?",
-      "This permanently deactivates your ZindagiCare account and signs you out. This can't be undone.",
+      t.profile.deleteConfirmTitle,
+      t.profile.deleteConfirmMessage,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t.common.cancel, style: "cancel" },
         {
-          text: "Delete account",
+          text: t.profile.deleteConfirmButton,
           style: "destructive",
           onPress: () => {
-            Alert.alert("Are you sure?", "Type nothing — just confirm to permanently delete your account.", [
-              { text: "Cancel", style: "cancel" },
+            Alert.alert(t.profile.deleteConfirmAgainTitle, t.profile.deleteConfirmAgainMessage, [
+              { text: t.common.cancel, style: "cancel" },
               {
-                text: "Yes, delete my account",
+                text: t.profile.deleteFinalButton,
                 style: "destructive",
                 onPress: async () => {
                   setIsDeleting(true);
                   try {
                     await deleteAccount();
                   } catch (e) {
-                    Alert.alert("Couldn't delete account", e instanceof ApiRequestError ? e.message : "Please try again");
+                    Alert.alert(t.profile.deleteErrorTitle, e instanceof ApiRequestError ? e.message : t.common.tryAgain);
                   } finally {
                     setIsDeleting(false);
                   }
@@ -191,7 +194,7 @@ export default function ProfileScreen() {
           <Text style={styles.meta}>{profile.user.city}</Text>
           <View style={styles.metaDot} />
           <Text style={styles.meta}>
-            Member since {new Date(profile.user.memberSince).toLocaleDateString()}
+            {interpolate(t.profile.memberSince, { date: new Date(profile.user.memberSince).toLocaleDateString() })}
           </Text>
         </View>
       </View>
@@ -204,76 +207,92 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        <Section title="Account" icon="person-outline">
-          <Field label="Name" value={form.name} editable={editing} onChange={(v) => setForm({ ...form, name: v })} />
+        <Section title={t.settings.language} icon="language-outline">
+          <View style={styles.languageRow}>
+            <LanguageOption label={t.common.english} active={locale === "en"} onPress={() => setLocale("en" as Locale)} />
+            <LanguageOption label={t.common.urdu} active={locale === "ur"} onPress={() => setLocale("ur" as Locale)} />
+          </View>
+        </Section>
+
+        <Section title={t.profile.sections.account} icon="person-outline">
+          <Field label={t.profile.fields.name} value={form.name} editable={editing} onChange={(v) => setForm({ ...form, name: v })} notSetLabel={t.profile.notSet} />
           <Field
-            label="Email"
+            label={t.profile.fields.email}
             value={form.email}
             editable={editing}
             keyboardType="email-address"
             onChange={(v) => setForm({ ...form, email: v })}
+            notSetLabel={t.profile.notSet}
           />
           <Field
-            label="Phone"
+            label={t.profile.fields.phone}
             value={form.phone}
             editable={editing}
             keyboardType="phone-pad"
             onChange={(v) => setForm({ ...form, phone: v })}
+            notSetLabel={t.profile.notSet}
           />
-          <Field label="City" value={form.city} editable={editing} onChange={(v) => setForm({ ...form, city: v })} last />
+          <Field label={t.profile.fields.city} value={form.city} editable={editing} onChange={(v) => setForm({ ...form, city: v })} notSetLabel={t.profile.notSet} last />
         </Section>
 
-        <Section title="Health" icon="fitness-outline">
+        <Section title={t.profile.sections.health} icon="fitness-outline">
           <Field
-            label="Date of birth"
+            label={t.profile.fields.dateOfBirth}
             placeholder="YYYY-MM-DD"
             value={form.dateOfBirth}
             editable={editing}
             onChange={(v) => setForm({ ...form, dateOfBirth: v })}
+            notSetLabel={t.profile.notSet}
           />
-          <Field label="Gender" value={form.gender} editable={editing} onChange={(v) => setForm({ ...form, gender: v })} />
+          <Field label={t.profile.fields.gender} value={form.gender} editable={editing} onChange={(v) => setForm({ ...form, gender: v })} notSetLabel={t.profile.notSet} />
           <Field
-            label="Blood group"
+            label={t.profile.fields.bloodGroup}
             value={form.bloodGroup}
             editable={editing}
             onChange={(v) => setForm({ ...form, bloodGroup: v })}
+            notSetLabel={t.profile.notSet}
           />
           <Field
-            label="Allergies"
-            placeholder="Comma separated"
+            label={t.profile.fields.allergies}
+            placeholder={t.profile.commaSeparated}
             value={form.allergies}
             editable={editing}
             onChange={(v) => setForm({ ...form, allergies: v })}
+            notSetLabel={t.profile.notSet}
           />
           <Field
-            label="Chronic conditions"
-            placeholder="Comma separated"
+            label={t.profile.fields.chronicConditions}
+            placeholder={t.profile.commaSeparated}
             value={form.chronicConditions}
             editable={editing}
             onChange={(v) => setForm({ ...form, chronicConditions: v })}
+            notSetLabel={t.profile.notSet}
             last
           />
         </Section>
 
-        <Section title="Emergency contact" icon="call-outline">
+        <Section title={t.profile.sections.emergencyContact} icon="call-outline">
           <Field
-            label="Name"
+            label={t.profile.fields.name}
             value={form.emergencyName}
             editable={editing}
             onChange={(v) => setForm({ ...form, emergencyName: v })}
+            notSetLabel={t.profile.notSet}
           />
           <Field
-            label="Phone"
+            label={t.profile.fields.phone}
             value={form.emergencyPhone}
             editable={editing}
             keyboardType="phone-pad"
             onChange={(v) => setForm({ ...form, emergencyPhone: v })}
+            notSetLabel={t.profile.notSet}
           />
           <Field
-            label="Relation"
+            label={t.profile.fields.relation}
             value={form.emergencyRelation}
             editable={editing}
             onChange={(v) => setForm({ ...form, emergencyRelation: v })}
+            notSetLabel={t.profile.notSet}
             last
           />
         </Section>
@@ -288,36 +307,36 @@ export default function ProfileScreen() {
                   setEditing(false);
                 }}
               >
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
+                <Text style={styles.secondaryButtonText}>{t.profile.cancel}</Text>
               </Pressable>
               <Pressable style={styles.button} onPress={save} disabled={isSaving}>
                 {isSaving ? (
                   <Spinner size="sm" color={colors.brand.foreground} />
                 ) : (
-                  <Text style={styles.buttonText}>Save changes</Text>
+                  <Text style={styles.buttonText}>{t.profile.saveChanges}</Text>
                 )}
               </Pressable>
             </>
           ) : (
             <Pressable style={styles.button} onPress={() => setEditing(true)}>
               <Ionicons name="create-outline" size={18} color={colors.brand.foreground} />
-              <Text style={styles.buttonText}>Edit profile</Text>
+              <Text style={styles.buttonText}>{t.profile.editProfile}</Text>
             </Pressable>
           )}
         </View>
 
         <Pressable style={styles.signOutButton} onPress={signOut}>
           <Ionicons name="log-out-outline" size={18} color="#e53935" />
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={styles.signOutText}>{t.profile.signOut}</Text>
         </Pressable>
 
         <View style={styles.legalRow}>
           <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")}>
-            <Text style={styles.legalLink}>Privacy Policy</Text>
+            <Text style={styles.legalLink}>{t.profile.privacyPolicy}</Text>
           </Pressable>
           <Text style={styles.legalDot}>·</Text>
           <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")}>
-            <Text style={styles.legalLink}>Terms of Service</Text>
+            <Text style={styles.legalLink}>{t.profile.termsOfService}</Text>
           </Pressable>
         </View>
 
@@ -325,11 +344,19 @@ export default function ProfileScreen() {
           {isDeleting ? (
             <Spinner size="sm" color="#e53935" />
           ) : (
-            <Text style={styles.deleteAccountText}>Delete account</Text>
+            <Text style={styles.deleteAccountText}>{t.profile.deleteAccount}</Text>
           )}
         </Pressable>
       </View>
     </ScrollView>
+  );
+}
+
+function LanguageOption({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable style={[styles.languageChip, active && styles.languageChipActive]} onPress={onPress}>
+      <Text style={[styles.languageChipText, active && styles.languageChipTextActive]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -362,6 +389,7 @@ function Field({
   onChange,
   keyboardType,
   placeholder,
+  notSetLabel,
   last,
 }: {
   label: string;
@@ -370,6 +398,7 @@ function Field({
   onChange: (v: string) => void;
   keyboardType?: "default" | "email-address" | "phone-pad";
   placeholder?: string;
+  notSetLabel: string;
   last?: boolean;
 }) {
   return (
@@ -386,7 +415,7 @@ function Field({
           autoCapitalize="none"
         />
       ) : (
-        <Text style={[styles.fieldValue, !value && styles.fieldValueEmpty]}>{value || "Not set"}</Text>
+        <Text style={[styles.fieldValue, !value && styles.fieldValueEmpty]}>{value || notSetLabel}</Text>
       )}
     </View>
   );
@@ -464,6 +493,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     ...cardShadow,
   },
+
+  languageRow: { flexDirection: "row", gap: 10, backgroundColor: colors.neutral.background, borderRadius: 16, padding: 12, ...cardShadow },
+  languageChip: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: colors.neutral.muted,
+  },
+  languageChipActive: { backgroundColor: colors.brand.DEFAULT },
+  languageChipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.neutral.foreground },
+  languageChipTextActive: { color: colors.brand.foreground },
 
   field: { paddingVertical: 12, gap: 4 },
   fieldDivider: { borderBottomWidth: 1, borderBottomColor: colors.neutral.border },

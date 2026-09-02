@@ -4,6 +4,7 @@ import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleShee
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslations } from "@/lib/locale-context";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
 import { formatKarachi } from "@/lib/format-date";
@@ -12,46 +13,44 @@ import { listMyHomeVisits, type HomeVisitDto } from "@/api/home-visits";
 import { listPrescriptions, type PrescriptionSummary } from "@/api/prescriptions";
 import { joinVideoSession } from "@/api/appointments";
 import { ApiRequestError } from "@/api/client";
+import type { MobileDictionary } from "@zindagi/i18n";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const QUICK_ACTIONS: {
-  icon: IconName;
-  label: string;
-  href: "/(tabs)/doctors" | "/home-visit" | "/prescription" | "/(tabs)/appointments" | "/refund-request";
-}[] = [
-  { icon: "medkit-outline", label: "Book\nconsult", href: "/(tabs)/doctors" },
-  { icon: "home-outline", label: "Home\nvisit", href: "/home-visit" },
-  { icon: "document-text-outline", label: "Prescrip-\ntions", href: "/prescription" },
-  { icon: "calendar-outline", label: "Appoint-\nments", href: "/(tabs)/appointments" },
-  { icon: "cash-outline", label: "Request\nrefund", href: "/refund-request" },
-];
+type QuickActionHref =
+  | "/(tabs)/doctors"
+  | "/home-visit"
+  | "/prescription"
+  | "/(tabs)/appointments"
+  | "/refund-request"
+  | "/sunday-consult";
 
-const ONLINE_STATUS_LABEL: Record<string, string> = {
-  pending: "Payment pending",
-  confirmed: "Confirmed",
-  in_progress: "In progress",
-  completed: "Completed",
-};
-
-const VISIT_STATUS_LABEL: Record<string, string> = {
-  requested: "Requested",
-  assigned: "Assigned",
-  en_route: "On the way",
-  arrived: "Arrived",
-};
+function quickActions(t: MobileDictionary): { icon: IconName; label: string; href: QuickActionHref }[] {
+  return [
+    { icon: "medkit-outline", label: t.home.quickActions.bookConsult, href: "/(tabs)/doctors" },
+    { icon: "gift-outline", label: t.home.quickActions.sundayFree, href: "/sunday-consult" },
+    { icon: "home-outline", label: t.home.quickActions.homeVisit, href: "/home-visit" },
+    { icon: "document-text-outline", label: t.home.quickActions.prescriptions, href: "/prescription" },
+    { icon: "calendar-outline", label: t.home.quickActions.appointments, href: "/(tabs)/appointments" },
+    { icon: "cash-outline", label: t.home.quickActions.requestRefund, href: "/refund-request" },
+  ];
+}
 
 const ACTIVE_VISIT_STATUSES = new Set(["requested", "assigned", "en_route", "arrived"]);
 
-function greetingForHour(hour: number) {
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+function greetingForHour(hour: number, t: MobileDictionary) {
+  if (hour < 12) return t.home.greeting.morning;
+  if (hour < 17) return t.home.greeting.afternoon;
+  return t.home.greeting.evening;
 }
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const t = useTranslations();
   const router = useRouter();
+  const QUICK_ACTIONS = quickActions(t);
+  const ONLINE_STATUS_LABEL = t.home.onlineStatus;
+  const VISIT_STATUS_LABEL = t.home.visitStatus;
 
   const [booking, setBooking] = useState<OnlineBooking | null>(null);
   const [hasBookingError, setHasBookingError] = useState(false);
@@ -105,7 +104,7 @@ export default function HomeScreen() {
       const payload = await joinVideoSession(booking.appointmentId);
       await Linking.openURL(payload.joinUrl);
     } catch (e) {
-      Alert.alert("Can't join yet", e instanceof ApiRequestError ? e.message : "Please try again closer to your appointment time.");
+      Alert.alert(t.home.joinErrorTitle, e instanceof ApiRequestError ? e.message : t.home.joinErrorMessage);
     } finally {
       setIsJoining(false);
     }
@@ -114,7 +113,7 @@ export default function HomeScreen() {
   const avatarUri = resolveMediaUrl(booking?.doctor.avatarUrl);
   const canJoin = booking?.status === "confirmed" || booking?.status === "in_progress";
   const firstName = user?.name ? user.name.split(" ")[0] : "";
-  const greeting = greetingForHour(new Date().getHours());
+  const greeting = greetingForHour(new Date().getHours(), t);
   const hasActivity = Boolean(booking) || Boolean(nextVisit);
 
   return (
@@ -133,14 +132,14 @@ export default function HomeScreen() {
         <View style={styles.heroTopRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroEyebrow}>{greeting}</Text>
-            <Text style={styles.heroGreeting}>{firstName || "there"}</Text>
+            <Text style={styles.heroGreeting}>{firstName || t.home.fallbackName}</Text>
           </View>
           <View style={styles.heroAvatar}>
             <Text style={styles.heroAvatarInitial}>{(firstName[0] ?? "Z").toUpperCase()}</Text>
           </View>
         </View>
         <Text style={styles.heroHint}>
-          {hasActivity ? "Here's what's happening with your care today." : "Your consultations, home visits, and prescriptions — all in one place."}
+          {hasActivity ? t.home.heroHintActive : t.home.heroHintEmpty}
         </Text>
 
         <View style={styles.quickActions}>
@@ -160,7 +159,7 @@ export default function HomeScreen() {
       </LinearGradient>
 
       <View style={styles.body}>
-        <Section title="Your consultation">
+        <Section title={t.home.consultationSection}>
           {booking ? (
             <View style={styles.card}>
               <View style={styles.doctorRow}>
@@ -177,42 +176,48 @@ export default function HomeScreen() {
                   <Text style={styles.meta}>{formatKarachi(booking.scheduledStart)}</Text>
                 </View>
                 <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>{ONLINE_STATUS_LABEL[booking.status] ?? booking.status}</Text>
+                  <Text style={styles.statusText}>
+                    {(ONLINE_STATUS_LABEL as Record<string, string>)[booking.status] ?? booking.status}
+                  </Text>
                 </View>
               </View>
               {canJoin ? (
                 <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.cardPressed]} onPress={onJoin} disabled={isJoining}>
                   <Ionicons name="videocam" size={16} color={colors.brand.foreground} />
-                  <Text style={styles.primaryButtonText}>{isJoining ? "Joining…" : "Join call"}</Text>
+                  <Text style={styles.primaryButtonText}>{isJoining ? t.home.joining : t.home.joinCall}</Text>
                 </Pressable>
               ) : null}
               <Pressable
                 style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]}
                 onPress={() => router.push({ pathname: "/intake/[appointmentId]", params: { appointmentId: booking.appointmentId } })}
               >
-                <Text style={styles.secondaryButtonText}>Share medical history</Text>
+                <Text style={styles.secondaryButtonText}>{t.home.shareMedicalHistory}</Text>
                 <Ionicons name="arrow-forward" size={14} color={colors.brand.DEFAULT} />
               </Pressable>
             </View>
           ) : (
             <EmptyCard
               icon="videocam-outline"
-              title="No upcoming consultation"
-              hint="Find a doctor and book an online video consult."
-              actionLabel="Find a doctor"
+              title={t.home.noConsultation.title}
+              hint={t.home.noConsultation.hint}
+              actionLabel={t.home.noConsultation.action}
               onPress={() => router.push("/(tabs)/doctors")}
               error={hasBookingError}
+              errorTitle={t.home.noConsultation.errorTitle}
+              errorHint={t.home.noConsultation.errorHint}
             />
           )}
         </Section>
 
-        <Section title="Home visits">
+        <Section title={t.home.homeVisitsSection}>
           {nextVisit ? (
             <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} onPress={() => router.push("/home-visit")}>
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.doctorName}>{nextVisit.serviceType.replace("_", " ")}</Text>
                 <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>{VISIT_STATUS_LABEL[nextVisit.status] ?? nextVisit.status}</Text>
+                  <Text style={styles.statusText}>
+                    {(VISIT_STATUS_LABEL as Record<string, string>)[nextVisit.status] ?? nextVisit.status}
+                  </Text>
                 </View>
               </View>
               <View style={styles.metaRow}>
@@ -227,18 +232,18 @@ export default function HomeScreen() {
           ) : (
             <EmptyCard
               icon="home-outline"
-              title="No home visits scheduled"
-              hint="Doctor, nurse, or physiotherapy — right at your doorstep."
-              actionLabel="Request a visit"
+              title={t.home.noHomeVisit.title}
+              hint={t.home.noHomeVisit.hint}
+              actionLabel={t.home.noHomeVisit.action}
               onPress={() => router.push("/home-visit/request")}
             />
           )}
         </Section>
 
-        <TrustBadges />
+        <TrustBadges t={t} />
 
         {recentRx.length > 0 ? (
-          <Section title="Recent prescriptions" onSeeAll={() => router.push("/prescription")}>
+          <Section title={t.home.recentPrescriptionsSection} onSeeAll={() => router.push("/prescription")} seeAllLabel={t.home.seeAll}>
             <View style={{ gap: 10 }}>
               {recentRx.map((rx) => (
                 <Pressable
@@ -264,18 +269,13 @@ export default function HomeScreen() {
   );
 }
 
-const TRUST_BADGES: { icon: IconName; label: string; hint: string }[] = [
-  { icon: "shield-checkmark-outline", label: "PMC Verified Doctors", hint: "Every doctor is verified." },
-  { icon: "cash-outline", label: "100% Secure Payment", hint: "Your card details are never stored." },
-  {
-    icon: "refresh-circle-outline",
-    label: "Full Refund Guarantee",
-    hint: "Refunded in full if your doctor is unavailable or you cancel before the consult.",
-  },
-  { icon: "headset-outline", label: "Support on Call", hint: "We're here to help 24/7." },
-];
-
-function TrustBadges() {
+function TrustBadges({ t }: { t: MobileDictionary }) {
+  const TRUST_BADGES: { icon: IconName; label: string; hint: string }[] = [
+    { icon: "shield-checkmark-outline", label: t.home.trustBadges.verified.label, hint: t.home.trustBadges.verified.hint },
+    { icon: "cash-outline", label: t.home.trustBadges.payment.label, hint: t.home.trustBadges.payment.hint },
+    { icon: "refresh-circle-outline", label: t.home.trustBadges.refund.label, hint: t.home.trustBadges.refund.hint },
+    { icon: "headset-outline", label: t.home.trustBadges.support.label, hint: t.home.trustBadges.support.hint },
+  ];
   return (
     <View style={styles.trustCard}>
       {TRUST_BADGES.map((badge, index) => (
@@ -296,14 +296,24 @@ function TrustBadges() {
   );
 }
 
-function Section({ title, onSeeAll, children }: { title: string; onSeeAll?: () => void; children: React.ReactNode }) {
+function Section({
+  title,
+  onSeeAll,
+  seeAllLabel,
+  children,
+}: {
+  title: string;
+  onSeeAll?: () => void;
+  seeAllLabel?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {onSeeAll ? (
           <Pressable onPress={onSeeAll}>
-            <Text style={styles.seeAll}>See all</Text>
+            <Text style={styles.seeAll}>{seeAllLabel}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -319,6 +329,8 @@ function EmptyCard({
   actionLabel,
   onPress,
   error,
+  errorTitle,
+  errorHint,
 }: {
   icon: IconName;
   title: string;
@@ -326,6 +338,8 @@ function EmptyCard({
   actionLabel: string;
   onPress: () => void;
   error?: boolean;
+  errorTitle?: string;
+  errorHint?: string;
 }) {
   return (
     <View style={styles.card}>
@@ -334,8 +348,8 @@ function EmptyCard({
           <Ionicons name={icon} size={22} color={colors.brand.DEFAULT} />
         </View>
         <View style={styles.cardBody}>
-          <Text style={styles.doctorName}>{error ? "Couldn't load this" : title}</Text>
-          <Text style={styles.meta}>{error ? "Pull down to try again." : hint}</Text>
+          <Text style={styles.doctorName}>{error ? errorTitle : title}</Text>
+          <Text style={styles.meta}>{error ? errorHint : hint}</Text>
         </View>
       </View>
       <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]} onPress={onPress}>

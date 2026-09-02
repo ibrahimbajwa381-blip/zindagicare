@@ -1,6 +1,7 @@
 import {
   connectDatabase,
   AppointmentModel,
+  DoctorPayoutModel,
   DoctorProfileModel,
   HomeVisitModel,
   PaymentModel,
@@ -34,6 +35,8 @@ export type PlatformEarningsDoctorRow = {
   grossRevenue: number;
   doctorEarnings: number;
   platformCommission: number;
+  totalPaidOut: number;
+  balanceDue: number;
   platformOnlineCommissionPercent: number;
   platformHomeVisitCommissionPercent: number;
   /** Patients who signed up via this doctor's referral link. */
@@ -172,6 +175,18 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     : [];
   const paymentAmountById = new Map(payments.map((p) => [p._id.toString(), p.amount ?? 0]));
 
+  const payouts = profileIds.length
+    ? await DoctorPayoutModel.find(mongoFilter({ doctorProfileId: { $in: mongoObjectIds(profileIds) } }))
+        .select("doctorProfileId amount")
+        .lean()
+    : [];
+  const paidOutByProfile = new Map<string, number>();
+  for (const payout of payouts) {
+    const profileId = payout.doctorProfileId?.toString();
+    if (!profileId) continue;
+    paidOutByProfile.set(profileId, (paidOutByProfile.get(profileId) ?? 0) + (payout.amount ?? 0));
+  }
+
   const referredPatientDoctorMap = await getReferredPatientDoctorMap(profileIds);
   const referredCountByProfile = new Map<string, number>();
   for (const doctorId of referredPatientDoctorMap.values()) {
@@ -240,6 +255,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
       const user = userMap.get(profile.userId?.toString() ?? "");
       const pii = mapUserPii(user ?? {});
       const rate = rates.get(id) ?? { online: 70, homeVisit: 70 };
+      const totalPaidOut = paidOutByProfile.get(id) ?? 0;
 
       return {
         id,
@@ -250,6 +266,8 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
         grossRevenue: row.grossRevenue,
         doctorEarnings: row.doctorEarnings,
         platformCommission: row.grossRevenue - row.doctorEarnings,
+        totalPaidOut,
+        balanceDue: Math.max(row.doctorEarnings - totalPaidOut, 0),
         platformOnlineCommissionPercent: 100 - rate.online,
         platformHomeVisitCommissionPercent: 100 - rate.homeVisit,
         referredPatientCount: referredCountByProfile.get(id) ?? 0,

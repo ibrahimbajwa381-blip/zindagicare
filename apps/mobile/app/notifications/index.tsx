@@ -9,6 +9,7 @@ import {
   type NotificationDto,
 } from "@/api/notifications";
 import { ApiRequestError } from "@/api/client";
+import { syncBadgeCount } from "@/lib/push-notifications";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 
@@ -35,6 +36,8 @@ export default function NotificationsScreen() {
       setError(null);
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : "Failed to load notifications");
+    } finally {
+      syncBadgeCount();
     }
   }, []);
 
@@ -59,6 +62,8 @@ export default function NotificationsScreen() {
       await markNotificationRead(item.id);
     } catch {
       // Non-critical — leave it marked read locally even if the sync call fails.
+    } finally {
+      syncBadgeCount();
     }
   };
 
@@ -68,6 +73,8 @@ export default function NotificationsScreen() {
       await markAllNotificationsRead();
     } catch {
       // Non-critical.
+    } finally {
+      syncBadgeCount();
     }
   };
 

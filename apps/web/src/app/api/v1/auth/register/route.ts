@@ -7,7 +7,8 @@ export const POST = withApiHandler(
   async ({ body, req }) => {
     const referralCode = req.cookies.get(REFERRAL_COOKIE_NAME)?.value;
     const referredByDoctorId = await resolveReferralDoctorId(referralCode);
-    const user = await registerWithCredentials(body, referredByDoctorId);
+    const visitorId = req.cookies.get("zc_visitor")?.value;
+    const user = await registerWithCredentials(body, referredByDoctorId, visitorId);
     return {
       id: user._id.toString(),
       email: user.email,

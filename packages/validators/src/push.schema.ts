@@ -13,5 +13,17 @@ export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url(),
 });
 
+export const expoPushRegisterSchema = z.object({
+  token: z.string().min(1),
+  deviceId: z.string().min(1).optional(),
+  platform: z.enum(["ios", "android"]).optional(),
+});
+
+export const expoPushUnregisterSchema = z.object({
+  token: z.string().min(1),
+});
+
 export type PushSubscribeInput = z.infer<typeof pushSubscribeSchema>;
 export type PushUnsubscribeInput = z.infer<typeof pushUnsubscribeSchema>;
+export type ExpoPushRegisterInput = z.infer<typeof expoPushRegisterSchema>;
+export type ExpoPushUnregisterInput = z.infer<typeof expoPushUnregisterSchema>;

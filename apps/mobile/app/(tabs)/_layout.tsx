@@ -2,6 +2,7 @@ import { Tabs, Redirect, useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslations } from "@/lib/locale-context";
 import { useUnreadSummary } from "@/hooks/use-unread-summary";
 import { IconBadge } from "@/components/ui/icon-badge";
 import { colors, fonts } from "@/lib/theme";
@@ -39,6 +40,7 @@ function HeaderActions() {
 
 export default function TabsLayout() {
   const { user, isLoading } = useAuth();
+  const t = useTranslations();
 
   if (!isLoading && !user) {
     return <Redirect href="/(auth)/login" />;
@@ -62,7 +64,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t.tabs.home,
           headerTitle: () => <HeaderLogo />,
           headerTitleAlign: "left",
           headerTitleContainerStyle: { marginLeft: 4 },
@@ -73,7 +75,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="doctors"
         options={{
-          title: "Book",
+          title: t.tabs.book,
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? "calendar" : "calendar-outline"} focused={focused} />
           ),
@@ -82,7 +84,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="appointments"
         options={{
-          title: "Appointments",
+          title: t.tabs.appointments,
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? "medkit" : "medkit-outline"} focused={focused} />
           ),
@@ -91,7 +93,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t.tabs.profile,
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? "person" : "person-outline"} focused={focused} />
           ),

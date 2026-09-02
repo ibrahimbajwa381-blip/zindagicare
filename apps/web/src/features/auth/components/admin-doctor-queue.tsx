@@ -2,12 +2,47 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Eye } from "lucide-react";
+import { Check, Copy, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
+import { cn } from "@/lib/utils";
+
+function CopyableText({ value, className }: { value: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore — clipboard access can be blocked, no fallback needed here
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Copy"
+      className={cn(
+        "inline-flex items-center gap-1 rounded px-1 -mx-1 hover:bg-slate-100 transition-colors",
+        className,
+      )}
+    >
+      <span>{value}</span>
+      {copied ? (
+        <Check className="h-3 w-3 shrink-0 text-emerald-600" />
+      ) : (
+        <Copy className="h-3 w-3 shrink-0 text-slate-400" />
+      )}
+    </button>
+  );
+}
 
 type PendingDoctor = {
   _id: string;
@@ -94,10 +129,11 @@ export function AdminDoctorQueue() {
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
+          <table className="w-full min-w-[950px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <th className="px-5 py-4">Doctor</th>
+                <th className="px-5 py-4">Phone</th>
                 <th className="px-5 py-4">Specialty</th>
                 <th className="px-5 py-4">PMDC</th>
                 <th className="px-5 py-4">Submitted</th>
@@ -121,6 +157,13 @@ export function AdminDoctorQueue() {
                           </p>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600">
+                      {d.userId?.phone ? (
+                        <CopyableText value={d.userId.phone} />
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-1">
