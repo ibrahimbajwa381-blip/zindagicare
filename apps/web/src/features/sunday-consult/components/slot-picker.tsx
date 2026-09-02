@@ -19,11 +19,32 @@ type Props = {
   selectedSlotId: string | null;
   onSelect: (slotId: string) => void;
   disabled?: boolean;
+  loading?: boolean;
   emptyMessage?: string;
 };
 
-export function SlotPicker({ slots, selectedSlotId, onSelect, disabled, emptyMessage }: Props) {
+export function SlotPicker({
+  slots,
+  selectedSlotId,
+  onSelect,
+  disabled,
+  loading,
+  emptyMessage,
+}: Props) {
   const mounted = useMounted();
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className={cn("h-11 animate-pulse rounded-xl bg-slate-200/70", surfaceInset)}
+          />
+        ))}
+      </div>
+    );
+  }
 
   if (!slots.length) {
     return (

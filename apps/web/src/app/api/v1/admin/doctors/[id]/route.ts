@@ -34,12 +34,8 @@ export async function DELETE(_req: Request, { params }: Params) {
     }
 
     const roles = session.user.roles ?? [];
-    if (!roles.includes(Roles.SUPER_ADMIN)) {
-      throw new AppError(
-        "Only super admins can permanently delete a doctor",
-        "FORBIDDEN",
-        403,
-      );
+    if (!roles.includes(Roles.ADMIN) && !roles.includes(Roles.SUPER_ADMIN)) {
+      throw new AppError("Only admins can permanently delete a doctor", "FORBIDDEN", 403);
     }
 
     const { id } = await params;

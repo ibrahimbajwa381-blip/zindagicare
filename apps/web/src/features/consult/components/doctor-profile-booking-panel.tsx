@@ -69,16 +69,22 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(true);
 
   useEffect(() => {
     setPaymentProvider(defaultProvider);
   }, [defaultProvider]);
 
   const loadSlots = useCallback(async () => {
-    const res = await fetch(`/api/v1/consult/slots?doctorId=${doctor.doctorId}`);
-    const json = await res.json();
-    if (json.success) {
-      setSlots(json.data.slots ?? []);
+    setSlotsLoading(true);
+    try {
+      const res = await fetch(`/api/v1/consult/slots?doctorId=${doctor.doctorId}`);
+      const json = await res.json();
+      if (json.success) {
+        setSlots(json.data.slots ?? []);
+      }
+    } finally {
+      setSlotsLoading(false);
     }
   }, [doctor.doctorId]);
 
@@ -261,6 +267,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
                 selectedSlotId={selectedSlotId}
                 onSelect={setSelectedSlotId}
                 disabled={loading || doctor.isFull}
+                loading={slotsLoading}
                 emptyMessage="No open slots in the next two weeks."
               />
 
