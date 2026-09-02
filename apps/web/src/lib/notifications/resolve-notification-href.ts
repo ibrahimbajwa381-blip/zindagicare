@@ -120,6 +120,9 @@ export function resolveNotificationHref(
     case "home_visit_status":
       return "/home-care/visits";
 
+    case "prescription_issued":
+      return "/prescriptions";
+
     default:
       return null;
   }
