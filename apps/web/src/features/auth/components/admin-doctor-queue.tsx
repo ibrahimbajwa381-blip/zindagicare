@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
-import { cn } from "@/lib/utils";
+import { cn } from "@zindagi/shared";
 
 function CopyableText({ value, className }: { value: string; className?: string }) {
   const [copied, setCopied] = useState(false);
