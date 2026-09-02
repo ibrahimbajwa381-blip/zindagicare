@@ -254,6 +254,7 @@ export function DoctorProfileEditForm({
         : {}),
       bio: bio.trim() || null,
       consultationFee: feeValue,
+      experienceYears: Number(experienceYears) || 0,
       primarySpecialty,
       additionalSpecialties,
       languages: languageList,
@@ -280,7 +281,6 @@ export function DoctorProfileEditForm({
               .filter(Boolean),
             medicalCollege: medicalCollege.trim() || undefined,
             graduationYear: graduationYear ? Number(graduationYear) : undefined,
-            experienceYears: Number(experienceYears) || 0,
           }
         : {}),
     };
@@ -365,17 +365,6 @@ export function DoctorProfileEditForm({
               />
             </div>
             <div>
-              <Label htmlFor="experienceYears">Years of experience</Label>
-              <Input
-                id="experienceYears"
-                type="number"
-                min={0}
-                max={60}
-                value={experienceYears}
-                onChange={(e) => setExperienceYears(e.target.value)}
-              />
-            </div>
-            <div>
               <Label htmlFor="qualifications">Additional qualifications</Label>
               <Input
                 id="qualifications"
@@ -454,6 +443,18 @@ export function DoctorProfileEditForm({
             rows={4}
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             placeholder="Brief summary of your practice and expertise"
+          />
+        </div>
+        <div>
+          <Label htmlFor="experienceYears">Years of experience</Label>
+          <Input
+            id="experienceYears"
+            type="number"
+            min={0}
+            max={60}
+            value={experienceYears}
+            onChange={(e) => setExperienceYears(e.target.value)}
+            className="max-w-xs"
           />
         </div>
         <div>

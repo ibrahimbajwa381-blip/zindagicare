@@ -1,3 +1,4 @@
+import { withDoctorTitle } from "@zindagi/shared";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
 function formatSlotTime(slotStart: Date) {
@@ -29,7 +30,7 @@ export async function sendAppointmentReminder24h(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Upcoming appointment reminder",
-    body: `Reminder: Your ${label} with Dr. ${params.doctorName} is coming up (${time}).`,
+    body: `Reminder: Your ${label} with ${withDoctorTitle(params.doctorName)} is coming up (${time}).`,
     payload: {
       type: "appointment_reminder_24h",
       appointmentId: params.appointmentId,
@@ -52,7 +53,7 @@ export async function sendAppointmentReminder1h(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Appointment in 1 hour",
-    body: `Your ${label} with Dr. ${params.doctorName} starts at ${time}. Join from your dashboard when it's time.`,
+    body: `Your ${label} with ${withDoctorTitle(params.doctorName)} starts at ${time}. Join from your dashboard when it's time.`,
     payload: {
       type: "appointment_reminder_1h",
       appointmentId: params.appointmentId,
@@ -73,7 +74,7 @@ export async function sendSundayMorningReminder(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Sunday consult today",
-    body: `Good morning! Your free consult with Dr. ${params.doctorName} is today at ${time}.`,
+    body: `Good morning! Your free consult with ${withDoctorTitle(params.doctorName)} is today at ${time}.`,
     payload: {
       type: "appointment_reminder_sunday_morning",
       appointmentId: params.appointmentId,
@@ -167,7 +168,7 @@ export async function sendAppointmentStartNow(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Consultation starts now",
-    body: `Your ${label} with Dr. ${params.doctorName} is starting now. Join from your dashboard.`,
+    body: `Your ${label} with ${withDoctorTitle(params.doctorName)} is starting now. Join from your dashboard.`,
     payload: {
       type: "appointment_reminder_start_now",
       appointmentId: params.appointmentId,

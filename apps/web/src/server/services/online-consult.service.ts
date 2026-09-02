@@ -17,6 +17,7 @@ import {
   ONLINE_CONSULT_CONFIG,
   getVideoJoinWindow,
   resolveDisplaySpecialty,
+  withDoctorTitle,
 } from "@zindagi/shared";
 import type { ConsultCheckoutInput } from "@zindagi/validators";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -724,7 +725,7 @@ export class OnlineConsultService {
       const patient = await UserModel.findById(patientId).select("name").lean();
       await notifyAdmins({
         title: "New online consult booking",
-        body: `${safeDisplayText(patient?.name) ?? "A patient"} started checkout with Dr. ${validated.doctorName} for ${formatKarachiDateTime(validated.slotStart)} (Rs. ${validated.consultationFee.toLocaleString()}). Awaiting payment confirmation.`,
+        body: `${safeDisplayText(patient?.name) ?? "A patient"} started checkout with ${withDoctorTitle(validated.doctorName)} for ${formatKarachiDateTime(validated.slotStart)} (Rs. ${validated.consultationFee.toLocaleString()}). Awaiting payment confirmation.`,
         payload: {
           type: "online_consult_requested",
           appointmentId,
@@ -916,7 +917,7 @@ export class OnlineConsultService {
 
     await notifyAdmins({
       title: "Online consult paid",
-      body: `${safeDisplayText(patient?.name) ?? "A patient"} paid Rs. ${payment.amount.toLocaleString()} for a consult with Dr. ${mapUserPii(doctorUser ?? {}).name} at ${formatKarachiDateTime(appointment.scheduledStart)}.`,
+      body: `${safeDisplayText(patient?.name) ?? "A patient"} paid Rs. ${payment.amount.toLocaleString()} for a consult with ${withDoctorTitle(mapUserPii(doctorUser ?? {}).name)} at ${formatKarachiDateTime(appointment.scheduledStart)}.`,
       payload: {
         type: "online_consult_paid",
         appointmentId: appointment._id.toString(),

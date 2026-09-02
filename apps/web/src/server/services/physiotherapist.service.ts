@@ -34,6 +34,27 @@ import {
   calculateStaffNetEarnings,
   getPhysiotherapistCommissionPercentByUserId,
 } from "./commission.service";
+import {
+  deletePhysiotherapistDocument,
+  physiotherapistDocumentStorageKeyFromUrl,
+} from "./physiotherapist-documents.storage";
+
+async function deleteReplacedPhysiotherapistDocuments(
+  previous: Record<string, string | null | undefined> | undefined,
+  next: Record<string, string | null | undefined>,
+): Promise<void> {
+  if (!previous) return;
+  for (const [field, previousUrl] of Object.entries(previous)) {
+    if (!previousUrl || previousUrl === next[field]) continue;
+    const previousKey = physiotherapistDocumentStorageKeyFromUrl(previousUrl);
+    if (!previousKey) continue;
+    try {
+      await deletePhysiotherapistDocument(previousKey);
+    } catch {
+      // best-effort cleanup; ignore failures (e.g., file already removed)
+    }
+  }
+}
 
 const ACTIVE_VISIT_STATUSES = [
   HomeVisitStatuses.ASSIGNED,
@@ -317,6 +338,9 @@ export async function submitPhysiotherapistVerification(
   staff.qualification = input.qualification;
   staff.experienceYears = input.experienceYears;
   staff.specialties = input.specialties;
+  const previousDocuments = staff.verificationDocuments
+    ? { ...staff.verificationDocuments }
+    : undefined;
   staff.verificationDocuments = input.documentUrls;
   staff.verificationSubmittedAt = new Date();
   staff.platformAgreementAcceptedAt = new Date();
@@ -350,6 +374,7 @@ export async function submitPhysiotherapistVerification(
   }
 
   await staff.save();
+  await deleteReplacedPhysiotherapistDocuments(previousDocuments, input.documentUrls);
 
   return getPhysiotherapistProfile(userId);
 }

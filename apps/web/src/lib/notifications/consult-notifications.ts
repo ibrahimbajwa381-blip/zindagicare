@@ -1,3 +1,4 @@
+import { withDoctorTitle } from "@zindagi/shared";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 import { sendWebPushToUser } from "@/server/services/push.service";
 
@@ -18,7 +19,7 @@ export async function sendOnlineConsultConfirmation(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Online consult confirmed",
-    body: `Your paid consult with Dr. ${params.doctorName} is booked for ${time}. Fee: Rs. ${params.amount.toLocaleString()}.`,
+    body: `Your paid consult with ${withDoctorTitle(params.doctorName)} is booked for ${time}. Fee: Rs. ${params.amount.toLocaleString()}.`,
     payload: { type: "online_consult_confirmed" },
   });
 }
@@ -95,7 +96,7 @@ export async function sendPrescriptionIssued(params: {
     userId: params.userId,
     phone: params.phone,
     title: "New prescription available",
-    body: `Dr. ${params.doctorName} has issued a new prescription for you. Tap to view or download it.`,
+    body: `${withDoctorTitle(params.doctorName)} has issued a new prescription for you. Tap to view or download it.`,
     payload: {
       type: "prescription_issued",
       prescriptionId: params.prescriptionId,
@@ -105,7 +106,7 @@ export async function sendPrescriptionIssued(params: {
 
   await sendWebPushToUser(params.userId, {
     title: "New prescription available",
-    body: `Dr. ${params.doctorName} has issued a new prescription for you.`,
+    body: `${withDoctorTitle(params.doctorName)} has issued a new prescription for you.`,
     url: "/prescriptions",
     tag: `prescription-${params.prescriptionId}`,
   }).catch((err) => {
@@ -125,7 +126,7 @@ export async function sendUrgentConsultConfirmation(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Urgent care — doctor assigned",
-    body: `Dr. ${params.doctorName} is ready for your urgent video consult. Join from your dashboard now. Fee: Rs. ${params.amount.toLocaleString()}.`,
+    body: `${withDoctorTitle(params.doctorName)} is ready for your urgent video consult. Join from your dashboard now. Fee: Rs. ${params.amount.toLocaleString()}.`,
     payload: {
       type: "urgent_consult_confirmed",
       ...(params.appointmentId ? { appointmentId: params.appointmentId } : {}),

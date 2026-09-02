@@ -2,6 +2,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import {
+  deleteObject,
   getObject,
   putObject,
   type StorageNamespace,
@@ -50,6 +51,22 @@ export async function saveNurseDocument(
 
 export async function readNurseDocument(storageKey: string): Promise<Buffer> {
   return getObject(NAMESPACE, storageKey);
+}
+
+const DOCUMENT_URL_PREFIX = "/api/v1/nurse/verification/documents/";
+
+export function nurseDocumentStorageKeyFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url, "http://local").pathname;
+    if (!pathname.startsWith(DOCUMENT_URL_PREFIX)) return null;
+    return decodeURIComponent(pathname.slice(DOCUMENT_URL_PREFIX.length));
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteNurseDocument(storageKey: string): Promise<void> {
+  await deleteObject(NAMESPACE, storageKey);
 }
 
 /** Owner nurse or admin may view a stored verification document. */

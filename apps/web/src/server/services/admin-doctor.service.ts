@@ -45,7 +45,11 @@ import {
   type DoctorCommissionRates,
 } from "./commission.service";
 import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
-import { isDoctorAvatarUrlForUser } from "@/server/services/doctor-avatar.storage";
+import {
+  deleteDoctorAvatar,
+  doctorAvatarStorageKeyFromUrl,
+  isDoctorAvatarUrlForUser,
+} from "@/server/services/doctor-avatar.storage";
 import { upsertSundayTemplateFromProfileEdit } from "@/server/services/doctor-profile.service";
 
 type CreateDoctorInput = z.infer<typeof adminCreateDoctorSchema>;
@@ -786,15 +790,29 @@ export async function adminUpdateDoctor(
       userDirty = true;
     }
   }
+  let previousAvatarUrl: string | undefined;
   if (input.avatarUrl !== undefined) {
     if (!isDoctorAvatarUrlForUser(user._id.toString(), input.avatarUrl)) {
       throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    if (user.avatarUrl && user.avatarUrl !== input.avatarUrl) {
+      previousAvatarUrl = user.avatarUrl;
     }
     user.avatarUrl = input.avatarUrl;
     userDirty = true;
   }
   if (userDirty) {
     await user.save();
+    if (previousAvatarUrl) {
+      const previousKey = doctorAvatarStorageKeyFromUrl(previousAvatarUrl);
+      if (previousKey) {
+        try {
+          await deleteDoctorAvatar(previousKey);
+        } catch {
+          // best-effort cleanup; ignore failures (e.g., file already removed)
+        }
+      }
+    }
   }
 
   if (input.sundayConsult !== undefined) {

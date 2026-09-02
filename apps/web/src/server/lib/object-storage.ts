@@ -119,6 +119,9 @@ export async function putObject(
   }
 }
 
+const DOWNLOAD_RETRY_ATTEMPTS = 3;
+const DOWNLOAD_RETRY_BASE_DELAY_MS = 200;
+
 export async function getObject(
   namespace: StorageNamespace,
   storageKey: string,
@@ -126,13 +129,27 @@ export async function getObject(
   const { bucket } = getConfig();
   const path = objectKey(namespace, storageKey);
 
-  const { data, error } = await getClient().storage.from(bucket).download(path);
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= DOWNLOAD_RETRY_ATTEMPTS; attempt++) {
+    const { data, error } = await getClient().storage.from(bucket).download(path);
 
-  if (error || !data) {
-    throw mapStorageError(error);
+    if (data && !error) {
+      return Buffer.from(await data.arrayBuffer());
+    }
+
+    lastError = error;
+    // A missing object won't appear on retry — fail fast instead of stalling the request.
+    if (isNotFoundError(error) || attempt === DOWNLOAD_RETRY_ATTEMPTS) {
+      break;
+    }
+    await sleep(DOWNLOAD_RETRY_BASE_DELAY_MS * attempt);
   }
 
-  return Buffer.from(await data.arrayBuffer());
+  throw mapStorageError(lastError);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function deleteObject(

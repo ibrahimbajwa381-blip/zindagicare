@@ -1,6 +1,7 @@
 import path from "path";
 import { randomUUID } from "crypto";
 import {
+  deleteObject,
   getObject,
   putObject,
   type StorageNamespace,
@@ -61,6 +62,21 @@ export async function saveHerbalistAvatar(
 
 export async function readHerbalistAvatar(storageKey: string): Promise<Buffer> {
   return getObject(NAMESPACE, storageKey);
+}
+
+export function herbalistAvatarStorageKeyFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url, "http://local").pathname;
+    const prefix = "/api/v1/public/herbalist-avatars/";
+    if (!pathname.startsWith(prefix)) return null;
+    return decodeURIComponent(pathname.slice(prefix.length));
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteHerbalistAvatar(storageKey: string): Promise<void> {
+  await deleteObject(NAMESPACE, storageKey);
 }
 
 function mimeToExt(mime: string): string {

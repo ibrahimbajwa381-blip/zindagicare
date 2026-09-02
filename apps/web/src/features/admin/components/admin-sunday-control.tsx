@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
-import { SundayAffordabilityChoices, SundayFreeRequestStatuses, SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
+import { SundayAffordabilityChoices, SundayFreeRequestStatuses, SUNDAY_CONSULT_CONFIG, withDoctorTitle } from "@zindagi/shared";
 import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type {
   SundayAdminRequestDto,
@@ -189,7 +189,7 @@ export function AdminSundayControl() {
                     ) : null}
                     <p className="mt-1 text-xs text-slate-500">
                       Requested {formatKarachiDateTime(request.createdAt)}
-                      {request.doctor ? ` · Dr. ${request.doctor.name}` : ""}
+                      {request.doctor ? ` · ${withDoctorTitle(request.doctor.name)}` : ""}
                     </p>
                     {request.status === SundayFreeRequestStatuses.ASSIGNED && (
                       <div className="mt-2 flex flex-wrap gap-1.5">

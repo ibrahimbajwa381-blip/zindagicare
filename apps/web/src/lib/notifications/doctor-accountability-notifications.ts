@@ -1,3 +1,4 @@
+import { withDoctorTitle } from "@zindagi/shared";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
 async function persist(input: {
@@ -64,7 +65,7 @@ export async function notifyAdminDoctorRemoved(params: {
     userId: params.adminUserId,
     phone: params.phone,
     title: "Doctor auto-restricted for missed consults",
-    body: `Dr. ${params.doctorName} was automatically restricted after ${params.missCount} missed consultations in ${params.monthLabel}.`,
+    body: `${withDoctorTitle(params.doctorName)} was automatically restricted after ${params.missCount} missed consultations in ${params.monthLabel}.`,
     payload: {
       type: "admin_doctor_auto_restricted",
       doctorProfileId: params.doctorProfileId,

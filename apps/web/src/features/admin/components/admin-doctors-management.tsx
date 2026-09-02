@@ -10,6 +10,7 @@ import {
   Settings2,
   Stethoscope,
   Trash2,
+  X,
 } from "lucide-react";
 import { VerificationStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,9 @@ export function AdminDoctorsManagement() {
   const [pending, setPending] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminDoctorRow | null>(null);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -161,25 +165,30 @@ export function AdminDoctorsManagement() {
     }
   };
 
-  const deleteDoctor = async (doc: AdminDoctorRow) => {
-    const typed = window.prompt(
-      `This permanently deletes ${doc.name}'s account and doctor profile. This cannot be undone.\n\nType the doctor's name to confirm: "${doc.name}"`,
-    );
-    if (typed !== doc.name) {
-      if (typed !== null) alert("Name didn't match — deletion cancelled.");
+  const openDeleteDialog = (doc: AdminDoctorRow) => {
+    setDeleteTarget(doc);
+    setDeleteInput("");
+    setDeleteError(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (deleteInput.trim().toLowerCase() !== deleteTarget.name.trim().toLowerCase()) {
+      setDeleteError("Name didn't match — please type it exactly as shown.");
       return;
     }
-    setPending(doc.id);
-    const res = await fetch(`/api/v1/admin/doctors/${doc.id}`, {
+    setPending(deleteTarget.id);
+    const res = await fetch(`/api/v1/admin/doctors/${deleteTarget.id}`, {
       method: "DELETE",
     });
     setPending(null);
     if (res.ok) {
       setExpandedId(null);
+      setDeleteTarget(null);
       await load();
     } else {
       const json = await res.json();
-      alert(json?.error?.message ?? "Failed to delete doctor");
+      setDeleteError(json?.error?.message ?? "Failed to delete doctor");
     }
   };
 
@@ -319,15 +328,24 @@ export function AdminDoctorsManagement() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[15%]" />
+                <col className="hidden lg:table-column lg:w-[10%]" />
+                <col className="w-[14%]" />
+                <col className="hidden md:table-column md:w-[12%]" />
+                <col className="hidden xl:table-column xl:w-[13%]" />
+                <col />
+              </colgroup>
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-5 py-4">Doctor</th>
                   <th className="px-5 py-4">Specialty</th>
-                  <th className="px-5 py-4">PMDC</th>
+                  <th className="hidden px-5 py-4 lg:table-cell">PMDC</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Working</th>
-                  <th className="px-5 py-4">Earnings</th>
+                  <th className="hidden px-5 py-4 md:table-cell">Working</th>
+                  <th className="hidden px-5 py-4 xl:table-cell">Earnings</th>
                   <th className="px-5 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -343,7 +361,7 @@ export function AdminDoctorsManagement() {
                             size="md"
                           />
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-900">{doc.name}</p>
+                            <p className="truncate font-semibold text-slate-900">{doc.name}</p>
                             <p className="truncate text-xs text-slate-500">
                               {[doc.email, doc.phone].filter(Boolean).join(" · ") || "—"}
                             </p>
@@ -356,20 +374,20 @@ export function AdminDoctorsManagement() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex max-w-[180px] flex-wrap gap-1">
-                          {doc.specialties.slice(0, 2).map((s) => (
-                            <Badge key={s} variant="secondary" className="text-xs">
+                        <div className="flex flex-wrap gap-1">
+                          {doc.specialties.slice(0, 1).map((s) => (
+                            <Badge key={s} variant="secondary" className="max-w-full truncate text-xs">
                               {s}
                             </Badge>
                           ))}
-                          {doc.specialties.length > 2 && (
+                          {doc.specialties.length > 1 && (
                             <Badge variant="outline" className="text-xs">
-                              +{doc.specialties.length - 2}
+                              +{doc.specialties.length - 1}
                             </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-4 font-mono text-xs text-slate-600">
+                      <td className="hidden truncate px-5 py-4 font-mono text-xs text-slate-600 lg:table-cell">
                         {doc.pmdcNumber ?? "—"}
                       </td>
                       <td className="px-5 py-4">
@@ -391,13 +409,13 @@ export function AdminDoctorsManagement() {
                           <StatusBadge status={doc.verificationStatus} />
                         </div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="hidden px-5 py-4 md:table-cell">
                         <WorkloadBadge doctor={doc} />
                         <p className="mt-1 text-xs text-slate-500">
                           {doc.stats.completedThisMonth} completed this month
                         </p>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="hidden px-5 py-4 xl:table-cell">
                         <p className="font-medium text-slate-900">
                           {formatCurrency(doc.stats.totalEarnings)}
                         </p>
@@ -414,11 +432,11 @@ export function AdminDoctorsManagement() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                           <Button size="sm" variant="outline" asChild>
                             <Link href={`/admin/doctors/manage/${doc.id}`}>
                               <Settings2 className="h-4 w-4" />
-                              Manage
+                              <span className="hidden 2xl:inline">Manage</span>
                             </Link>
                           </Button>
                           <Button size="sm" variant="ghost" asChild>
@@ -507,7 +525,7 @@ export function AdminDoctorsManagement() {
                               size="sm"
                               variant="outline"
                               disabled={pending === doc.id}
-                              onClick={() => deleteDoctor(doc)}
+                              onClick={() => openDeleteDialog(doc)}
                               className="ml-auto border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -552,6 +570,63 @@ export function AdminDoctorsManagement() {
           </div>
         )}
       </div>
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Delete doctor</h3>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              This permanently deletes <strong>{deleteTarget.name}</strong>&apos;s account and
+              doctor profile. This cannot be undone.
+            </p>
+            <p className="mt-3 text-sm text-slate-600">
+              Type <strong>{deleteTarget.name}</strong> to confirm:
+            </p>
+            <Input
+              autoFocus
+              value={deleteInput}
+              onChange={(e) => {
+                setDeleteInput(e.target.value);
+                if (deleteError) setDeleteError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmDelete();
+              }}
+              placeholder={deleteTarget.name}
+              className="mt-2"
+            />
+            {deleteError && <p className="mt-2 text-sm text-red-600">{deleteError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDelete}
+                disabled={pending === deleteTarget.id}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete permanently
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

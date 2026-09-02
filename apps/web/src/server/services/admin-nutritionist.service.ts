@@ -28,6 +28,11 @@ import {
   type NutritionistProfileDto,
 } from "./nutritionist-profile.service";
 import { generateUniqueNutritionistSlug } from "./nutritionist-slug.service";
+import {
+  deleteNutritionistAvatar,
+  nutritionistAvatarStorageKeyFromUrl,
+  isNutritionistAvatarUrlForUser,
+} from "./nutritionist-avatar.storage";
 import { resolveNutritionistSlug } from "@/lib/nutritionists/profile-path";
 
 export type AdminNutritionistRow = {
@@ -314,9 +319,28 @@ export async function adminUpdateNutritionist(
 
   if (data.name !== undefined) user.name = data.name.trim();
   if (data.phone !== undefined) user.phone = normalizePakistaniPhone(data.phone);
-  if (data.avatarUrl !== undefined) user.avatarUrl = data.avatarUrl;
+  let previousAvatarUrl: string | undefined;
+  if (data.avatarUrl !== undefined) {
+    if (!isNutritionistAvatarUrlForUser(user._id.toString(), data.avatarUrl)) {
+      throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    if (user.avatarUrl && user.avatarUrl !== data.avatarUrl) {
+      previousAvatarUrl = user.avatarUrl;
+    }
+    user.avatarUrl = data.avatarUrl;
+  }
   if (data.isActive !== undefined) user.isActive = data.isActive;
   await user.save();
+  if (previousAvatarUrl) {
+    const previousKey = nutritionistAvatarStorageKeyFromUrl(previousAvatarUrl);
+    if (previousKey) {
+      try {
+        await deleteNutritionistAvatar(previousKey);
+      } catch {
+        // best-effort cleanup; ignore failures (e.g., file already removed)
+      }
+    }
+  }
 
   if (data.bio !== undefined) profile.bio = data.bio ?? undefined;
   if (data.consultationFee !== undefined) {

@@ -33,6 +33,27 @@ import {
   calculateStaffNetEarnings,
   getNurseCommissionPercentByUserId,
 } from "./commission.service";
+import {
+  deleteNurseDocument,
+  nurseDocumentStorageKeyFromUrl,
+} from "./nurse-documents.storage";
+
+async function deleteReplacedNurseDocuments(
+  previous: Record<string, string | null | undefined> | undefined,
+  next: Record<string, string | null | undefined>,
+): Promise<void> {
+  if (!previous) return;
+  for (const [field, previousUrl] of Object.entries(previous)) {
+    if (!previousUrl || previousUrl === next[field]) continue;
+    const previousKey = nurseDocumentStorageKeyFromUrl(previousUrl);
+    if (!previousKey) continue;
+    try {
+      await deleteNurseDocument(previousKey);
+    } catch {
+      // best-effort cleanup; ignore failures (e.g., file already removed)
+    }
+  }
+}
 
 const ACTIVE_VISIT_STATUSES = [
   HomeVisitStatuses.ASSIGNED,
@@ -309,6 +330,9 @@ export async function submitNurseVerification(
   staff.cnicLast4 = cnicLast4(input.cnic);
   staff.qualification = input.qualification;
   staff.experienceYears = input.experienceYears;
+  const previousDocuments = staff.verificationDocuments
+    ? { ...staff.verificationDocuments }
+    : undefined;
   staff.verificationDocuments = input.documentUrls;
   staff.verificationSubmittedAt = new Date();
   staff.platformAgreementAcceptedAt = new Date();
@@ -342,6 +366,7 @@ export async function submitNurseVerification(
   }
 
   await staff.save();
+  await deleteReplacedNurseDocuments(previousDocuments, input.documentUrls);
 
   return getNurseProfile(userId);
 }

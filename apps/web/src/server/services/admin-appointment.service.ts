@@ -17,6 +17,7 @@ import {
   Roles,
   SlotStatuses,
   phoneLookupHash,
+  withDoctorTitle,
 } from "@zindagi/shared";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
@@ -30,9 +31,7 @@ import {
 
 /** Doctor display names in the DB are inconsistently stored with/without a "Dr" prefix. */
 function normalizeDoctorName(rawName?: string): string {
-  const name = safeDisplayText(rawName) ?? "Doctor";
-  const stripped = name.replace(/^dr\.?\s+/i, "").trim();
-  return stripped ? `Dr. ${stripped}` : name;
+  return withDoctorTitle(safeDisplayText(rawName) ?? "Doctor");
 }
 
 export type AdminAppointmentRow = {

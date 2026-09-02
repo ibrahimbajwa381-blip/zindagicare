@@ -6,6 +6,10 @@ import type {
 } from "@zindagi/validators";
 import { AppError, ErrorCodes } from "@zindagi/shared";
 import { mongoFilter } from "@/lib/mongo/query";
+import {
+  deleteTestimonialAvatar,
+  testimonialAvatarStorageKeyFromUrl,
+} from "@/server/services/testimonial-avatar.storage";
 
 export type PublicTestimonialDto = {
   id: string;
@@ -203,6 +207,17 @@ export class TestimonialService {
       testimonial.moderatedBy = adminUserId as never;
     }
     await testimonial.save();
+
+    if (action === "delete" && testimonial.avatarUrl) {
+      const storageKey = testimonialAvatarStorageKeyFromUrl(testimonial.avatarUrl);
+      if (storageKey) {
+        try {
+          await deleteTestimonialAvatar(storageKey);
+        } catch {
+          // best-effort cleanup; ignore failures (e.g., file already removed)
+        }
+      }
+    }
 
     return {
       id: testimonial._id.toString(),

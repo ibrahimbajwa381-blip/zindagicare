@@ -18,8 +18,29 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { recordAdminActivity } from "@/server/services/admin-activity.service";
 import { isHerbalistAvatarUrlForUser } from "@/server/services/herbalist-avatar.storage";
+import {
+  deleteHerbalistDocument,
+  herbalistDocumentStorageKeyFromUrl,
+} from "@/server/services/herbalist-documents.storage";
 import { generateUniqueHerbalistSlug } from "@/server/services/herbalist-slug.service";
 import { cnicLast4, hashCnic } from "./auth.service";
+
+async function deleteReplacedDocuments(
+  previous: Record<string, string | null | undefined> | undefined,
+  next: Record<string, string | null | undefined>,
+): Promise<void> {
+  if (!previous) return;
+  for (const [field, previousUrl] of Object.entries(previous)) {
+    if (!previousUrl || previousUrl === next[field]) continue;
+    const previousKey = herbalistDocumentStorageKeyFromUrl(previousUrl);
+    if (!previousKey) continue;
+    try {
+      await deleteHerbalistDocument(previousKey);
+    } catch {
+      // best-effort cleanup; ignore failures (e.g., file already removed)
+    }
+  }
+}
 
 /** Ensure a HerbalistProfile row exists (covers legacy / admin-seeded accounts). */
 export async function ensureHerbalistProfile(
@@ -100,6 +121,9 @@ export async function submitHerbalistVerification(
 
   profile.set("weeklyAvailability", input.weeklyAvailability);
   profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
+  const previousDocuments = profile.verificationDocuments
+    ? { ...profile.verificationDocuments }
+    : undefined;
   profile.verificationDocuments = input.documentUrls;
   profile.verificationSubmittedAt = new Date();
   profile.platformAgreementAcceptedAt = new Date();
@@ -111,6 +135,7 @@ export async function submitHerbalistVerification(
   profile.rejectionReason = undefined;
 
   await profile.save();
+  await deleteReplacedDocuments(previousDocuments, input.documentUrls);
 
   return profile;
 }

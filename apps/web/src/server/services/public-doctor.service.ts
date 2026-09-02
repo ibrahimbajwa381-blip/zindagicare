@@ -2,7 +2,7 @@ import {
   connectDatabase,
   DoctorProfileModel,
 } from "@zindagi/database";
-import { VerificationStatuses, resolveDisplaySpecialty } from "@zindagi/shared";
+import { VerificationStatuses, resolveDisplaySpecialty, withDoctorTitle } from "@zindagi/shared";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
   FeaturedDoctorCard,
@@ -49,7 +49,7 @@ async function mapProfileDoc(
   return {
     doctorId: doc._id.toString(),
     slug,
-    name,
+    name: withDoctorTitle(name),
     avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
     specialties: (doc.specialties as string[] | undefined) ?? [],
     bio: (doc.bio as string | undefined) ?? undefined,

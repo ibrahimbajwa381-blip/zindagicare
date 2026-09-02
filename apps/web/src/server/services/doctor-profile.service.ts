@@ -11,6 +11,7 @@ import {
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
   phoneLookupHash,
+  withDoctorTitle,
 } from "@zindagi/shared";
 import type { UpdateDoctorProfileInput } from "@zindagi/validators";
 
@@ -26,7 +27,11 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { SundayConsultService } from "./sunday-consult.service";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
-import { isDoctorAvatarUrlForUser } from "@/server/services/doctor-avatar.storage";
+import {
+  deleteDoctorAvatar,
+  doctorAvatarStorageKeyFromUrl,
+  isDoctorAvatarUrlForUser,
+} from "@/server/services/doctor-avatar.storage";
 
 export type { DoctorProfileDto, SundayConsultDto, WeeklyAvailabilityDto };
 export { formatDayOfWeek };
@@ -76,7 +81,7 @@ function mapProfileToDto(
     id: profile._id.toString(),
     user: {
       id: user._id.toString(),
-      name: pii.name,
+      name: withDoctorTitle(pii.name),
       email: pii.email,
       phone: pii.phone,
       avatarUrl: user.avatarUrl ?? undefined,
@@ -245,7 +250,7 @@ export async function updateDoctorProfile(
   }
 
   if (data.name !== undefined) {
-    user.name = data.name.trim();
+    user.name = withDoctorTitle(data.name.trim());
   }
 
   if (data.phone !== undefined) {
@@ -266,9 +271,13 @@ export async function updateDoctorProfile(
     }
   }
 
+  let previousAvatarUrl: string | undefined;
   if (data.avatarUrl !== undefined) {
     if (!isDoctorAvatarUrlForUser(userId, data.avatarUrl)) {
       throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    if (user.avatarUrl && user.avatarUrl !== data.avatarUrl) {
+      previousAvatarUrl = user.avatarUrl;
     }
     user.avatarUrl = data.avatarUrl;
   }
@@ -279,6 +288,16 @@ export async function updateDoctorProfile(
     data.avatarUrl !== undefined
   ) {
     await user.save();
+    if (previousAvatarUrl) {
+      const previousKey = doctorAvatarStorageKeyFromUrl(previousAvatarUrl);
+      if (previousKey) {
+        try {
+          await deleteDoctorAvatar(previousKey);
+        } catch {
+          // best-effort cleanup; ignore failures (e.g., file already removed)
+        }
+      }
+    }
   }
 
   if (data.bio !== undefined) {
@@ -286,6 +305,9 @@ export async function updateDoctorProfile(
   }
   if (data.consultationFee !== undefined) {
     profile.consultationFee = data.consultationFee;
+  }
+  if (data.experienceYears !== undefined) {
+    profile.experienceYears = data.experienceYears;
   }
   if (data.primarySpecialty !== undefined) {
     profile.primarySpecialty = data.primarySpecialty;

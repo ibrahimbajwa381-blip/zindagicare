@@ -11,6 +11,7 @@ import {
   AppointmentTypes,
   DOCTOR_ACCOUNTABILITY_CONFIG,
   VerificationStatuses,
+  withDoctorTitle,
 } from "@zindagi/shared";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
@@ -326,7 +327,7 @@ export class DoctorAccountabilityService {
   }) {
     await notifyAdminsChannel({
       title: "Doctor auto-restricted for missed consults",
-      body: `Dr. ${params.doctorName} was automatically restricted after ${params.missCount} missed consultations in ${params.monthLabel}.`,
+      body: `${withDoctorTitle(params.doctorName)} was automatically restricted after ${params.missCount} missed consultations in ${params.monthLabel}.`,
       payload: {
         type: "admin_doctor_auto_restricted",
         doctorProfileId: params.doctorProfileId,

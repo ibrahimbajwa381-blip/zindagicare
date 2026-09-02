@@ -1,3 +1,4 @@
+import { withDoctorTitle } from "@zindagi/shared";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
 /**
@@ -29,7 +30,7 @@ export async function sendBookingConfirmation(params: {
     userId: params.userId,
     phone: params.phone,
     title: "Sunday Free Consult confirmed",
-    body: `Your free consult with Dr. ${params.doctorName} is booked for ${time}.`,
+    body: `Your free consult with ${withDoctorTitle(params.doctorName)} is booked for ${time}.`,
     payload: { type: "sunday_booking_confirmed" },
   });
 }

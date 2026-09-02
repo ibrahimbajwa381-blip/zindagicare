@@ -17,6 +17,7 @@ export * from "./constants/medical-intake";
 export * from "./constants/provider-agreement";
 export * from "./errors/app-error";
 export * from "./utils/cn";
+export * from "./utils/doctor-name";
 export * from "./utils/chat-direct-key";
 export * from "./utils/video-join-window";
 export * from "./crypto";

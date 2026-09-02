@@ -53,6 +53,12 @@ export const updateDoctorProfileSchema = z
       .number()
       .min(500, "Consultation fee must be at least PKR 500")
       .optional(),
+    experienceYears: z.coerce
+      .number()
+      .int()
+      .min(0, "Years of experience cannot be negative")
+      .max(60, "Years of experience must be 60 or fewer")
+      .optional(),
     primarySpecialty: specialtyEnum.optional(),
     additionalSpecialties: z
       .array(specialtyEnum)

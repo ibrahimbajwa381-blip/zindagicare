@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
-import { cn } from "@zindagi/shared";
+import { cn, withDoctorTitle } from "@zindagi/shared";
 import {
   Activity,
   Ban,
@@ -280,7 +280,7 @@ export function AdminPatientManageDetail({ initialPatient }: Props) {
                     </div>
                     <p className="mt-1 text-slate-500">
                       {formatKarachiDateTime(a.scheduledStart)}
-                      {a.doctorName ? ` · Dr. ${a.doctorName}` : ""}
+                      {a.doctorName ? ` · ${withDoctorTitle(a.doctorName)}` : ""}
                       {a.isOnline ? " · Video" : ""}
                     </p>
                   </li>

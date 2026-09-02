@@ -13,7 +13,11 @@ import type { UpdateNutritionistProfileInput } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
-import { isNutritionistAvatarUrlForUser } from "@/server/services/nutritionist-avatar.storage";
+import {
+  deleteNutritionistAvatar,
+  nutritionistAvatarStorageKeyFromUrl,
+  isNutritionistAvatarUrlForUser,
+} from "@/server/services/nutritionist-avatar.storage";
 import { resolveNutritionistSlug } from "@/server/services/nutritionist-slug.service";
 import { ensureNutritionistProfile } from "./nutritionist-verification.service";
 
@@ -195,14 +199,28 @@ export async function updateNutritionistProfile(
     }
   }
 
+  let previousAvatarUrl: string | undefined;
   if (data.avatarUrl !== undefined) {
     if (!isNutritionistAvatarUrlForUser(userId, data.avatarUrl)) {
       throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    if (user.avatarUrl && user.avatarUrl !== data.avatarUrl) {
+      previousAvatarUrl = user.avatarUrl;
     }
     user.avatarUrl = data.avatarUrl;
   }
 
   await user.save();
+  if (previousAvatarUrl) {
+    const previousKey = nutritionistAvatarStorageKeyFromUrl(previousAvatarUrl);
+    if (previousKey) {
+      try {
+        await deleteNutritionistAvatar(previousKey);
+      } catch {
+        // best-effort cleanup; ignore failures (e.g., file already removed)
+      }
+    }
+  }
 
   if (data.bio !== undefined) profile.bio = data.bio ?? undefined;
   if (data.consultationFee !== undefined) {

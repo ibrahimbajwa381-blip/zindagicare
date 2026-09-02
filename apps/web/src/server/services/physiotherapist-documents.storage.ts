@@ -2,6 +2,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import {
+  deleteObject,
   getObject,
   putObject,
   type StorageNamespace,
@@ -50,6 +51,22 @@ export async function savePhysiotherapistDocument(
 
 export async function readPhysiotherapistDocument(storageKey: string): Promise<Buffer> {
   return getObject(NAMESPACE, storageKey);
+}
+
+const DOCUMENT_URL_PREFIX = "/api/v1/physiotherapist/verification/documents/";
+
+export function physiotherapistDocumentStorageKeyFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url, "http://local").pathname;
+    if (!pathname.startsWith(DOCUMENT_URL_PREFIX)) return null;
+    return decodeURIComponent(pathname.slice(DOCUMENT_URL_PREFIX.length));
+  } catch {
+    return null;
+  }
+}
+
+export async function deletePhysiotherapistDocument(storageKey: string): Promise<void> {
+  await deleteObject(NAMESPACE, storageKey);
 }
 
 /** Owner Physiotherapist or admin may view a stored verification document. */

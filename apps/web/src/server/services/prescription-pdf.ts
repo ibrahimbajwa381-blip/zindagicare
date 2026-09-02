@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import type { PrescriptionMedicationInput } from "@zindagi/validators";
+import { withDoctorTitle } from "@zindagi/shared";
 
 const require = createRequire(import.meta.url);
 
@@ -204,7 +205,7 @@ export async function generatePrescriptionPdf(
     doc.fontSize(11).fillColor(BRAND.heading).text("Prescribing Doctor", { underline: true });
     doc.moveDown(0.25);
     doc.fontSize(10).fillColor(BRAND.text);
-    doc.text(`Dr. ${input.doctorName}`);
+    doc.text(withDoctorTitle(input.doctorName));
     if (input.pmdcNumber) {
       doc.text(`PMDC Registration: ${input.pmdcNumber}`);
     }

@@ -168,7 +168,7 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
                     <DoctorShareCardDialog
                       triggerLabel="Share profile card"
                       card={{
-                        name: `Dr. ${profile.user.name}`,
+                        name: profile.user.name,
                         avatarUrl: avatarSrc,
                         specialty,
                         qualifications: credentials,

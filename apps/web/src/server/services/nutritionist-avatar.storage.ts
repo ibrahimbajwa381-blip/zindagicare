@@ -1,6 +1,7 @@
 import path from "path";
 import { randomUUID } from "crypto";
 import {
+  deleteObject,
   getObject,
   putObject,
   type StorageNamespace,
@@ -61,6 +62,21 @@ export async function saveNutritionistAvatar(
 
 export async function readNutritionistAvatar(storageKey: string): Promise<Buffer> {
   return getObject(NAMESPACE, storageKey);
+}
+
+export function nutritionistAvatarStorageKeyFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url, "http://local").pathname;
+    const prefix = "/api/v1/public/nutritionist-avatars/";
+    if (!pathname.startsWith(prefix)) return null;
+    return decodeURIComponent(pathname.slice(prefix.length));
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteNutritionistAvatar(storageKey: string): Promise<void> {
+  await deleteObject(NAMESPACE, storageKey);
 }
 
 function mimeToExt(mime: string): string {

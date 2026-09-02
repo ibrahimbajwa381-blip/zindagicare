@@ -21,6 +21,10 @@ import { cnicLast4, hashCnic } from "./auth.service";
 import {
   isDoctorAvatarUrlForUser,
 } from "@/server/services/doctor-avatar.storage";
+import {
+  deleteDoctorDocument,
+  doctorDocumentStorageKeyFromUrl,
+} from "@/server/services/doctor-documents.storage";
 import { mongoFilter } from "@/lib/mongo/query";
 import { generateUniqueDoctorSlug } from "@/server/services/doctor-slug.service";
 import { recordAdminActivity } from "@/server/services/admin-activity.service";
@@ -29,6 +33,23 @@ import type { HydratedDocument } from "mongoose";
 import type { DoctorProfileDocument } from "@zindagi/database";
 
 type VerificationInput = z.infer<typeof doctorVerificationSchema>;
+
+async function deleteReplacedDocuments(
+  previous: Record<string, string | null | undefined> | undefined,
+  next: Record<string, string | null | undefined>,
+): Promise<void> {
+  if (!previous) return;
+  for (const [field, previousUrl] of Object.entries(previous)) {
+    if (!previousUrl || previousUrl === next[field]) continue;
+    const previousKey = doctorDocumentStorageKeyFromUrl(previousUrl);
+    if (!previousKey) continue;
+    try {
+      await deleteDoctorDocument(previousKey);
+    } catch {
+      // best-effort cleanup; ignore failures (e.g., file already removed)
+    }
+  }
+}
 
 function computeMaxSlots(
   startTimeLocal: string,
@@ -168,6 +189,9 @@ export async function submitDoctorVerification(
 
   profile.set("weeklyAvailability", input.weeklyAvailability);
   profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
+  const previousDocuments = profile.verificationDocuments
+    ? { ...profile.verificationDocuments }
+    : undefined;
   profile.verificationDocuments = input.documentUrls;
   profile.verificationSubmittedAt = new Date();
   profile.platformAgreementAcceptedAt = new Date();
@@ -189,6 +213,7 @@ export async function submitDoctorVerification(
   }
 
   await profile.save();
+  await deleteReplacedDocuments(previousDocuments, input.documentUrls);
 
   if (input.sundayConsult) {
     await upsertSundayTemplateFromOnboarding(

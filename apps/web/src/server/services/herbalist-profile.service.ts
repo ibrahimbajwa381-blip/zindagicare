@@ -13,7 +13,11 @@ import type { UpdateHerbalistProfileInput } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
-import { isHerbalistAvatarUrlForUser } from "@/server/services/herbalist-avatar.storage";
+import {
+  deleteHerbalistAvatar,
+  herbalistAvatarStorageKeyFromUrl,
+  isHerbalistAvatarUrlForUser,
+} from "@/server/services/herbalist-avatar.storage";
 import { resolveHerbalistSlug } from "@/server/services/herbalist-slug.service";
 import { ensureHerbalistProfile } from "./herbalist-verification.service";
 
@@ -195,14 +199,28 @@ export async function updateHerbalistProfile(
     }
   }
 
+  let previousAvatarUrl: string | undefined;
   if (data.avatarUrl !== undefined) {
     if (!isHerbalistAvatarUrlForUser(userId, data.avatarUrl)) {
       throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    if (user.avatarUrl && user.avatarUrl !== data.avatarUrl) {
+      previousAvatarUrl = user.avatarUrl;
     }
     user.avatarUrl = data.avatarUrl;
   }
 
   await user.save();
+  if (previousAvatarUrl) {
+    const previousKey = herbalistAvatarStorageKeyFromUrl(previousAvatarUrl);
+    if (previousKey) {
+      try {
+        await deleteHerbalistAvatar(previousKey);
+      } catch {
+        // best-effort cleanup; ignore failures (e.g., file already removed)
+      }
+    }
+  }
 
   if (data.bio !== undefined) profile.bio = data.bio ?? undefined;
   if (data.consultationFee !== undefined) {
