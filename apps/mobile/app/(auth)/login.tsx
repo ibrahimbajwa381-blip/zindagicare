@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Redirect, Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isExpoGo, useAuth } from "@/lib/auth-context";

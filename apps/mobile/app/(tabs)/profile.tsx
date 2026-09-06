@@ -5,11 +5,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Text } from "@/components/ui/text";
 import { useAuth } from "@/lib/auth-context";
 import { useLocale } from "@/lib/locale-context";
 import {
@@ -377,9 +377,11 @@ function Section({
   icon: IconName;
   children: React.ReactNode;
 }) {
+  const { isRTL } = useLocale();
+
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRtl]}>
         <View style={styles.sectionIcon}>
           <Ionicons name={icon} size={15} color={colors.brand.DEFAULT} />
         </View>
@@ -483,6 +485,7 @@ const styles = StyleSheet.create({
 
   section: { gap: 10 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionHeaderRtl: { flexDirection: "row-reverse" },
   sectionIcon: {
     width: 24,
     height: 24,

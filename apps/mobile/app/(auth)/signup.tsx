@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Stack, Redirect, Link } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslations } from "@/lib/locale-context";
 import { Spinner } from "@/components/ui/spinner";

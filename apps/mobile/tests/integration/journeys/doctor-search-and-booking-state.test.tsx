@@ -70,7 +70,7 @@ describe("Section 6: doctor search journey", () => {
 
     mockListConsultDoctors.mockResolvedValueOnce([]);
     await fireEvent.changeText(screen.getByPlaceholderText("Specialty"), "Neurosurgery");
-    await fireEvent.press(screen.getByText("Search"));
+    await fireEvent.press(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByText("No doctors found for this search.")).toBeTruthy();
     expect(screen.queryByText("Dr. One")).toBeNull();
   });

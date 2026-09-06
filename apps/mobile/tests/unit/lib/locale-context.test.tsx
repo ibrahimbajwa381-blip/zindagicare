@@ -1,6 +1,5 @@
 import React from "react";
 import { renderHook, waitFor, act } from "@testing-library/react-native";
-import { Alert } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 // This file exercises the real LocaleProvider — override the project-wide
@@ -29,18 +28,18 @@ describe("LocaleProvider", () => {
     expect(result.current.locale).toBe("ur");
   });
 
-  it("switches locale, persists it, and prompts to restart", async () => {
-    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  it("switches locale, persists it, and flips isRTL live (no restart needed)", async () => {
     const { result } = await renderHook(() => useLocale(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isRTL).toBe(false);
 
     await act(async () => {
       await result.current.setLocale("ur");
     });
 
     expect(result.current.locale).toBe("ur");
+    expect(result.current.isRTL).toBe(true);
     expect(await SecureStore.getItemAsync("zc_locale")).toBe("ur");
-    expect(alertSpy).toHaveBeenCalled();
   });
 
   it("throws when useLocale is used outside a LocaleProvider", async () => {

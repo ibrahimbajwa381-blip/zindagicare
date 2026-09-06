@@ -6,28 +6,31 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Text } from "@/components/ui/text";
 import { listConsultDoctors, type ConsultDoctorRow } from "@/api/consult";
 import { ApiRequestError } from "@/api/client";
 import { Spinner } from "@/components/ui/spinner";
-import { useTranslations } from "@/lib/locale-context";
+import { useLocale } from "@/lib/locale-context";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
 import { interpolate } from "@zindagi/i18n";
 
 export default function DoctorsScreen() {
   const router = useRouter();
-  const t = useTranslations();
+  const { t, isRTL } = useLocale();
   const [city, setCity] = useState("Lahore");
   const [specialty, setSpecialty] = useState("");
   const [doctors, setDoctors] = useState<ConsultDoctorRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const latestRequestIdRef = useRef(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRenderRef = useRef(true);
 
   const load = useCallback(async (opts: { city: string; specialty: string }) => {
     const requestId = ++latestRequestIdRef.current;
@@ -42,12 +45,37 @@ export default function DoctorsScreen() {
     } catch (e) {
       if (requestId !== latestRequestIdRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : t.doctors.loadError);
+    } finally {
+      if (requestId === latestRequestIdRef.current) setIsSearching(false);
     }
   }, [t]);
 
   useEffect(() => {
     load({ city, specialty });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live search: re-run automatically as the user types, instead of requiring
+  // a tap on Search — debounced so it doesn't fire a request per keystroke.
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    setIsSearching(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      load({ city, specialty });
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [city, specialty, load]);
+
+  const searchNow = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setIsSearching(true);
+    load({ city, specialty });
+  }, [city, specialty, load]);
 
   const onRefresh = async () => {
     setIsRefreshing(true);
@@ -64,7 +92,7 @@ export default function DoctorsScreen() {
           onChangeText={setCity}
           placeholder={t.doctors.cityPlaceholder}
           placeholderTextColor="#9AA5B1"
-          onSubmitEditing={() => load({ city, specialty })}
+          onSubmitEditing={searchNow}
           accessibilityLabel={t.doctors.cityPlaceholder}
         />
         <TextInput
@@ -73,16 +101,20 @@ export default function DoctorsScreen() {
           onChangeText={setSpecialty}
           placeholder={t.doctors.specialtyPlaceholder}
           placeholderTextColor="#9AA5B1"
-          onSubmitEditing={() => load({ city, specialty })}
+          onSubmitEditing={searchNow}
           accessibilityLabel={t.doctors.specialtyPlaceholder}
         />
         <Pressable
           style={styles.searchButton}
-          onPress={() => load({ city, specialty })}
+          onPress={searchNow}
           accessibilityRole="button"
           accessibilityLabel={t.doctors.search}
         >
-          <Text style={styles.searchButtonText}>{t.doctors.search}</Text>
+          {isSearching ? (
+            <Spinner size="sm" color={colors.brand.foreground} />
+          ) : (
+            <Text style={styles.searchButtonText}>{t.doctors.search}</Text>
+          )}
         </Pressable>
       </View>
 
@@ -112,7 +144,12 @@ export default function DoctorsScreen() {
             const avatarUri = resolveMediaUrl(item.avatarUrl);
             return (
               <Pressable
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed, item.isFull && styles.cardDisabled]}
+                style={({ pressed }) => [
+                  styles.card,
+                  isRTL && styles.cardRtl,
+                  pressed && styles.cardPressed,
+                  item.isFull && styles.cardDisabled,
+                ]}
                 onPress={() => router.push({ pathname: "/doctor/[doctorId]", params: { doctorId: item.doctorId } })}
                 disabled={item.isFull}
                 accessibilityRole="button"
@@ -126,12 +163,12 @@ export default function DoctorsScreen() {
                   </View>
                 )}
                 <View style={styles.cardBody}>
-                  <View style={styles.nameRow}>
+                  <View style={[styles.nameRow, isRTL && styles.rowRtl]}>
                     <Text style={styles.name} numberOfLines={1}>
                       {item.name}
                     </Text>
                     {item.pmdcVerified ? (
-                      <View style={styles.verifiedBadge}>
+                      <View style={[styles.verifiedBadge, isRTL && styles.rowRtl]}>
                         <Ionicons name="checkmark-circle" size={12} color={colors.brand.mutedForeground} />
                         <Text style={styles.verifiedBadgeText}>{t.doctors.verifiedBadge}</Text>
                       </View>
@@ -145,7 +182,7 @@ export default function DoctorsScreen() {
                       {item.hospital}
                     </Text>
                   ) : null}
-                  <View style={styles.metaRow}>
+                  <View style={[styles.metaRow, isRTL && styles.rowRtl]}>
                     <Ionicons name="star" size={13} color="#F5A623" />
                     <Text style={styles.rating}>{item.ratingAvg.toFixed(1)}</Text>
                     <Text style={styles.ratingCount}>({item.ratingCount})</Text>
@@ -205,6 +242,8 @@ const styles = StyleSheet.create({
   },
   cardPressed: { opacity: 0.85 },
   cardDisabled: { opacity: 0.55 },
+  cardRtl: { flexDirection: "row-reverse" },
+  rowRtl: { flexDirection: "row-reverse" },
   avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.neutral.muted },
   avatarPlaceholder: { backgroundColor: colors.brand.muted, alignItems: "center", justifyContent: "center" },
   avatarInitial: { fontFamily: fonts.bold, color: colors.brand.mutedForeground, fontSize: 26 },

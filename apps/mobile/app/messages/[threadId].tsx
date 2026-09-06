@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import { Redirect, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { listChatMessages, markChatThreadRead, sendChatMessage, type ChatMessage } from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
 import { useAuth } from "@/lib/auth-context";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { AttachmentBubble } from "@/components/chat/attachment-bubble";
 import { FileAttachmentButton } from "@/components/chat/file-attachment-button";
@@ -20,36 +22,19 @@ function timeLabel(iso: string) {
 export default function MessagesThreadScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { threadId, name } = useLocalSearchParams<{ threadId: string; name: string }>();
-  const [messages, setMessages] = useState<ChatMessage[] | null>(null);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isSendingRef = useRef(false);
-  const latestRequestIdRef = useRef(0);
 
-  const load = useCallback(async (silent = false) => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const res = await listChatMessages(threadId);
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setMessages(res.messages);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load messages");
-    }
-  }, [threadId]);
+  const loadMessages = useCallback(() => listChatMessages(threadId).then((res) => res.messages), [threadId]);
+  const { data: messages, error, setError, load } = useFocusLoader(loadMessages, "Failed to load messages", {
+    pollMs: POLL_MS,
+  });
 
   useFocusEffect(
     useCallback(() => {
-      load();
       markChatThreadRead(threadId).catch(() => {});
-      pollRef.current = setInterval(() => load(true), POLL_MS);
-      return () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-      };
-    }, [load, threadId]),
+    }, [threadId]),
   );
 
   const send = async () => {

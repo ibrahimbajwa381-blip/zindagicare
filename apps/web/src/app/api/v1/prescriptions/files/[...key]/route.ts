@@ -14,14 +14,18 @@ type Params = { params: Promise<{ key: string[] }> };
 
 export async function GET(req: Request, { params }: Params) {
   try {
-    const session = await resolveSession(req);
-    if (!session?.user?.id) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-
     const { key: keyParts } = await params;
     const storageKey = decodeURIComponent(keyParts.join("/"));
     validateStorageKey(storageKey);
+
+    // Session lookup and the (remote) storage fetch don't depend on each other — run them
+    // concurrently instead of paying both network round trips back-to-back. The DB
+    // authorization check still gates the response, so an unauthorized request never sees
+    // these bytes; it just means the storage fetch was occasionally wasted work.
+    const [session, raw] = await Promise.all([resolveSession(req), readPrescriptionPdf(storageKey)]);
+    if (!session?.user?.id) {
+      return new Response("Unauthorized", { status: 401 });
+    }
 
     const prescription = await PrescriptionService.getByFileKey(
       storageKey,
@@ -29,7 +33,6 @@ export async function GET(req: Request, { params }: Params) {
       session.user.roles ?? [],
     );
 
-    const raw = await readPrescriptionPdf(storageKey);
     const buffer = unwrapEncryptedFile(raw);
     const mimeType = prescription.mimeType ?? "application/pdf";
     const patient = prescription.patientId as { name?: string } | null;

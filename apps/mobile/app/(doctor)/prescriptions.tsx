@@ -1,39 +1,19 @@
-import { useCallback, useRef, useState } from "react";
-import { useFocusEffect } from "expo-router";
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { listDoctorPrescriptions, type DoctorPrescriptionSummary } from "@/api/doctor";
-import { ApiRequestError } from "@/api/client";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
 import { downloadAndOpenFile } from "@/lib/download-file";
 
 export default function DoctorPrescriptionsScreen() {
-  const [items, setItems] = useState<DoctorPrescriptionSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await listDoctorPrescriptions();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setItems(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load prescriptions");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const loadItems = useCallback(() => listDoctorPrescriptions().then((data) => data ?? []), []);
+  const { data: items, error, load } = useFocusLoader(loadItems, "Failed to load prescriptions");
 
   const onRefresh = async () => {
     setIsRefreshing(true);

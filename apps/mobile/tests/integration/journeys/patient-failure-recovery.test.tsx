@@ -58,7 +58,7 @@ describe("Section 24: complete failure-path journey (Login area) -> Doctors -> S
       { ...doctor, name: "Dr. Bilal Chaudhry" },
     ]);
     // Retry via the search button, still targeting the same (default) filters — no restart needed.
-    await fireEvent.press(screen.getByText("Search"));
+    await fireEvent.press(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByText("Dr. Bilal Chaudhry")).toBeTruthy();
     expect(screen.queryByText("Network error")).toBeNull();
   });
@@ -70,7 +70,7 @@ describe("Section 24: complete failure-path journey (Login area) -> Doctors -> S
 
     mockListConsultDoctors.mockResolvedValueOnce([doctor]);
     await fireEvent.changeText(screen.getByPlaceholderText("Specialty"), "");
-    await fireEvent.press(screen.getByText("Search"));
+    await fireEvent.press(screen.getByRole("button", { name: "Search" }));
     expect(await screen.findByText("Dr. Bilal Chaudhry")).toBeTruthy();
   });
 
@@ -89,7 +89,7 @@ describe("Section 24: complete failure-path journey (Login area) -> Doctors -> S
     // wrapper would try to fully flush before returning and hang on the deliberately-pending
     // request) — same technique the codebase's own rapid-refresh regression tests use for
     // `RefreshControl.onRefresh`.
-    const pressSearch = () => screen.getByText("Search").parent?.props.onClick();
+    const pressSearch = () => screen.getByRole("button", { name: "Search" }).props.onClick();
     await fireEvent.changeText(screen.getByPlaceholderText("Specialty"), "Cardio");
     pressSearch(); // slow request in flight (left pending for now)
     await fireEvent.changeText(screen.getByPlaceholderText("Specialty"), "Derma");

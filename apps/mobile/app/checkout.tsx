@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import {

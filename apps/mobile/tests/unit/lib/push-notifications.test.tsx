@@ -12,6 +12,18 @@ jest.mock("@/api/notifications");
 jest.mock("@/api/push");
 jest.mock("expo-notifications");
 jest.mock("expo-device", () => ({ isDevice: true }));
+// The project-wide __mocks__/expo-constants.ts simulates Expo Go (StoreClient), under which
+// push-notifications.ts treats the whole expo-notifications module as unavailable. Override it
+// here so this file exercises the real (non-Expo-Go) push registration path it's testing.
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: {
+    executionEnvironment: "standalone",
+    expoConfig: { extra: { eas: { projectId: "test-project-id" } } },
+    easConfig: { projectId: "test-project-id" },
+  },
+  ExecutionEnvironment: { Bare: "bare", Standalone: "standalone", StoreClient: "storeClient" },
+}));
 
 const mockGetSummary = getNotificationSummary as jest.Mock;
 const mockRegisterToken = registerExpoPushToken as jest.Mock;

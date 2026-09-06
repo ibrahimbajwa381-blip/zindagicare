@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Alert, DevSettings, I18nManager } from "react-native";
+import { I18nManager } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import {
   DEFAULT_LOCALE,
@@ -26,6 +26,7 @@ type LocaleContextValue = {
   t: MobileDictionary;
   setLocale: (locale: Locale) => Promise<void>;
   isLoading: boolean;
+  isRTL: boolean;
 };
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
@@ -37,16 +38,21 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Alignment is handled entirely in JS (see components/ui/text.tsx), so the
+    // app never calls forceRTL. Clear any native RTL flag left over from
+    // earlier builds that did — otherwise Android/iOS keep mirroring row
+    // layouts (icons, flex order) on every language regardless of `locale`,
+    // which is what "everything's stuck on the same side" looks like.
+    if (I18nManager.isRTL) {
+      I18nManager.allowRTL(false);
+      I18nManager.forceRTL(false);
+    }
+
     (async () => {
       try {
         const stored = await SecureStore.getItemAsync(LOCALE_STORAGE_KEY);
         if (isLocale(stored)) {
           setLocaleState(stored);
-          const shouldBeRtl = isRtlLocale(stored);
-          if (I18nManager.isRTL !== shouldBeRtl) {
-            I18nManager.allowRTL(shouldBeRtl);
-            I18nManager.forceRTL(shouldBeRtl);
-          }
         }
       } finally {
         setIsLoading(false);
@@ -57,27 +63,6 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback(async (next: Locale) => {
     setLocaleState(next);
     await SecureStore.setItemAsync(LOCALE_STORAGE_KEY, next);
-
-    const shouldBeRtl = isRtlLocale(next);
-    if (I18nManager.isRTL !== shouldBeRtl) {
-      I18nManager.allowRTL(shouldBeRtl);
-      I18nManager.forceRTL(shouldBeRtl);
-
-      const dictionary = getMobileDictionary(next);
-      Alert.alert(dictionary.settings.restartTitle, dictionary.settings.restartMessage, [
-        { text: dictionary.settings.later, style: "cancel" },
-        {
-          text: dictionary.settings.restartNow,
-          onPress: () => {
-            try {
-              DevSettings.reload();
-            } catch {
-              // Not available outside a dev/dev-client build — the user restarts manually.
-            }
-          },
-        },
-      ]);
-    }
   }, []);
 
   const value = useMemo<LocaleContextValue>(
@@ -86,6 +71,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       t: getMobileDictionary(locale),
       setLocale,
       isLoading,
+      isRTL: isRtlLocale(locale),
     }),
     [locale, setLocale, isLoading],
   );

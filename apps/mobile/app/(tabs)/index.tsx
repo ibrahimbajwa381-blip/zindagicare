@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
@@ -37,12 +38,6 @@ function quickActions(t: MobileDictionary): { icon: IconName; label: string; hre
 }
 
 const ACTIVE_VISIT_STATUSES = new Set(["requested", "assigned", "en_route", "arrived"]);
-
-function greetingForHour(hour: number, t: MobileDictionary) {
-  if (hour < 12) return t.home.greeting.morning;
-  if (hour < 17) return t.home.greeting.afternoon;
-  return t.home.greeting.evening;
-}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -113,7 +108,6 @@ export default function HomeScreen() {
   const avatarUri = resolveMediaUrl(booking?.doctor.avatarUrl);
   const canJoin = booking?.status === "confirmed" || booking?.status === "in_progress";
   const firstName = user?.name ? user.name.split(" ")[0] : "";
-  const greeting = greetingForHour(new Date().getHours(), t);
   const hasActivity = Boolean(booking) || Boolean(nextVisit);
 
   return (
@@ -131,7 +125,7 @@ export default function HomeScreen() {
       >
         <View style={styles.heroTopRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroEyebrow}>{greeting}</Text>
+            <Text style={styles.heroEyebrow}>{t.home.welcome}</Text>
             <Text style={styles.heroGreeting}>{firstName || t.home.fallbackName}</Text>
           </View>
           <View style={styles.heroAvatar}>

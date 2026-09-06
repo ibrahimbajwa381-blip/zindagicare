@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Redirect, Stack, useFocusEffect, useRouter } from "expo-router";
-import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Image, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { listChatThreads, type ChatThread } from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
 import { useAuth } from "@/lib/auth-context";

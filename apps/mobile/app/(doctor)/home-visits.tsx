@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { listDoctorHomeVisits, updateDoctorHomeVisitStatus, type DoctorHomeVisit } from "@/api/doctor";
 import { ApiRequestError } from "@/api/client";

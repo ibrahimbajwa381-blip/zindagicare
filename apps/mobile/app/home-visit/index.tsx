@@ -1,9 +1,11 @@
-import { useCallback, useRef, useState } from "react";
-import { Redirect, Stack, useFocusEffect, useRouter } from "expo-router";
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Redirect, Stack, useRouter } from "expo-router";
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { cancelHomeVisit, listMyHomeVisits, type HomeVisitDto } from "@/api/home-visits";
 import { ApiRequestError } from "@/api/client";
 import { useAuth } from "@/lib/auth-context";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
@@ -38,29 +40,9 @@ const STATUS_LABELS: Record<string, string> = {
 export default function HomeVisitsScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  const [visits, setVisits] = useState<HomeVisitDto[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await listMyHomeVisits();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setVisits(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load home visits");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const loadVisits = useCallback(() => listMyHomeVisits().then((data) => data ?? []), []);
+  const { data: visits, error, load } = useFocusLoader(loadVisits, "Failed to load home visits");
 
   const onRefresh = async () => {
     setIsRefreshing(true);

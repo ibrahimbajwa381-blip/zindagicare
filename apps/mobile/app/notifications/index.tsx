@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react";
-import { Redirect, Stack, useFocusEffect } from "expo-router";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Redirect, Stack } from "expo-router";
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import {
   listNotifications,
@@ -8,7 +9,7 @@ import {
   markNotificationRead,
   type NotificationDto,
 } from "@/api/notifications";
-import { ApiRequestError } from "@/api/client";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { syncBadgeCount } from "@/lib/push-notifications";
 import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
@@ -27,31 +28,18 @@ function timeAgo(iso: string) {
 
 export default function NotificationsScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [items, setItems] = useState<NotificationDto[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++latestRequestIdRef.current;
+  const loadItems = useCallback(async () => {
     try {
       const data = await listNotifications();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setItems(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId === latestRequestIdRef.current) {
-        setError(e instanceof ApiRequestError ? e.message : "Failed to load notifications");
-      }
+      return data ?? [];
     } finally {
       syncBadgeCount();
     }
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
+  const { data: items, error, setData: setItems, load } = useFocusLoader(
+    loadItems,
+    "Failed to load notifications",
   );
 
   const onRefresh = async () => {

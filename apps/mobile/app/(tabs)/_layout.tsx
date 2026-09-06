@@ -22,6 +22,21 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   );
 }
 
+function HeaderBackButton() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => (router.canGoBack() ? router.back() : router.replace("/(tabs)"))}
+      hitSlop={8}
+      style={styles.headerBack}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+    >
+      <Ionicons name="arrow-back" size={24} color={colors.neutral.foreground} />
+    </Pressable>
+  );
+}
+
 export function HeaderActions() {
   const router = useRouter();
   const summary = useUnreadSummary();
@@ -42,7 +57,7 @@ export function HeaderActions() {
       <Pressable
         onPress={() => router.push("/notifications")}
         hitSlop={8}
-        style={[styles.headerIcon, { marginRight: 4 }]}
+        style={styles.headerIcon}
         accessibilityRole="button"
         accessibilityLabel={
           summary?.unreadCount ? `Notifications, ${summary.unreadCount} unread` : "Notifications"
@@ -88,7 +103,7 @@ export default function TabsLayout() {
           title: t.tabs.home,
           headerTitle: () => <HeaderLogo />,
           headerTitleAlign: "left",
-          headerTitleContainerStyle: { marginLeft: 4 },
+          headerTitleContainerStyle: { marginLeft: 7.5 },
           tabBarIcon: ({ focused }) => <TabIcon name={focused ? "home" : "home-outline"} focused={focused} />,
           headerRight: () => <HeaderActions />,
         }}
@@ -97,6 +112,7 @@ export default function TabsLayout() {
         name="doctors"
         options={{
           title: t.tabs.book,
+          headerLeft: () => <HeaderBackButton />,
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? "calendar" : "calendar-outline"} focused={focused} />
           ),
@@ -106,6 +122,7 @@ export default function TabsLayout() {
         name="appointments"
         options={{
           title: t.tabs.appointments,
+          headerLeft: () => <HeaderBackButton />,
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? "medkit" : "medkit-outline"} focused={focused} />
           ),
@@ -125,6 +142,10 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  headerLogo: { width: 176, height: 40 },
+  // Matches the source logo's true aspect ratio (768x325) at 40px tall — the
+  // old 176x40 box was much wider than the artwork, so "contain" centered a
+  // narrower logo inside it, reading as extra left margin.
+  headerLogo: { width: 95, height: 40 },
   headerIcon: { marginRight: 16 },
+  headerBack: { marginLeft: 12, marginRight: 12, marginTop: 3 },
 });

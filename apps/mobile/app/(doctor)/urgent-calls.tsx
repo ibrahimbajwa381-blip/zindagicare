@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from "react";
-import { useFocusEffect } from "expo-router";
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { completeDoctorUrgentCall, listDoctorUrgentCalls, type DoctorUrgentCall } from "@/api/doctor";
 import { ApiRequestError } from "@/api/client";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts, cardShadow } from "@/lib/theme";
@@ -12,35 +13,12 @@ import { formatKarachi } from "@/lib/format-date";
 const POLL_MS = 15_000;
 
 export default function DoctorUrgentCallsScreen() {
-  const [calls, setCalls] = useState<DoctorUrgentCall[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async (silent = false) => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await listDoctorUrgentCalls();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setCalls(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load urgent calls");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-      pollRef.current = setInterval(() => load(true), POLL_MS);
-      return () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-      };
-    }, [load]),
-  );
+  const loadCalls = useCallback(() => listDoctorUrgentCalls().then((data) => data ?? []), []);
+  const { data: calls, error, load } = useFocusLoader(loadCalls, "Failed to load urgent calls", {
+    pollMs: POLL_MS,
+  });
 
   const onRefresh = async () => {
     setIsRefreshing(true);

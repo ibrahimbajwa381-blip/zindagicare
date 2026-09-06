@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { useRouter } from "expo-router";
 import {
   Alert,
   FlatList,
@@ -9,11 +9,11 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Text } from "@/components/ui/text";
 import {
   getAppointmentHistory,
   joinVideoSession,
@@ -21,6 +21,7 @@ import {
   type AppointmentHistoryItem,
 } from "@/api/appointments";
 import { ApiRequestError } from "@/api/client";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { formatKarachi } from "@/lib/format-date";
 import { Spinner } from "@/components/ui/spinner";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
@@ -42,30 +43,10 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
 export default function AppointmentsScreen() {
   const router = useRouter();
   const t = useTranslations();
-  const [items, setItems] = useState<AppointmentHistoryItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AppointmentHistoryItem | null>(null);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await getAppointmentHistory();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setItems(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      setError(e instanceof ApiRequestError ? e.message : t.appointments.loadError);
-    }
-  }, [t]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const loadItems = useCallback(() => getAppointmentHistory().then((data) => data ?? []), []);
+  const { data: items, error, load } = useFocusLoader(loadItems, t.appointments.loadError);
 
   const onRefresh = async () => {
     setIsRefreshing(true);

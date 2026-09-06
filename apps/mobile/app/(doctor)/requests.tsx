@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { listDoctorRequests, type DoctorRequestOutcome, type DoctorRequestRow } from "@/api/doctor";
-import { ApiRequestError } from "@/api/client";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 
@@ -67,35 +68,12 @@ function canWritePrescription(item: DoctorRequestRow) {
 
 export default function DoctorRequestsScreen() {
   const router = useRouter();
-  const [requests, setRequests] = useState<DoctorRequestRow[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("active");
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async (silent = false) => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await listDoctorRequests();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setRequests(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load requests");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-      pollRef.current = setInterval(() => load(true), POLL_MS);
-      return () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-      };
-    }, [load]),
-  );
+  const loadRequests = useCallback(() => listDoctorRequests().then((data) => data ?? []), []);
+  const { data: requests, error, load } = useFocusLoader(loadRequests, "Failed to load requests", {
+    pollMs: POLL_MS,
+  });
 
   const onRefresh = async () => {
     setIsRefreshing(true);

@@ -88,7 +88,7 @@ describe("DoctorsScreen", () => {
 
     await fireEvent.changeText(screen.getByPlaceholderText("City"), "Karachi");
     await fireEvent.changeText(screen.getByPlaceholderText("Specialty"), "Dermatology");
-    await fireEvent.press(screen.getByText("Search"));
+    await fireEvent.press(screen.getByRole("button", { name: "Search" }));
 
     await waitFor(() => {
       expect(mockListConsultDoctors).toHaveBeenCalledWith({ city: "Karachi", specialty: "Dermatology" });
@@ -122,7 +122,7 @@ describe("DoctorsScreen", () => {
 
     mockListConsultDoctors.mockRejectedValueOnce(new ApiRequestError("Network error", "NETWORK", 0));
     await fireEvent.changeText(screen.getByPlaceholderText("City"), "Karachi");
-    await fireEvent.press(screen.getByText("Search"));
+    await fireEvent.press(screen.getByRole("button", { name: "Search" }));
 
     expect(await screen.findByText("Network error")).toBeTruthy();
     expect(screen.getByText("Dr. Ali Raza")).toBeTruthy();
@@ -209,7 +209,7 @@ describe("DoctorsScreen race conditions", () => {
     await render(<DoctorsScreen />); // triggers the initial mount load (call A, city=Lahore), pending
 
     await fireEvent.changeText(screen.getByPlaceholderText("City"), "Karachi");
-    fireEvent.press(screen.getByText("Search")); // triggers a second load (call B, city=Karachi), pending
+    fireEvent.press(screen.getByRole("button", { name: "Search" })); // triggers a second load (call B, city=Karachi), pending
 
     const karachiDoctor = { ...doctor, doctorId: "doc-karachi", name: "Dr. Karachi Result" };
     await act(async () => {

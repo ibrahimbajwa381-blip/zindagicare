@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Stack, useRouter } from "expo-router";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { getDoctorProfile, updateDoctorProfile, type DoctorProfileDto } from "@/api/doctor";
 import { ApiRequestError } from "@/api/client";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";

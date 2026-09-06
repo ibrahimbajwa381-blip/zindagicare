@@ -18,6 +18,7 @@ import {
   getVideoJoinWindow,
   resolveDisplaySpecialty,
   withDoctorTitle,
+  SPECIALTIES,
 } from "@zindagi/shared";
 import type { ConsultCheckoutInput } from "@zindagi/validators";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -400,7 +401,13 @@ export class OnlineConsultService {
     };
 
     if (specialty?.trim()) {
-      filter.specialties = specialty.trim();
+      // Case-insensitive regex can't use the specialties index (COLLSCAN) and
+      // is slow on a remote cluster. Specialties are a small fixed vocabulary,
+      // so resolve the typed text to canonical values in memory and query
+      // those with an indexed exact match instead.
+      const needle = specialty.trim().toLowerCase();
+      const matches = SPECIALTIES.filter((s) => s.toLowerCase().includes(needle));
+      filter.specialties = { $in: matches.length ? matches : [specialty.trim()] };
     }
 
     const doctors = await DoctorProfileModel.find(filter)

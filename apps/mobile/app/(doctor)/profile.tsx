@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { getDoctorProfile, type DoctorProfileDto } from "@/api/doctor";
 import { ApiRequestError } from "@/api/client";

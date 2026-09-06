@@ -16,11 +16,6 @@ export const mobileEn = {
   settings: {
     language: "Language",
     languageHint: "Choose the language used across the app.",
-    restartTitle: "Restart needed",
-    restartMessage:
-      "Switching languages changes the app's layout direction. Please restart ZindagiCare for it to take full effect.",
-    restartNow: "Restart now",
-    later: "Later",
   },
   tabs: {
     home: "Home",
@@ -78,11 +73,7 @@ export const mobileEn = {
     },
   },
   home: {
-    greeting: {
-      morning: "Good morning",
-      afternoon: "Good afternoon",
-      evening: "Good evening",
-    },
+    welcome: "Welcome",
     fallbackName: "there",
     heroHintActive: "Here's what's happening with your care today.",
     heroHintEmpty: "Your consultations, home visits, and prescriptions — all in one place.",

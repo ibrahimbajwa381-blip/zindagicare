@@ -11,10 +11,10 @@ describe("downloadAndOpenFile", () => {
   it("downloads with an auth header and shares the resulting file", async () => {
     const uri = await downloadAndOpenFile("/api/v1/prescriptions/rx-1.pdf", "rx-1.pdf");
 
-    expect(File.createDownloadTask).toHaveBeenCalledWith(
+    expect(File.downloadFileAsync).toHaveBeenCalledWith(
       "http://localhost:3000/api/v1/prescriptions/rx-1.pdf",
       expect.objectContaining({ uri: "file://cache/rx-1.pdf" }),
-      { headers: { Authorization: "Bearer token-123" } },
+      { headers: { Authorization: "Bearer token-123" }, idempotent: true },
     );
     expect(Sharing.shareAsync).toHaveBeenCalledWith("file://cache/rx-1.pdf");
     expect(uri).toBe("file://cache/rx-1.pdf");
@@ -22,7 +22,7 @@ describe("downloadAndOpenFile", () => {
 
   it("passes an absolute URL through unchanged", async () => {
     await downloadAndOpenFile("https://cdn.example.com/rx-1.pdf", "rx-1.pdf");
-    expect(File.createDownloadTask).toHaveBeenCalledWith(
+    expect(File.downloadFileAsync).toHaveBeenCalledWith(
       "https://cdn.example.com/rx-1.pdf",
       expect.anything(),
       expect.anything(),
@@ -30,9 +30,7 @@ describe("downloadAndOpenFile", () => {
   });
 
   it("throws when the download returns no file", async () => {
-    (File.createDownloadTask as jest.Mock).mockReturnValueOnce({
-      downloadAsync: jest.fn().mockResolvedValue(undefined),
-    });
+    (File.downloadFileAsync as jest.Mock).mockResolvedValueOnce(undefined);
     await expect(downloadAndOpenFile("/x.pdf", "x.pdf")).rejects.toThrow(
       "Couldn't download the file. Please try again.",
     );

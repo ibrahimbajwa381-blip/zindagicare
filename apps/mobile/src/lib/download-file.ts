@@ -10,19 +10,22 @@ import { API_URL } from "./config";
  * then hand off to the native share/"open in" sheet.
  */
 export async function downloadAndOpenFile(path: string, filename: string) {
-  const { accessToken } = await getStoredTokens();
+  const [{ accessToken }, canShare] = await Promise.all([getStoredTokens(), Sharing.isAvailableAsync()]);
   const url = path.startsWith("http") ? path : `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
   const destination = new File(Paths.cache, filename);
 
-  const task = File.createDownloadTask(url, destination, {
+  const file = await File.downloadFileAsync(url, destination, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    // A same-named file from a previous download/share of this same document is expected
+    // (re-opening the same prescription) — without this the whole download runs again and
+    // only then rejects with DestinationAlreadyExists, wasting the entire download.
+    idempotent: true,
   });
-  const file = await task.downloadAsync();
   if (!file) {
     throw new Error("Couldn't download the file. Please try again.");
   }
 
-  if (await Sharing.isAvailableAsync()) {
+  if (canShare) {
     await Sharing.shareAsync(file.uri);
   }
 

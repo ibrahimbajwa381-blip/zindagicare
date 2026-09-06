@@ -5,11 +5,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Text } from "@/components/ui/text";
 import {
   getAppointmentHistory,
   requestAppointmentCancellation,

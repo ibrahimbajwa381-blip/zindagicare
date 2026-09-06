@@ -18,11 +18,6 @@ export const mobileUr: MobileDictionary = {
   settings: {
     language: "زبان",
     languageHint: "پوری ایپ میں استعمال ہونے والی زبان منتخب کریں۔",
-    restartTitle: "دوبارہ شروع کرنا ضروری ہے",
-    restartMessage:
-      "زبان تبدیل کرنے سے ایپ کی ترتیب کی سمت بدل جاتی ہے۔ مکمل طور پر لاگو ہونے کے لیے براہ کرم ZindagiCare کو دوبارہ شروع کریں۔",
-    restartNow: "ابھی دوبارہ شروع کریں",
-    later: "بعد میں",
   },
   tabs: {
     home: "ہوم",
@@ -80,11 +75,7 @@ export const mobileUr: MobileDictionary = {
     },
   },
   home: {
-    greeting: {
-      morning: "صبح بخیر",
-      afternoon: "دوپہر بخیر",
-      evening: "شام بخیر",
-    },
+    welcome: "خوش آمدید",
     fallbackName: "دوست",
     heroHintActive: "آج آپ کی دیکھ بھال سے متعلق یہ سرگرمیاں ہیں۔",
     heroHintEmpty: "آپ کی کنسلٹیشنز، ہوم وزٹس، اور نسخے — سب ایک ہی جگہ پر۔",

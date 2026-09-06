@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react";
-import { useFocusEffect, useRouter } from "expo-router";
-import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { listChatThreads, type ChatThread } from "@/api/chat";
-import { ApiRequestError } from "@/api/client";
+import { useCallback, useState } from "react";
+import { useRouter } from "expo-router";
+import { FlatList, Image, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
+import { listChatThreads } from "@/api/chat";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
@@ -31,34 +32,11 @@ const POLL_MS = 15_000;
 
 export default function DoctorMessagesScreen() {
   const router = useRouter();
-  const [threads, setThreads] = useState<ChatThread[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async (silent = false) => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await listChatThreads();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setThreads(data);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load messages");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-      pollRef.current = setInterval(() => load(true), POLL_MS);
-      return () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-      };
-    }, [load]),
-  );
+  const loadThreads = useCallback(() => listChatThreads(), []);
+  const { data: threads, error, load } = useFocusLoader(loadThreads, "Failed to load messages", {
+    pollMs: POLL_MS,
+  });
 
   const onRefresh = async () => {
     setIsRefreshing(true);

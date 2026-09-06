@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import {
   getDoctorProfile,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { getPatientIntake, submitPatientIntakeForm, type MedicalIntake } from "@/api/intake";
 import { ApiRequestError } from "@/api/client";

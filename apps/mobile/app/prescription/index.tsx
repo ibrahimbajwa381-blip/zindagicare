@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
-import { Redirect, Stack, useFocusEffect, useRouter } from "expo-router";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Redirect, Stack, useRouter } from "expo-router";
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
-import { listPrescriptions, type PrescriptionSummary } from "@/api/prescriptions";
-import { ApiRequestError } from "@/api/client";
+import { listPrescriptions } from "@/api/prescriptions";
 import { useAuth } from "@/lib/auth-context";
+import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
@@ -12,29 +13,9 @@ import { formatKarachi } from "@/lib/format-date";
 export default function PrescriptionsScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  const [items, setItems] = useState<PrescriptionSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const latestRequestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++latestRequestIdRef.current;
-    try {
-      const data = await listPrescriptions();
-      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
-      setItems(data ?? []);
-      setError(null);
-    } catch (e) {
-      if (requestId !== latestRequestIdRef.current) return;
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load prescriptions");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const loadItems = useCallback(() => listPrescriptions().then((data) => data ?? []), []);
+  const { data: items, error, load } = useFocusLoader(loadItems, "Failed to load prescriptions");
 
   const onRefresh = async () => {
     setIsRefreshing(true);

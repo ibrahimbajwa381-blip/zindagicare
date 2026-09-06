@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { Redirect, Stack, useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { HOME_CARE_MVP_SERVICES, HOME_CARE_PRICING } from "@zindagi/shared/constants/home-care";
 import { createHomeVisit, type HomeCareServiceType } from "@/api/home-visits";
