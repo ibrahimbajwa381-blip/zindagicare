@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getPatientIntake, submitPatientIntakeForm, type MedicalIntake } from "@/api/intake";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 
 export default function IntakeFormScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
   const router = useRouter();
   const [intake, setIntake] = useState<MedicalIntake | null>(null);
@@ -48,6 +50,13 @@ export default function IntakeFormScreen() {
       setIsSubmitting(false);
     }
   };
+
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   if (!intake) {
     return (
@@ -93,13 +102,14 @@ export default function IntakeFormScreen() {
               multiline
               placeholder="Your answer"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel={q.text}
             />
           </View>
         ))}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable style={styles.submitButton} onPress={submit} disabled={isSubmitting}>
+        <Pressable style={styles.submitButton} onPress={submit} disabled={isSubmitting} accessibilityRole="button">
           {isSubmitting ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.submitButtonText}>Submit</Text>}
         </Pressable>
       </ScrollView>

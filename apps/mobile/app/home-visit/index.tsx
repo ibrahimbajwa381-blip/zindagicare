@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import { Redirect, Stack, useFocusEffect, useRouter } from "expo-router";
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { cancelHomeVisit, listMyHomeVisits, type HomeVisitDto } from "@/api/home-visits";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
@@ -35,17 +36,22 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function HomeVisitsScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [visits, setVisits] = useState<HomeVisitDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listMyHomeVisits();
-      setVisits(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setVisits(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : "Failed to load home visits");
     }
   }, []);
@@ -80,6 +86,13 @@ export default function HomeVisitsScreen() {
     ]);
   };
 
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   if (!visits) {
     return (
       <>
@@ -98,13 +111,15 @@ export default function HomeVisitsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Home visits" }} />
+      {error ? <Text style={styles.refreshError}>{error}</Text> : null}
       <FlatList
+        testID="home-visits-list"
         contentContainerStyle={styles.list}
         data={visits}
         keyExtractor={(v) => v.id}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
-          <Pressable style={styles.newButton} onPress={() => router.push("/home-visit/request")}>
+          <Pressable style={styles.newButton} onPress={() => router.push("/home-visit/request")} accessibilityRole="button">
             <Text style={styles.newButtonText}>+ Request a home visit</Text>
           </Pressable>
         }
@@ -129,7 +144,7 @@ export default function HomeVisitsScreen() {
               <Text style={styles.price}>Rs. {item.pricing.total}</Text>
             </View>
             {item.status === "requested" ? (
-              <Pressable style={styles.cancelButton} onPress={() => onCancel(item)}>
+              <Pressable style={styles.cancelButton} onPress={() => onCancel(item)} accessibilityRole="button">
                 <Text style={styles.cancelButtonText}>Cancel request</Text>
               </Pressable>
             ) : null}
@@ -144,6 +159,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   list: { padding: 16, gap: 12, backgroundColor: colors.neutral.muted },
   newButton: {
     backgroundColor: colors.brand.DEFAULT,

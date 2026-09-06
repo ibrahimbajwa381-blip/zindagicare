@@ -38,6 +38,9 @@ export function Spinner({
 
   return (
     <Animated.View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
       style={[
         styles.ring,
         {

@@ -16,5 +16,8 @@
     "build": "npm run build --workspace=web",
     "lint": "npm run lint --workspace=web",
     "start": "npm run start --workspace=web"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

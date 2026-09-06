@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Redirect, Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Alert,
   Pressable,
@@ -17,6 +17,7 @@ import {
   type RefundMethod,
 } from "@/api/appointments";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { formatKarachi } from "@/lib/format-date";
 import { Spinner } from "@/components/ui/spinner";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
@@ -29,6 +30,7 @@ const METHODS: { value: RefundMethod; label: string; icon: keyof typeof Ionicons
 ];
 
 export default function RefundRequestScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { appointmentId: paramAppointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
 
@@ -42,6 +44,7 @@ export default function RefundRequestScreen() {
   const [bankName, setBankName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -72,7 +75,8 @@ export default function RefundRequestScreen() {
     (method !== "bank" || bankName.trim().length >= 2);
 
   const submit = async () => {
-    if (!effectiveId || !canSubmit) return;
+    if (!effectiveId || !canSubmit || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       await requestAppointmentCancellation(effectiveId, {
@@ -89,9 +93,17 @@ export default function RefundRequestScreen() {
         e instanceof ApiRequestError ? e.message : "Please try again",
       );
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
+
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   if (!items) {
     if (error) {
@@ -115,7 +127,7 @@ export default function RefundRequestScreen() {
           We've cancelled your appointment and sent your refund request to our team. Your money
           will be transferred to the account you provided within 3–5 business days.
         </Text>
-        <Pressable style={styles.primaryButton} onPress={() => router.replace("/(tabs)/appointments")}>
+        <Pressable style={styles.primaryButton} onPress={() => router.replace("/(tabs)/appointments")} accessibilityRole="button">
           <Text style={styles.primaryButtonText}>Back to appointments</Text>
         </Pressable>
       </View>
@@ -129,7 +141,7 @@ export default function RefundRequestScreen() {
         <Text style={styles.hint}>
           You don't have any upcoming appointments eligible for a refund right now.
         </Text>
-        <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
+        <Pressable style={styles.secondaryButton} onPress={() => router.back()} accessibilityRole="button">
           <Text style={styles.secondaryButtonText}>Go back</Text>
         </Pressable>
       </View>
@@ -147,6 +159,8 @@ export default function RefundRequestScreen() {
             key={item.appointmentId}
             style={[styles.appointmentRow, item.appointmentId === effectiveId && styles.appointmentRowActive]}
             onPress={() => setAppointmentId(item.appointmentId)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: item.appointmentId === effectiveId }}
           >
             <View style={{ flex: 1 }}>
               <Text style={styles.doctorName}>{item.doctor.name}</Text>
@@ -170,6 +184,7 @@ export default function RefundRequestScreen() {
         value={reason}
         onChangeText={setReason}
         multiline
+        accessibilityLabel="Why are you cancelling?"
       />
 
       <Text style={styles.sectionLabel}>How should we send your refund?</Text>
@@ -179,6 +194,8 @@ export default function RefundRequestScreen() {
             key={m.value}
             style={[styles.methodCard, method === m.value && styles.methodCardActive]}
             onPress={() => setMethod(m.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: method === m.value }}
           >
             <Ionicons name={m.icon} size={20} color={method === m.value ? colors.brand.DEFAULT : "#999"} />
             <Text style={[styles.methodLabel, method === m.value && styles.methodLabelActive]}>{m.label}</Text>
@@ -193,6 +210,7 @@ export default function RefundRequestScreen() {
         placeholder="As it appears on the account"
         value={accountTitle}
         onChangeText={setAccountTitle}
+        accessibilityLabel="Account holder name"
       />
 
       <Text style={styles.sectionLabel}>{method === "bank" ? "Account number / IBAN" : "Mobile number"}</Text>
@@ -202,6 +220,7 @@ export default function RefundRequestScreen() {
         value={accountNumber}
         onChangeText={setAccountNumber}
         keyboardType={method === "bank" ? "default" : "phone-pad"}
+        accessibilityLabel={method === "bank" ? "Account number / IBAN" : "Mobile number"}
       />
 
       {method === "bank" ? (
@@ -212,6 +231,7 @@ export default function RefundRequestScreen() {
             placeholder="e.g. HBL, Meezan Bank"
             value={bankName}
             onChangeText={setBankName}
+            accessibilityLabel="Bank name"
           />
         </>
       ) : null}
@@ -220,6 +240,7 @@ export default function RefundRequestScreen() {
         style={[styles.primaryButton, { marginTop: 24 }, (!canSubmit || isSubmitting) && styles.buttonDisabled]}
         onPress={submit}
         disabled={!canSubmit || isSubmitting}
+        accessibilityRole="button"
       >
         {isSubmitting ? (
           <Spinner size="sm" color={colors.brand.foreground} />

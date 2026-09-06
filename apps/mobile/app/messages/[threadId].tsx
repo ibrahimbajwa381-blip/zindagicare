@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from "react";
-import { Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Redirect, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { listChatMessages, markChatThreadRead, sendChatMessage, type ChatMessage } from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { AttachmentBubble } from "@/components/chat/attachment-bubble";
 import { FileAttachmentButton } from "@/components/chat/file-attachment-button";
@@ -17,19 +18,25 @@ function timeLabel(iso: string) {
 }
 
 export default function MessagesThreadScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { threadId, name } = useLocalSearchParams<{ threadId: string; name: string }>();
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isSendingRef = useRef(false);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const res = await listChatMessages(threadId);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
       setMessages(res.messages);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load messages");
     }
   }, [threadId]);
@@ -47,7 +54,8 @@ export default function MessagesThreadScreen() {
 
   const send = async () => {
     const body = draft.trim();
-    if (!body) return;
+    if (!body || isSendingRef.current) return;
+    isSendingRef.current = true;
     setIsSending(true);
     setDraft("");
     try {
@@ -57,6 +65,7 @@ export default function MessagesThreadScreen() {
       setDraft(body);
       setError(e instanceof ApiRequestError ? e.message : "Failed to send message");
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
     }
   };
@@ -78,6 +87,13 @@ export default function MessagesThreadScreen() {
       setError(e instanceof ApiRequestError ? e.message : "Failed to send file");
     }
   };
+
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   if (!messages) {
     return (
@@ -144,9 +160,18 @@ export default function MessagesThreadScreen() {
             placeholder="Type a message"
             placeholderTextColor="#9AA5B1"
             multiline
+            accessibilityLabel="Type a message"
           />
           {draft.trim() ? (
-            <Pressable style={styles.sendButton} onPress={send} disabled={isSending || !draft.trim()}>
+            <Pressable
+              testID="chat-send-button"
+              style={styles.sendButton}
+              onPress={send}
+              disabled={isSending || !draft.trim()}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              hitSlop={8}
+            >
               <Ionicons name="send" size={18} color={colors.brand.foreground} />
             </Pressable>
           ) : null}

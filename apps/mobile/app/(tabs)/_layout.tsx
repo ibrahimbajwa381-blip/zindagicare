@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useTranslations } from "@/lib/locale-context";
 import { useUnreadSummary } from "@/hooks/use-unread-summary";
 import { IconBadge } from "@/components/ui/icon-badge";
+import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts } from "@/lib/theme";
 
 const logo = require("../../assets/logo.png");
@@ -21,16 +22,32 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   );
 }
 
-function HeaderActions() {
+export function HeaderActions() {
   const router = useRouter();
   const summary = useUnreadSummary();
   return (
     <>
-      <Pressable onPress={() => router.push("/messages")} hitSlop={8} style={styles.headerIcon}>
+      <Pressable
+        onPress={() => router.push("/messages")}
+        hitSlop={8}
+        style={styles.headerIcon}
+        accessibilityRole="button"
+        accessibilityLabel={
+          summary?.chatUnreadCount ? `Messages, ${summary.chatUnreadCount} unread` : "Messages"
+        }
+      >
         <Ionicons name="chatbubbles-outline" size={22} color={colors.neutral.foreground} />
         <IconBadge count={summary?.chatUnreadCount ?? 0} />
       </Pressable>
-      <Pressable onPress={() => router.push("/notifications")} hitSlop={8} style={[styles.headerIcon, { marginRight: 4 }]}>
+      <Pressable
+        onPress={() => router.push("/notifications")}
+        hitSlop={8}
+        style={[styles.headerIcon, { marginRight: 4 }]}
+        accessibilityRole="button"
+        accessibilityLabel={
+          summary?.unreadCount ? `Notifications, ${summary.unreadCount} unread` : "Notifications"
+        }
+      >
         <Ionicons name="notifications-outline" size={22} color={colors.neutral.foreground} />
         <IconBadge count={summary?.unreadCount ?? 0} />
       </Pressable>
@@ -41,6 +58,10 @@ function HeaderActions() {
 export default function TabsLayout() {
   const { user, isLoading } = useAuth();
   const t = useTranslations();
+
+  if (isLoading) {
+    return <BrandLoadingScreen />;
+  }
 
   if (!isLoading && !user) {
     return <Redirect href="/(auth)/login" />;

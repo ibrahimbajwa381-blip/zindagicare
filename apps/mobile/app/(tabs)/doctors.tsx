@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   FlatList,
@@ -27,16 +27,20 @@ export default function DoctorsScreen() {
   const [doctors, setDoctors] = useState<ConsultDoctorRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (opts: { city: string; specialty: string }) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listConsultDoctors({
         city: opts.city || undefined,
         specialty: opts.specialty || undefined,
       });
-      setDoctors(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setDoctors(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : t.doctors.loadError);
     }
   }, [t]);
@@ -61,6 +65,7 @@ export default function DoctorsScreen() {
           placeholder={t.doctors.cityPlaceholder}
           placeholderTextColor="#9AA5B1"
           onSubmitEditing={() => load({ city, specialty })}
+          accessibilityLabel={t.doctors.cityPlaceholder}
         />
         <TextInput
           style={styles.input}
@@ -69,15 +74,27 @@ export default function DoctorsScreen() {
           placeholder={t.doctors.specialtyPlaceholder}
           placeholderTextColor="#9AA5B1"
           onSubmitEditing={() => load({ city, specialty })}
+          accessibilityLabel={t.doctors.specialtyPlaceholder}
         />
-        <Pressable style={styles.searchButton} onPress={() => load({ city, specialty })}>
+        <Pressable
+          style={styles.searchButton}
+          onPress={() => load({ city, specialty })}
+          accessibilityRole="button"
+          accessibilityLabel={t.doctors.search}
+        >
           <Text style={styles.searchButtonText}>{t.doctors.search}</Text>
         </Pressable>
       </View>
 
       {!doctors ? (
         <View style={styles.centered}>
-          {error ? <Text style={styles.error}>{error}</Text> : <Spinner />}
+          {error ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : (
+            <Spinner />
+          )}
         </View>
       ) : (
         <FlatList
@@ -85,6 +102,7 @@ export default function DoctorsScreen() {
           data={doctors}
           keyExtractor={(d) => d.doctorId}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+          ListHeaderComponent={error ? <Text style={styles.refreshError}>{error}</Text> : null}
           ListEmptyComponent={
             <View style={styles.centered}>
               <Text style={styles.hint}>{t.doctors.empty}</Text>
@@ -97,6 +115,8 @@ export default function DoctorsScreen() {
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed, item.isFull && styles.cardDisabled]}
                 onPress={() => router.push({ pathname: "/doctor/[doctorId]", params: { doctorId: item.doctorId } })}
                 disabled={item.isFull}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: item.isFull }}
               >
                 {avatarUri ? (
                   <Image source={{ uri: avatarUri }} style={styles.avatar} />
@@ -173,6 +193,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   list: { padding: 16, gap: 12 },
   card: {
     flexDirection: "row",

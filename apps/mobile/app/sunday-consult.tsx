@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Redirect, Stack, useFocusEffect, useRouter } from "expo-router";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +14,7 @@ import {
 import { getPaymentStatus, uploadPaymentReceipt, completeTestPayment } from "@/api/consult";
 import { getPatientProfile } from "@/api/patient-profile";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { Spinner } from "@/components/ui/spinner";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
@@ -32,6 +33,7 @@ type PendingCheckout = {
 };
 
 export default function SundayConsultScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [request, setRequest] = useState<SundayPatientRequestDto | null>(null);
@@ -47,6 +49,8 @@ export default function SundayConsultScreen() {
   const [transactionId, setTransactionId] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isSubmittingRef = useRef(false);
+  const isCheckingStatusRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -85,6 +89,7 @@ export default function SundayConsultScreen() {
   }, [request?.status]);
 
   const submit = async () => {
+    if (isSubmittingRef.current) return;
     const trimmedPhone = phone.trim();
     if (!trimmedPhone) {
       setError("Enter a phone number so we can reach you.");
@@ -95,6 +100,7 @@ export default function SundayConsultScreen() {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -117,6 +123,7 @@ export default function SundayConsultScreen() {
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : "Couldn't submit your request. Please try again.");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -152,7 +159,8 @@ export default function SundayConsultScreen() {
   };
 
   const checkPaymentStatus = async () => {
-    if (!checkout) return;
+    if (!checkout || isCheckingStatusRef.current) return;
+    isCheckingStatusRef.current = true;
     try {
       const status = await getPaymentStatus(checkout.paymentId);
       if (status.status === "paid") {
@@ -163,11 +171,16 @@ export default function SundayConsultScreen() {
       }
     } catch (e) {
       Alert.alert("Couldn't check status", e instanceof ApiRequestError ? e.message : "Please try again");
+    } finally {
+      isCheckingStatusRef.current = false;
     }
   };
 
-  if (loading) {
+  if (loading || isAuthLoading) {
     return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (
@@ -194,7 +207,7 @@ export default function SundayConsultScreen() {
                 <View style={styles.divider} />
                 <Text style={styles.label}>Upload your transfer receipt</Text>
                 {receiptUri ? <Image source={{ uri: receiptUri }} style={styles.receiptPreview} /> : null}
-                <Pressable style={styles.secondaryButton} onPress={pickReceipt}>
+                <Pressable style={styles.secondaryButton} onPress={pickReceipt} accessibilityRole="button">
                   <Text style={styles.secondaryButtonText}>
                     {receiptUri ? "Choose a different photo" : "Choose receipt screenshot"}
                   </Text>
@@ -205,11 +218,13 @@ export default function SundayConsultScreen() {
                   onChangeText={setTransactionId}
                   placeholder="Transaction ID (optional)"
                   placeholderTextColor="#9AA5B1"
+                  accessibilityLabel="Transaction ID (optional)"
                 />
                 <Pressable
                   style={[styles.primaryButton, (!receiptUri || isUploading) && styles.primaryButtonDisabled]}
                   onPress={submitReceipt}
                   disabled={!receiptUri || isUploading}
+                  accessibilityRole="button"
                 >
                   {isUploading ? (
                     <Spinner size="sm" color={colors.brand.foreground} />
@@ -221,7 +236,7 @@ export default function SundayConsultScreen() {
             ) : (
               <>
                 <Text style={styles.hint}>Waiting for payment confirmation…</Text>
-                <Pressable style={styles.secondaryButton} onPress={checkPaymentStatus}>
+                <Pressable style={styles.secondaryButton} onPress={checkPaymentStatus} accessibilityRole="button">
                   <Text style={styles.secondaryButtonText}>I've paid — check status</Text>
                 </Pressable>
               </>
@@ -258,7 +273,7 @@ export default function SundayConsultScreen() {
               <Text style={styles.time}>{formatKarachi(request.scheduledStart)}</Text>
             ) : null}
             <Text style={styles.hint}>Your Sunday consult is confirmed. Join it from Appointments.</Text>
-            <Pressable style={styles.primaryButton} onPress={() => router.push("/(tabs)/appointments")}>
+            <Pressable style={styles.primaryButton} onPress={() => router.push("/(tabs)/appointments")} accessibilityRole="button">
               <Text style={styles.primaryButtonText}>Go to appointments</Text>
             </Pressable>
           </View>
@@ -268,7 +283,7 @@ export default function SundayConsultScreen() {
               {request.status === "completed" ? "Your Sunday consult is complete" : "Request cancelled"}
             </Text>
             <Text style={styles.hint}>You can submit a new request next Sunday.</Text>
-            <Pressable style={styles.primaryButton} onPress={() => setRequest(null)}>
+            <Pressable style={styles.primaryButton} onPress={() => setRequest(null)} accessibilityRole="button">
               <Text style={styles.primaryButtonText}>Request again</Text>
             </Pressable>
           </View>
@@ -288,6 +303,7 @@ export default function SundayConsultScreen() {
               keyboardType="phone-pad"
               placeholder="03xx-xxxxxxx"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel="Phone number"
             />
 
             <Text style={styles.label}>Notes for the doctor (optional)</Text>
@@ -298,12 +314,15 @@ export default function SundayConsultScreen() {
               multiline
               placeholder="Describe your symptoms or reason for the visit"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel="Notes for the doctor (optional)"
             />
 
             <Text style={styles.label}>Can you contribute a small fee?</Text>
             <Pressable
               style={[styles.choiceRow, affordability === "cannot_afford" && styles.choiceRowActive]}
               onPress={() => setAffordability("cannot_afford")}
+              accessibilityRole="button"
+              accessibilityState={{ selected: affordability === "cannot_afford" }}
             >
               <Ionicons
                 name={affordability === "cannot_afford" ? "radio-button-on" : "radio-button-off"}
@@ -318,6 +337,8 @@ export default function SundayConsultScreen() {
             <Pressable
               style={[styles.choiceRow, affordability === "pay_fee" && styles.choiceRowActive]}
               onPress={() => setAffordability("pay_fee")}
+              accessibilityRole="button"
+              accessibilityState={{ selected: affordability === "pay_fee" }}
             >
               <Ionicons
                 name={affordability === "pay_fee" ? "radio-button-on" : "radio-button-off"}
@@ -331,7 +352,7 @@ export default function SundayConsultScreen() {
             </Pressable>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Pressable style={styles.primaryButton} onPress={submit} disabled={isSubmitting}>
+            <Pressable style={styles.primaryButton} onPress={submit} disabled={isSubmitting} accessibilityRole="button">
               {isSubmitting ? (
                 <Spinner size="sm" color={colors.brand.foreground} />
               ) : (

@@ -54,7 +54,15 @@ export function FileAttachmentButton({
   };
 
   return (
-    <Pressable style={styles.button} onPress={pickAndSend} disabled={disabled || isUploading} hitSlop={8}>
+    <Pressable
+      style={styles.button}
+      onPress={pickAndSend}
+      disabled={disabled || isUploading}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={isUploading ? "Uploading file" : "Attach a file"}
+      accessibilityState={{ disabled: disabled || isUploading }}
+    >
       <Ionicons name={isUploading ? "cloud-upload-outline" : "attach-outline"} size={20} color={colors.brand.DEFAULT} />
     </Pressable>
   );

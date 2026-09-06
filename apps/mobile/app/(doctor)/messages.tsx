@@ -35,13 +35,17 @@ export default function DoctorMessagesScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listChatThreads();
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
       setThreads(data);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load messages");
     }
   }, []);
@@ -95,6 +99,7 @@ export default function DoctorMessagesScreen() {
                 params: { threadId: item.id, name: item.otherParticipant.name },
               })
             }
+            accessibilityRole="button"
           >
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatar} />

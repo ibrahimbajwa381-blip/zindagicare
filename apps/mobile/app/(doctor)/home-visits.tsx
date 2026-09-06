@@ -95,7 +95,13 @@ export default function DoctorHomeVisitsScreen() {
     <View style={styles.screen}>
       <View style={styles.tabRow}>
         {(["active", "history"] as Tab[]).map((t) => (
-          <Pressable key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
+          <Pressable
+            key={t}
+            style={[styles.tab, tab === t && styles.tabActive]}
+            onPress={() => setTab(t)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: tab === t }}
+          >
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
               {t === "active" ? "Active" : "History"}
             </Text>
@@ -156,10 +162,16 @@ export default function DoctorHomeVisitsScreen() {
                       style={styles.primaryButton}
                       onPress={() => advance(item)}
                       disabled={updatingId === item.id}
+                      accessibilityRole="button"
                     >
                       <Text style={styles.primaryButtonText}>{next.label}</Text>
                     </Pressable>
-                    <Pressable style={styles.cancelButton} onPress={() => cancel(item)} disabled={updatingId === item.id}>
+                    <Pressable
+                      style={styles.cancelButton}
+                      onPress={() => cancel(item)}
+                      disabled={updatingId === item.id}
+                      accessibilityRole="button"
+                    >
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </Pressable>
                   </View>

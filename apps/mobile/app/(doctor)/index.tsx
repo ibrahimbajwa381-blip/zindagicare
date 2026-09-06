@@ -150,7 +150,11 @@ export default function DoctorDashboardScreen() {
 
 function QuickAction({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
-    <Pressable style={({ pressed }) => [styles.actionCard, pressed && { opacity: 0.85 }]} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.actionCard, pressed && { opacity: 0.85 }]}
+      onPress={onPress}
+      accessibilityRole="button"
+    >
       <View style={styles.actionIcon}>
         <Ionicons name={icon} size={20} color={colors.brand.mutedForeground} />
       </View>

@@ -72,13 +72,17 @@ export default function DoctorRequestsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("active");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listDoctorRequests();
-      setRequests(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setRequests(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load requests");
     }
   }, []);
@@ -129,6 +133,8 @@ export default function DoctorRequestsScreen() {
               <Pressable
                 style={[styles.filterChip, active && styles.filterChipActive]}
                 onPress={() => setFilter(item.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
               >
                 <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{item.label}</Text>
               </Pressable>
@@ -137,7 +143,9 @@ export default function DoctorRequestsScreen() {
         />
       </View>
 
+      {error ? <Text style={styles.refreshError}>{error}</Text> : null}
       <FlatList
+        testID="requests-list"
         contentContainerStyle={styles.list}
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -216,6 +224,7 @@ export default function DoctorRequestsScreen() {
                 <Pressable
                   style={styles.secondaryAction}
                   onPress={() => router.push({ pathname: "/(doctor)/intake", params: { appointmentId: item.id } })}
+                  accessibilityRole="button"
                 >
                   <Ionicons name="clipboard-outline" size={14} color={colors.neutral.foreground} />
                   <Text style={styles.secondaryActionText}>Intake</Text>
@@ -225,6 +234,7 @@ export default function DoctorRequestsScreen() {
                 <Pressable
                   style={styles.prescribeButton}
                   onPress={() => router.push({ pathname: "/(doctor)/prescription-new", params: { appointmentId: item.id } })}
+                  accessibilityRole="button"
                 >
                   <Ionicons name="document-text-outline" size={14} color={colors.brand.foreground} />
                   <Text style={styles.prescribeButtonText}>Write prescription</Text>
@@ -243,6 +253,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
 
   filterRow: { paddingVertical: 12, backgroundColor: colors.neutral.background },
   filterChip: {

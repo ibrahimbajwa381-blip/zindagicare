@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Alert,
@@ -46,13 +46,17 @@ export default function AppointmentsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<AppointmentHistoryItem | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await getAppointmentHistory();
-      setItems(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setItems(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : t.appointments.loadError);
     }
   }, [t]);
@@ -91,7 +95,9 @@ export default function AppointmentsScreen() {
     if (error) {
       return (
         <View style={styles.centered}>
-          <Text style={styles.error}>{error}</Text>
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
         </View>
       );
     }
@@ -100,7 +106,13 @@ export default function AppointmentsScreen() {
 
   return (
     <>
+      {error ? (
+        <Text style={styles.refreshError} accessibilityRole="alert">
+          {error}
+        </Text>
+      ) : null}
       <FlatList
+        testID="appointments-list"
         style={styles.screen}
         contentContainerStyle={styles.list}
         data={items}
@@ -125,6 +137,7 @@ export default function AppointmentsScreen() {
         )}
       />
       <ReviewModal
+        key={reviewTarget?.appointmentId ?? "none"}
         item={reviewTarget}
         t={t}
         onClose={() => setReviewTarget(null)}
@@ -183,17 +196,22 @@ function AppointmentCard({
 
       <View style={styles.actions}>
         {item.canJoin ? (
-          <Pressable style={styles.primaryButton} onPress={() => onJoin(item.appointmentId)}>
+          <Pressable style={styles.primaryButton} onPress={() => onJoin(item.appointmentId)} accessibilityRole="button">
             <Text style={styles.primaryButtonText}>{t.appointments.joinCall}</Text>
           </Pressable>
         ) : item.prescription ? (
-          <Pressable style={styles.secondaryButton} onPress={onViewPrescription}>
+          <Pressable style={styles.secondaryButton} onPress={onViewPrescription} accessibilityRole="button">
             <Text style={styles.secondaryButtonText}>{t.appointments.viewPrescription}</Text>
           </Pressable>
         ) : null}
 
         {item.canReview || item.review ? (
-          <Pressable style={[styles.secondaryButton, styles.reviewButton]} onPress={onReview}>
+          <Pressable
+            style={[styles.secondaryButton, styles.reviewButton]}
+            onPress={onReview}
+            accessibilityRole="button"
+            accessibilityLabel={item.review ? `Your rating: ${item.review.rating} stars` : t.appointments.leaveReview}
+          >
             {item.review ? (
               <>
                 <Ionicons name="star" size={13} color="#F5A623" />
@@ -206,7 +224,7 @@ function AppointmentCard({
         ) : null}
 
         {item.canRequestCancellation ? (
-          <Pressable style={styles.dangerButton} onPress={onRequestCancellation}>
+          <Pressable style={styles.dangerButton} onPress={onRequestCancellation} accessibilityRole="button">
             <Text style={styles.dangerButtonText}>{t.appointments.requestRefund}</Text>
           </Pressable>
         ) : null}
@@ -273,13 +291,20 @@ function ReviewModal({
             <>
               <View style={styles.stars}>
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <Pressable key={n} onPress={() => setRating(n)}>
+                  <Pressable
+                    key={n}
+                    onPress={() => setRating(n)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${n} star${n === 1 ? "" : "s"}`}
+                    accessibilityState={{ checked: n === rating }}
+                  >
                     <Ionicons name={n <= rating ? "star" : "star-outline"} size={32} color="#F5A623" />
                   </Pressable>
                 ))}
               </View>
               <TextInput
                 style={styles.commentInput}
+                accessibilityLabel={t.appointments.commentPlaceholder}
                 placeholder={t.appointments.commentPlaceholder}
                 value={comment}
                 onChangeText={setComment}
@@ -289,11 +314,18 @@ function ReviewModal({
           )}
 
           <View style={styles.modalActions}>
-            <Pressable style={styles.secondaryButton} onPress={onClose}>
+            <Pressable style={styles.secondaryButton} onPress={onClose} accessibilityRole="button" accessibilityLabel={t.common.close}>
               <Text style={styles.secondaryButtonText}>{t.common.close}</Text>
             </Pressable>
             {!alreadyReviewed && (
-              <Pressable style={styles.primaryButton} onPress={submit} disabled={isSubmitting}>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={submit}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel={t.appointments.submit}
+                accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+              >
                 {isSubmitting ? (
                   <Spinner size="sm" color={colors.brand.foreground} />
                 ) : (
@@ -314,6 +346,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.medium },
+  refreshError: { color: "#c62828", fontFamily: fonts.medium, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   card: {
     borderRadius: 16,
     padding: 16,

@@ -41,10 +41,13 @@ export default function DoctorSundayConsultScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const hasLoadedTemplate = useRef(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const [profileRes, queueRes] = await Promise.all([getDoctorProfile(), getSundayDoctorQueue()]);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
       setProfile(profileRes);
       setQueue(queueRes);
       // Only seed the editable form from the server once — a background poll shouldn't
@@ -60,6 +63,7 @@ export default function DoctorSundayConsultScreen() {
       }
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load Sunday consult");
     }
   }, []);
@@ -174,6 +178,7 @@ export default function DoctorSundayConsultScreen() {
               onChangeText={(v) => setTemplate({ ...template, startTimeLocal: v })}
               placeholder="10:00"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel="Start (HH:mm)"
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -184,6 +189,7 @@ export default function DoctorSundayConsultScreen() {
               onChangeText={(v) => setTemplate({ ...template, endTimeLocal: v })}
               placeholder="13:00"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel="End (HH:mm)"
             />
           </View>
         </View>
@@ -195,6 +201,7 @@ export default function DoctorSundayConsultScreen() {
               value={template.slotDurationMins}
               onChangeText={(v) => setTemplate({ ...template, slotDurationMins: v.replace(/[^0-9]/g, "") })}
               keyboardType="number-pad"
+              accessibilityLabel="Slot duration (mins)"
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -204,10 +211,11 @@ export default function DoctorSundayConsultScreen() {
               value={template.maxSlots}
               onChangeText={(v) => setTemplate({ ...template, maxSlots: v.replace(/[^0-9]/g, "") })}
               keyboardType="number-pad"
+              accessibilityLabel="Max slots"
             />
           </View>
         </View>
-        <Pressable style={styles.saveButton} onPress={saveTemplate} disabled={isSavingTemplate}>
+        <Pressable style={styles.saveButton} onPress={saveTemplate} disabled={isSavingTemplate} accessibilityRole="button">
           {isSavingTemplate ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.saveButtonText}>Save schedule</Text>}
         </Pressable>
       </View>
@@ -238,6 +246,7 @@ export default function DoctorSundayConsultScreen() {
                         style={[styles.statusButton, { borderColor: action.color }]}
                         onPress={() => setStatus(apt._id, action.key)}
                         disabled={updatingId === apt._id}
+                        accessibilityRole="button"
                       >
                         <Text style={[styles.statusButtonText, { color: action.color }]}>{action.label}</Text>
                       </Pressable>

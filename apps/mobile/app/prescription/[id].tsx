@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Redirect, Stack, useLocalSearchParams } from "expo-router";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getPrescriptionDetail, type PrescriptionDetail } from "@/api/prescriptions";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts, cardShadow } from "@/lib/theme";
@@ -10,6 +11,7 @@ import { formatKarachi } from "@/lib/format-date";
 import { downloadAndOpenFile } from "@/lib/download-file";
 
 export default function PrescriptionDetailScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [detail, setDetail] = useState<PrescriptionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,13 @@ export default function PrescriptionDetailScreen() {
       setIsDownloading(false);
     }
   };
+
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   if (!detail) {
     return (
@@ -77,7 +86,7 @@ export default function PrescriptionDetailScreen() {
           </View>
         ) : null}
 
-        <Pressable style={styles.primaryButton} onPress={onDownload} disabled={isDownloading}>
+        <Pressable style={styles.primaryButton} onPress={onDownload} disabled={isDownloading} accessibilityRole="button">
           {isDownloading ? (
             <Spinner size="sm" color={colors.brand.foreground} />
           ) : (

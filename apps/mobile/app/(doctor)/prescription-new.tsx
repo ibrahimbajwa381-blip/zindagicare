@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,6 +25,7 @@ export default function DoctorPrescriptionNewScreen() {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     getDoctorPrescriptionContext(appointmentId)
@@ -40,6 +41,7 @@ export default function DoctorPrescriptionNewScreen() {
   const removeMed = (index: number) => setMedications((prev) => prev.filter((_, i) => i !== index));
 
   const submit = async () => {
+    if (isSavingRef.current) return;
     const cleaned = medications
       .map((m) => ({
         name: m.name.trim(),
@@ -58,6 +60,7 @@ export default function DoctorPrescriptionNewScreen() {
       return;
     }
 
+    isSavingRef.current = true;
     setIsSaving(true);
     setError(null);
     try {
@@ -68,6 +71,7 @@ export default function DoctorPrescriptionNewScreen() {
       setError(message);
       Alert.alert("Couldn't save prescription", message);
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -128,7 +132,13 @@ export default function DoctorPrescriptionNewScreen() {
             <View style={styles.medHeader}>
               <Text style={styles.medTitle}>Medicine {i + 1}</Text>
               {medications.length > 1 ? (
-                <Pressable onPress={() => removeMed(i)} hitSlop={8}>
+                <Pressable
+                  testID={`remove-medicine-${i}`}
+                  onPress={() => removeMed(i)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove medicine ${i + 1}`}
+                >
                   <Ionicons name="trash-outline" size={18} color="#c62828" />
                 </Pressable>
               ) : null}
@@ -139,6 +149,7 @@ export default function DoctorPrescriptionNewScreen() {
               onChangeText={(v) => updateMed(i, { name: v })}
               placeholder="Medicine name"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel={`Medicine ${i + 1} name`}
             />
             <TextInput
               style={styles.input}
@@ -146,6 +157,7 @@ export default function DoctorPrescriptionNewScreen() {
               onChangeText={(v) => updateMed(i, { dosage: v })}
               placeholder="Dosage (e.g. 500mg)"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel={`Medicine ${i + 1} dosage`}
             />
             <TextInput
               style={styles.input}
@@ -153,6 +165,7 @@ export default function DoctorPrescriptionNewScreen() {
               onChangeText={(v) => updateMed(i, { frequency: v })}
               placeholder="Frequency (e.g. Twice daily)"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel={`Medicine ${i + 1} frequency`}
             />
             <TextInput
               style={styles.input}
@@ -160,11 +173,12 @@ export default function DoctorPrescriptionNewScreen() {
               onChangeText={(v) => updateMed(i, { duration: v })}
               placeholder="Duration (e.g. 7 days)"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel={`Medicine ${i + 1} duration`}
             />
           </View>
         ))}
 
-        <Pressable style={styles.addButton} onPress={addMed}>
+        <Pressable style={styles.addButton} onPress={addMed} accessibilityRole="button">
           <Ionicons name="add" size={18} color={colors.brand.DEFAULT} />
           <Text style={styles.addButtonText}>Add another medicine</Text>
         </Pressable>
@@ -178,12 +192,13 @@ export default function DoctorPrescriptionNewScreen() {
             multiline
             placeholder="Advice, follow-up instructions, etc."
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel="Notes (optional)"
           />
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable style={styles.saveButton} onPress={submit} disabled={isSaving}>
+        <Pressable style={styles.saveButton} onPress={submit} disabled={isSaving} accessibilityRole="button">
           {isSaving ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.saveButtonText}>Issue prescription</Text>}
         </Pressable>
       </ScrollView>

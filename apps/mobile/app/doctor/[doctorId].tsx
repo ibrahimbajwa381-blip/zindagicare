@@ -141,7 +141,9 @@ export default function DoctorProfileScreen() {
         <Stack.Screen options={{ title: "Doctor profile" }} />
         {error ? (
           <View style={styles.centered}>
-            <Text style={styles.error}>{error}</Text>
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
           </View>
         ) : (
           <BrandLoadingScreen />
@@ -284,7 +286,11 @@ export default function DoctorProfileScreen() {
                 </View>
               ))}
               {reviews.length > REVIEW_PREVIEW_COUNT ? (
-                <Pressable style={styles.seeMoreButton} onPress={() => setShowAllReviews((v) => !v)}>
+                <Pressable
+                  style={styles.seeMoreButton}
+                  onPress={() => setShowAllReviews((v) => !v)}
+                  accessibilityRole="button"
+                >
                   <Text style={styles.seeMoreText}>
                     {showAllReviews ? "Show less" : `See ${reviews.length - REVIEW_PREVIEW_COUNT} more reviews`}
                   </Text>
@@ -316,6 +322,8 @@ export default function DoctorProfileScreen() {
                       key={key}
                       style={[styles.dateChip, active && styles.dateChipActive]}
                       onPress={() => setSelectedDay(key)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
                     >
                       <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>
                         {dayLabel(daySlots[0].startAt)}
@@ -337,6 +345,8 @@ export default function DoctorProfileScreen() {
                           params: { doctorId, slotId: slot.slotId, startAt: slot.startAt },
                         })
                       }
+                      accessibilityRole="button"
+                      accessibilityLabel={`Book ${timeLabel(slot.startAt)} slot`}
                     >
                       {({ pressed }) => (
                         <Text style={[styles.slotText, pressed && styles.slotTextPressed]}>

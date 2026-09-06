@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import { useUnreadSummary } from "@/hooks/use-unread-summary";
 import { IconBadge } from "@/components/ui/icon-badge";
+import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts } from "@/lib/theme";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -12,16 +13,32 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   return <Ionicons name={name} size={22} color={focused ? colors.brand.DEFAULT : "#94a3b8"} />;
 }
 
-function HeaderActions() {
+export function HeaderActions() {
   const router = useRouter();
   const summary = useUnreadSummary();
   return (
     <>
-      <Pressable onPress={() => router.push("/(doctor)/messages")} hitSlop={8} style={styles.headerIcon}>
+      <Pressable
+        onPress={() => router.push("/(doctor)/messages")}
+        hitSlop={8}
+        style={styles.headerIcon}
+        accessibilityRole="button"
+        accessibilityLabel={
+          summary?.chatUnreadCount ? `Messages, ${summary.chatUnreadCount} unread` : "Messages"
+        }
+      >
         <Ionicons name="chatbubbles-outline" size={22} color={colors.neutral.foreground} />
         <IconBadge count={summary?.chatUnreadCount ?? 0} />
       </Pressable>
-      <Pressable onPress={() => router.push("/notifications")} hitSlop={8} style={[styles.headerIcon, { marginRight: 4 }]}>
+      <Pressable
+        onPress={() => router.push("/notifications")}
+        hitSlop={8}
+        style={[styles.headerIcon, { marginRight: 4 }]}
+        accessibilityRole="button"
+        accessibilityLabel={
+          summary?.unreadCount ? `Notifications, ${summary.unreadCount} unread` : "Notifications"
+        }
+      >
         <Ionicons name="notifications-outline" size={22} color={colors.neutral.foreground} />
         <IconBadge count={summary?.unreadCount ?? 0} />
       </Pressable>
@@ -31,6 +48,10 @@ function HeaderActions() {
 
 export default function DoctorLayout() {
   const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <BrandLoadingScreen />;
+  }
 
   if (!isLoading && !user) {
     return <Redirect href="/(auth)/login" />;

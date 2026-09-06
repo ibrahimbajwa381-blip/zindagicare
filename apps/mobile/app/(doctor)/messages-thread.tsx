@@ -23,13 +23,18 @@ export default function DoctorMessagesThreadScreen() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isSendingRef = useRef(false);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const res = await listChatMessages(threadId);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
       setMessages(res.messages);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load messages");
     }
   }, [threadId]);
@@ -47,7 +52,8 @@ export default function DoctorMessagesThreadScreen() {
 
   const send = async () => {
     const body = draft.trim();
-    if (!body) return;
+    if (!body || isSendingRef.current) return;
+    isSendingRef.current = true;
     setIsSending(true);
     setDraft("");
     try {
@@ -57,6 +63,7 @@ export default function DoctorMessagesThreadScreen() {
       setDraft(body);
       setError(e instanceof ApiRequestError ? e.message : "Failed to send message");
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
     }
   };
@@ -144,9 +151,18 @@ export default function DoctorMessagesThreadScreen() {
             placeholder="Type a message"
             placeholderTextColor="#9AA5B1"
             multiline
+            accessibilityLabel="Type a message"
           />
           {draft.trim() ? (
-            <Pressable style={styles.sendButton} onPress={send} disabled={isSending || !draft.trim()}>
+            <Pressable
+              testID="chat-send-button"
+              style={styles.sendButton}
+              onPress={send}
+              disabled={isSending || !draft.trim()}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              hitSlop={8}
+            >
               <Ionicons name="send" size={18} color={colors.brand.foreground} />
             </Pressable>
           ) : null}

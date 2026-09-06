@@ -37,7 +37,14 @@ export function VoiceNoteBubble({ url, isMine }: { url: string; isMine: boolean 
   const progress = status.duration > 0 ? Math.min(status.currentTime / status.duration, 1) : 0;
 
   return (
-    <Pressable style={styles.row} onPress={toggle} disabled={!source} hitSlop={4}>
+    <Pressable
+      style={styles.row}
+      onPress={toggle}
+      disabled={!source}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={status.playing ? "Pause voice note" : "Play voice note"}
+    >
       <View style={[styles.iconCircle, isMine ? styles.iconCircleMine : styles.iconCircleTheirs]}>
         <Ionicons
           name={status.playing ? "pause" : "play"}

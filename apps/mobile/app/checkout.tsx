@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,11 +11,14 @@ import {
   type CheckoutResult,
 } from "@/api/consult";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { Spinner } from "@/components/ui/spinner";
+import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
 
 export default function CheckoutScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { doctorId, slotId, startAt } = useLocalSearchParams<{
     doctorId: string;
     slotId: string;
@@ -33,12 +36,15 @@ export default function CheckoutScreen() {
   const [transactionId, setTransactionId] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isBookingRef = useRef(false);
 
   useEffect(() => () => {
     if (pollRef.current) clearInterval(pollRef.current);
   }, []);
 
   const book = async () => {
+    if (isBookingRef.current) return;
+    isBookingRef.current = true;
     setIsBooking(true);
     setError(null);
     try {
@@ -48,6 +54,7 @@ export default function CheckoutScreen() {
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : "Booking failed. Please try again.");
     } finally {
+      isBookingRef.current = false;
       setIsBooking(false);
     }
   };
@@ -113,6 +120,13 @@ export default function CheckoutScreen() {
     }
   };
 
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   if (isPaid) {
     return (
       <>
@@ -123,7 +137,12 @@ export default function CheckoutScreen() {
           </View>
           <Text style={styles.successTitle}>Appointment confirmed</Text>
           <Text style={styles.hint}>Your consult is booked. You can view it in Appointments.</Text>
-          <Pressable style={styles.primaryButton} onPress={() => router.replace("/(tabs)/appointments")}>
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() => router.replace("/(tabs)/appointments")}
+            accessibilityRole="button"
+            accessibilityLabel="View appointments"
+          >
             <Text style={styles.primaryButtonText}>View appointments</Text>
           </Pressable>
         </View>
@@ -149,9 +168,21 @@ export default function CheckoutScreen() {
               multiline
               placeholder="Describe your symptoms or reason for the visit"
               placeholderTextColor="#9AA5B1"
+              accessibilityLabel="Notes for the doctor (optional)"
             />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <Pressable style={styles.primaryButton} onPress={book} disabled={isBooking}>
+            {error ? (
+              <Text style={styles.error} accessibilityRole="alert">
+                {error}
+              </Text>
+            ) : null}
+            <Pressable
+              style={styles.primaryButton}
+              onPress={book}
+              disabled={isBooking}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm booking"
+              accessibilityState={{ disabled: isBooking, busy: isBooking }}
+            >
               {isBooking ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.primaryButtonText}>Confirm booking</Text>}
             </Pressable>
           </View>
@@ -177,7 +208,12 @@ export default function CheckoutScreen() {
                 {receiptUri ? (
                   <Image source={{ uri: receiptUri }} style={styles.receiptPreview} />
                 ) : null}
-                <Pressable style={styles.secondaryButton} onPress={pickReceipt}>
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={pickReceipt}
+                  accessibilityRole="button"
+                  accessibilityLabel={receiptUri ? "Choose a different photo" : "Choose receipt screenshot"}
+                >
                   <Text style={styles.secondaryButtonText}>
                     {receiptUri ? "Choose a different photo" : "Choose receipt screenshot"}
                   </Text>
@@ -188,11 +224,15 @@ export default function CheckoutScreen() {
                   onChangeText={setTransactionId}
                   placeholder="Transaction ID (optional)"
                   placeholderTextColor="#9AA5B1"
+                  accessibilityLabel="Transaction ID (optional)"
                 />
                 <Pressable
                   style={[styles.primaryButton, (!receiptUri || isUploading) && styles.primaryButtonDisabled]}
                   onPress={submitReceipt}
                   disabled={!receiptUri || isUploading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Submit receipt"
+                  accessibilityState={{ disabled: !receiptUri || isUploading, busy: isUploading }}
                 >
                   {isUploading ? (
                     <Spinner size="sm" color={colors.brand.foreground} />
@@ -202,7 +242,14 @@ export default function CheckoutScreen() {
                 </Pressable>
               </>
             ) : result.testMode ? (
-              <Pressable style={styles.primaryButton} onPress={confirmDummyPayment} disabled={isConfirming}>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={confirmDummyPayment}
+                disabled={isConfirming}
+                accessibilityRole="button"
+                accessibilityLabel="I've paid (test mode)"
+                accessibilityState={{ disabled: isConfirming, busy: isConfirming }}
+              >
                 {isConfirming ? (
                   <Spinner size="sm" color={colors.brand.foreground} />
                 ) : (

@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Redirect, Stack, useFocusEffect, useRouter } from "expo-router";
 import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { listChatThreads, type ChatThread } from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
@@ -28,6 +29,7 @@ function initials(name: string) {
 }
 
 export default function MessagesScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,13 @@ export default function MessagesScreen() {
     await load();
     setIsRefreshing(false);
   };
+
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   if (!threads) {
     return (
@@ -97,6 +106,7 @@ export default function MessagesScreen() {
                   params: { threadId: item.id, name: item.otherParticipant.name },
                 })
               }
+              accessibilityRole="button"
             >
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatar} />

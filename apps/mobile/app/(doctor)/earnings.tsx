@@ -112,6 +112,7 @@ export default function DoctorEarningsScreen() {
               placeholderTextColor="#9AA5B1"
               value={form.accountTitle ?? ""}
               onChangeText={(v) => setForm({ ...form, accountTitle: v })}
+              accessibilityLabel="Account title"
             />
             <TextInput
               style={styles.input}
@@ -119,6 +120,7 @@ export default function DoctorEarningsScreen() {
               placeholderTextColor="#9AA5B1"
               value={form.bankName ?? ""}
               onChangeText={(v) => setForm({ ...form, bankName: v })}
+              accessibilityLabel="Bank name"
             />
             <TextInput
               style={styles.input}
@@ -126,6 +128,7 @@ export default function DoctorEarningsScreen() {
               placeholderTextColor="#9AA5B1"
               value={form.accountNumber ?? ""}
               onChangeText={(v) => setForm({ ...form, accountNumber: v })}
+              accessibilityLabel="Account number"
             />
             <TextInput
               style={styles.input}
@@ -134,6 +137,7 @@ export default function DoctorEarningsScreen() {
               value={form.iban ?? ""}
               onChangeText={(v) => setForm({ ...form, iban: v })}
               autoCapitalize="characters"
+              accessibilityLabel="IBAN (optional)"
             />
             <View style={styles.actionRow}>
               <Pressable
@@ -142,10 +146,11 @@ export default function DoctorEarningsScreen() {
                   setForm(bankAccount ?? {});
                   setEditingBank(false);
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.secondaryButtonText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.actionButton} onPress={saveBank} disabled={isSaving}>
+              <Pressable style={styles.actionButton} onPress={saveBank} disabled={isSaving} accessibilityRole="button">
                 {isSaving ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.actionButtonText}>Save</Text>}
               </Pressable>
             </View>
@@ -155,13 +160,13 @@ export default function DoctorEarningsScreen() {
             <Text style={styles.bankLine}>{bankAccount.accountTitle}</Text>
             <Text style={styles.bankSub}>{bankAccount.bankName}</Text>
             <Text style={styles.bankSub}>{bankAccount.iban || bankAccount.accountNumber}</Text>
-            <Pressable style={styles.editLink} onPress={() => setEditingBank(true)}>
+            <Pressable style={styles.editLink} onPress={() => setEditingBank(true)} accessibilityRole="button">
               <Ionicons name="create-outline" size={14} color={colors.brand.DEFAULT} />
               <Text style={styles.editLinkText}>Edit bank details</Text>
             </Pressable>
           </View>
         ) : (
-          <Pressable style={styles.actionButton} onPress={() => setEditingBank(true)}>
+          <Pressable style={styles.actionButton} onPress={() => setEditingBank(true)} accessibilityRole="button">
             <Text style={styles.actionButtonText}>Add bank account</Text>
           </Pressable>
         )}

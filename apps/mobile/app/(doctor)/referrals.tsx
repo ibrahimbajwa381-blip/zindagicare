@@ -88,11 +88,16 @@ export default function DoctorReferralsScreen() {
           {referral.url}
         </Text>
         <View style={styles.actionRow}>
-          <Pressable style={styles.actionButton} onPress={shareLink}>
+          <Pressable style={styles.actionButton} onPress={shareLink} accessibilityRole="button">
             <Ionicons name="share-social-outline" size={16} color={colors.brand.foreground} />
             <Text style={styles.actionButtonText}>Share link</Text>
           </Pressable>
-          <Pressable style={[styles.actionButton, styles.secondaryButton]} onPress={regenerate} disabled={isRegenerating}>
+          <Pressable
+            style={[styles.actionButton, styles.secondaryButton]}
+            onPress={regenerate}
+            disabled={isRegenerating}
+            accessibilityRole="button"
+          >
             {isRegenerating ? (
               <Spinner size="sm" />
             ) : (

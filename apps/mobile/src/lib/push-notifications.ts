@@ -1,14 +1,27 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { router } from "expo-router";
 import { registerExpoPushToken, unregisterExpoPushToken } from "@/api/push";
 import { getNotificationSummary } from "@/api/notifications";
 import type { AuthUser } from "@/api/client";
 
-Notifications.setNotificationHandler({
+/**
+ * expo-notifications' remote push functionality was removed from Expo Go in SDK 53 —
+ * merely importing it there throws at module-eval time (top-level auto-registration
+ * side effect). Guard the import itself, the same way auth-context.tsx guards
+ * @react-native-google-signin/google-signin, so the rest of the app still works when
+ * testing in plain Expo Go; push notifications are just unavailable there.
+ */
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+type NotificationsModule = typeof import("expo-notifications");
+const Notifications: NotificationsModule | null = isExpoGo
+  ? null
+  : (require("expo-notifications") as NotificationsModule);
+
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -19,6 +32,7 @@ Notifications.setNotificationHandler({
 
 /** Syncs the app icon badge to the server's unread in-app notification count. */
 export async function syncBadgeCount() {
+  if (!Notifications) return;
   try {
     const { unreadCount } = await getNotificationSummary();
     await Notifications.setBadgeCountAsync(unreadCount);
@@ -28,7 +42,7 @@ export async function syncBadgeCount() {
 }
 
 async function configureAndroidChannel() {
-  if (Platform.OS !== "android") return;
+  if (!Notifications || Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync("default", {
     name: "default",
     importance: Notifications.AndroidImportance.DEFAULT,
@@ -38,7 +52,7 @@ async function configureAndroidChannel() {
 }
 
 async function getExpoPushToken(): Promise<string | null> {
-  if (!Device.isDevice) return null;
+  if (!Notifications || !Device.isDevice) return null;
 
   const existing = await Notifications.getPermissionsAsync();
   let status = existing.status;
@@ -90,6 +104,7 @@ export function usePushNotifications(user: AuthUser | null) {
   }, [user]);
 
   useEffect(() => {
+    if (!Notifications) return;
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown> | undefined;
       routeForNotificationData(data);
@@ -98,7 +113,7 @@ export function usePushNotifications(user: AuthUser | null) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!Notifications || !user) return;
     const subscription = Notifications.addNotificationReceivedListener(() => {
       syncBadgeCount();
     });
@@ -108,7 +123,7 @@ export function usePushNotifications(user: AuthUser | null) {
 
 /** Clears the locally registered push token from the backend, e.g. on sign-out. */
 export async function unregisterCurrentPushToken() {
-  if (!Device.isDevice) return;
+  if (!Notifications || !Device.isDevice) return;
   try {
     const { data } = await Notifications.getExpoPushTokenAsync();
     await unregisterExpoPushToken(data);

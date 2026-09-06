@@ -23,6 +23,10 @@ export default function LoginScreen() {
 
   const onSignIn = async () => {
     setError(null);
+    if (!email.trim() || !password) {
+      setError(t.auth.login.genericError);
+      return;
+    }
     try {
       await signInWithCredentials(email.trim().toLowerCase(), password);
     } catch (e) {
@@ -47,6 +51,7 @@ export default function LoginScreen() {
           placeholderTextColor="#9AA5B1"
           autoCapitalize="none"
           keyboardType="email-address"
+          accessibilityLabel={t.auth.login.emailPlaceholder}
         />
         <TextInput
           style={styles.input}
@@ -55,10 +60,22 @@ export default function LoginScreen() {
           placeholder={t.auth.login.passwordPlaceholder}
           placeholderTextColor="#9AA5B1"
           secureTextEntry
+          accessibilityLabel={t.auth.login.passwordPlaceholder}
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : null}
 
-        <Pressable style={styles.button} onPress={onSignIn} disabled={isSigningIn}>
+        <Pressable
+          style={styles.button}
+          onPress={onSignIn}
+          disabled={isSigningIn}
+          accessibilityRole="button"
+          accessibilityLabel={t.auth.login.signIn}
+          accessibilityState={{ disabled: isSigningIn, busy: isSigningIn }}
+        >
           {isSigningIn ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.buttonText}>{t.auth.login.signIn}</Text>}
         </Pressable>
       </View>
@@ -83,6 +100,9 @@ export default function LoginScreen() {
             }
           }}
           disabled={isSigningIn}
+          accessibilityRole="button"
+          accessibilityLabel={t.auth.login.continueWithGoogle}
+          accessibilityState={{ disabled: isSigningIn, busy: isSigningIn }}
         >
           {isSigningIn ? (
             <Spinner size="sm" color={colors.brand.DEFAULT} />
@@ -94,7 +114,7 @@ export default function LoginScreen() {
 
       <View style={styles.signupRow}>
         <Text style={styles.signupHint}>{t.auth.login.noAccount}</Text>
-        <Link href="/(auth)/signup" style={styles.signupLink}>
+        <Link href="/(auth)/signup" style={styles.signupLink} accessibilityRole="link">
           {t.auth.login.signUp}
         </Link>
       </View>

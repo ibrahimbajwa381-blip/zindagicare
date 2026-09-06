@@ -64,10 +64,24 @@ export function VoiceRecorderButton({
       <View style={styles.recordingRow}>
         <View style={styles.recDot} />
         <Text style={styles.recordingTime}>{formatDuration(recorderState.durationMillis / 1000)}</Text>
-        <Pressable onPress={cancelRecording} style={styles.cancelButton} hitSlop={8}>
+        <Pressable
+          testID="voice-recorder-cancel"
+          onPress={cancelRecording}
+          style={styles.cancelButton}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel voice note"
+        >
           <Ionicons name="trash-outline" size={18} color="#c62828" />
         </Pressable>
-        <Pressable onPress={stopAndSend} style={styles.sendButton} hitSlop={8}>
+        <Pressable
+          testID="voice-recorder-send"
+          onPress={stopAndSend}
+          style={styles.sendButton}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Send voice note"
+        >
           <Ionicons name="send" size={18} color={colors.brand.foreground} />
         </Pressable>
       </View>
@@ -75,7 +89,15 @@ export function VoiceRecorderButton({
   }
 
   return (
-    <Pressable style={styles.micButton} onPress={startRecording} disabled={disabled || isUploading} hitSlop={8}>
+    <Pressable
+      style={styles.micButton}
+      onPress={startRecording}
+      disabled={disabled || isUploading}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={isUploading ? "Uploading voice note" : "Record a voice note"}
+      accessibilityState={{ disabled: disabled || isUploading }}
+    >
       <Ionicons name={isUploading ? "cloud-upload-outline" : "mic-outline"} size={20} color={colors.brand.DEFAULT} />
     </Pressable>
   );

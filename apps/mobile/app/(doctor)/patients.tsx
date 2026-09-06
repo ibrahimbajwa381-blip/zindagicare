@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,13 +25,17 @@ export default function DoctorPatientsScreen() {
   const [patients, setPatients] = useState<DoctorPatientRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listDoctorPatients();
-      setPatients(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setPatients(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : "Failed to load patients");
     }
   }, []);
@@ -60,11 +64,13 @@ export default function DoctorPatientsScreen() {
 
   return (
     <FlatList
+      testID="patients-list"
       style={styles.screen}
       contentContainerStyle={styles.list}
       data={patients}
       keyExtractor={(item) => item.id}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+      ListHeaderComponent={error ? <Text style={styles.refreshError}>{error}</Text> : null}
       ListEmptyComponent={
         <View style={styles.centered}>
           <Text style={styles.hint}>No patients yet.</Text>
@@ -127,6 +133,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   list: { padding: 16, gap: 12 },
 
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 14, gap: 6, ...cardShadow },

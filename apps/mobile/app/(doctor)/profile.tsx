@@ -128,7 +128,7 @@ export default function DoctorProfileScreen() {
           </View>
         </View>
 
-        <Pressable style={styles.editButton} onPress={() => router.push("/(doctor)/profile-edit")}>
+        <Pressable style={styles.editButton} onPress={() => router.push("/(doctor)/profile-edit")} accessibilityRole="button">
           <Ionicons name="create-outline" size={17} color={colors.brand.foreground} />
           <Text style={styles.editButtonText}>Edit profile</Text>
         </Pressable>
@@ -193,22 +193,22 @@ export default function DoctorProfileScreen() {
         </Text>
       </Section>
 
-      <Pressable style={styles.signOutButton} onPress={signOut}>
+      <Pressable style={styles.signOutButton} onPress={signOut} accessibilityRole="button">
         <Ionicons name="log-out-outline" size={18} color="#e53935" />
         <Text style={styles.signOutText}>Sign out</Text>
       </Pressable>
 
       <View style={styles.legalRow}>
-        <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")}>
+        <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")} accessibilityRole="link">
           <Text style={styles.legalLink}>Privacy Policy</Text>
         </Pressable>
         <Text style={styles.legalDot}>·</Text>
-        <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")}>
+        <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")} accessibilityRole="link">
           <Text style={styles.legalLink}>Terms of Service</Text>
         </Pressable>
       </View>
 
-      <Pressable style={styles.deleteAccountButton} onPress={confirmDeleteAccount} disabled={isDeleting}>
+      <Pressable style={styles.deleteAccountButton} onPress={confirmDeleteAccount} disabled={isDeleting} accessibilityRole="button">
         {isDeleting ? <Spinner size="sm" color="#e53935" /> : <Text style={styles.deleteAccountText}>Delete account</Text>}
       </Pressable>
     </ScrollView>

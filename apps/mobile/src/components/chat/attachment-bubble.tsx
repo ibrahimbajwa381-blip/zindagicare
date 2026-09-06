@@ -36,7 +36,14 @@ function FileTile({ url, mime, isMine }: { url: string; mime: string; isMine: bo
   };
 
   return (
-    <Pressable style={styles.fileTile} onPress={open} disabled={isOpening} hitSlop={4}>
+    <Pressable
+      style={styles.fileTile}
+      onPress={open}
+      disabled={isOpening}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={isOpening ? `Opening ${fileLabelFromMime(mime)}` : `Open ${fileLabelFromMime(mime)}`}
+    >
       <View style={[styles.fileIcon, isMine ? styles.fileIconMine : styles.fileIconTheirs]}>
         {isOpening ? (
           <ActivityIndicator size="small" color={isMine ? colors.brand.foreground : colors.brand.DEFAULT} />

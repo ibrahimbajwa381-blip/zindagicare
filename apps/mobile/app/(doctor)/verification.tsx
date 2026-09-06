@@ -172,13 +172,20 @@ export default function DoctorVerificationScreen() {
               placeholder="XXXXX-XXXXXXX-X"
               placeholderTextColor="#9AA5B1"
               keyboardType="number-pad"
+              accessibilityLabel="CNIC"
             />
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Documents</Text>
             {(Object.keys(DOC_LABELS) as DocKey[]).map((key) => (
-              <Pressable key={key} style={styles.docRow} onPress={() => pickDoc(key)} disabled={uploadingKey === key}>
+              <Pressable
+                key={key}
+                style={styles.docRow}
+                onPress={() => pickDoc(key)}
+                disabled={uploadingKey === key}
+                accessibilityRole="button"
+              >
                 <Ionicons
                   name={docs[key] ? "checkmark-circle" : "cloud-upload-outline"}
                   size={20}
@@ -201,7 +208,7 @@ export default function DoctorVerificationScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Pressable style={styles.submitButton} onPress={submit} disabled={isSubmitting}>
+          <Pressable style={styles.submitButton} onPress={submit} disabled={isSubmitting} accessibilityRole="button">
             {isSubmitting ? (
               <Spinner size="sm" color={colors.brand.foreground} />
             ) : (

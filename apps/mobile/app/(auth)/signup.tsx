@@ -38,6 +38,14 @@ export default function SignupScreen() {
       setError(t.auth.signup.errors.nameRequired);
       return;
     }
+    if (!email.trim()) {
+      setError(t.auth.signup.errors.generic);
+      return;
+    }
+    if (!phone.trim()) {
+      setError(t.auth.signup.errors.generic);
+      return;
+    }
     if (!city.trim()) {
       setError(t.auth.signup.errors.cityRequired);
       return;
@@ -86,6 +94,7 @@ export default function SignupScreen() {
             onChangeText={setName}
             placeholder={t.auth.signup.namePlaceholder}
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel={t.auth.signup.namePlaceholder}
           />
           <TextInput
             style={styles.input}
@@ -95,6 +104,7 @@ export default function SignupScreen() {
             placeholderTextColor="#9AA5B1"
             autoCapitalize="none"
             keyboardType="email-address"
+            accessibilityLabel={t.auth.signup.emailPlaceholder}
           />
           <TextInput
             style={styles.input}
@@ -103,6 +113,7 @@ export default function SignupScreen() {
             placeholder={t.auth.signup.phonePlaceholder}
             placeholderTextColor="#9AA5B1"
             keyboardType="phone-pad"
+            accessibilityLabel={t.auth.signup.phonePlaceholder}
           />
 
           <Text style={styles.label}>{t.auth.signup.cityLabel}</Text>
@@ -120,6 +131,7 @@ export default function SignupScreen() {
             onBlur={() => setCityPickerOpen(false)}
             placeholder={t.auth.signup.cityPlaceholder}
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel={t.auth.signup.cityLabel}
           />
           {cityPickerOpen ? (
             <View style={styles.cityList}>
@@ -135,6 +147,7 @@ export default function SignupScreen() {
                       setCityQuery(c);
                       setCityPickerOpen(false);
                     }}
+                    accessibilityRole="button"
                   >
                     <Text style={styles.cityOptionText}>{c}</Text>
                   </Pressable>
@@ -158,6 +171,7 @@ export default function SignupScreen() {
             placeholderTextColor="#9AA5B1"
             keyboardType="number-pad"
             maxLength={3}
+            accessibilityLabel={t.auth.signup.agePlaceholder}
           />
 
           <TextInput
@@ -167,6 +181,7 @@ export default function SignupScreen() {
             placeholder={t.auth.signup.passwordPlaceholder}
             placeholderTextColor="#9AA5B1"
             secureTextEntry
+            accessibilityLabel={t.auth.signup.passwordPlaceholder}
           />
           <TextInput
             style={styles.input}
@@ -175,6 +190,7 @@ export default function SignupScreen() {
             placeholder={t.auth.signup.confirmPasswordPlaceholder}
             placeholderTextColor="#9AA5B1"
             secureTextEntry
+            accessibilityLabel={t.auth.signup.confirmPasswordPlaceholder}
           />
 
           <Text style={styles.label}>{t.auth.signup.registeringAs}</Text>
@@ -184,6 +200,8 @@ export default function SignupScreen() {
                 key={option.value}
                 style={[styles.chip, accountType === option.value && styles.chipActive]}
                 onPress={() => setAccountType(option.value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: accountType === option.value }}
               >
                 <Text style={[styles.chipText, accountType === option.value && styles.chipTextActive]}>
                   {option.label}
@@ -192,16 +210,27 @@ export default function SignupScreen() {
             ))}
           </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
 
-          <Pressable style={styles.button} onPress={onSignUp} disabled={isSigningIn}>
+          <Pressable
+            style={styles.button}
+            onPress={onSignUp}
+            disabled={isSigningIn}
+            accessibilityRole="button"
+            accessibilityLabel={t.auth.signup.createAccount}
+            accessibilityState={{ disabled: isSigningIn, busy: isSigningIn }}
+          >
             {isSigningIn ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.buttonText}>{t.auth.signup.createAccount}</Text>}
           </Pressable>
         </View>
 
         <View style={styles.loginRow}>
           <Text style={styles.loginHint}>{t.auth.signup.alreadyHaveAccount}</Text>
-          <Link href="/(auth)/login" style={styles.loginLink}>
+          <Link href="/(auth)/login" style={styles.loginLink} accessibilityRole="link">
             {t.auth.signup.signIn}
           </Link>
         </View>

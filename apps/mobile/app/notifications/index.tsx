@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { Stack, useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import { Redirect, Stack, useFocusEffect } from "expo-router";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/api/notifications";
 import { ApiRequestError } from "@/api/client";
 import { syncBadgeCount } from "@/lib/push-notifications";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 
@@ -25,17 +26,23 @@ function timeAgo(iso: string) {
 }
 
 export default function NotificationsScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<NotificationDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listNotifications();
-      setItems(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setItems(data ?? []);
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to load notifications");
+      if (requestId === latestRequestIdRef.current) {
+        setError(e instanceof ApiRequestError ? e.message : "Failed to load notifications");
+      }
     } finally {
       syncBadgeCount();
     }
@@ -80,6 +87,13 @@ export default function NotificationsScreen() {
 
   const hasUnread = items?.some((n) => !n.readAt) ?? false;
 
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   if (!items) {
     return (
       <>
@@ -102,14 +116,16 @@ export default function NotificationsScreen() {
           title: "Notifications",
           headerRight: hasUnread
             ? () => (
-                <Pressable onPress={onMarkAllRead} hitSlop={8}>
+                <Pressable onPress={onMarkAllRead} hitSlop={8} accessibilityRole="button">
                   <Text style={styles.markAllText}>Mark all read</Text>
                 </Pressable>
               )
             : undefined,
         }}
       />
+      {error ? <Text style={styles.refreshError}>{error}</Text> : null}
       <FlatList
+        testID="notifications-list"
         style={styles.screen}
         contentContainerStyle={styles.list}
         data={items}
@@ -122,7 +138,7 @@ export default function NotificationsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => onOpen(item)}>
+          <Pressable style={styles.card} onPress={() => onOpen(item)} accessibilityRole="button">
             {!item.readAt ? <View style={styles.unreadDot} /> : null}
             <View style={styles.cardBody}>
               <Text style={[styles.title, !item.readAt && styles.titleUnread]}>{item.title}</Text>
@@ -143,6 +159,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 8 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   list: { padding: 16, gap: 10 },
   markAllText: { color: colors.brand.DEFAULT, fontFamily: fonts.medium, fontSize: 13 },
   card: {

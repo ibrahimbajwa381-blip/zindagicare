@@ -1,12 +1,14 @@
-import { useState } from "react";
-import { Stack, useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { Redirect, Stack, useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { HOME_CARE_MVP_SERVICES, HOME_CARE_PRICING } from "@zindagi/shared/constants/home-care";
 import { createHomeVisit, type HomeCareServiceType } from "@/api/home-visits";
 import { ApiRequestError } from "@/api/client";
+import { useAuth } from "@/lib/auth-context";
 import { Spinner } from "@/components/ui/spinner";
+import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -24,6 +26,7 @@ function toLocalDatetimeInput(date: Date) {
 }
 
 export default function HomeVisitRequestScreen() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [serviceType, setServiceType] = useState<HomeCareServiceType>(HOME_CARE_MVP_SERVICES[0]);
   const [addressLine, setAddressLine] = useState("");
@@ -36,6 +39,7 @@ export default function HomeVisitRequestScreen() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
 
   const useCurrentLocation = async () => {
     setIsLocating(true);
@@ -55,6 +59,7 @@ export default function HomeVisitRequestScreen() {
   };
 
   const submit = async () => {
+    if (isSubmittingRef.current) return;
     if (addressLine.trim().length < 5) {
       setError("Enter a fuller address (at least 5 characters).");
       return;
@@ -70,6 +75,7 @@ export default function HomeVisitRequestScreen() {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -84,9 +90,17 @@ export default function HomeVisitRequestScreen() {
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : "Couldn't submit request. Please try again.");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
+
+  if (isAuthLoading) {
+    return <BrandLoadingScreen />;
+  }
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <>
@@ -100,6 +114,8 @@ export default function HomeVisitRequestScreen() {
                 key={type}
                 style={[styles.serviceChip, serviceType === type && styles.serviceChipActive]}
                 onPress={() => setServiceType(type)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: serviceType === type }}
               >
                 <Text style={[styles.serviceChipText, serviceType === type && styles.serviceChipTextActive]}>
                   {SERVICE_LABELS[type]}
@@ -121,9 +137,10 @@ export default function HomeVisitRequestScreen() {
             placeholder="House/street, area, landmark"
             placeholderTextColor="#9AA5B1"
             multiline
+            accessibilityLabel="Address"
           />
 
-          <Pressable style={styles.secondaryButton} onPress={useCurrentLocation} disabled={isLocating}>
+          <Pressable style={styles.secondaryButton} onPress={useCurrentLocation} disabled={isLocating} accessibilityRole="button">
             {isLocating ? (
               <Spinner size="sm" />
             ) : (
@@ -142,6 +159,7 @@ export default function HomeVisitRequestScreen() {
             value={scheduledAt}
             onChangeText={setScheduledAt}
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel="Preferred date & time (YYYY-MM-DD HH:MM)"
           />
 
           <Text style={styles.label}>Notes (optional)</Text>
@@ -152,12 +170,13 @@ export default function HomeVisitRequestScreen() {
             multiline
             placeholder="Anything the visiting staff should know"
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel="Notes (optional)"
           />
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable style={styles.primaryButton} onPress={submit} disabled={isSubmitting}>
+        <Pressable style={styles.primaryButton} onPress={submit} disabled={isSubmitting} accessibilityRole="button">
           {isSubmitting ? (
             <Spinner size="sm" color={colors.brand.foreground} />
           ) : (

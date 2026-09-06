@@ -148,6 +148,8 @@ export default function HomeScreen() {
               key={action.href}
               style={({ pressed }) => [styles.quickAction, pressed && styles.cardPressed]}
               onPress={() => router.push(action.href)}
+              accessibilityRole="button"
+              accessibilityLabel={action.label.replace(/\n/g, " ")}
             >
               <View style={styles.quickActionIcon}>
                 <Ionicons name={action.icon} size={20} color={colors.brand.foreground} />
@@ -182,7 +184,14 @@ export default function HomeScreen() {
                 </View>
               </View>
               {canJoin ? (
-                <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.cardPressed]} onPress={onJoin} disabled={isJoining}>
+                <Pressable
+                  style={({ pressed }) => [styles.primaryButton, pressed && styles.cardPressed]}
+                  onPress={onJoin}
+                  disabled={isJoining}
+                  accessibilityRole="button"
+                  accessibilityLabel={isJoining ? t.home.joining : t.home.joinCall}
+                  accessibilityState={{ disabled: isJoining, busy: isJoining }}
+                >
                   <Ionicons name="videocam" size={16} color={colors.brand.foreground} />
                   <Text style={styles.primaryButtonText}>{isJoining ? t.home.joining : t.home.joinCall}</Text>
                 </Pressable>
@@ -190,6 +199,7 @@ export default function HomeScreen() {
               <Pressable
                 style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]}
                 onPress={() => router.push({ pathname: "/intake/[appointmentId]", params: { appointmentId: booking.appointmentId } })}
+                accessibilityRole="button"
               >
                 <Text style={styles.secondaryButtonText}>{t.home.shareMedicalHistory}</Text>
                 <Ionicons name="arrow-forward" size={14} color={colors.brand.DEFAULT} />
@@ -211,7 +221,11 @@ export default function HomeScreen() {
 
         <Section title={t.home.homeVisitsSection}>
           {nextVisit ? (
-            <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} onPress={() => router.push("/home-visit")}>
+            <Pressable
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+              onPress={() => router.push("/home-visit")}
+              accessibilityRole="button"
+            >
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.doctorName}>{nextVisit.serviceType.replace("_", " ")}</Text>
                 <View style={styles.statusPill}>
@@ -250,6 +264,7 @@ export default function HomeScreen() {
                   key={rx.id}
                   style={({ pressed }) => [styles.rxRow, pressed && styles.cardPressed]}
                   onPress={() => router.push({ pathname: "/prescription/[id]", params: { id: rx.id } })}
+                  accessibilityRole="button"
                 >
                   <View style={styles.rxIconWrap}>
                     <Text style={styles.rxIcon}>Rx</Text>
@@ -312,7 +327,7 @@ function Section({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {onSeeAll ? (
-          <Pressable onPress={onSeeAll}>
+          <Pressable onPress={onSeeAll} accessibilityRole="button" accessibilityLabel={seeAllLabel}>
             <Text style={styles.seeAll}>{seeAllLabel}</Text>
           </Pressable>
         ) : null}
@@ -352,7 +367,12 @@ function EmptyCard({
           <Text style={styles.meta}>{error ? errorHint : hint}</Text>
         </View>
       </View>
-      <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]} onPress={onPress}>
+      <Pressable
+        style={({ pressed }) => [styles.secondaryButton, pressed && styles.cardPressed]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={actionLabel}
+      >
         <Text style={styles.secondaryButtonText}>{actionLabel}</Text>
         <Ionicons name="arrow-forward" size={14} color={colors.brand.DEFAULT} />
       </Pressable>

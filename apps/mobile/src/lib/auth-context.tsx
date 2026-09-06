@@ -92,12 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const me = await fetch(`${API_URL}/api/v1/mobile/auth/me`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }).then((r) => r.json());
-        if (me.success) setUser(me.data.user);
+        // Goes through apiFetch (not a bare fetch) so an expired access token is
+        // transparently refreshed via the stored refresh token, same as any other
+        // authenticated request — otherwise a merely-expired (not revoked) session
+        // would silently sign the user out on every app restart.
+        const { user: restoredUser } = await apiFetch<{ user: AuthUser }>("/api/v1/mobile/auth/me");
+        setUser(restoredUser);
       } catch {
-        // Stay signed out silently — user can retry via signInWithGoogle.
+        // Both the access token and a refresh attempt failed — stay signed out silently.
       } finally {
         setIsLoading(false);
       }

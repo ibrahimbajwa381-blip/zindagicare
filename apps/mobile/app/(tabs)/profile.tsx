@@ -274,6 +274,7 @@ export default function ProfileScreen() {
         <Section title={t.profile.sections.emergencyContact} icon="call-outline">
           <Field
             label={t.profile.fields.name}
+            accessibilityLabel={`${t.profile.sections.emergencyContact} ${t.profile.fields.name}`}
             value={form.emergencyName}
             editable={editing}
             onChange={(v) => setForm({ ...form, emergencyName: v })}
@@ -281,6 +282,7 @@ export default function ProfileScreen() {
           />
           <Field
             label={t.profile.fields.phone}
+            accessibilityLabel={`${t.profile.sections.emergencyContact} ${t.profile.fields.phone}`}
             value={form.emergencyPhone}
             editable={editing}
             keyboardType="phone-pad"
@@ -306,10 +308,11 @@ export default function ProfileScreen() {
                   setForm(toForm(profile));
                   setEditing(false);
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.secondaryButtonText}>{t.profile.cancel}</Text>
               </Pressable>
-              <Pressable style={styles.button} onPress={save} disabled={isSaving}>
+              <Pressable style={styles.button} onPress={save} disabled={isSaving} accessibilityRole="button">
                 {isSaving ? (
                   <Spinner size="sm" color={colors.brand.foreground} />
                 ) : (
@@ -318,29 +321,29 @@ export default function ProfileScreen() {
               </Pressable>
             </>
           ) : (
-            <Pressable style={styles.button} onPress={() => setEditing(true)}>
+            <Pressable style={styles.button} onPress={() => setEditing(true)} accessibilityRole="button">
               <Ionicons name="create-outline" size={18} color={colors.brand.foreground} />
               <Text style={styles.buttonText}>{t.profile.editProfile}</Text>
             </Pressable>
           )}
         </View>
 
-        <Pressable style={styles.signOutButton} onPress={signOut}>
+        <Pressable style={styles.signOutButton} onPress={signOut} accessibilityRole="button">
           <Ionicons name="log-out-outline" size={18} color="#e53935" />
           <Text style={styles.signOutText}>{t.profile.signOut}</Text>
         </Pressable>
 
         <View style={styles.legalRow}>
-          <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")}>
+          <Pressable onPress={() => Linking.openURL("https://zindagicare.com/privacy")} accessibilityRole="link">
             <Text style={styles.legalLink}>{t.profile.privacyPolicy}</Text>
           </Pressable>
           <Text style={styles.legalDot}>·</Text>
-          <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")}>
+          <Pressable onPress={() => Linking.openURL("https://zindagicare.com/terms")} accessibilityRole="link">
             <Text style={styles.legalLink}>{t.profile.termsOfService}</Text>
           </Pressable>
         </View>
 
-        <Pressable style={styles.deleteAccountButton} onPress={confirmDeleteAccount} disabled={isDeleting}>
+        <Pressable style={styles.deleteAccountButton} onPress={confirmDeleteAccount} disabled={isDeleting} accessibilityRole="button">
           {isDeleting ? (
             <Spinner size="sm" color="#e53935" />
           ) : (
@@ -354,7 +357,12 @@ export default function ProfileScreen() {
 
 function LanguageOption({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Pressable style={[styles.languageChip, active && styles.languageChipActive]} onPress={onPress}>
+    <Pressable
+      style={[styles.languageChip, active && styles.languageChipActive]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
       <Text style={[styles.languageChipText, active && styles.languageChipTextActive]}>{label}</Text>
     </Pressable>
   );
@@ -384,6 +392,7 @@ function Section({
 
 function Field({
   label,
+  accessibilityLabel,
   value,
   editable,
   onChange,
@@ -393,6 +402,7 @@ function Field({
   last,
 }: {
   label: string;
+  accessibilityLabel?: string;
   value: string;
   editable: boolean;
   onChange: (v: string) => void;
@@ -413,6 +423,7 @@ function Field({
           placeholder={placeholder}
           placeholderTextColor="#b6bcc6"
           autoCapitalize="none"
+          accessibilityLabel={accessibilityLabel ?? label}
         />
       ) : (
         <Text style={[styles.fieldValue, !value && styles.fieldValueEmpty]}>{value || notSetLabel}</Text>

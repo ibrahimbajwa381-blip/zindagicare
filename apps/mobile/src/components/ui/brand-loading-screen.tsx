@@ -46,7 +46,7 @@ export function BrandLoadingScreen({ caption }: { caption?: string }) {
   const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.6] });
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessible accessibilityRole="progressbar" accessibilityLabel={caption ?? "Loading"}>
       <View style={styles.logoWrap}>
         <Animated.View
           style={[

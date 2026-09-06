@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,13 +14,17 @@ export default function DoctorPrescriptionsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listDoctorPrescriptions();
-      setItems(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setItems(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : "Failed to load prescriptions");
     }
   }, []);
@@ -60,11 +64,13 @@ export default function DoctorPrescriptionsScreen() {
 
   return (
     <FlatList
+      testID="prescriptions-list"
       style={styles.screen}
       contentContainerStyle={styles.list}
       data={items}
       keyExtractor={(item) => item.id}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+      ListHeaderComponent={error ? <Text style={styles.refreshError}>{error}</Text> : null}
       ListEmptyComponent={
         <View style={styles.centered}>
           <Text style={styles.hint}>No prescriptions written yet.</Text>
@@ -75,6 +81,7 @@ export default function DoctorPrescriptionsScreen() {
           style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
           onPress={() => onDownload(item)}
           disabled={downloadingId === item.id}
+          accessibilityRole="button"
         >
           <View style={styles.iconWrap}>
             <Ionicons name="document-text-outline" size={22} color={colors.brand.mutedForeground} />
@@ -104,6 +111,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   list: { padding: 16, gap: 12 },
   card: {
     flexDirection: "row",

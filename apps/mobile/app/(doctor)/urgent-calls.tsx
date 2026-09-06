@@ -17,13 +17,17 @@ export default function DoctorUrgentCallsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const latestRequestIdRef = useRef(0);
 
   const load = useCallback(async (silent = false) => {
+    const requestId = ++latestRequestIdRef.current;
     try {
       const data = await listDoctorUrgentCalls();
-      setCalls(data);
+      if (requestId !== latestRequestIdRef.current) return; // a newer load() already landed
+      setCalls(data ?? []);
       setError(null);
     } catch (e) {
+      if (requestId !== latestRequestIdRef.current) return;
       if (!silent) setError(e instanceof ApiRequestError ? e.message : "Failed to load urgent calls");
     }
   }, []);
@@ -76,11 +80,13 @@ export default function DoctorUrgentCallsScreen() {
 
   return (
     <FlatList
+      testID="urgent-calls-list"
       style={styles.screen}
       contentContainerStyle={styles.list}
       data={calls}
       keyExtractor={(item) => item.requestId}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+      ListHeaderComponent={error ? <Text style={styles.refreshError}>{error}</Text> : null}
       ListEmptyComponent={
         <View style={styles.centered}>
           <Ionicons name="pulse-outline" size={32} color="#ccc" />
@@ -121,6 +127,7 @@ export default function DoctorUrgentCallsScreen() {
               style={styles.completeButton}
               onPress={() => markComplete(item)}
               disabled={completingId === item.requestId}
+              accessibilityRole="button"
             >
               {completingId === item.requestId ? (
                 <Spinner size="sm" color={colors.brand.foreground} />
@@ -140,6 +147,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 8 },
   hint: { color: "#666", fontFamily: fonts.regular },
   error: { color: "#c62828", fontFamily: fonts.regular },
+  refreshError: { color: "#c62828", fontFamily: fonts.regular, fontSize: 12, textAlign: "center", paddingVertical: 6, backgroundColor: colors.neutral.background },
   list: { padding: 16, gap: 12 },
 
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 14, gap: 6, ...cardShadow },

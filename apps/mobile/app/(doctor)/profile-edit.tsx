@@ -113,6 +113,7 @@ export default function DoctorProfileEditScreen() {
             multiline
             placeholder="Tell patients about your experience and approach to care"
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel="Bio"
           />
 
           <Text style={styles.label}>Consultation fee (PKR)</Text>
@@ -123,6 +124,7 @@ export default function DoctorProfileEditScreen() {
             keyboardType="number-pad"
             placeholder="e.g. 1500"
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel="Consultation fee (PKR)"
           />
 
           <Text style={styles.label}>Languages</Text>
@@ -132,6 +134,7 @@ export default function DoctorProfileEditScreen() {
             onChangeText={(v) => setForm({ ...form, languages: v })}
             placeholder="Comma separated, e.g. English, Urdu"
             placeholderTextColor="#9AA5B1"
+            accessibilityLabel="Languages"
           />
         </View>
 
@@ -157,6 +160,7 @@ export default function DoctorProfileEditScreen() {
                   onChangeText={(v) => setForm({ ...form, sundayStart: v })}
                   placeholder="10:00"
                   placeholderTextColor="#9AA5B1"
+                  accessibilityLabel="Start (HH:mm)"
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -167,6 +171,7 @@ export default function DoctorProfileEditScreen() {
                   onChangeText={(v) => setForm({ ...form, sundayEnd: v })}
                   placeholder="13:00"
                   placeholderTextColor="#9AA5B1"
+                  accessibilityLabel="End (HH:mm)"
                 />
               </View>
             </View>
@@ -175,7 +180,7 @@ export default function DoctorProfileEditScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable style={styles.saveButton} onPress={save} disabled={isSaving}>
+        <Pressable style={styles.saveButton} onPress={save} disabled={isSaving} accessibilityRole="button">
           {isSaving ? <Spinner size="sm" color={colors.brand.foreground} /> : <Text style={styles.saveButtonText}>Save changes</Text>}
         </Pressable>
       </ScrollView>
