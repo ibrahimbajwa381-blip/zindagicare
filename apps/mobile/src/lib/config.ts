@@ -10,6 +10,10 @@ export const API_URL =
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
   "http://localhost:3000";
 
+/** Mirrors apps/web/src/config/site.ts supportWhatsApp / supportPhones. */
+export const SUPPORT_WHATSAPP_URL = "https://wa.me/923277661515";
+export const SUPPORT_PHONE_TEL_URL = "tel:03277661515";
+
 /** API responses return media as host-relative paths (e.g. "/api/v1/public/doctor-avatars/...");
  * unlike a browser, RN's <Image> has no page origin to resolve those against. */
 export function resolveMediaUrl(path?: string | null): string | undefined {

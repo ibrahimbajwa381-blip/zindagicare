@@ -77,15 +77,55 @@ export const mobileUr: MobileDictionary = {
   home: {
     welcome: "خوش آمدید",
     fallbackName: "دوست",
+    greetingPrefix: "ہیلو",
+    subtitle: "آپ کے لیے بہترین طبی نگہداشت تلاش کریں",
     heroHintActive: "آج آپ کی دیکھ بھال سے متعلق یہ سرگرمیاں ہیں۔",
     heroHintEmpty: "آپ کی کنسلٹیشنز، ہوم وزٹس، اور نسخے — سب ایک ہی جگہ پر۔",
+    location: {
+      label: "موجودہ مقام",
+      city: "لاہور، پاکستان",
+    },
+    help: "مدد",
+    helpErrorTitle: "واٹس ایپ نہیں کھل سکا",
+    helpErrorMessage: "براہ کرم یقینی بنائیں کہ واٹس ایپ انسٹال ہے، یا ہمیں 0327 7661515 پر کال کریں۔",
+    helpCall: "کال کریں",
     quickActions: {
-      bookConsult: "کنسلٹ\nبک کریں",
-      sundayFree: "اتوار\nمفت",
-      homeVisit: "ہوم\nوزٹ",
-      prescriptions: "نسخہ\nجات",
+      bookConsult: "ڈاکٹر\nتلاش کریں",
+      homeVisit: "ہوم\nکیئر",
       appointments: "اپائنٹ\nمنٹس",
-      requestRefund: "رقم واپسی\nکی درخواست",
+      prescriptions: "نسخہ\nجات",
+    },
+    search: {
+      placeholder: "ڈاکٹر یا اسپیشلٹی تلاش کریں",
+    },
+    freeConsultation: {
+      badge: "ہر اتوار",
+      title: "مفت کنسلٹیشن",
+      subtitle: "PMDC سے تصدیق شدہ ڈاکٹر کے ساتھ 10 منٹ کی مفت ویڈیو کنسلٹیشن حاصل کریں۔",
+      action: "مفت کنسلٹیشن بک کریں",
+    },
+    promoCarousel: {
+      homeCare: {
+        badge: "آپ کی دہلیز پر",
+        title: "ہوم کیئر وزٹس",
+        subtitle: "لاہور میں گھر بیٹھے ڈاکٹر، نرس یا فزیوتھراپسٹ کی وزٹ بک کریں۔",
+        action: "ہوم وزٹ بک کریں",
+      },
+      findDoctor: {
+        badge: "500+ تصدیق شدہ ڈاکٹرز",
+        title: "آج ہی ڈاکٹر سے مشورہ کریں",
+        subtitle: "گھر بیٹھے PMDC تصدیق شدہ ماہرین سے ویڈیو کنسلٹیشن کریں۔",
+        action: "ڈاکٹر تلاش کریں",
+      },
+    },
+    recommendedDoctors: {
+      title: "تجویز کردہ ڈاکٹرز",
+      seeAll: "سب دیکھیں",
+      bookNow: "بک کریں",
+      loadError: "اس وقت ڈاکٹرز لوڈ نہیں ہو سکے۔",
+    },
+    healthcareServices: {
+      title: "صحت کی خدمات",
     },
     onlineStatus: {
       pending: "ادائیگی زیر التوا",

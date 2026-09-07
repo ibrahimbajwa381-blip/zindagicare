@@ -75,15 +75,55 @@ export const mobileEn = {
   home: {
     welcome: "Welcome",
     fallbackName: "there",
+    greetingPrefix: "Hello",
+    subtitle: "Find the Best Medical Care for You",
     heroHintActive: "Here's what's happening with your care today.",
     heroHintEmpty: "Your consultations, home visits, and prescriptions — all in one place.",
+    location: {
+      label: "Current Location",
+      city: "Lahore, Pakistan",
+    },
+    help: "Help",
+    helpErrorTitle: "Couldn't open WhatsApp",
+    helpErrorMessage: "Make sure WhatsApp is installed, or call us at 0327 7661515.",
+    helpCall: "Call us",
     quickActions: {
-      bookConsult: "Book\nconsult",
-      sundayFree: "Sunday\nfree",
-      homeVisit: "Home\nvisit",
-      prescriptions: "Prescrip-\ntions",
+      bookConsult: "Find a\ndoctor",
+      homeVisit: "Home\ncare",
       appointments: "Appoint-\nments",
-      requestRefund: "Request\nrefund",
+      prescriptions: "Prescrip-\ntions",
+    },
+    search: {
+      placeholder: "Search doctor or specialty",
+    },
+    freeConsultation: {
+      badge: "Every Sunday",
+      title: "Free Consultation",
+      subtitle: "Get a free 10-minute video consult with a PMDC-verified doctor.",
+      action: "Book free consultation",
+    },
+    promoCarousel: {
+      homeCare: {
+        badge: "At your doorstep",
+        title: "Home Care Visits",
+        subtitle: "Book a doctor, nurse, or physiotherapist to visit you at home in Lahore.",
+        action: "Book a home visit",
+      },
+      findDoctor: {
+        badge: "500+ verified doctors",
+        title: "Consult a doctor today",
+        subtitle: "Video consult with PMDC-verified specialists from home.",
+        action: "Find a doctor",
+      },
+    },
+    recommendedDoctors: {
+      title: "Recommended doctors",
+      seeAll: "See all",
+      bookNow: "Book",
+      loadError: "Couldn't load doctors right now.",
+    },
+    healthcareServices: {
+      title: "Healthcare services",
     },
     onlineStatus: {
       pending: "Payment pending",

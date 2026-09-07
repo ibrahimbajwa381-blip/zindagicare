@@ -3,12 +3,14 @@ import { AppointmentTypes } from "@zindagi/shared";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
+import { HomeVisitService } from "@/server/services/home-visit.service";
 import { mongoFilter } from "@/lib/mongo/query";
 
 const URGENT_PAYMENT_KIND = "urgent_care";
 const SUNDAY_PAYMENT_KIND = "sunday_consult";
+const HOME_VISIT_PAYMENT_KIND = "home_visit";
 
-type PaymentKind = "urgent_care" | "sunday_consult" | "online" | null;
+type PaymentKind = "urgent_care" | "sunday_consult" | "home_visit" | "online" | null;
 
 async function resolvePaymentKind(paymentId: string): Promise<PaymentKind> {
   await connectDatabase();
@@ -18,6 +20,7 @@ async function resolvePaymentKind(paymentId: string): Promise<PaymentKind> {
   const metadata = payment.metadata as { kind?: string } | undefined;
   if (metadata?.kind === URGENT_PAYMENT_KIND) return "urgent_care";
   if (metadata?.kind === SUNDAY_PAYMENT_KIND) return "sunday_consult";
+  if (metadata?.kind === HOME_VISIT_PAYMENT_KIND) return "home_visit";
   if (payment.appointmentId) return "online";
   return null;
 }
@@ -71,6 +74,9 @@ export async function completeTestPayment(paymentId: string, userId: string) {
   if (kind === "sunday_consult") {
     return SundayConsultService.completeTestPayment(paymentId, userId);
   }
+  if (kind === "home_visit") {
+    return HomeVisitService.completeTestPayment(paymentId, userId);
+  }
   return OnlineConsultService.completeTestPayment(paymentId, userId);
 }
 
@@ -92,6 +98,9 @@ export async function submitManualPaymentReceipt(
   if (kind === "sunday_consult") {
     return SundayConsultService.submitManualReceipt(paymentId, userId, receipt);
   }
+  if (kind === "home_visit") {
+    return HomeVisitService.submitManualReceipt(paymentId, userId, receipt);
+  }
   return OnlineConsultService.submitManualReceipt(paymentId, userId, receipt);
 }
 
@@ -102,6 +111,9 @@ export async function failPayment(paymentId: string, reason?: string) {
   }
   if (kind === "sunday_consult") {
     return SundayConsultService.failPayment(paymentId, reason);
+  }
+  if (kind === "home_visit") {
+    return HomeVisitService.failPayment(paymentId, reason);
   }
   return OnlineConsultService.failPayment(paymentId, reason);
 }
@@ -163,6 +175,9 @@ export async function getPaymentStatus(paymentId: string, userId: string) {
   }
   if (kind === "sunday_consult") {
     return SundayConsultService.getPaymentStatus(paymentId, userId);
+  }
+  if (kind === "home_visit") {
+    return HomeVisitService.getPaymentStatus(paymentId, userId);
   }
   return OnlineConsultService.getPaymentStatus(paymentId, userId);
 }

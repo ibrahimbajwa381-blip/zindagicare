@@ -1,6 +1,7 @@
 import { apiFetch, ApiRequestError } from "./client";
 import { API_URL } from "@/lib/config";
 import { getStoredTokens } from "@/lib/token-storage";
+import { uploadFileMultipart } from "@/lib/file-upload";
 
 export type ChatParticipant = {
   id: string;
@@ -72,27 +73,18 @@ export async function uploadChatVoiceNote(
   mimeType: string,
 ): Promise<VoiceNoteUpload> {
   const { accessToken } = await getStoredTokens();
-  const extension = mimeType.split("/")[1] ?? "m4a";
 
-  const form = new FormData();
-  form.append("threadId", threadId);
-  form.append("file", {
-    uri: fileUri,
-    name: `voice-note.${extension}`,
-    type: mimeType,
-  } as unknown as Blob);
-
-  const res = await fetch(`${API_URL}/api/v1/chat/attachments/upload`, {
-    method: "POST",
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    body: form,
-  });
-  const json = (await res.json()) as
+  const { status, json } = await uploadFileMultipart<
     | { success: true; data: VoiceNoteUpload; error: null }
-    | { success: false; data: null; error: { code: string; message: string } };
+    | { success: false; data: null; error: { code: string; message: string } }
+  >(`${API_URL}/api/v1/chat/attachments/upload`, fileUri, {
+    mimeType,
+    parameters: { threadId },
+    accessToken,
+  });
 
   if (!json.success) {
-    throw new ApiRequestError(json.error.message, json.error.code, res.status);
+    throw new ApiRequestError(json.error.message, json.error.code, status);
   }
   return json.data;
 }
@@ -111,25 +103,17 @@ export async function uploadChatFile(
 ): Promise<ChatFileUpload> {
   const { accessToken } = await getStoredTokens();
 
-  const form = new FormData();
-  form.append("threadId", threadId);
-  form.append("file", {
-    uri: fileUri,
-    name: fileName,
-    type: mimeType,
-  } as unknown as Blob);
-
-  const res = await fetch(`${API_URL}/api/v1/chat/attachments/upload`, {
-    method: "POST",
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    body: form,
-  });
-  const json = (await res.json()) as
+  const { status, json } = await uploadFileMultipart<
     | { success: true; data: ChatFileUpload; error: null }
-    | { success: false; data: null; error: { code: string; message: string } };
+    | { success: false; data: null; error: { code: string; message: string } }
+  >(`${API_URL}/api/v1/chat/attachments/upload`, fileUri, {
+    mimeType,
+    parameters: { threadId },
+    accessToken,
+  });
 
   if (!json.success) {
-    throw new ApiRequestError(json.error.message, json.error.code, res.status);
+    throw new ApiRequestError(json.error.message, json.error.code, status);
   }
   return json.data;
 }

@@ -7,7 +7,6 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   CancellationRequestStatuses,
-  VIDEO_CONSULT_CONFIG,
   getVideoJoinWindow,
 } from "@zindagi/shared";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -127,39 +126,23 @@ export class PatientAppointmentsService {
       options.types ??
       [AppointmentTypes.ONLINE, AppointmentTypes.SUNDAY_FREE];
 
-    const now = new Date();
-    const joinWindowClosedBefore = new Date(
-      now.getTime() - VIDEO_CONSULT_CONFIG.joinLateMinutes * 60_000,
-    );
-
     const appointments = await AppointmentModel.find(
       mongoFilter({
         patientId,
         type: { $in: types },
         deletedAt: null,
-        $or: [
-          {
-            status: {
-              $in: [
-                AppointmentStatuses.COMPLETED,
-                AppointmentStatuses.NO_SHOW,
-                AppointmentStatuses.CANCELLED,
-              ],
-            },
-          },
-          {
-            status: {
-              $in: [
-                AppointmentStatuses.CONFIRMED,
-                AppointmentStatuses.IN_PROGRESS,
-                AppointmentStatuses.PENDING,
-              ],
-            },
-            // Join window has closed — show as history (including recent no-shows
-            // before the accountability sweep marks them NO_SHOW).
-            scheduledEnd: { $lt: joinWindowClosedBefore },
-          },
-        ],
+        // Includes upcoming confirmed/pending bookings (so the patient can cancel + request
+        // a refund before the visit happens), not just past/resolved ones.
+        status: {
+          $in: [
+            AppointmentStatuses.COMPLETED,
+            AppointmentStatuses.NO_SHOW,
+            AppointmentStatuses.CANCELLED,
+            AppointmentStatuses.CONFIRMED,
+            AppointmentStatuses.IN_PROGRESS,
+            AppointmentStatuses.PENDING,
+          ],
+        },
       }),
     )
       .sort({ scheduledStart: -1 })
@@ -291,6 +274,10 @@ export class PatientAppointmentsService {
       throw new AppError("A cancellation request is already pending", "CONFLICT", 409);
     }
 
+    // Cancels right away — the refund itself is tracked separately for an admin to send manually.
+    appointment.status = AppointmentStatuses.CANCELLED;
+    appointment.cancellationReason = input.reason;
+    appointment.set("cancelledBy", patientId);
     appointment.cancellationRequestStatus = CancellationRequestStatuses.PENDING;
     appointment.cancellationRequestedAt = new Date();
     appointment.set("cancellationRequestedBy", patientId);

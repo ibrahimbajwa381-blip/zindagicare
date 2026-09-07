@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   HOME_CARE_MVP_SERVICES,
   HOME_CARE_PRICING,
@@ -69,7 +69,12 @@ export function HomeCareRequestForm() {
   const t = useTranslations();
   const h = t.homeCare;
   const loginUrl = useMemo(() => buildLoginUrl(searchParams), [searchParams]);
-  const minSchedule = useMemo(() => minScheduledAt(), []);
+  // Computed client-side only, after mount — "now" differs between server render and
+  // hydration, which would otherwise mismatch the input's `min` attribute.
+  const [minSchedule, setMinSchedule] = useState("");
+  useEffect(() => {
+    setMinSchedule(minScheduledAt());
+  }, []);
 
   const [serviceType, setServiceType] = useState<string>(() =>
     resolveInitialService(searchParams.get("service")),
@@ -139,8 +144,7 @@ export function HomeCareRequestForm() {
       if (!json.success) {
         throw new Error(json.error?.message ?? h.requestError);
       }
-      router.push("/home-care/visits");
-      router.refresh();
+      router.push(`/home-care/pay?visitId=${json.data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : h.requestError);
     } finally {

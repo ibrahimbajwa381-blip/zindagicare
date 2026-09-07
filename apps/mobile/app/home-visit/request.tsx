@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Redirect, Stack, useRouter } from "expo-router";
 import * as Location from "expo-location";
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
 import { HOME_CARE_MVP_SERVICES, HOME_CARE_PRICING } from "@zindagi/shared/constants/home-care";
@@ -50,7 +50,37 @@ export default function HomeVisitRequestScreen() {
         Alert.alert("Permission needed", "Allow location access to auto-fill your coordinates.");
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({});
+
+      let servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled && Platform.OS === "android") {
+        try {
+          // Shows the system "turn on location" dialog; resolves once the user enables it.
+          await Location.enableNetworkProviderAsync();
+          servicesEnabled = await Location.hasServicesEnabledAsync();
+        } catch {
+          // User dismissed the dialog — fall through to the manual-settings alert below.
+        }
+      }
+      if (!servicesEnabled) {
+        Alert.alert(
+          "Location services are off",
+          "Turn on location for your device to auto-fill your coordinates.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open settings", onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+
+      let pos;
+      try {
+        pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch {
+        // A fresh GPS fix can time out indoors — fall back to the last known position.
+        pos = await Location.getLastKnownPositionAsync();
+        if (!pos) throw new Error("no last known position");
+      }
       setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     } catch {
       Alert.alert("Couldn't get location", "Please enable location services and try again.");
@@ -80,14 +110,14 @@ export default function HomeVisitRequestScreen() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await createHomeVisit({
+      const visit = await createHomeVisit({
         serviceType,
         addressLine,
         geo,
         scheduledAt: parsedDate.toISOString(),
         patientNotes: notes || undefined,
       });
-      router.replace("/home-visit");
+      router.replace({ pathname: "/home-visit/pay", params: { visitId: visit.id } });
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : "Couldn't submit request. Please try again.");
     } finally {
@@ -181,7 +211,7 @@ export default function HomeVisitRequestScreen() {
           {isSubmitting ? (
             <Spinner size="sm" color={colors.brand.foreground} />
           ) : (
-            <Text style={styles.primaryButtonText}>Request visit</Text>
+            <Text style={styles.primaryButtonText}>Continue to payment</Text>
           )}
         </Pressable>
       </ScrollView>

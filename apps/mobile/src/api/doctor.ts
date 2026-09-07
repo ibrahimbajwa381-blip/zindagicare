@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import { getStoredTokens } from "@/lib/token-storage";
 import { API_URL } from "@/lib/config";
+import { uploadFileMultipart } from "@/lib/file-upload";
 
 export type DoctorDashboardSummary = {
   patients: number;
@@ -332,17 +333,16 @@ export type StoredDoctorDocument = {
 
 export async function uploadDoctorDocument(file: { uri: string; name: string; type: string }) {
   const { accessToken } = await getStoredTokens();
-  const formData = new FormData();
-  formData.append("file", file as unknown as Blob);
-
-  const res = await fetch(`${API_URL}/api/v1/doctor/verification/upload`, {
-    method: "POST",
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    body: formData,
+  const { json } = await uploadFileMultipart<{
+    success: boolean;
+    data: StoredDoctorDocument | null;
+    error: { message?: string } | null;
+  }>(`${API_URL}/api/v1/doctor/verification/upload`, file.uri, {
+    mimeType: file.type,
+    accessToken,
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Upload failed");
-  return json.data as StoredDoctorDocument;
+  if (!json.success || !json.data) throw new Error(json.error?.message ?? "Upload failed");
+  return json.data;
 }
 
 export type SubmitDoctorVerificationInput = {

@@ -126,7 +126,11 @@ export default function NotificationsScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => onOpen(item)} accessibilityRole="button">
+          <Pressable
+            style={[styles.card, !item.readAt && styles.cardUnread]}
+            onPress={() => onOpen(item)}
+            accessibilityRole="button"
+          >
             {!item.readAt ? <View style={styles.unreadDot} /> : null}
             <View style={styles.cardBody}>
               <Text style={[styles.title, !item.readAt && styles.titleUnread]}>{item.title}</Text>
@@ -156,12 +160,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "transparent",
     ...cardShadow,
+  },
+  cardUnread: {
+    backgroundColor: colors.brand.muted,
+    borderColor: colors.brand.light,
   },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brand.DEFAULT, marginTop: 6 },
   cardBody: { flex: 1, gap: 2 },
-  title: { fontFamily: fonts.medium, fontSize: 14, color: colors.neutral.foreground },
-  titleUnread: { fontFamily: fonts.semibold },
+  title: { fontFamily: fonts.regular, fontSize: 14, color: colors.neutral.foreground },
+  titleUnread: { fontFamily: fonts.bold },
   body: { fontFamily: fonts.regular, fontSize: 13, color: "#666" },
   time: { fontFamily: fonts.regular, fontSize: 11, color: "#999", marginTop: 2 },
 });

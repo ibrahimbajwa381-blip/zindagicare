@@ -16,6 +16,7 @@ import {
   type AppointmentHistoryItem,
   type RefundMethod,
 } from "@/api/appointments";
+import { listMyHomeVisits, type HomeVisitDto } from "@/api/home-visits";
 import { ApiRequestError } from "@/api/client";
 import { useAuth } from "@/lib/auth-context";
 import { formatKarachi } from "@/lib/format-date";
@@ -29,12 +30,56 @@ const METHODS: { value: RefundMethod; label: string; icon: keyof typeof Ionicons
   { value: "bank", label: "Bank", icon: "business-outline", hint: "Bank transfer" },
 ];
 
+const STATUS_COPY: Record<string, { label: string; bg: string; border: string; text: string }> = {
+  pending: { label: "Refund request pending review", bg: "#FFFBEB", border: "#FDE68A", text: "#92400E" },
+  approved: { label: "Refund approved — cancelled & refunded", bg: "#ECFDF5", border: "#A7F3D0", text: "#065F46" },
+  denied: { label: "Refund request was denied", bg: "#FEF2F2", border: "#FECACA", text: "#991B1B" },
+};
+
+const HOME_VISIT_SERVICE_LABELS: Record<string, string> = {
+  doctor_visit: "Doctor visit",
+  nurse: "Nurse care",
+  physiotherapy: "Physiotherapy",
+  iv_drip: "IV drip",
+  injection: "Injection",
+  wound_care: "Wound care",
+};
+
+function StatusRow({ item }: { item: AppointmentHistoryItem }) {
+  const status = STATUS_COPY[item.cancellationRequestStatus];
+  if (!status) return null;
+  return (
+    <View style={[styles.statusRow, { backgroundColor: status.bg, borderColor: status.border }]}>
+      <Text style={[styles.statusRowTitle, { color: status.text }]}>
+        {item.doctor.name} · {formatKarachi(item.scheduledStart)}
+      </Text>
+      <Text style={[styles.statusRowLabel, { color: status.text }]}>{status.label}</Text>
+    </View>
+  );
+}
+
+function HomeVisitStatusRow({ item }: { item: HomeVisitDto }) {
+  const status = STATUS_COPY[item.cancellationRequestStatus ?? "none"];
+  if (!status) return null;
+  return (
+    <View style={[styles.statusRow, { backgroundColor: status.bg, borderColor: status.border }]}>
+      <Text style={[styles.statusRowTitle, { color: status.text }]}>
+        {HOME_VISIT_SERVICE_LABELS[item.serviceType] ?? item.serviceType} · {formatKarachi(item.scheduledAt)}
+      </Text>
+      <Text style={[styles.statusRowLabel, { color: status.text }]}>
+        {status.label} · requested {formatKarachi(item.createdAt)}
+      </Text>
+    </View>
+  );
+}
+
 export default function RefundRequestScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { appointmentId: paramAppointmentId } = useLocalSearchParams<{ appointmentId?: string }>();
 
   const [items, setItems] = useState<AppointmentHistoryItem[] | null>(null);
+  const [homeVisits, setHomeVisits] = useState<HomeVisitDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [appointmentId, setAppointmentId] = useState<string | null>(paramAppointmentId ?? null);
   const [reason, setReason] = useState("");
@@ -54,6 +99,11 @@ export default function RefundRequestScreen() {
     } catch (e) {
       setError(e instanceof ApiRequestError ? e.message : "Failed to load appointments");
     }
+    try {
+      setHomeVisits(await listMyHomeVisits());
+    } catch {
+      // Non-critical — the consult refund flow above still works without home-visit history.
+    }
   }, []);
 
   useFocusEffect(
@@ -63,6 +113,14 @@ export default function RefundRequestScreen() {
   );
 
   const eligible = useMemo(() => (items ?? []).filter((i) => i.canRequestCancellation), [items]);
+  const alreadyResolved = useMemo(
+    () => (items ?? []).filter((i) => !i.canRequestCancellation && i.cancellationRequestStatus !== "none"),
+    [items],
+  );
+  const homeVisitRefunds = useMemo(
+    () => homeVisits.filter((v) => v.cancellationRequestStatus && v.cancellationRequestStatus !== "none"),
+    [homeVisits],
+  );
 
   const selected = eligible.find((i) => i.appointmentId === appointmentId) ?? eligible[0] ?? null;
   const effectiveId = selected?.appointmentId ?? null;
@@ -121,13 +179,19 @@ export default function RefundRequestScreen() {
     return (
       <View style={styles.centered}>
         <Stack.Screen options={{ title: "Request a refund" }} />
-        <Ionicons name="checkmark-circle" size={56} color={colors.brand.DEFAULT} />
+        <View style={styles.successBadge}>
+          <Ionicons name="checkmark" size={40} color={colors.brand.DEFAULT} />
+        </View>
         <Text style={styles.successTitle}>Refund request submitted</Text>
         <Text style={styles.hint}>
           We've cancelled your appointment and sent your refund request to our team. Your money
           will be transferred to the account you provided within 3–5 business days.
         </Text>
-        <Pressable style={styles.primaryButton} onPress={() => router.replace("/(tabs)/appointments")} accessibilityRole="button">
+        <Pressable
+          style={[styles.primaryButton, styles.successButton]}
+          onPress={() => router.replace("/(tabs)/appointments")}
+          accessibilityRole="button"
+        >
           <Text style={styles.primaryButtonText}>Back to appointments</Text>
         </Pressable>
       </View>
@@ -136,21 +200,46 @@ export default function RefundRequestScreen() {
 
   if (eligible.length === 0) {
     return (
-      <View style={styles.centered}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.content, styles.centered]}
+        keyboardShouldPersistTaps="handled"
+      >
         <Stack.Screen options={{ title: "Request a refund" }} />
         <Text style={styles.hint}>
           You don't have any upcoming appointments eligible for a refund right now.
         </Text>
+        {alreadyResolved.length > 0 || homeVisitRefunds.length > 0 ? (
+          <View style={{ width: "100%", gap: 8 }}>
+            {alreadyResolved.map((item) => (
+              <StatusRow key={item.appointmentId} item={item} />
+            ))}
+            {homeVisitRefunds.map((item) => (
+              <HomeVisitStatusRow key={item.id} item={item} />
+            ))}
+          </View>
+        ) : null}
         <Pressable style={styles.secondaryButton} onPress={() => router.back()} accessibilityRole="button">
           <Text style={styles.secondaryButtonText}>Go back</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     );
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title: "Request a refund" }} />
+
+      {alreadyResolved.length > 0 || homeVisitRefunds.length > 0 ? (
+        <View style={{ gap: 8, marginBottom: 8 }}>
+          {alreadyResolved.map((item) => (
+            <StatusRow key={item.appointmentId} item={item} />
+          ))}
+          {homeVisitRefunds.map((item) => (
+            <HomeVisitStatusRow key={item.id} item={item} />
+          ))}
+        </View>
+      ) : null}
 
       <Text style={styles.sectionLabel}>Which appointment?</Text>
       <View style={{ gap: 8 }}>
@@ -258,10 +347,27 @@ export default function RefundRequestScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.neutral.muted },
   content: { padding: 20, paddingBottom: 40, gap: 8 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
-  hint: { color: "#666", fontFamily: fonts.regular, textAlign: "center", lineHeight: 20 },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 14 },
+  hint: { color: "#666", fontFamily: fonts.regular, textAlign: "center", lineHeight: 21 },
+  successBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.brand.muted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    shadowColor: colors.brand.DEFAULT,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  statusRow: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  statusRowTitle: { fontFamily: fonts.semibold, fontSize: 13 },
+  statusRowLabel: { fontFamily: fonts.regular, fontSize: 11, marginTop: 2, opacity: 0.9 },
   error: { color: "#c62828", fontFamily: fonts.medium },
-  successTitle: { fontFamily: fonts.bold, fontSize: 18, color: colors.neutral.foreground, marginTop: 4 },
+  successTitle: { fontFamily: fonts.bold, fontSize: 22, color: colors.neutral.foreground, letterSpacing: -0.2 },
   sectionLabel: { fontFamily: fonts.semibold, fontSize: 13, color: colors.neutral.foreground, marginTop: 16, marginBottom: 4 },
   appointmentRow: {
     flexDirection: "row",
@@ -319,6 +425,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonDisabled: { opacity: 0.5 },
+  successButton: { paddingHorizontal: 32, minWidth: 220, marginTop: 8, ...cardShadow },
   primaryButtonText: { color: colors.brand.foreground, fontFamily: fonts.semibold, fontSize: 15 },
   secondaryButton: {
     backgroundColor: colors.brand.muted,

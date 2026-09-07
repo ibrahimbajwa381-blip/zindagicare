@@ -1,7 +1,9 @@
+import { randomUUID } from "crypto";
 import {
   connectDatabase,
   DoctorProfileModel,
   HomeVisitModel,
+  PaymentModel,
   StaffProfileModel,
   UserModel,
   type HomeVisitDocument,
@@ -10,6 +12,7 @@ import { mongoFilter } from "@/lib/mongo/query";
 import type { HydratedDocument } from "mongoose";
 import {
   AppError,
+  CancellationRequestStatuses,
   ErrorCodes,
   HomeVisitStatuses,
   HomeVisitServiceTypes,
@@ -17,6 +20,8 @@ import {
   HOME_CARE_MATCH_RADIUS_KM,
   LAHORE_GEO,
   LAUNCH_CITY,
+  PaymentProviders,
+  PaymentStatuses,
   Roles,
   VerificationStatuses,
   isAdmin,
@@ -43,6 +48,20 @@ import {
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { generateTxnRefNo } from "@/lib/payments/jazzcash";
+import {
+  buildManualTransferCheckout,
+  isManualTransferMode,
+  manualExternalTransactionId,
+} from "@/lib/payments/manual-payment";
+import { buildTestPaymentCheckout } from "@/lib/payments/dummy-payment";
+
+const HOME_VISIT_PAYMENT_KIND = "home_visit";
+
+type HomeVisitPaymentMetadata = {
+  kind: typeof HOME_VISIT_PAYMENT_KIND;
+  homeVisitId: string;
+};
 
 const ACTIVE_STATUSES: HomeVisitStatus[] = [
   HomeVisitStatuses.REQUESTED,
@@ -133,6 +152,12 @@ export type HomeVisitDto = {
     total: number;
     currency: string;
   };
+  paymentStatus?: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+  cancellationRequestStatus?: "none" | "pending" | "approved" | "denied";
+  refundMethod?: string;
+  refundAccountTitle?: string;
+  refundAccountNumber?: string;
+  refundBankName?: string;
   patientNotes?: string;
   patient?: { id: string; name: string; phone?: string };
   assignedStaff?: {
@@ -201,6 +226,7 @@ function serializeVisit(
         uploadedAt: Date;
       }
     | undefined;
+  const payment = doc.paymentId as { status?: string } | undefined;
 
   return {
     id: (doc._id as { toString(): string }).toString(),
@@ -216,6 +242,12 @@ function serializeVisit(
       },
     },
     pricing: doc.pricing as HomeVisitDto["pricing"],
+    paymentStatus: payment?.status as HomeVisitDto["paymentStatus"],
+    cancellationRequestStatus: doc.cancellationRequestStatus as HomeVisitDto["cancellationRequestStatus"],
+    refundMethod: doc.refundMethod as string | undefined,
+    refundAccountTitle: doc.refundAccountTitle as string | undefined,
+    refundAccountNumber: doc.refundAccountNumber as string | undefined,
+    refundBankName: doc.refundBankName as string | undefined,
     patientNotes: doc.patientNotes as string | undefined,
     patient: patient?._id
       ? {
@@ -438,6 +470,258 @@ export class HomeVisitService {
     ]);
   }
 
+  /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */
+  static async initiateCheckout(visitId: string, patientId: string) {
+    await HomeVisitService.ensureConnected();
+
+    const visit = await HomeVisitModel.findById(visitId);
+    if (!visit) {
+      throw new AppError("Visit not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    if (refId(visit.patientId) !== patientId) {
+      throw new AppError("Forbidden", ErrorCodes.FORBIDDEN, 403);
+    }
+    if (
+      visit.status !== HomeVisitStatuses.REQUESTED &&
+      visit.status !== HomeVisitStatuses.ASSIGNED
+    ) {
+      throw new AppError(
+        "This visit can no longer accept payment",
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    if (visit.paymentId) {
+      const existing = await PaymentModel.findById(visit.paymentId).lean();
+      if (existing?.status === PaymentStatuses.PENDING) {
+        return HomeVisitService.buildCheckoutResult(
+          existing._id.toString(),
+          existing.amount,
+          visitId,
+        );
+      }
+      if (existing?.status === PaymentStatuses.PAID) {
+        throw new AppError("This visit is already paid", ErrorCodes.CONFLICT, 409);
+      }
+    }
+
+    if (!visit.pricing) {
+      throw new AppError("Visit is missing pricing", ErrorCodes.VALIDATION, 400);
+    }
+    const amount = visit.pricing.total;
+    const txnRefNo = generateTxnRefNo();
+    const useManual = isManualTransferMode();
+
+    const payment = (await PaymentModel.create({
+      userId: patientId,
+      provider: useManual ? PaymentProviders.MANUAL_JAZZCASH : PaymentProviders.DUMMY,
+      status: PaymentStatuses.PENDING,
+      amount,
+      currency: "PKR",
+      idempotencyKey: randomUUID(),
+      externalTransactionId: txnRefNo,
+      metadata: {
+        kind: HOME_VISIT_PAYMENT_KIND,
+        homeVisitId: visitId,
+      } satisfies HomeVisitPaymentMetadata,
+    } as Record<string, unknown>)) as { _id: { toString(): string } };
+
+    visit.paymentId = payment._id as never;
+    await visit.save();
+
+    return HomeVisitService.buildCheckoutResult(payment._id.toString(), amount, visitId);
+  }
+
+  private static buildCheckoutResult(paymentId: string, amount: number, visitId: string) {
+    const description = `Home visit payment — Rs. ${amount}`;
+    return {
+      paymentId,
+      amount,
+      manualTransfer: buildManualTransferCheckout({
+        paymentId,
+        amountPkr: amount,
+        description,
+        payPath: `/home-visit/pay?paymentId=${paymentId}`,
+      }),
+      testMode: true,
+      testPayment: buildTestPaymentCheckout({
+        paymentId,
+        appointmentId: visitId,
+        amountPkr: amount,
+        description,
+        payPath: `/home-visit/pay?paymentId=${paymentId}`,
+      }),
+    };
+  }
+
+  private static async loadHomeVisitPayment(paymentId: string, userId: string) {
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (!payment || payment.userId.toString() !== userId) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    const metadata = payment.metadata as HomeVisitPaymentMetadata | undefined;
+    if (metadata?.kind !== HOME_VISIT_PAYMENT_KIND) {
+      throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    return { payment, metadata };
+  }
+
+  static async submitManualReceipt(
+    paymentId: string,
+    userId: string,
+    receipt: {
+      storageKey: string;
+      url: string;
+      originalName: string;
+      mimeType: string;
+      transactionId?: string;
+    },
+  ) {
+    await HomeVisitService.ensureConnected();
+    const { payment, metadata } = await HomeVisitService.loadHomeVisitPayment(paymentId, userId);
+
+    if (
+      payment.provider !== PaymentProviders.MANUAL_JAZZCASH &&
+      payment.provider !== PaymentProviders.DUMMY
+    ) {
+      throw new AppError("Not a manual JazzCash payment", ErrorCodes.VALIDATION, 400);
+    }
+    if (payment.status !== PaymentStatuses.PENDING) {
+      throw new AppError("Payment is not pending", ErrorCodes.VALIDATION, 400);
+    }
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          status: PaymentStatuses.PAID,
+          paidAt: new Date(),
+          externalTransactionId:
+            receipt.transactionId?.trim() || manualExternalTransactionId(paymentId),
+          "metadata.receipt": {
+            storageKey: receipt.storageKey,
+            url: receipt.url,
+            originalName: receipt.originalName,
+            mimeType: receipt.mimeType,
+            ...(receipt.transactionId ? { transactionId: receipt.transactionId } : {}),
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      },
+    );
+
+    return HomeVisitService.getById(metadata.homeVisitId, userId, [Roles.PATIENT]);
+  }
+
+  static async completeTestPayment(paymentId: string, userId: string) {
+    await HomeVisitService.ensureConnected();
+    const { payment, metadata } = await HomeVisitService.loadHomeVisitPayment(paymentId, userId);
+
+    if (payment.provider !== PaymentProviders.DUMMY) {
+      throw new AppError("Not a test payment", ErrorCodes.VALIDATION, 400);
+    }
+    if (payment.status !== PaymentStatuses.PENDING) {
+      throw new AppError("Payment is not pending", ErrorCodes.VALIDATION, 400);
+    }
+
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      {
+        $set: {
+          status: PaymentStatuses.PAID,
+          paidAt: new Date(),
+          externalTransactionId: `DUMMY-${paymentId}`,
+        },
+      },
+    );
+
+    return HomeVisitService.getById(metadata.homeVisitId, userId, [Roles.PATIENT]);
+  }
+
+  static async failPayment(paymentId: string, reason?: string) {
+    await HomeVisitService.ensureConnected();
+    const payment = await PaymentModel.findById(paymentId).lean();
+    if (
+      !payment ||
+      payment.status !== PaymentStatuses.PENDING ||
+      (payment.metadata as HomeVisitPaymentMetadata | undefined)?.kind !== HOME_VISIT_PAYMENT_KIND
+    ) {
+      return;
+    }
+    await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId }),
+      { $set: { status: PaymentStatuses.FAILED, failureReason: reason } },
+    );
+  }
+
+  static async getPaymentStatus(paymentId: string, userId: string) {
+    await HomeVisitService.ensureConnected();
+    const { payment, metadata } = await HomeVisitService.loadHomeVisitPayment(paymentId, userId);
+
+    const isManual =
+      payment.provider === PaymentProviders.MANUAL_JAZZCASH ||
+      payment.provider === PaymentProviders.DUMMY;
+
+    let manualTransfer = null;
+    if (isManual && payment.status === PaymentStatuses.PENDING) {
+      manualTransfer = buildManualTransferCheckout({
+        paymentId,
+        amountPkr: payment.amount,
+        description: `Home visit payment — Rs. ${payment.amount}`,
+        payPath: `/home-visit/pay?paymentId=${paymentId}`,
+      });
+    }
+
+    return {
+      paymentId,
+      status: payment.status,
+      amount: payment.amount,
+      currency: payment.currency ?? "PKR",
+      homeVisitId: metadata.homeVisitId,
+      manualTransfer,
+    };
+  }
+
+  /**
+   * Admin resolves a patient's pending refund request for an already-cancelled visit: "approve"
+   * marks the payment refunded; "deny" leaves the payment as paid.
+   */
+  static async resolveCancellationRequest(
+    visitId: string,
+    adminUserId: string,
+    action: "approve" | "deny",
+  ) {
+    await HomeVisitService.ensureConnected();
+
+    const visit = await HomeVisitModel.findById(visitId);
+    if (!visit) {
+      throw new AppError("Visit not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    if (visit.cancellationRequestStatus !== CancellationRequestStatuses.PENDING) {
+      throw new AppError("No pending refund request", ErrorCodes.CONFLICT, 409);
+    }
+
+    visit.cancellationRequestStatus =
+      action === "approve"
+        ? CancellationRequestStatuses.APPROVED
+        : CancellationRequestStatuses.DENIED;
+    visit.cancellationRequestResolvedAt = new Date();
+    visit.set("cancellationRequestResolvedBy", adminUserId);
+    await visit.save();
+
+    if (action === "approve" && visit.paymentId) {
+      const payment = await PaymentModel.findById(visit.paymentId);
+      if (payment && payment.status === PaymentStatuses.PAID) {
+        payment.status = PaymentStatuses.REFUNDED;
+        payment.refundedAt = new Date();
+        await payment.save();
+      }
+    }
+
+    return HomeVisitService.getById(visitId, adminUserId, [Roles.ADMIN]);
+  }
+
   static async serializeVisitDoc(
     doc: Record<string, unknown>,
   ): Promise<HomeVisitDto> {
@@ -514,6 +798,7 @@ export class HomeVisitService {
       .sort(sort)
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
+      .populate("paymentId", "status")
       .lean();
 
     return Promise.all(
@@ -538,6 +823,7 @@ export class HomeVisitService {
     )
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
+      .populate("paymentId", "status")
       .lean();
 
     if (!visit) {
@@ -967,6 +1253,31 @@ export class HomeVisitService {
       if (!canCancel) {
         throw new AppError("Cannot cancel at this stage", ErrorCodes.FORBIDDEN, 403);
       }
+
+      let isPaid = false;
+      if (visit.paymentId) {
+        const payment = await PaymentModel.findById(visit.paymentId).select("status").lean();
+        isPaid = payment?.status === PaymentStatuses.PAID;
+      }
+
+      if (isPatient && isPaid) {
+        if (!input.refundMethod || !input.refundAccountTitle || !input.refundAccountNumber) {
+          throw new AppError(
+            "Refund details are required to cancel a paid visit",
+            ErrorCodes.VALIDATION,
+            400,
+          );
+        }
+        // Visit cancels right away — money is already collected, so the refund itself is tracked
+        // separately for an admin to send manually.
+        visit.cancellationRequestStatus = CancellationRequestStatuses.PENDING;
+        visit.cancellationRequestedAt = new Date();
+        visit.set("refundMethod", input.refundMethod);
+        visit.refundAccountTitle = input.refundAccountTitle;
+        visit.refundAccountNumber = input.refundAccountNumber;
+        visit.refundBankName = input.refundBankName;
+      }
+
       visit.status = HomeVisitStatuses.CANCELLED;
       visit.cancelledAt = new Date();
       visit.cancellationReason = input.cancellationReason;

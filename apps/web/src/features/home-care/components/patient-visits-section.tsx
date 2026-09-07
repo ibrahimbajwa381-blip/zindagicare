@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,12 @@ import {
 } from "./home-visit-review-section";
 import type { HomeVisitDto } from "@/server/services/home-visit.service";
 
+const REFUND_STATUS_COPY: Record<string, { label: string; tone: string }> = {
+  pending: { label: "Refund request pending review", tone: "border-amber-200 bg-amber-50 text-amber-800" },
+  approved: { label: "Refund approved & sent", tone: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+  denied: { label: "Refund request was denied", tone: "border-red-200 bg-red-50 text-red-800" },
+};
+
 const SERVICE_LABELS: Record<string, keyof ReturnType<typeof useTranslations>["homeCare"]["services"]> = {
   [HomeVisitServiceTypes.DOCTOR_VISIT]: "doctorVisit",
   [HomeVisitServiceTypes.NURSE]: "generalNurse",
@@ -29,8 +36,10 @@ export function PatientVisitsSection() {
   const t = useTranslations();
   const h = t.homeCare;
   const reviewCopy = h.review;
+  const router = useRouter();
   const [visits, setVisits] = useState<HomeVisitDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/v1/home-visits?scope=mine");
@@ -42,6 +51,20 @@ export function PatientVisitsSection() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const cancelUnpaidVisit = async (visitId: string) => {
+    if (!window.confirm("Cancel this request?")) return;
+    setPending(visitId);
+    const res = await fetch(`/api/v1/home-visits/${visitId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+    const json = await res.json();
+    setPending(null);
+    if (json.success) await load();
+    else window.alert(json.error?.message ?? "Couldn't cancel. Please try again.");
+  };
 
   if (loading) {
     return <LoadingScreen message={`${h.visitsTitle}…`} />;
@@ -81,14 +104,29 @@ export function PatientVisitsSection() {
             <CardContent className="space-y-4">
               <VisitStatusStepper status={visit.status} compact />
               <p className="text-sm text-slate-600">{visit.address.line}</p>
-              {visit.assignedStaff ? (
-                <p className="text-sm">
-                  <span className="text-slate-500">{h.assignedNurse}: </span>
-                  <span className="font-medium">{visit.assignedStaff.name}</span>
-                </p>
-              ) : (
-                <p className="text-sm text-amber-700">{h.pendingAssignment}</p>
+              {visit.status !== "cancelled" &&
+                (visit.assignedStaff ? (
+                  <p className="text-sm">
+                    <span className="text-slate-500">{h.assignedNurse}: </span>
+                    <span className="font-medium">{visit.assignedStaff.name}</span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-700">{h.pendingAssignment}</p>
+                ))}
+
+              {visit.paymentStatus === "paid" && (
+                <span className="inline-block rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                  Paid
+                </span>
               )}
+              {visit.cancellationRequestStatus && REFUND_STATUS_COPY[visit.cancellationRequestStatus] && (
+                <p
+                  className={`rounded-xl border px-3.5 py-2 text-sm ${REFUND_STATUS_COPY[visit.cancellationRequestStatus].tone}`}
+                >
+                  {REFUND_STATUS_COPY[visit.cancellationRequestStatus].label}
+                </p>
+              )}
+
               {visit.visitReport && (
                 <Button variant="outline" size="sm" asChild>
                   <a href={visit.visitReport.url} target="_blank" rel="noopener noreferrer">
@@ -99,6 +137,29 @@ export function PatientVisitsSection() {
               {isHomeVisitReviewEligible(visit.status) && (
                 <HomeVisitReviewSection visitId={visit.id} copy={reviewCopy} />
               )}
+
+              <div className="flex flex-wrap gap-2">
+                {(visit.status === "requested" || visit.status === "assigned") &&
+                  visit.paymentStatus !== "paid" && (
+                    <Button size="sm" onClick={() => router.push(`/home-care/pay?visitId=${visit.id}`)}>
+                      Pay now to confirm visit
+                    </Button>
+                  )}
+                {visit.status === "requested" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending === visit.id}
+                    onClick={() =>
+                      visit.paymentStatus === "paid"
+                        ? router.push(`/home-care/cancel-refund?visitId=${visit.id}`)
+                        : cancelUnpaidVisit(visit.id)
+                    }
+                  >
+                    Cancel request
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         );

@@ -289,8 +289,8 @@ export async function adminCancelAppointment(
 }
 
 /**
- * Admin resolves a patient's pending cancellation request: "approve" cancels the
- * appointment and fully refunds its payment; "deny" leaves the booking as-is.
+ * Admin resolves a patient's pending refund request for an already-cancelled appointment:
+ * "approve" fully refunds its payment; "deny" leaves the payment as paid.
  */
 export async function adminResolveCancellationRequest(
   appointmentId: string,
@@ -338,12 +338,6 @@ export async function adminResolveCancellationRequest(
       entityId: appointmentId,
     });
   }
-
-  await adminCancelAppointment(
-    appointmentId,
-    adminUserId,
-    reason ?? "Cancelled at patient's request — full refund issued",
-  );
 
   if (appointment.paymentId) {
     const payment = await PaymentModel.findById(appointment.paymentId);

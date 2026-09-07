@@ -51,6 +51,11 @@ export default function HomeVisitsScreen() {
   };
 
   const onCancel = (visit: HomeVisitDto) => {
+    if (visit.paymentStatus === "paid") {
+      // Already paid — cancelling requires refund details, so hand off to that screen instead of cancelling here.
+      router.push({ pathname: "/home-visit/cancel-refund", params: { visitId: visit.id } });
+      return;
+    }
     Alert.alert("Cancel this request?", "", [
       { text: "Keep it", style: "cancel" },
       {
@@ -125,9 +130,38 @@ export default function HomeVisitsScreen() {
               <Text style={styles.time}>{formatKarachi(item.scheduledAt)}</Text>
               <Text style={styles.price}>Rs. {item.pricing.total}</Text>
             </View>
+            {item.paymentStatus === "paid" ? (
+              <View style={styles.paidPill}>
+                <Text style={styles.paidPillText}>Paid</Text>
+              </View>
+            ) : null}
+            {item.cancellationRequestStatus === "pending" ? (
+              <View style={styles.refundPendingPill}>
+                <Text style={styles.refundPendingPillText}>Refund request pending review</Text>
+              </View>
+            ) : item.cancellationRequestStatus === "approved" ? (
+              <View style={styles.paidPill}>
+                <Text style={styles.paidPillText}>Refund approved & sent</Text>
+              </View>
+            ) : item.cancellationRequestStatus === "denied" ? (
+              <View style={styles.refundDeniedPill}>
+                <Text style={styles.refundDeniedPillText}>Refund request denied</Text>
+              </View>
+            ) : null}
             {item.status === "requested" ? (
               <Pressable style={styles.cancelButton} onPress={() => onCancel(item)} accessibilityRole="button">
                 <Text style={styles.cancelButtonText}>Cancel request</Text>
+              </Pressable>
+            ) : null}
+            {(item.status === "requested" || item.status === "assigned") &&
+            item.paymentStatus !== "paid" ? (
+              <Pressable
+                style={styles.payButton}
+                onPress={() => router.push({ pathname: "/home-visit/pay", params: { visitId: item.id } })}
+                accessibilityRole="button"
+                accessibilityLabel="Pay for this visit"
+              >
+                <Text style={styles.payButtonText}>Pay now to confirm visit</Text>
               </Pressable>
             ) : null}
           </View>
@@ -168,6 +202,45 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
   time: { fontFamily: fonts.regular, fontSize: 13, color: "#333" },
   price: { fontFamily: fonts.semibold, fontSize: 13, color: colors.brand.mutedForeground },
+  paidPill: {
+    alignSelf: "flex-start",
+    backgroundColor: "#16a34a1A",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 6,
+  },
+  paidPillText: { color: "#16a34a", fontFamily: fonts.semibold, fontSize: 11 },
+  refundPendingPill: {
+    alignSelf: "flex-start",
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 6,
+  },
+  refundPendingPillText: { color: "#92400E", fontFamily: fonts.semibold, fontSize: 11 },
+  refundDeniedPill: {
+    alignSelf: "flex-start",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 6,
+  },
+  refundDeniedPillText: { color: "#991B1B", fontFamily: fonts.semibold, fontSize: 11 },
   cancelButton: { marginTop: 10, alignSelf: "flex-start" },
   cancelButtonText: { color: "#c62828", fontFamily: fonts.medium, fontSize: 13 },
+  payButton: {
+    backgroundColor: colors.brand.DEFAULT,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  payButtonText: { color: colors.brand.foreground, fontFamily: fonts.semibold, fontSize: 14 },
 });

@@ -38,6 +38,12 @@ const SERVICE_LABELS: Record<string, string> = {
   [HomeVisitServiceTypes.PHYSIOTHERAPY]: "Physiotherapy",
 };
 
+const REFUND_METHOD_LABEL: Record<string, string> = {
+  bank: "Bank transfer",
+  jazzcash: "JazzCash",
+  easypaisa: "Easypaisa",
+};
+
 const ACTIVE_STATUS_HINTS: Partial<Record<string, string>> = {
   [HomeVisitStatuses.ASSIGNED]: "Assigned provider will mark en route from their visits dashboard.",
   [HomeVisitStatuses.EN_ROUTE]: "Provider is en route. They will mark arrival when they reach the patient.",
@@ -162,6 +168,30 @@ export function AdminHomeVisitsBoard() {
       await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Cancel failed");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const resolveCancellationRequest = async (visitId: string, action: "approve" | "deny") => {
+    if (action === "approve") {
+      const confirmed = window.confirm(
+        "Approve this refund request? The payment will be marked refunded.",
+      );
+      if (!confirmed) return;
+    }
+    setPending(visitId);
+    try {
+      const res = await fetch(`/api/v1/home-visits/${visitId}/cancellation-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? "Couldn't resolve the refund request");
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Couldn't resolve the refund request");
     } finally {
       setPending(null);
     }
@@ -463,8 +493,50 @@ export function AdminHomeVisitsBoard() {
                     {visit.patient?.name} · {visit.assignedStaff?.name ?? "—"}
                   </p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   <VisitStatusStepper status={visit.status} compact />
+
+                  {visit.cancellationRequestStatus === "pending" && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
+                      <p className="text-sm font-medium text-amber-700">
+                        Patient requested a refund for this cancelled visit
+                      </p>
+                      {visit.refundMethod && (
+                        <p className="mt-1 text-xs text-amber-700/90">
+                          Send to: {REFUND_METHOD_LABEL[visit.refundMethod] ?? visit.refundMethod} ·{" "}
+                          {visit.refundAccountTitle} · {visit.refundAccountNumber}
+                          {visit.refundMethod === "bank" && visit.refundBankName
+                            ? ` (${visit.refundBankName})`
+                            : ""}
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          disabled={pending === visit.id}
+                          onClick={() => resolveCancellationRequest(visit.id, "approve")}
+                        >
+                          Approve + refund
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={pending === visit.id}
+                          onClick={() => resolveCancellationRequest(visit.id, "deny")}
+                        >
+                          Deny request
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {visit.cancellationRequestStatus === "approved" && (
+                    <p className="text-sm text-emerald-700">Refund approved and sent.</p>
+                  )}
+                  {visit.cancellationRequestStatus === "denied" && (
+                    <p className="text-sm text-red-600">Refund request denied.</p>
+                  )}
                 </CardContent>
               </Card>
             ))}

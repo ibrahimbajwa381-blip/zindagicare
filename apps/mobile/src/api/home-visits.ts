@@ -23,11 +23,17 @@ export type HomeVisitDto = {
   status: HomeVisitStatus;
   address: { line: string; city: string; geo: { lat: number; lng: number } };
   pricing: { base: number; surge: number; distance: number; total: number; currency: string };
+  /** Set once checkout has started for this visit; undefined before then. */
+  paymentStatus?: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+  /** Set once the patient cancels a paid visit — the visit stays active until an admin resolves the refund. */
+  cancellationRequestStatus?: "none" | "pending" | "approved" | "denied";
   scheduledAt: string;
   patientNotes?: string;
   cancellationReason?: string;
   createdAt: string;
 };
+
+export type HomeVisitRefundMethod = "bank" | "jazzcash" | "easypaisa";
 
 /** Mirrors packages/validators/src/home-visit.schema.ts's createHomeVisitSchema. */
 export type CreateHomeVisitInput = {
@@ -51,9 +57,42 @@ export function listMyHomeVisits() {
   return apiFetch<HomeVisitDto[]>("/api/v1/home-visits?scope=mine");
 }
 
-export function cancelHomeVisit(id: string, cancellationReason?: string) {
+/** Refund fields are only required when cancelling a visit that's already been paid for. */
+export function cancelHomeVisit(
+  id: string,
+  input?: {
+    cancellationReason?: string;
+    refundMethod?: HomeVisitRefundMethod;
+    refundAccountTitle?: string;
+    refundAccountNumber?: string;
+    refundBankName?: string;
+  },
+) {
   return apiFetch<HomeVisitDto>(`/api/v1/home-visits/${id}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status: "cancelled", cancellationReason }),
+    body: JSON.stringify({ status: "cancelled", ...input }),
+  });
+}
+
+export type HomeVisitManualTransfer = {
+  provider: string;
+  amountPkr: number;
+  currency: string;
+  account: { number: string; numberDisplay?: string; accountTitle: string };
+  description?: string;
+};
+
+export type HomeVisitCheckoutResult = {
+  paymentId: string;
+  amount: number;
+  manualTransfer?: HomeVisitManualTransfer;
+  testMode?: boolean;
+  testPayment?: { provider: string; txnRefNo: string; amountPkr: number };
+};
+
+/** Opens as soon as the visit is requested; resumes the pending payment if checkout was already started. */
+export function checkoutHomeVisit(visitId: string) {
+  return apiFetch<HomeVisitCheckoutResult>(`/api/v1/home-visits/${visitId}/checkout`, {
+    method: "POST",
   });
 }

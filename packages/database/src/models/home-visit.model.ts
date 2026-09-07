@@ -1,6 +1,8 @@
 import {
+  CancellationRequestStatuses,
   HomeVisitServiceTypes,
   HomeVisitStatuses,
+  RefundMethods,
   type HomeVisitServiceType,
   type HomeVisitStatus,
 } from "@zindagi/shared";
@@ -57,6 +59,20 @@ const homeVisitSchema = new Schema(
     completedAt: { type: Date },
     cancelledAt: { type: Date },
     cancellationReason: { type: String },
+    /** Patient requested to cancel a paid visit + be refunded; admin reviews and resolves this. */
+    cancellationRequestStatus: {
+      type: String,
+      enum: Object.values(CancellationRequestStatuses),
+      default: CancellationRequestStatuses.NONE,
+    },
+    cancellationRequestedAt: { type: Date },
+    cancellationRequestResolvedAt: { type: Date },
+    cancellationRequestResolvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    /** Where the admin should manually send the refund if this request is approved. */
+    refundMethod: { type: String, enum: Object.values(RefundMethods) },
+    refundAccountTitle: { type: String, maxlength: 100 },
+    refundAccountNumber: { type: String, maxlength: 50 },
+    refundBankName: { type: String, maxlength: 100 },
     visitReport: {
       storageKey: String,
       url: String,
@@ -76,6 +92,9 @@ applyFieldEncryption(homeVisitSchema, {
     { path: "patientNotes", kind: "string" },
     { path: "staffNotes", kind: "string" },
     { path: "cancellationReason", kind: "string" },
+    { path: "refundAccountTitle", kind: "string" },
+    { path: "refundAccountNumber", kind: "string" },
+    { path: "refundBankName", kind: "string" },
     { path: "visitReport.originalName", kind: "string" },
   ],
 });

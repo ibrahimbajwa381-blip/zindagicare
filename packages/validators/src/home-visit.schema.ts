@@ -1,4 +1,4 @@
-import { HomeVisitServiceTypes, HomeVisitStatuses } from "@zindagi/shared";
+import { HomeVisitServiceTypes, HomeVisitStatuses, RefundMethods } from "@zindagi/shared";
 import { z } from "zod";
 
 const geoSchema = z.object({
@@ -40,6 +40,11 @@ export const updateHomeVisitStatusSchema = z.object({
   ]),
   staffNotes: z.string().max(2000).optional(),
   cancellationReason: z.string().max(500).optional(),
+  /** Required when a patient cancels a visit that's already been paid for. */
+  refundMethod: z.enum([RefundMethods.BANK, RefundMethods.JAZZCASH, RefundMethods.EASYPAISA]).optional(),
+  refundAccountTitle: z.string().min(1).max(100).optional(),
+  refundAccountNumber: z.string().min(1).max(50).optional(),
+  refundBankName: z.string().max(100).optional(),
 });
 
 export const listHomeVisitsQuerySchema = z.object({

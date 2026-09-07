@@ -134,12 +134,12 @@ export default function CheckoutScreen() {
         <Stack.Screen options={{ title: "Booking confirmed" }} />
         <View style={styles.centered}>
           <View style={styles.successBadge}>
-            <Ionicons name="checkmark" size={36} color={colors.brand.DEFAULT} />
+            <Ionicons name="checkmark" size={40} color={colors.brand.DEFAULT} />
           </View>
           <Text style={styles.successTitle}>Appointment confirmed</Text>
           <Text style={styles.hint}>Your consult is booked. You can view it in Appointments.</Text>
           <Pressable
-            style={styles.primaryButton}
+            style={[styles.primaryButton, styles.successButton]}
             onPress={() => router.replace("/(tabs)/appointments")}
             accessibilityRole="button"
             accessibilityLabel="View appointments"
@@ -270,7 +270,7 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.neutral.muted },
   content: { padding: 16, gap: 16 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 14 },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   time: { fontFamily: fonts.semibold, fontSize: 16, color: colors.neutral.foreground },
   label: { fontFamily: fonts.medium, fontSize: 12, color: "#888", textTransform: "uppercase", marginTop: 4 },
   transferDetail: { fontFamily: fonts.semibold, fontSize: 15, color: colors.neutral.foreground },
-  hint: { fontFamily: fonts.regular, color: "#666", textAlign: "center" },
+  hint: { fontFamily: fonts.regular, color: "#666", textAlign: "center", lineHeight: 21 },
   error: { color: "#c62828", fontFamily: fonts.regular },
   notesInput: {
     borderWidth: 1,
@@ -315,14 +315,20 @@ const styles = StyleSheet.create({
   receiptPreview: { width: "100%", height: 180, borderRadius: 10, marginTop: 8 },
   amount: { fontFamily: fonts.bold, fontSize: 26, color: colors.neutral.foreground },
   successBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: colors.brand.muted,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 8,
+    shadowColor: colors.brand.DEFAULT,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   successBadgeText: { fontSize: 32, color: colors.brand.DEFAULT, fontFamily: fonts.bold },
-  successTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.neutral.foreground },
+  successTitle: { fontFamily: fonts.bold, fontSize: 22, color: colors.neutral.foreground, letterSpacing: -0.2 },
+  successButton: { paddingHorizontal: 32, minWidth: 220, marginTop: 20, ...cardShadow },
 });

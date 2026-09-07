@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   FlatList,
   Image,
@@ -22,8 +22,9 @@ import { interpolate } from "@zindagi/i18n";
 export default function DoctorsScreen() {
   const router = useRouter();
   const { t, isRTL } = useLocale();
+  const params = useLocalSearchParams<{ specialty?: string }>();
   const [city, setCity] = useState("Lahore");
-  const [specialty, setSpecialty] = useState("");
+  const [specialty, setSpecialty] = useState(params.specialty ?? "");
   const [doctors, setDoctors] = useState<ConsultDoctorRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -53,6 +54,16 @@ export default function DoctorsScreen() {
   useEffect(() => {
     load({ city, specialty });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The Doctors tab stays mounted after the first visit, so a later navigation
+  // here (e.g. tapping a specialty on Home) only updates the route params —
+  // it doesn't remount the screen or re-run the specialty useState initializer.
+  // Sync the filter whenever an incoming specialty param actually changes.
+  useEffect(() => {
+    if (params.specialty !== undefined && params.specialty !== specialty) {
+      setSpecialty(params.specialty);
+    }
+  }, [params.specialty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Live search: re-run automatically as the user types, instead of requiring
   // a tap on Search — debounced so it doesn't fire a request per keystroke.

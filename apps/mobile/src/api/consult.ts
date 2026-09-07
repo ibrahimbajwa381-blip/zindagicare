@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 import { getStoredTokens } from "@/lib/token-storage";
 import { API_URL } from "@/lib/config";
+import { uploadFileMultipart } from "@/lib/file-upload";
 
 export type ConsultDoctorRow = {
   doctorId: string;
@@ -154,17 +155,15 @@ export async function uploadPaymentReceipt(
   transactionId?: string,
 ) {
   const { accessToken } = await getStoredTokens();
-  const formData = new FormData();
-  // React Native's FormData accepts { uri, name, type } directly for file fields.
-  formData.append("file", file as unknown as Blob);
-  if (transactionId) formData.append("transactionId", transactionId);
-
-  const res = await fetch(`${API_URL}/api/v1/payments/${paymentId}/receipt`, {
-    method: "POST",
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    body: formData,
+  const { json } = await uploadFileMultipart<{
+    success: boolean;
+    data: { paymentId: string; receipt: { url: string } } | null;
+    error: { message?: string } | null;
+  }>(`${API_URL}/api/v1/payments/${paymentId}/receipt`, file.uri, {
+    mimeType: file.type,
+    parameters: transactionId ? { transactionId } : undefined,
+    accessToken,
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Receipt upload failed");
-  return json.data as { paymentId: string; receipt: { url: string } };
+  if (!json.success || !json.data) throw new Error(json.error?.message ?? "Receipt upload failed");
+  return json.data;
 }
