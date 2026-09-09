@@ -5,6 +5,7 @@ import { Text } from "@/components/ui/text";
 import { listChatThreads, type ChatThread } from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
 import { useAuth } from "@/lib/auth-context";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
@@ -47,6 +48,12 @@ export default function MessagesScreen() {
   }, []);
 
   useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  useChatRealtime(
     useCallback(() => {
       load();
     }, [load]),

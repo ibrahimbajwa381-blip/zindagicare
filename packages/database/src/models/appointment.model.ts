@@ -148,6 +148,32 @@ appointmentSchema.index(
   },
 );
 
+/**
+ * Prevents two active appointments from ever landing on the same doctor's
+ * calendar at the same exact start time — closes the check-then-create race
+ * between the app-level conflict lookup (findOne) and the later create()
+ * that two near-simultaneous booking requests can both pass. Scoped by
+ * doctorId only (not type), matching the existing conflict-check queries
+ * (getBookedRanges / validateSlotForBooking), which treat every active
+ * appointment type as occupying the same doctor calendar.
+ */
+appointmentSchema.index(
+  { doctorId: 1, scheduledStart: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: {
+        $in: [
+          AppointmentStatuses.PENDING,
+          AppointmentStatuses.CONFIRMED,
+          AppointmentStatuses.IN_PROGRESS,
+        ],
+      },
+      deletedAt: null,
+    },
+  },
+);
+
 export type AppointmentDocument = InferSchemaType<typeof appointmentSchema> & {
   _id: Schema.Types.ObjectId;
   type: AppointmentType;

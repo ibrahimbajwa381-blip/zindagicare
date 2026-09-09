@@ -1,4 +1,5 @@
 import { consultCheckoutSchema, type ConsultCheckoutInput } from "@zindagi/validators";
+import { Roles } from "@zindagi/shared";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
 import { REFERRAL_COOKIE_NAME } from "@/lib/doctors/referral-cookie";
@@ -13,5 +14,5 @@ export const POST = withApiHandler<ConsultCheckoutInput>(
     );
     return OnlineConsultService.initiateCheckout(session!.user!.id, body);
   },
-  { auth: true, bodySchema: consultCheckoutSchema },
+  { auth: true, roles: [Roles.PATIENT], bodySchema: consultCheckoutSchema },
 );

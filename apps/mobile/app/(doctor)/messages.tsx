@@ -4,6 +4,7 @@ import { FlatList, Image, Pressable, RefreshControl, StyleSheet, View } from "re
 import { Text } from "@/components/ui/text";
 import { listChatThreads } from "@/api/chat";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
@@ -37,6 +38,12 @@ export default function DoctorMessagesScreen() {
   const { data: threads, error, load } = useFocusLoader(loadThreads, "Failed to load messages", {
     pollMs: POLL_MS,
   });
+
+  useChatRealtime(
+    useCallback(() => {
+      load(true);
+    }, [load]),
+  );
 
   const onRefresh = async () => {
     setIsRefreshing(true);

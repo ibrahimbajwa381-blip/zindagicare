@@ -1,27 +1,51 @@
 import { NextResponse } from "next/server";
+import { randomBytes, timingSafeEqual } from "crypto";
 import { bootstrapAdminUser } from "@/server/services/notification.service";
 
 const DEFAULT_EMAIL = "admin@zindagicare.pk";
-const DEFAULT_PASSWORD = "Admin@12345";
 const DEFAULT_NAME = "ZindagiCare Admin";
+const SECRET_HEADER = "x-bootstrap-secret";
 
-/** Dev/bootstrap: create or promote the first admin user. */
-export async function POST() {
-  if (process.env.NODE_ENV === "production" && !process.env.ALLOW_BOOTSTRAP_ADMIN) {
-    return NextResponse.json({ error: "Not available in production" }, { status: 403 });
+function isAuthorized(req: Request): boolean {
+  const requiredSecret = process.env.BOOTSTRAP_ADMIN_SECRET;
+  if (!requiredSecret) return false;
+  const providedSecret = req.headers.get(SECRET_HEADER);
+  if (!providedSecret) return false;
+
+  const provided = Buffer.from(providedSecret);
+  const required = Buffer.from(requiredSecret);
+  // Constant-time compare: a plain === leaks how many leading bytes matched
+  // via response timing. Length must match before timingSafeEqual (which
+  // throws on mismatched buffer lengths) — that only leaks length, not content.
+  return provided.length === required.length && timingSafeEqual(provided, required);
+}
+
+/** One-time bootstrap: create or promote the first admin user. Requires the dedicated BOOTSTRAP_ADMIN_SECRET header. */
+export async function POST(req: Request) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const email = process.env.BOOTSTRAP_ADMIN_EMAIL ?? DEFAULT_EMAIL;
-    const password = process.env.BOOTSTRAP_ADMIN_PASSWORD ?? DEFAULT_PASSWORD;
     const name = process.env.BOOTSTRAP_ADMIN_NAME ?? DEFAULT_NAME;
+    // Never a hardcoded fallback: if BOOTSTRAP_ADMIN_PASSWORD isn't set, generate
+    // a random one per-request. It is intentionally never returned in the
+    // response, so operators must configure BOOTSTRAP_ADMIN_PASSWORD to know it.
+    const password = process.env.BOOTSTRAP_ADMIN_PASSWORD ?? randomBytes(24).toString("base64url");
 
     const result = await bootstrapAdminUser({ email, password, name });
 
+    // Explicit allow-list, not a `...result` spread: keeps this response safe
+    // even if the service ever starts returning an extra/sensitive field.
     return NextResponse.json({
       success: true,
-      ...result,
-      credentials: { email, password },
+      created: result.created,
+      email: result.email,
+      userId: result.userId,
+      message: result.created
+        ? "Admin account created. Credentials are intentionally omitted from this response — sign in with the value you already configured for this account."
+        : "Existing user promoted to admin. Sign out and sign back in.",
       loginUrl: "/login?callbackUrl=/admin",
     });
   } catch (e) {
@@ -31,19 +55,4 @@ export async function POST() {
       { status: 500 },
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({
-    message: "POST to this endpoint to create the first admin user.",
-    defaultCredentials: {
-      email: process.env.BOOTSTRAP_ADMIN_EMAIL ?? DEFAULT_EMAIL,
-      password: process.env.BOOTSTRAP_ADMIN_PASSWORD ?? DEFAULT_PASSWORD,
-    },
-    steps: [
-      "1. POST /api/internal/bootstrap-admin",
-      "2. Sign in at /login with the credentials returned",
-      "3. Open /admin dashboard",
-    ],
-  });
 }

@@ -3,9 +3,16 @@ import { Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
-import { listChatMessages, markChatThreadRead, sendChatMessage } from "@/api/chat";
+import {
+  listChatMessages,
+  markChatThreadRead,
+  sendChatMessage,
+  type ChatRealtimeEvent,
+} from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
+import { useAuth } from "@/lib/auth-context";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { AttachmentBubble } from "@/components/chat/attachment-bubble";
 import { FileAttachmentButton } from "@/components/chat/file-attachment-button";
@@ -19,6 +26,7 @@ function timeLabel(iso: string) {
 }
 
 export default function DoctorMessagesThreadScreen() {
+  const { user } = useAuth();
   const { threadId, name } = useLocalSearchParams<{ threadId: string; name: string }>();
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -33,6 +41,19 @@ export default function DoctorMessagesThreadScreen() {
     useCallback(() => {
       markChatThreadRead(threadId).catch(() => {});
     }, [threadId]),
+  );
+
+  useChatRealtime(
+    useCallback(
+      (event: ChatRealtimeEvent) => {
+        if (event.threadId !== threadId) return;
+        load(true);
+        if (event.type === "message" && event.senderId !== user?.id) {
+          markChatThreadRead(threadId).catch(() => {});
+        }
+      },
+      [threadId, load, user?.id],
+    ),
   );
 
   const send = async () => {

@@ -3,10 +3,17 @@ import { Redirect, Stack, useFocusEffect, useLocalSearchParams } from "expo-rout
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
-import { listChatMessages, markChatThreadRead, sendChatMessage, type ChatMessage } from "@/api/chat";
+import {
+  listChatMessages,
+  markChatThreadRead,
+  sendChatMessage,
+  type ChatMessage,
+  type ChatRealtimeEvent,
+} from "@/api/chat";
 import { ApiRequestError } from "@/api/client";
 import { useAuth } from "@/lib/auth-context";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
+import { useChatRealtime } from "@/hooks/use-chat-realtime";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { AttachmentBubble } from "@/components/chat/attachment-bubble";
 import { FileAttachmentButton } from "@/components/chat/file-attachment-button";
@@ -35,6 +42,19 @@ export default function MessagesThreadScreen() {
     useCallback(() => {
       markChatThreadRead(threadId).catch(() => {});
     }, [threadId]),
+  );
+
+  useChatRealtime(
+    useCallback(
+      (event: ChatRealtimeEvent) => {
+        if (event.threadId !== threadId) return;
+        load(true);
+        if (event.type === "message" && event.senderId !== user?.id) {
+          markChatThreadRead(threadId).catch(() => {});
+        }
+      },
+      [threadId, load, user?.id],
+    ),
   );
 
   const send = async () => {

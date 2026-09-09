@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { AppError, Roles } from "@zindagi/shared";
 import { DoctorProfileModel } from "@zindagi/database";
@@ -23,9 +23,9 @@ async function getOwnDoctorProfileId(userId: string): Promise<string> {
   return profile._id.toString();
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     assertDoctor(session.user.roles ?? []);
 
@@ -41,9 +41,9 @@ export async function GET() {
 }
 
 /** Regenerates the doctor's referral code (invalidates the old link for future signups). */
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     assertDoctor(session.user.roles ?? []);
 

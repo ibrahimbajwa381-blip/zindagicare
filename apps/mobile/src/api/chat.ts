@@ -132,3 +132,19 @@ export function markChatThreadRead(threadId: string) {
     method: "PATCH",
   });
 }
+
+/** Mirrors apps/web/src/lib/realtime/chat-emitter.ts's ChatRealtimeEvent, pushed over SSE. */
+export type ChatRealtimeEvent = {
+  type: "message" | "thread_updated" | "read";
+  threadId: string;
+  messageId?: string;
+  senderId?: string;
+  kind?: "user" | "system";
+  body?: string;
+  attachmentUrl?: string;
+  attachmentMime?: string;
+  createdAt?: string;
+  lastMessagePreview?: string;
+  lastMessageAt?: string;
+  readByUserId?: string;
+};

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { apiError, apiSuccess } from "@/server/api/response";
 import {
   getOwnDoctorBankAccount,
@@ -12,9 +12,9 @@ function assertDoctor(roles: string[] = []) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     assertDoctor(session.user.roles ?? []);
 
@@ -27,7 +27,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     assertDoctor(session.user.roles ?? []);
 

@@ -1,12 +1,14 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { chatEmitter, userRoomKey } from "@/lib/realtime/chat-emitter";
 
 /**
- * SSE stream for chat updates (Vercel-compatible realtime).
+ * SSE stream for chat updates (Vercel-compatible realtime). Uses
+ * resolveSession (cookie session or mobile Bearer token) rather than auth()
+ * directly, since the mobile app authenticates with a Bearer access token.
  */
 export async function GET(req: NextRequest) {
-  const session = await auth();
+  const session = await resolveSession(req);
   if (!session?.user?.id) {
     return new Response("Unauthorized", { status: 401 });
   }

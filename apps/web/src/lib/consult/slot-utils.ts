@@ -27,16 +27,49 @@ export function getConsultSlotDateKey(slotId: string): string {
   return slotId.slice(0, 10);
 }
 
+/**
+ * True calendar-date validity check for a "yyyy-MM-dd" string. JS's Date
+ * constructor silently rolls day-of-month overflow forward instead of
+ * rejecting it — e.g. `new Date("2024-02-30T...")` parses as March 1st, and
+ * `new Date("2023-02-29T...")` (2023 isn't a leap year) parses as March 1st
+ * too — so a plain NaN check on the parsed Date misses both. This confirms
+ * the three components round-trip exactly, catching every such rollover.
+ */
+export function isValidCalendarDateKey(dateKey: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return false;
+  const [, y, m, d] = match;
+  const year = Number(y);
+  const month = Number(m);
+  const day = Number(d);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
 export function parseConsultSlotId(slotId: string): { dateKey: string; startAt: Date } {
   if (slotId.length < 12 || slotId[10] !== ":") {
     throw new Error("Invalid slot id");
   }
   const dateKey = getConsultSlotDateKey(slotId);
   const timeLocal = slotId.slice(11);
-  if (!/^\d{2}:\d{2}$/.test(timeLocal)) {
+  // The structural checks above (length/colon-position/HH:mm shape) accept
+  // calendar-nonsensical values like "9999-99-99" or "13:99" — fromZonedTime
+  // silently returns an Invalid Date for those rather than throwing, which
+  // would otherwise slip past this function and blow up much later (inside
+  // date-fns' format(), as an uncaught RangeError) instead of failing here
+  // as the clean "Invalid slot id" every other malformed slotId produces.
+  if (!isValidCalendarDateKey(dateKey) || !/^\d{2}:\d{2}$/.test(timeLocal)) {
     throw new Error("Invalid slot id");
   }
-  return { dateKey, startAt: localTimeToUtc(dateKey, timeLocal) };
+  const startAt = localTimeToUtc(dateKey, timeLocal);
+  if (Number.isNaN(startAt.getTime())) {
+    throw new Error("Invalid slot id");
+  }
+  return { dateKey, startAt };
 }
 
 export function generateConsultSlots(

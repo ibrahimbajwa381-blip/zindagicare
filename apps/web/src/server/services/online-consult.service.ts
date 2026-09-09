@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import {
   connectDatabase,
   DoctorProfileModel,
@@ -27,6 +28,7 @@ import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import {
   appointmentBlocksSlot,
   generateConsultSlots,
+  isValidCalendarDateKey,
   parseConsultSlotId,
   type WeeklyWindow,
 } from "@/lib/consult/slot-utils";
@@ -137,6 +139,14 @@ export type CheckoutResult = {
 
 const EXPIRE_SWEEP_INTERVAL_MS = 60_000;
 let lastExpireSweepAt = 0;
+
+function isDuplicateKeyError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: number }).code === 11000
+  );
+}
 
 export class OnlineConsultService {
   private static async ensureConnected() {
@@ -410,10 +420,19 @@ export class OnlineConsultService {
       filter.specialties = { $in: matches.length ? matches : [specialty.trim()] };
     }
 
-    const doctors = await DoctorProfileModel.find(filter)
-      .populate("userId", "name avatarUrl")
+    const allDoctors = await DoctorProfileModel.find(filter)
+      .populate("userId", "name avatarUrl isActive deletedAt")
       .sort({ ratingAvg: -1, ratingCount: -1 })
       .lean();
+
+    // DoctorProfile.isListed isn't touched when a doctor deactivates/deletes
+    // their account (deleteOwnAccount only flips User.isActive/deletedAt) —
+    // exclude those here too, matching the same check validateSlotForBooking
+    // already applies before checkout.
+    const doctors = allDoctors.filter((doc) => {
+      const doctorUser = doc.userId as { isActive?: boolean; deletedAt?: Date | null } | null;
+      return doctorUser && doctorUser.isActive !== false && !doctorUser.deletedAt;
+    });
 
     if (!doctors.length) return [];
 
@@ -480,7 +499,15 @@ export class OnlineConsultService {
     await OnlineConsultService.ensureConnected();
     await OnlineConsultService.expireStalePendingBookings();
 
-    const doctor = await DoctorProfileModel.findById(doctorId).lean();
+    // Same guard as validateSlotForBooking (APT-013) — an invalid ObjectId
+    // would otherwise reach Mongoose and throw a raw CastError -> 500.
+    if (!Types.ObjectId.isValid(doctorId)) {
+      throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const doctor = await DoctorProfileModel.findById(doctorId)
+      .populate("userId", "isActive deletedAt")
+      .lean();
     if (
       !doctor?.isListed ||
       doctor.verificationStatus !== VerificationStatuses.APPROVED ||
@@ -489,11 +516,27 @@ export class OnlineConsultService {
       throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
     }
 
+    const doctorUser = doctor.userId as { isActive?: boolean; deletedAt?: Date | null } | null;
+    if (!doctorUser || doctorUser.isActive === false || doctorUser.deletedAt) {
+      throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
     const weeklyAvailability = (doctor.weeklyAvailability ?? []) as WeeklyWindow[];
     if (!weeklyAvailability.length) {
       return { doctorId, slots: [] as ConsultSlotView[] };
     }
 
+    // The route's schema only regex-checks the shape (\d{4}-\d{2}-\d{2}).
+    // Two failure modes slip past that: a genuinely unparseable value like
+    // "9999-99-99" (Invalid Date, month out of range) and a silently
+    // rolled-over one like "2024-02-30" (JS parses that as March 1st rather
+    // than rejecting it). Either would otherwise reach date-fns' format()
+    // several calls later inside generateConsultSlots — the first as an
+    // uncaught RangeError, the second as a request silently served for the
+    // wrong day — instead of a clean 400 here.
+    if (dateKey && !isValidCalendarDateKey(dateKey)) {
+      throw new AppError("Invalid date", ErrorCodes.VALIDATION, 400);
+    }
     const from = dateKey ? new Date(`${dateKey}T00:00:00`) : new Date();
     const days = dateKey ? 1 : ONLINE_CONSULT_CONFIG.lookaheadDays;
 
@@ -531,17 +574,42 @@ export class OnlineConsultService {
   static async validateSlotForBooking(
     doctorId: string,
     slotId: string,
+    patientId: string,
   ): Promise<ValidatedSlotBooking> {
     await OnlineConsultService.ensureConnected();
 
+    // A malformed id (not a valid ObjectId) would otherwise reach Mongoose
+    // and throw a raw CastError, surfacing as an uncaught 500 instead of the
+    // same clean "Doctor not found" used for every other invalid-doctor case.
+    if (!Types.ObjectId.isValid(doctorId)) {
+      throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
     const doctor = await DoctorProfileModel.findById(doctorId)
-      .populate("userId", "name")
+      .populate("userId", "name isActive deletedAt")
       .lean();
     if (
       !doctor?.isListed ||
       doctor.verificationStatus !== VerificationStatuses.APPROVED
     ) {
       throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const doctorUser = doctor.userId as {
+      _id?: { toString(): string };
+      isActive?: boolean;
+      deletedAt?: Date | null;
+    } | null;
+    if (!doctorUser || doctorUser.isActive === false || doctorUser.deletedAt) {
+      throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    // A doctor's own account (linked User) can't book a consult against their
+    // own DoctorProfile — the checkout route now restricts booking to
+    // Roles.PATIENT anyway, but this closes the gap for a user who happens
+    // to hold both a doctor and patient role on the same account.
+    if (doctorUser._id?.toString() === patientId) {
+      throw new AppError("You cannot book your own consultation slot", ErrorCodes.VALIDATION, 400);
     }
 
     const consultationFee = doctor.consultationFee ?? 0;
@@ -658,6 +726,7 @@ export class OnlineConsultService {
     const validated = await OnlineConsultService.validateSlotForBooking(
       input.doctorId,
       input.slotId,
+      patientId,
     );
 
     const resumed = await OnlineConsultService.reconcilePatientPendingCheckout(
@@ -686,17 +755,30 @@ export class OnlineConsultService {
       }
     }
 
-    const appointment = (await AppointmentModel.create({
-      type: AppointmentTypes.ONLINE,
-      status: AppointmentStatuses.PENDING,
-      patientId,
-      doctorId: validated.doctorId,
-      scheduledStart: validated.slotStart,
-      scheduledEnd: validated.slotEnd,
-      timezone: ONLINE_CONSULT_CONFIG.timezone,
-      isOnline: true,
-      patientNotes: input.patientNotes,
-    } as Record<string, unknown>)) as { _id: { toString(): string } };
+    let appointment: { _id: { toString(): string } };
+    try {
+      appointment = (await AppointmentModel.create({
+        type: AppointmentTypes.ONLINE,
+        status: AppointmentStatuses.PENDING,
+        patientId,
+        doctorId: validated.doctorId,
+        scheduledStart: validated.slotStart,
+        scheduledEnd: validated.slotEnd,
+        timezone: ONLINE_CONSULT_CONFIG.timezone,
+        isOnline: true,
+        patientNotes: input.patientNotes,
+      } as Record<string, unknown>)) as { _id: { toString(): string } };
+    } catch (error) {
+      // Two requests can both pass the earlier findOne() conflict check
+      // before either has written (classic TOCTOU race) — the unique
+      // partial index on Appointment{doctorId, scheduledStart} (active
+      // statuses only) is the actual guard; a duplicate key here means the
+      // other request won the race between our check and our write.
+      if (isDuplicateKeyError(error)) {
+        throw new AppError("Slot is no longer available", ErrorCodes.SLOT_UNAVAILABLE, 409);
+      }
+      throw error;
+    }
 
     const appointmentId = appointment._id.toString();
 
