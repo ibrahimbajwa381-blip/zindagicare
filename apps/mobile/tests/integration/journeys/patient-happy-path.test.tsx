@@ -15,6 +15,7 @@ import DoctorsScreen from "@app/(tabs)/doctors";
 import DoctorProfileScreen from "@app/doctor/[doctorId]";
 import CheckoutScreen from "@app/checkout";
 import AppointmentsScreen from "@app/(tabs)/appointments";
+import { expectedDateOfBirth } from "../../utils/expected-dob";
 import { useAuth } from "@/lib/auth-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { makeAuthUser, makeMockAuth } from "@/test-utils/mock-auth";
@@ -120,7 +121,7 @@ describe("Patient happy path: signup through booking and viewing the appointment
         confirmPassword: "secret1",
         phone: "03001234567",
         city: "Lahore",
-        dateOfBirth: `${new Date().getFullYear() - 28}-01-01`,
+        dateOfBirth: expectedDateOfBirth(28),
         accountType: "patient",
       });
     });

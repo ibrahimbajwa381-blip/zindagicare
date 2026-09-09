@@ -12,3 +12,4 @@ dist
 .expo
 .claude/settings.local.json
 .claude/worktrees/
+bugs.txt

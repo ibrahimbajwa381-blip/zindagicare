@@ -7,6 +7,7 @@ import TabsLayout from "@app/(tabs)/_layout";
 import { useAuth } from "@/lib/auth-context";
 import { useUnreadSummary } from "@/hooks/use-unread-summary";
 import { router } from "expo-router";
+import { expectedDateOfBirth } from "../../utils/expected-dob";
 import { makeAuthUser, makeMockAuth } from "@/test-utils/mock-auth";
 
 jest.mock("@/lib/auth-context", () => ({ isExpoGo: true, useAuth: jest.fn() }));
@@ -67,7 +68,7 @@ describe("Section 4: Signup -> invalid input -> validation error -> correct inpu
         confirmPassword: "goodpass1",
         phone: "03211234567",
         city: "Karachi",
-        dateOfBirth: `${new Date().getFullYear() - 30}-01-01`,
+        dateOfBirth: expectedDateOfBirth(30),
         accountType: "patient",
       });
     });

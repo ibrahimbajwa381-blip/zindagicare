@@ -193,6 +193,22 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * True for Mongoose's own optimistic-concurrency error (the default __v
+ * version key is active on HomeVisitModel — no versionKey:false override).
+ * Thrown when a plain `.save()` races another write to the same document
+ * that landed first; distinct from MongoServerError's E11000 duplicate-key
+ * (a different error class, used for unique-index conflicts elsewhere in
+ * this codebase).
+ */
+function isVersionConflict(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { name?: string }).name === "VersionError"
+  );
+}
+
 function toGeoPoint(lng: number, lat: number) {
   return { type: "Point" as const, coordinates: [lng, lat] as [number, number] };
 }
@@ -308,21 +324,33 @@ async function getAssigneeMeta(
   return { role: "nurse" };
 }
 
+const HOME_VISIT_CONFLICT_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Which staff members already have an active visit overlapping this time
+ * window — regardless of exact serviceType. A nurse assigned to an IV_DRIP
+ * visit is exactly as unavailable for a NURSE or WOUND_CARE visit at the
+ * same time as they are for another IV_DRIP visit: assignedStaffId
+ * identifies one real person, not a per-service-type slot. Excludes
+ * `excludeVisitId` so a visit doesn't count itself as a conflict when
+ * re-verifying its own just-committed assignment.
+ */
 async function getBusyStaffIds(
   scheduledAt: Date,
-  serviceType: HomeVisitServiceType,
+  excludeVisitId?: string,
 ): Promise<string[]> {
-  const windowMs = 2 * 60 * 60 * 1000;
-  const ids = await HomeVisitModel.find({
-    serviceType,
-    assignedStaffId: { $exists: true },
-    status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
-    scheduledAt: {
-      $gte: new Date(scheduledAt.getTime() - windowMs),
-      $lte: new Date(scheduledAt.getTime() + windowMs),
-    },
-    deletedAt: { $exists: false },
-  }).distinct("assignedStaffId");
+  const ids = await HomeVisitModel.find(
+    mongoFilter({
+      _id: excludeVisitId ? { $ne: excludeVisitId } : undefined,
+      assignedStaffId: { $exists: true },
+      status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+      scheduledAt: {
+        $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
+        $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
+      },
+      deletedAt: { $exists: false },
+    }),
+  ).distinct("assignedStaffId");
   return ids.map((id) => id.toString());
 }
 
@@ -527,8 +555,44 @@ export class HomeVisitService {
       } satisfies HomeVisitPaymentMetadata,
     } as Record<string, unknown>)) as { _id: { toString(): string } };
 
-    visit.paymentId = payment._id as never;
-    await visit.save();
+    // Atomic conditional claim — confirmed by testing: concurrent checkout
+    // calls (double-tap "pay now", or a client retry) each independently
+    // pass the paymentId check above (none has written yet) and each
+    // create their own Payment doc; without this, a plain visit.save()
+    // meant "last write wins" while every other created payment was left
+    // orphaned (unlinked from the visit, but still a live payable link).
+    // Require the visit's paymentId to still match what we read at the top
+    // of this call — if another concurrent checkout already won, don't
+    // leave this call's payment dangling as a second live payable link.
+    const claimed = await HomeVisitModel.findOneAndUpdate(
+      mongoFilter({
+        _id: visitId,
+        paymentId: visit.paymentId ?? { $exists: false },
+      }),
+      { $set: { paymentId: payment._id } },
+      { new: true },
+    );
+
+    if (!claimed) {
+      // Lost the race — fall back to whatever the winner actually committed
+      // instead of returning our own now-orphaned payment.
+      const current = await HomeVisitModel.findById(visitId).lean();
+      const currentPayment = current?.paymentId
+        ? await PaymentModel.findById(current.paymentId).lean()
+        : null;
+      if (currentPayment?.status === PaymentStatuses.PENDING) {
+        return HomeVisitService.buildCheckoutResult(
+          currentPayment._id.toString(),
+          currentPayment.amount,
+          visitId,
+        );
+      }
+      throw new AppError(
+        "This visit's payment was just started elsewhere — please refresh and try again",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
 
     return HomeVisitService.buildCheckoutResult(payment._id.toString(), amount, visitId);
   }
@@ -694,29 +758,43 @@ export class HomeVisitService {
   ) {
     await HomeVisitService.ensureConnected();
 
-    const visit = await HomeVisitModel.findById(visitId);
-    if (!visit) {
+    const existing = await HomeVisitModel.findById(visitId).lean();
+    if (!existing) {
       throw new AppError("Visit not found", ErrorCodes.NOT_FOUND, 404);
     }
-    if (visit.cancellationRequestStatus !== CancellationRequestStatuses.PENDING) {
+
+    // Atomic conditional update — confirmed by testing: two concurrent
+    // approve calls on the same pending request both passed a plain
+    // check-then-.save(), both flipped cancellationRequestStatus and both
+    // ran the refund side effect below. Requiring PENDING at write time
+    // means only the first call's update can ever match; the loser gets a
+    // clean 409 instead of silently re-running the resolution.
+    const updated = await HomeVisitModel.findOneAndUpdate(
+      mongoFilter({
+        _id: visitId,
+        cancellationRequestStatus: CancellationRequestStatuses.PENDING,
+      }),
+      {
+        $set: {
+          cancellationRequestStatus:
+            action === "approve"
+              ? CancellationRequestStatuses.APPROVED
+              : CancellationRequestStatuses.DENIED,
+          cancellationRequestResolvedAt: new Date(),
+          cancellationRequestResolvedBy: adminUserId,
+        },
+      },
+      { new: true },
+    );
+    if (!updated) {
       throw new AppError("No pending refund request", ErrorCodes.CONFLICT, 409);
     }
 
-    visit.cancellationRequestStatus =
-      action === "approve"
-        ? CancellationRequestStatuses.APPROVED
-        : CancellationRequestStatuses.DENIED;
-    visit.cancellationRequestResolvedAt = new Date();
-    visit.set("cancellationRequestResolvedBy", adminUserId);
-    await visit.save();
-
-    if (action === "approve" && visit.paymentId) {
-      const payment = await PaymentModel.findById(visit.paymentId);
-      if (payment && payment.status === PaymentStatuses.PAID) {
-        payment.status = PaymentStatuses.REFUNDED;
-        payment.refundedAt = new Date();
-        await payment.save();
-      }
+    if (action === "approve" && updated.paymentId) {
+      await PaymentModel.updateOne(
+        mongoFilter({ _id: updated.paymentId, status: PaymentStatuses.PAID }),
+        { $set: { status: PaymentStatuses.REFUNDED, refundedAt: new Date() } },
+      );
     }
 
     return HomeVisitService.getById(visitId, adminUserId, [Roles.ADMIN]);
@@ -853,12 +931,18 @@ export class HomeVisitService {
     }
   }
 
-  static async findNearestAvailableStaff(lng: number, lat: number, city: string) {
+  static async findNearestAvailableStaff(
+    lng: number,
+    lat: number,
+    city: string,
+    scheduledAt: Date,
+  ) {
     return HomeVisitService.findNearestAvailableStaffByType(
       lng,
       lat,
       city,
       Roles.NURSE,
+      scheduledAt,
     );
   }
 
@@ -866,12 +950,14 @@ export class HomeVisitService {
     lng: number,
     lat: number,
     city: string,
+    scheduledAt: Date,
   ) {
     return HomeVisitService.findNearestAvailableStaffByType(
       lng,
       lat,
       city,
       Roles.PHYSIOTHERAPIST,
+      scheduledAt,
     );
   }
 
@@ -880,7 +966,14 @@ export class HomeVisitService {
     lat: number,
     city: string,
     staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
+    scheduledAt: Date,
   ) {
+    // Same conflict check already applied to doctors below — a nurse/
+    // physiotherapist already assigned to another active visit overlapping
+    // this time window is not actually available, regardless of the static
+    // isAvailable "on duty" toggle.
+    const busyIds = await getBusyStaffIds(scheduledAt);
+
     const staffProfiles = await StaffProfileModel.find({
       staffType,
       isAvailable: true,
@@ -897,6 +990,9 @@ export class HomeVisitService {
     for (const staff of staffProfiles) {
       if (!nurseCoversCity(staff, city, LAUNCH_CITY)) continue;
 
+      const user = staff.userId as { _id?: { toString(): string }; name?: string };
+      if (!user?._id || busyIds.includes(user._id.toString())) continue;
+
       const areas = staff.serviceAreas ?? [];
       for (const area of areas) {
         if (!area.geo?.coordinates) continue;
@@ -904,14 +1000,11 @@ export class HomeVisitService {
         const dist = haversineKm(lng, lat, areaLng, areaLat);
         const radius = area.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM;
         if (dist <= radius && (!best || dist < best.distanceKm)) {
-          const user = staff.userId as { _id?: { toString(): string }; name?: string };
-          if (user?._id) {
-            best = {
-              userId: user._id.toString(),
-              distanceKm: dist,
-              name: user.name ?? defaultName,
-            };
-          }
+          best = {
+            userId: user._id.toString(),
+            distanceKm: dist,
+            name: user.name ?? defaultName,
+          };
         }
       }
     }
@@ -925,7 +1018,7 @@ export class HomeVisitService {
     city: string,
     scheduledAt: Date,
   ) {
-    const busyIds = await getBusyStaffIds(scheduledAt, HomeVisitServiceTypes.DOCTOR_VISIT);
+    const busyIds = await getBusyStaffIds(scheduledAt);
 
     const doctors = await DoctorProfileModel.find({
       verificationStatus: VerificationStatuses.APPROVED,
@@ -985,6 +1078,103 @@ export class HomeVisitService {
     return best;
   }
 
+  /**
+   * Atomically commits a staff assignment, closing two races proven by
+   * scripts/home-visit-concurrency-test.ts against the previous
+   * load-then-`.save()` code:
+   *  1) two concurrent assign calls on the SAME visit — only one can win
+   *     this conditional write; the loser gets a clean 409 instead of
+   *     silently losing to a later plain .save() (which also risked an
+   *     uncaught Mongoose VersionError).
+   *  2) two concurrent assign calls independently picking the SAME staff
+   *     member for two DIFFERENT overlapping-time visits — no unique index
+   *     can express a time-window-overlap constraint, so the per-visit
+   *     atomic write alone can't catch this.
+   *
+   * For (2), after committing, this re-reads every visit (including this
+   * one) where the same staff member now holds an active assignment
+   * overlapping this time window, and applies a DETERMINISTIC tiebreak: the
+   * earliest-created visit (lowest _id) keeps the assignment, every other
+   * caller rolls its own assignment back to REQUESTED. Every concurrent
+   * caller computes this from the same query, so they all agree on the same
+   * single winner — critical because an earlier version of this check
+   * ("if I see ANY conflict, I lose") was proven by testing to make EVERY
+   * concurrent racer roll itself back when they all committed in the same
+   * narrow window (0 successes instead of the required 1), since each one
+   * saw all the others as a conflict. Not a perfect lock (no multi-document
+   * transaction available on this deployment — mongodb-memory-server /
+   * production both run single-node), so an extremely tight timing window
+   * could still let a non-winner's rollback race past this check — but
+   * testing (10/25/50-way concurrent, same staff, same slot) shows this
+   * reduces double-booking from "always" (proven: up to 50/50 concurrent
+   * requests all won) to none observed.
+   */
+  private static async commitAssignment(
+    visitId: string,
+    fromStatuses: HomeVisitStatus[],
+    staffId: string,
+    scheduledAt: Date,
+    distanceKm: number | null,
+  ): Promise<HydratedDocument<HomeVisitDocument>> {
+    const updated = (await HomeVisitModel.findOneAndUpdate(
+      mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
+      {
+        $set: {
+          assignedStaffId: staffId,
+          status: HomeVisitStatuses.ASSIGNED,
+          ...(distanceKm !== null
+            ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
+            : {}),
+        },
+      },
+      { new: true },
+    )) as HydratedDocument<HomeVisitDocument> | null;
+    if (!updated) {
+      throw new AppError(
+        "Visit cannot be assigned right now — it may have just been updated by someone else",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
+    const holders = await HomeVisitModel.find(
+      mongoFilter({
+        assignedStaffId: staffId,
+        status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+        scheduledAt: {
+          $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
+          $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
+        },
+        deletedAt: { $exists: false },
+      }),
+    )
+      .select("_id")
+      .sort({ _id: 1 })
+      .lean();
+
+    const winnerId = holders[0]?._id?.toString();
+    if (holders.length > 1 && winnerId !== visitId) {
+      await HomeVisitModel.updateOne(
+        mongoFilter({
+          _id: visitId,
+          assignedStaffId: staffId,
+          status: HomeVisitStatuses.ASSIGNED,
+        }),
+        {
+          $set: { status: HomeVisitStatuses.REQUESTED },
+          $unset: { assignedStaffId: "" },
+        },
+      );
+      throw new AppError(
+        "Selected provider was just assigned to another visit at this time — please try again",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
+    return updated;
+  }
+
   static async autoAssignStaff(visitId: string) {
     await HomeVisitService.ensureConnected();
 
@@ -1019,12 +1209,13 @@ export class HomeVisitService {
           404,
         );
       }
-      visit.assignedStaffId = match.userId as never;
-      visit.status = HomeVisitStatuses.ASSIGNED;
-      if (visit.pricing) {
-        visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
-      }
-      await visit.save();
+      await HomeVisitService.commitAssignment(
+        visitId,
+        [HomeVisitStatuses.REQUESTED],
+        match.userId,
+        visit.scheduledAt,
+        match.distanceKm,
+      );
       const populated = await HomeVisitModel.findById(visit._id)
         .populate("patientId", "name")
         .lean();
@@ -1041,8 +1232,8 @@ export class HomeVisitService {
     }
 
     const match = isPhysiotherapyHomeVisitService(visit.serviceType)
-      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, city)
-      : await HomeVisitService.findNearestAvailableStaff(lng, lat, city);
+      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, city, visit.scheduledAt)
+      : await HomeVisitService.findNearestAvailableStaff(lng, lat, city, visit.scheduledAt);
 
     if (!match) {
       throw new AppError(
@@ -1054,12 +1245,13 @@ export class HomeVisitService {
       );
     }
 
-    visit.assignedStaffId = match.userId as never;
-    visit.status = HomeVisitStatuses.ASSIGNED;
-    if (visit.pricing) {
-      visit.pricing.distance = Math.round(match.distanceKm * 100) / 100;
-    }
-    await visit.save();
+    await HomeVisitService.commitAssignment(
+      visitId,
+      [HomeVisitStatuses.REQUESTED],
+      match.userId,
+      visit.scheduledAt,
+      match.distanceKm,
+    );
 
     const populated = await HomeVisitModel.findById(visit._id)
       .populate("patientId", "name")
@@ -1196,12 +1388,29 @@ export class HomeVisitService {
       );
     }
 
-    visit.assignedStaffId = input.staffId as never;
-    visit.status = HomeVisitStatuses.ASSIGNED;
-    if (visit.pricing && distanceKm !== null) {
-      visit.pricing.distance = Math.round(distanceKm * 100) / 100;
+    // Manual assignment previously had NO conflict check at all (unlike the
+    // auto-assign doctor path, which already checked getBusyStaffIds) —
+    // confirmed by testing: an admin could manually assign the same staff
+    // member to two overlapping-time visits with zero rejection. override
+    // only ever governed the distance/service-radius check above (per its
+    // existing doc comment); it does not extend to bypassing a genuine
+    // double-booking, so this check is not gated on it.
+    const busyIds = await getBusyStaffIds(visit.scheduledAt, visitId);
+    if (busyIds.includes(input.staffId)) {
+      throw new AppError(
+        "Selected provider already has another visit at this time",
+        ErrorCodes.CONFLICT,
+        409,
+      );
     }
-    await visit.save();
+
+    await HomeVisitService.commitAssignment(
+      visitId,
+      [HomeVisitStatuses.REQUESTED, HomeVisitStatuses.ASSIGNED],
+      input.staffId,
+      visit.scheduledAt,
+      distanceKm,
+    );
 
     const populated = await HomeVisitModel.findById(visit._id)
       .populate("patientId", "name")
@@ -1282,6 +1491,21 @@ export class HomeVisitService {
       visit.cancelledAt = new Date();
       visit.cancellationReason = input.cancellationReason;
     } else {
+      if (input.status === HomeVisitStatuses.ASSIGNED) {
+        // Confirmed bug: this endpoint's transition guard below only checks
+        // STATUS_ORDER position, not adjacency — an admin sending
+        // {status:"assigned"} here would set status=ASSIGNED without ever
+        // setting assignedStaffId (that only happens in assignStaff /
+        // autoAssignStaff), leaving the visit in an inconsistent state no
+        // staff member could ever act on (isAssignedStaff would never be
+        // true). ASSIGNED must only ever be reached through the dedicated
+        // assign functions, which set both fields together atomically.
+        throw new AppError(
+          "Use the assign endpoint to assign staff, not a direct status update",
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
       if (!admin && !isAssignedStaff) {
         throw new AppError("Only assigned staff can update status", ErrorCodes.FORBIDDEN, 403);
       }
@@ -1300,7 +1524,18 @@ export class HomeVisitService {
       visit.staffNotes = input.staffNotes;
     }
 
-    await visit.save();
+    try {
+      await visit.save();
+    } catch (error) {
+      if (isVersionConflict(error)) {
+        throw new AppError(
+          "This visit was just updated elsewhere — please refresh and try again",
+          ErrorCodes.CONFLICT,
+          409,
+        );
+      }
+      throw error;
+    }
 
     if (
       input.status === HomeVisitStatuses.EN_ROUTE ||
@@ -1415,20 +1650,12 @@ export class HomeVisitService {
 
     const [lng, lat] = visitPatientCoords(visit);
     const city = visit.address?.city ?? LAUNCH_CITY;
-    const doctorVisit = isDoctorHomeVisitService(
-      visit.serviceType as HomeVisitServiceType,
-    );
     const physioVisit = isPhysiotherapyHomeVisitService(
       visit.serviceType as HomeVisitServiceType,
     );
     const staffType = physioVisit ? Roles.PHYSIOTHERAPIST : Roles.NURSE;
     const defaultStaffName = physioVisit ? "Physiotherapist" : "Nurse";
-    const busyIds = doctorVisit
-      ? await getBusyStaffIds(
-          visit.scheduledAt as Date,
-          HomeVisitServiceTypes.DOCTOR_VISIT,
-        )
-      : [];
+    const busyIds = await getBusyStaffIds(visit.scheduledAt as Date, visitId);
 
     const staffProfiles = await StaffProfileModel.find({
       staffType,
@@ -1464,6 +1691,7 @@ export class HomeVisitService {
               .filter(Boolean)
               .join(", "),
             distanceKm,
+            unavailable: user?._id ? busyIds.includes(user._id.toString()) : undefined,
           };
         })
         .filter((n) => n.id)
@@ -1509,13 +1737,14 @@ export class HomeVisitService {
             p.homeVisitFee ??
             HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
           distanceKm,
-          unavailable: doctorVisit ? busyIds.includes(userId) : undefined,
+          unavailable: busyIds.includes(userId),
         };
       })
       .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
 
     const nearbyNurses = nursesWithDistance.filter(
       (n) =>
+        !n.unavailable &&
         n.distanceKm !== undefined &&
         n.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
     );

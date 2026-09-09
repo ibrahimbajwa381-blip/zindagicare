@@ -796,26 +796,32 @@ describe("APT-016 — Payment failure", () => {
     await OnlineConsultService.failPayment("payment-1", "card_declined");
 
     expect(mockPaymentUpdateOne).toHaveBeenCalledWith(
-      expect.objectContaining({ _id: "payment-1" }),
+      expect.objectContaining({ _id: "payment-1", status: PaymentStatuses.PENDING }),
       expect.objectContaining({
         $set: expect.objectContaining({ status: PaymentStatuses.FAILED, failureReason: "card_declined" }),
       }),
     );
     expect(mockAppointmentUpdateOne).toHaveBeenCalledWith(
-      { _id: appointmentIdRef },
+      { _id: appointmentIdRef, status: AppointmentStatuses.PENDING },
       expect.objectContaining({ $set: expect.objectContaining({ status: AppointmentStatuses.CANCELLED }) }),
     );
   });
 
   test("failPayment is a no-op on an already-PAID payment — does not flip a paid payment to failed", async () => {
-    mockPaymentFindById.mockReturnValue(
-      chain({ _id: { toString: () => "payment-2" }, status: PaymentStatuses.PAID }),
-    );
+    // failPayment's guard is now the atomic updateOne filter itself
+    // (`{_id, status: PENDING}`), not a separate upfront read — a payment
+    // that's already PAID (e.g. a concurrent confirmAfterPayment won the
+    // race) simply fails to match, exactly as a real conditional Mongo
+    // update would for a payment no longer in the PENDING state.
+    mockPaymentUpdateOne.mockResolvedValueOnce({ matchedCount: 0, modifiedCount: 0 });
 
     const { OnlineConsultService } = await import("@/server/services/online-consult.service");
     await OnlineConsultService.failPayment("payment-2", "late_callback");
 
-    expect(mockPaymentUpdateOne).not.toHaveBeenCalled();
+    expect(mockPaymentUpdateOne).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: "payment-2", status: PaymentStatuses.PENDING }),
+      expect.anything(),
+    );
     expect(mockAppointmentUpdateOne).not.toHaveBeenCalled();
   });
 });
@@ -863,11 +869,11 @@ describe("APT-017 — Successful payment", () => {
     const booking = await OnlineConsultService.confirmAfterPayment("payment-1", "EXT-TXN-1");
 
     expect(mockPaymentUpdateOne).toHaveBeenCalledWith(
-      { _id: "payment-1" },
+      { _id: "payment-1", status: PaymentStatuses.PENDING },
       expect.objectContaining({ $set: expect.objectContaining({ status: PaymentStatuses.PAID }) }),
     );
     expect(mockAppointmentUpdateOne).toHaveBeenCalledWith(
-      { _id: appointmentDoc._id },
+      { _id: appointmentDoc._id, status: AppointmentStatuses.PENDING },
       expect.objectContaining({ $set: { status: AppointmentStatuses.CONFIRMED } }),
     );
     expect(booking).not.toBeNull();

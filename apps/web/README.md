@@ -12,6 +12,11 @@ yarn dev
 pnpm dev
 # or
 bun dev
+
+woe07oLAmQE2mn0X
+
+jezra6127_db_user
+mongodb+srv://<db_username>:woe07oLAmQE2mn0X@cluster0.awyk5m2.mongodb.net/?appName=Cluster0
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

@@ -959,8 +959,28 @@ export class OnlineConsultService {
       return OnlineConsultService.getBookingByAppointmentId(appointment._id.toString());
     }
 
-    await PaymentModel.updateOne(
-      mongoFilter({ _id: paymentId }),
+    // A payment can be confirmed late — after the 15-minute hold expired and
+    // the stale-pending sweep already cancelled this appointment, or (in
+    // principle) after it was otherwise completed/marked no-show. Without
+    // this guard, a late gateway webhook or manual-receipt submission would
+    // silently resurrect a non-PENDING appointment back to CONFIRMED.
+    if (appointment.status !== AppointmentStatuses.PENDING) {
+      throw new AppError(
+        "This booking is no longer available to confirm",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
+    // Both writes are conditioned on the status this function itself just
+    // read (PENDING), closing the gap the read-then-write above can't: a
+    // concurrent failPayment (real gateways can deliver a decline and a
+    // success callback for the same transaction close together) racing in
+    // between this read and these writes. If either write matches nothing,
+    // someone else already resolved it — surface a clean conflict instead of
+    // silently overwriting whatever they set.
+    const paymentResult = await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId, status: PaymentStatuses.PENDING }),
       {
         $set: {
           status: PaymentStatuses.PAID,
@@ -969,11 +989,25 @@ export class OnlineConsultService {
         },
       },
     );
+    if (paymentResult.matchedCount === 0) {
+      throw new AppError(
+        "This payment has already been processed",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
 
-    await AppointmentModel.updateOne(
-      mongoFilter({ _id: appointment._id }),
+    const appointmentResult = await AppointmentModel.updateOne(
+      mongoFilter({ _id: appointment._id, status: AppointmentStatuses.PENDING }),
       { $set: { status: AppointmentStatuses.CONFIRMED } },
     );
+    if (appointmentResult.matchedCount === 0) {
+      throw new AppError(
+        "This booking is no longer available to confirm",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
 
     await ChatService.ensureAppointmentThread(appointment._id.toString());
     await ChatService.startIntakeConversation(appointment._id.toString());
@@ -1023,11 +1057,17 @@ export class OnlineConsultService {
   static async failPayment(paymentId: string, reason?: string) {
     await OnlineConsultService.ensureConnected();
 
-    const payment = await PaymentModel.findById(paymentId).lean();
-    if (!payment || payment.status !== PaymentStatuses.PENDING) return;
-
-    await PaymentModel.updateOne(
-      mongoFilter({ _id: paymentId }),
+    // Atomic: the write itself requires status===PENDING, so a payment that
+    // a concurrent confirmAfterPayment (or another failPayment/webhook
+    // replay) has already resolved cannot be silently flipped to FAILED out
+    // from under it. Real gateways (JazzCash return-URL + IPN webhook) can
+    // and do deliver a decline and a success callback for the same
+    // transaction close together — without this guard, whichever call's
+    // writes landed last would win, while the loser's caller (e.g. a webhook
+    // handler) would still see a successful `failPayment` return and believe
+    // it had cancelled a booking that's actually confirmed and paid.
+    const result = await PaymentModel.updateOne(
+      mongoFilter({ _id: paymentId, status: PaymentStatuses.PENDING }),
       {
         $set: {
           status: PaymentStatuses.FAILED,
@@ -1035,10 +1075,17 @@ export class OnlineConsultService {
         },
       },
     );
+    if (result.matchedCount === 0) return;
 
-    if (payment.appointmentId) {
+    const payment = await PaymentModel.findById(paymentId).select("appointmentId").lean();
+    if (payment?.appointmentId) {
+      // Also conditioned on PENDING: our own payment write above just won,
+      // but a concurrent confirmAfterPayment may have already moved the
+      // appointment to CONFIRMED between that write and this one — in which
+      // case leave it alone rather than blindly cancelling a now-confirmed
+      // booking.
       await AppointmentModel.updateOne(
-        mongoFilter({ _id: payment.appointmentId }),
+        mongoFilter({ _id: payment.appointmentId, status: AppointmentStatuses.PENDING }),
         { $set: { status: AppointmentStatuses.CANCELLED } },
       );
     }

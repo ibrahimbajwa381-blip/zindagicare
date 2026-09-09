@@ -200,14 +200,8 @@ export class VideoSessionService {
       mongoFilter({ appointmentId: appointment._id.toString() }),
     ).lean();
 
-    const metadata = existing?.metadata as {
-      meetingId?: number;
-      passcode?: string;
-      joinUrl?: string;
-      startUrl?: string;
-    } | null;
-
-    if (existing && metadata?.meetingId) {
+    const existingMetadata = existing?.metadata as { meetingId?: number } | null;
+    if (existing && existingMetadata?.meetingId) {
       return existing;
     }
 
@@ -230,26 +224,29 @@ export class VideoSessionService {
       timezone: VIDEO_CONSULT_CONFIG.defaultTimezone,
     });
 
-    const sessionDoc = existing
-      ? await VideoSessionModel.findByIdAndUpdate(
-          existing._id,
-          {
-            $set: {
-              channelName: String(meeting.id),
-              provider: "zoom",
-              status: VideoSessionStatuses.WAITING,
-              metadata: {
-                meetingId: meeting.id,
-                passcode: meeting.password,
-                joinUrl: meeting.join_url,
-                startUrl: meeting.start_url,
-                meetingTitle: topic,
-              },
+    let sessionDoc;
+    if (existing) {
+      sessionDoc = await VideoSessionModel.findByIdAndUpdate(
+        existing._id,
+        {
+          $set: {
+            channelName: String(meeting.id),
+            provider: "zoom",
+            status: VideoSessionStatuses.WAITING,
+            metadata: {
+              meetingId: meeting.id,
+              passcode: meeting.password,
+              joinUrl: meeting.join_url,
+              startUrl: meeting.start_url,
+              meetingTitle: topic,
             },
           },
-          { new: true },
-        )
-      : await VideoSessionModel.create({
+        },
+        { new: true },
+      );
+    } else {
+      try {
+        sessionDoc = await VideoSessionModel.create({
           appointmentId: appointment._id.toString(),
           channelName: String(meeting.id),
           provider: "zoom",
@@ -262,6 +259,34 @@ export class VideoSessionService {
             meetingTitle: topic,
           },
         });
+      } catch (error) {
+        // Two concurrent first-time joins (e.g. patient and doctor opening
+        // the call page within milliseconds of each other) both see no
+        // existing session and both create a real Zoom meeting before
+        // either write lands — the unique index on appointmentId then
+        // rejects the loser's insert. Reproduced against a real MongoDB
+        // instance: without this catch, the loser got a raw, unhandled
+        // MongoServerError instead of the winner's already-created session.
+        // Recovering here doesn't stop the wasted duplicate Zoom API call (a
+        // real but separate cost/resource concern, not a correctness bug —
+        // fully closing it would need a reservation lock ahead of the Zoom
+        // API call, which is a larger change flagged separately rather than
+        // included in this fix), but every caller still gets back the one
+        // shared session instead of a crash.
+        if (
+          !(
+            typeof error === "object" &&
+            error !== null &&
+            (error as { code?: number }).code === 11000
+          )
+        ) {
+          throw error;
+        }
+        sessionDoc = await VideoSessionModel.findOne(
+          mongoFilter({ appointmentId: appointment._id.toString() }),
+        );
+      }
+    }
 
     if (!sessionDoc) {
       throw new AppError("Failed to create video session", "SERVICE_UNAVAILABLE", 503);
@@ -389,8 +414,16 @@ export class VideoSessionService {
     await VideoSessionModel.updateOne(mongoFilter({ _id: session._id }), { $set: updates });
 
     if (appointment.status === AppointmentStatuses.CONFIRMED) {
+      // Conditioned on the CONFIRMED status this function itself already
+      // read above, not just filtered by _id: a concurrent cancellation
+      // (patient-appointments.service.ts's requestCancellation, which a
+      // patient can call at the same moment someone joins the call) could
+      // otherwise land in between and get silently overwritten back to
+      // IN_PROGRESS by this unconditional write — reproduced against a real
+      // MongoDB instance. If it doesn't match, the appointment was already
+      // moved on by something else; nothing to do.
       await AppointmentModel.updateOne(
-        mongoFilter({ _id: appointment._id }),
+        mongoFilter({ _id: appointment._id, status: AppointmentStatuses.CONFIRMED }),
         { $set: { status: AppointmentStatuses.IN_PROGRESS } },
       );
     }
@@ -439,12 +472,25 @@ export class VideoSessionService {
     }
 
     if (session.patientJoinedAt && appointment.status !== AppointmentStatuses.COMPLETED) {
-      await AppointmentModel.updateOne(mongoFilter({ _id: appointment._id }), {
-        $set: {
-          status: AppointmentStatuses.COMPLETED,
-          completedAt: endedAt,
+      // Conditioned on the appointment still being active (CONFIRMED or
+      // IN_PROGRESS — the only two statuses resolveParticipant allows this
+      // far), not just filtered by _id: a concurrent cancellation (e.g. an
+      // admin cancelling mid-call) could otherwise land in between and get
+      // silently overwritten back to COMPLETED by this write — same TOCTOU
+      // shape as recordJoin above, reproduced against a real MongoDB
+      // instance. If it doesn't match, something else already resolved it.
+      await AppointmentModel.updateOne(
+        mongoFilter({
+          _id: appointment._id,
+          status: { $in: [AppointmentStatuses.CONFIRMED, AppointmentStatuses.IN_PROGRESS] },
+        }),
+        {
+          $set: {
+            status: AppointmentStatuses.COMPLETED,
+            completedAt: endedAt,
+          },
         },
-      });
+      );
 
       if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
         await SundayFreeRequestModel.updateOne(

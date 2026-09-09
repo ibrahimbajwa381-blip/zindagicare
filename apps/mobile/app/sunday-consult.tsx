@@ -20,6 +20,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
+import { resolveMediaUrl } from "@/lib/config";
 
 const POLL_MS = 15000;
 
@@ -259,7 +260,7 @@ export default function SundayConsultScreen() {
           <View style={styles.card}>
             <View style={styles.doctorRow}>
               {request.doctor.avatarUrl ? (
-                <Image source={{ uri: request.doctor.avatarUrl }} style={styles.avatar} />
+                <Image source={{ uri: resolveMediaUrl(request.doctor.avatarUrl) }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                   <Text style={styles.avatarInitial}>{request.doctor.name[0]}</Text>

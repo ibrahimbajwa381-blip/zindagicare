@@ -65,7 +65,14 @@ export default function SignupScreen() {
       return;
     }
     try {
-      const birthYear = new Date().getFullYear() - ageValue;
+      // Synthesize DOB using today's month/day (not Jan 1) so the server's
+      // re-derived age matches the entered age exactly — hardcoding Jan 1
+      // overstates elapsed age for any signup later in the year, which could
+      // push a truthfully-entered boundary age (e.g. 120) over the server's
+      // max-age limit.
+      const now = new Date();
+      const birthDate = new Date(now.getFullYear() - ageValue, now.getMonth(), now.getDate());
+      const dateOfBirth = `${birthDate.getFullYear()}-${String(birthDate.getMonth() + 1).padStart(2, "0")}-${String(birthDate.getDate()).padStart(2, "0")}`;
       await registerWithCredentials({
         name: name.trim(),
         email: email.trim().toLowerCase(),
@@ -73,7 +80,7 @@ export default function SignupScreen() {
         confirmPassword,
         phone: phone.trim(),
         city: city.trim(),
-        dateOfBirth: `${birthYear}-01-01`,
+        dateOfBirth,
         accountType,
       });
     } catch (e) {

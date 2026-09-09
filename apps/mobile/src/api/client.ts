@@ -33,7 +33,8 @@ export class ApiRequestError extends Error {
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+/** Exported so callers outside apiFetch (e.g. the SSE chat client, which can't use apiFetch's retry) can trigger the same silent refresh. */
+export async function refreshAccessToken(): Promise<string | null> {
   const { refreshToken } = await getStoredTokens();
   if (!refreshToken) return null;
 
@@ -50,6 +51,14 @@ async function refreshAccessToken(): Promise<string | null> {
 
   await setStoredTokens(json.data.accessToken, json.data.refreshToken);
   return json.data.accessToken;
+}
+
+/** De-dupes concurrent refresh attempts (e.g. apiFetch and the SSE chat client both hitting a 401 at once) onto a single in-flight request. */
+export async function refreshAccessTokenShared(): Promise<string | null> {
+  refreshPromise ??= refreshAccessToken().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
 }
 
 /** Fetch wrapper: attaches the stored access token and retries once after a silent refresh on 401. */
@@ -73,10 +82,7 @@ export async function apiFetch<T>(
 
   if (!json.success) {
     if (res.status === 401 && retry) {
-      refreshPromise ??= refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-      const newToken = await refreshPromise;
+      const newToken = await refreshAccessTokenShared();
       if (newToken) {
         return apiFetch<T>(path, init, { retry: false });
       }

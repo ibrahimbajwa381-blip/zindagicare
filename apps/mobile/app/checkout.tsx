@@ -38,8 +38,10 @@ export default function CheckoutScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isBookingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => () => {
+    mountedRef.current = false;
     if (pollRef.current) clearInterval(pollRef.current);
   }, []);
 
@@ -50,13 +52,19 @@ export default function CheckoutScreen() {
     setError(null);
     try {
       const res = await checkoutConsult({ doctorId, slotId, patientNotes: notes || undefined });
+      // The user can navigate away while checkoutConsult() is still in flight —
+      // the unmount cleanup above already ran and found pollRef.current still
+      // null, so bail out here instead of starting a polling interval nothing
+      // will ever clear.
+      if (!mountedRef.current) return;
       setResult(res);
       startPolling(res.paymentId);
     } catch (e) {
+      if (!mountedRef.current) return;
       setError(e instanceof ApiRequestError ? e.message : "Booking failed. Please try again.");
     } finally {
       isBookingRef.current = false;
-      setIsBooking(false);
+      if (mountedRef.current) setIsBooking(false);
     }
   };
 

@@ -4,6 +4,7 @@ import SignupScreen from "@app/(auth)/signup";
 import { useAuth } from "@/lib/auth-context";
 import { router } from "expo-router";
 import { makeAuthUser, makeMockAuth } from "@/test-utils/mock-auth";
+import { expectedDateOfBirth } from "../../../utils/expected-dob";
 
 jest.mock("@/lib/auth-context", () => ({
   useAuth: jest.fn(),
@@ -244,7 +245,6 @@ describe("SignupScreen", () => {
     await fillValidForm();
     await fireEvent.press(screen.getByText("Create account"));
 
-    const expectedBirthYear = new Date().getFullYear() - 28;
     await waitFor(() => {
       expect(registerWithCredentials).toHaveBeenCalledWith({
         name: "Ayesha Khan",
@@ -253,7 +253,7 @@ describe("SignupScreen", () => {
         confirmPassword: "secret1",
         phone: "03001234567",
         city: "Lahore",
-        dateOfBirth: `${expectedBirthYear}-01-01`,
+        dateOfBirth: expectedDateOfBirth(28),
         accountType: "patient",
       });
     });

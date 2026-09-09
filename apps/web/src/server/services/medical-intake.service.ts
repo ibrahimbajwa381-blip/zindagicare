@@ -154,6 +154,14 @@ async function notifyDoctorIntakeCompleted(params: {
   });
 }
 
+function isDuplicateKeyError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: number }).code === 11000
+  );
+}
+
 export class MedicalIntakeService {
   static async ensureConnected() {
     await connectDatabase();
@@ -190,16 +198,39 @@ export class MedicalIntakeService {
       options?.questionSet ?? "full",
     );
 
-    const created = await MedicalIntakeModel.create({
-      appointmentId,
-      patientId: appointment.patientId,
-      doctorId: appointment.doctorId,
-      source,
-      locale,
-      status: IntakeStatuses.PENDING,
-      currentQuestionIndex: 0,
-      questions,
-    });
+    let created;
+    try {
+      created = await MedicalIntakeModel.create({
+        appointmentId,
+        patientId: appointment.patientId,
+        doctorId: appointment.doctorId,
+        source,
+        locale,
+        status: IntakeStatuses.PENDING,
+        currentQuestionIndex: 0,
+        questions,
+      });
+    } catch (error) {
+      // Two callers can both pass the findOne() check above for the same
+      // appointment before either has written — e.g. two concurrent Sunday
+      // free-request assignments recovering the same already-created
+      // appointment (see SundayConsultService.assignDoctor) both then call
+      // this "idempotent" method for that one appointmentId. The unique
+      // index on MedicalIntake{appointmentId} rejects the loser's insert;
+      // without this catch the loser got a raw, unhandled MongoServerError
+      // instead of the winner's already-created intake, breaking the
+      // idempotency this method is documented to provide.
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+      const existingAfterRace = await MedicalIntakeModel.findOne(
+        mongoFilter({ appointmentId }),
+      ).lean();
+      if (!existingAfterRace) {
+        throw error;
+      }
+      return toDto(existingAfterRace as unknown as IntakeRow);
+    }
 
     return toDto(created.toObject() as unknown as IntakeRow);
   }

@@ -118,6 +118,14 @@ function toConfirmBookingResult(doc: CreatedAppointmentRow): SundayConfirmBookin
   };
 }
 
+function isDuplicateKeyError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: number }).code === 11000
+  );
+}
+
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
   AppointmentStatuses.CONFIRMED,
@@ -479,19 +487,39 @@ export class SundayConsultService {
 
     const sundayDateKey = formatSundayDateKey(instance.sundayDate);
 
-    const appointment = (await AppointmentModel.create({
-      type: AppointmentTypes.SUNDAY_FREE,
-      status: AppointmentStatuses.CONFIRMED,
-      patientId,
-      doctorId,
-      scheduledStart: slot.startAt,
-      scheduledEnd: slot.endAt,
-      sundayDateKey,
-      sundaySlotInstanceId: instance._id.toString(),
-      sundaySlotId: slotId,
-      patientNotes,
-      isOnline: true,
-    } as Record<string, unknown>)) as CreatedAppointmentRow;
+    let appointment: CreatedAppointmentRow;
+    try {
+      appointment = (await AppointmentModel.create({
+        type: AppointmentTypes.SUNDAY_FREE,
+        status: AppointmentStatuses.CONFIRMED,
+        patientId,
+        doctorId,
+        scheduledStart: slot.startAt,
+        scheduledEnd: slot.endAt,
+        sundayDateKey,
+        sundaySlotInstanceId: instance._id.toString(),
+        sundaySlotId: slotId,
+        patientNotes,
+        isOnline: true,
+      } as Record<string, unknown>)) as CreatedAppointmentRow;
+    } catch (error) {
+      // The patient can hold two different slots at once (e.g. two browser
+      // tabs) and confirm both within milliseconds of each other — each
+      // hold check above passes independently, but the unique partial index
+      // on Appointment{patientId, type, sundayDateKey} (active statuses
+      // only) rejects the loser's insert. Without this catch the loser got
+      // a raw, unhandled MongoServerError (500) instead of a clean 409, and
+      // this slot would stay HELD (never released) until the expiry sweep.
+      if (isDuplicateKeyError(error)) {
+        await SundayConsultService.releaseHold(patientId, instanceId, slotId, holdToken);
+        throw new AppError(
+          "You already have your free consultation for this week. One request per patient — first come, first served.",
+          ErrorCodes.CONFLICT,
+          409,
+        );
+      }
+      throw error;
+    }
 
     const result = toConfirmBookingResult(appointment);
 
@@ -923,15 +951,42 @@ export class SundayConsultService {
   ): Promise<SundayPatientRequestDto> {
     const user = await UserModel.findById(patientId).lean();
 
-    const doc = await SundayFreeRequestModel.create({
-      patientId,
-      patientPhone: input.patientPhone,
-      patientNotes: input.patientNotes,
-      sundayDateKey: input.sundayDateKey,
-      affordabilityChoice: input.affordabilityChoice,
-      paymentId: input.paymentId,
-      status: SundayFreeRequestStatuses.REQUESTED,
-    });
+    let doc;
+    try {
+      doc = await SundayFreeRequestModel.create({
+        patientId,
+        patientPhone: input.patientPhone,
+        patientNotes: input.patientNotes,
+        sundayDateKey: input.sundayDateKey,
+        affordabilityChoice: input.affordabilityChoice,
+        paymentId: input.paymentId,
+        status: SundayFreeRequestStatuses.REQUESTED,
+      });
+    } catch (error) {
+      // Two concurrent requests from the same patient can both pass the
+      // earlier findOne() conflict check in submitRequest() before either
+      // has written (TOCTOU race) — the unique partial index on
+      // SundayFreeRequest{patientId, sundayDateKey} (REQUESTED/ASSIGNED
+      // only) is the actual guard; a duplicate key here means the other
+      // request already won. Recover by returning that existing request
+      // instead of surfacing a raw 500 to the loser.
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+      const existing = await SundayFreeRequestModel.findOne(
+        mongoFilter({
+          patientId,
+          sundayDateKey: input.sundayDateKey,
+          status: { $in: [...ACTIVE_REQUEST_STATUSES] },
+        }),
+      ).lean();
+      if (!existing) {
+        throw error;
+      }
+      return SundayConsultService.mapPatientRequest(
+        existing as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
+      );
+    }
 
     const requestId = doc._id.toString();
     const isPaid = input.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE;
@@ -1487,19 +1542,45 @@ export class SundayConsultService {
     let appointmentId = request.appointmentId?.toString();
 
     if (!appointmentId) {
-      const appointment = (await AppointmentModel.create({
-        type: AppointmentTypes.SUNDAY_FREE,
-        status: AppointmentStatuses.CONFIRMED,
-        patientId: request.patientId,
-        doctorId: doctor._id,
-        paymentId: request.paymentId,
-        scheduledStart,
-        scheduledEnd,
-        timezone: SUNDAY_CONSULT_CONFIG.timezone,
-        sundayDateKey: request.sundayDateKey,
-        isOnline: true,
-        patientNotes: request.patientNotes,
-      } as Record<string, unknown>)) as { _id: { toString(): string } };
+      let appointment: { _id: { toString(): string } };
+      try {
+        appointment = (await AppointmentModel.create({
+          type: AppointmentTypes.SUNDAY_FREE,
+          status: AppointmentStatuses.CONFIRMED,
+          patientId: request.patientId,
+          doctorId: doctor._id,
+          paymentId: request.paymentId,
+          scheduledStart,
+          scheduledEnd,
+          timezone: SUNDAY_CONSULT_CONFIG.timezone,
+          sundayDateKey: request.sundayDateKey,
+          isOnline: true,
+          patientNotes: request.patientNotes,
+        } as Record<string, unknown>)) as { _id: { toString(): string } };
+      } catch (error) {
+        // A double-click (or two admins acting on the same request within
+        // milliseconds) can both read appointmentId=null on the same
+        // request document before either write lands — the unique partial
+        // index on Appointment{patientId, type, sundayDateKey} (active
+        // statuses only) rejects the loser's insert. Recover by reusing the
+        // request's own already-assigned appointment (refreshed below)
+        // instead of surfacing a raw 500 to the losing admin action.
+        if (!isDuplicateKeyError(error)) {
+          throw error;
+        }
+        const winner = await AppointmentModel.findOne(
+          mongoFilter({
+            patientId: request.patientId,
+            type: AppointmentTypes.SUNDAY_FREE,
+            sundayDateKey: request.sundayDateKey,
+            status: { $in: ACTIVE_APPOINTMENT_STATUSES },
+          }),
+        ).lean();
+        if (!winner) {
+          throw error;
+        }
+        appointment = winner as unknown as { _id: { toString(): string } };
+      }
 
       appointmentId = appointment._id.toString();
       request.appointmentId = appointment._id as unknown as typeof request.appointmentId;

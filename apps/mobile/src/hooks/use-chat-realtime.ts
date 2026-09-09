@@ -3,6 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { fetch as expoFetch } from "expo/fetch";
 import { API_URL } from "@/lib/config";
 import { getStoredTokens } from "@/lib/token-storage";
+import { refreshAccessTokenShared } from "@/api/client";
 import type { ChatRealtimeEvent } from "@/api/chat";
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -42,6 +43,21 @@ export function useChatRealtime(onEvent: (event: ChatRealtimeEvent) => void) {
             headers: { Authorization: `Bearer ${accessToken}`, Accept: "text/event-stream" },
             signal: abortController.signal,
           });
+
+          if (res.status === 401) {
+            // A screen that relies solely on this hook for live updates has no
+            // other apiFetch call that would otherwise trigger a token refresh —
+            // without this, every reconnect attempt just backs off and retries
+            // with the same stale token forever. Refresh once and retry
+            // immediately with the new token instead.
+            const refreshed = await refreshAccessTokenShared();
+            if (stopped) return;
+            if (refreshed) {
+              reconnectAttempts = 0;
+              return connect();
+            }
+          }
+
           if (!res.ok || !res.body) throw new Error(`SSE connect failed: ${res.status}`);
 
           reconnectAttempts = 0;
