@@ -6,7 +6,7 @@
     "dev": "next dev --webpack",
     "dev:turbo": "next dev",
     "build": "node ./scripts/ensure-native-css.cjs && next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "eslint",
     "postinstall": "node ./scripts/ensure-native-css.cjs",
     "sync:specialty-icons": "node scripts/sync-specialty-icons.mjs",
