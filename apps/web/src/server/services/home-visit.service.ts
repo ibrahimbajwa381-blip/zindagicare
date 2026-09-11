@@ -9,7 +9,7 @@ import {
   type HomeVisitDocument,
 } from "@zindagi/database";
 import { mongoFilter } from "@/lib/mongo/query";
-import type { HydratedDocument } from "mongoose";
+import { Types, type HydratedDocument } from "mongoose";
 import {
   AppError,
   CancellationRequestStatuses,
@@ -211,6 +211,21 @@ function isVersionConflict(err: unknown): boolean {
 
 function toGeoPoint(lng: number, lat: number) {
   return { type: "Point" as const, coordinates: [lng, lat] as [number, number] };
+}
+
+/**
+ * Confirmed bug (same class already fixed as APT-013 in
+ * online-consult.service.ts): a malformed id — not a valid Mongo ObjectId —
+ * reaching `findById`/`findOne({_id})` throws a raw Mongoose CastError.
+ * apiError() has no special case for CastError, so it falls through to a
+ * generic 500 "Something went wrong" instead of the controlled 4xx a bad
+ * client-supplied id (typo'd URL, stale bookmark, fuzzed input) should
+ * produce.
+ */
+function assertValidObjectId(id: string, notFoundMessage: string): void {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError(notFoundMessage, ErrorCodes.NOT_FOUND, 404);
+  }
 }
 
 function getBasePrice(serviceType: HomeVisitServiceType): number {
@@ -501,6 +516,7 @@ export class HomeVisitService {
   /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */
   static async initiateCheckout(visitId: string, patientId: string) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -620,6 +636,7 @@ export class HomeVisitService {
   }
 
   private static async loadHomeVisitPayment(paymentId: string, userId: string) {
+    assertValidObjectId(paymentId, "Payment not found");
     const payment = await PaymentModel.findById(paymentId).lean();
     if (!payment || payment.userId.toString() !== userId) {
       throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
@@ -705,6 +722,10 @@ export class HomeVisitService {
 
   static async failPayment(paymentId: string, reason?: string) {
     await HomeVisitService.ensureConnected();
+    // Malformed ids (this is reachable from payment gateway webhooks/
+    // callbacks) fall through to the same silent no-op as "payment not
+    // found" below, instead of throwing a raw Mongoose CastError.
+    if (!Types.ObjectId.isValid(paymentId)) return;
     const payment = await PaymentModel.findById(paymentId).lean();
     if (
       !payment ||
@@ -757,6 +778,7 @@ export class HomeVisitService {
     action: "approve" | "deny",
   ) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const existing = await HomeVisitModel.findById(visitId).lean();
     if (!existing) {
@@ -892,6 +914,7 @@ export class HomeVisitService {
     roles: string[],
   ): Promise<HomeVisitDto> {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findOne(
       mongoFilter({
@@ -1177,6 +1200,7 @@ export class HomeVisitService {
 
   static async autoAssignStaff(visitId: string) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = (await HomeVisitModel.findById(visitId)) as HydratedDocument<
       HomeVisitDocument
@@ -1280,6 +1304,8 @@ export class HomeVisitService {
     if (!input.staffId) {
       throw new AppError("staffId is required for manual assignment", ErrorCodes.VALIDATION, 400);
     }
+    assertValidObjectId(visitId, "Visit not found");
+    assertValidObjectId(input.staffId, "Staff member not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -1439,6 +1465,7 @@ export class HomeVisitService {
     input: UpdateHomeVisitStatusInput,
   ) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -1563,6 +1590,7 @@ export class HomeVisitService {
     file: File,
   ) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -1642,6 +1670,7 @@ export class HomeVisitService {
 
   static async listStaffForVisit(visitId: string) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId).lean();
     if (!visit) {
