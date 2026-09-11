@@ -50,6 +50,7 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ["image/avif", "image/webp"],
+    unoptimized: true,
   },
 };
 
