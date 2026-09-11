@@ -40,6 +40,7 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.76.0",
     "serwist": "^9.5.11",
+    "sharp": "^0.34.4",
     "@serwist/turbopack": "^9.5.11",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4",
