@@ -32,6 +32,7 @@ export function HomePhysioBanner() {
               src={HOME_PHYSIO_HERO_IMAGE}
               alt={copy.imageAlt}
               fill
+              unoptimized
               sizes="(max-width: 1024px) 100vw, 34vw"
               className={`object-cover ${HOME_PHYSIO_HERO_IMAGE_CLASS}`}
             />

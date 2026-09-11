@@ -124,6 +124,7 @@ export async function HomeServicesHero() {
               alt="Pakistani doctor and nurse providing in-house patient care at home"
               fill
               priority
+              unoptimized
               sizes="(max-width: 1024px) 100vw, 40vw"
               className="object-cover object-[center_20%]"
             />

@@ -19,7 +19,7 @@ const heroImages = [
   HOME_SERVICES_HERO_IMAGE,
   HOME_PHYSIO_HERO_IMAGE,
   URGENT_CARE_HERO_IMAGE,
-  "/hero/dr-usama-riyaz.png",
+  "/hero/dr-usama-riyaz.webp",
   SUNDAY_FREE_CONSULT_HERO_IMAGE,
 ] as const;
 const heroHrefs = [

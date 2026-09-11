@@ -1,5 +1,5 @@
 import { VerificationStatuses, type VerificationStatus } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
@@ -179,7 +179,7 @@ doctorProfileSchema.index({ coverageCities: 1 });
 export type DoctorProfileDocument = InferSchemaType<
   typeof doctorProfileSchema
 > & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   verificationStatus: VerificationStatus;
 };
 

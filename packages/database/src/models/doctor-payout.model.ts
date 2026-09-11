@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -45,7 +45,7 @@ doctorPayoutSchema.index({ doctorProfileId: 1, paidAt: -1 });
 doctorPayoutSchema.index({ providerProfileId: 1, paidAt: -1 });
 
 export type DoctorPayoutDocument = InferSchemaType<typeof doctorPayoutSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const DoctorPayoutModel: Model<DoctorPayoutDocument> =

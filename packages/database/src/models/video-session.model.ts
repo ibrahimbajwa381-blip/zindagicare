@@ -2,7 +2,7 @@ import {
   VideoSessionStatuses,
   type VideoSessionStatus,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -45,7 +45,7 @@ videoSessionSchema.index({ status: 1, createdAt: -1 });
 export type VideoSessionDocument = InferSchemaType<
   typeof videoSessionSchema
 > & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   status: VideoSessionStatus;
 };
 

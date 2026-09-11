@@ -216,6 +216,7 @@ export function HeroCarousel({
                     alt={service.imageAlt}
                     fill
                     priority={index === 0}
+                    unoptimized
                     loading={index === 0 ? "eager" : "lazy"}
                     sizes="(max-width: 1024px) 100vw, 38vw"
                     className={cn(

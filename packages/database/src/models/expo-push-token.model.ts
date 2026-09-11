@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 const expoPushTokenSchema = new Schema(
@@ -20,7 +20,7 @@ const expoPushTokenSchema = new Schema(
 expoPushTokenSchema.index({ userId: 1, updatedAt: -1 });
 
 export type ExpoPushTokenDocument = InferSchemaType<typeof expoPushTokenSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const ExpoPushTokenModel: Model<ExpoPushTokenDocument> = registerModel<ExpoPushTokenDocument>(

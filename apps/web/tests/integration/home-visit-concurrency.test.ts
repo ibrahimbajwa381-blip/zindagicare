@@ -273,10 +273,10 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
   test("HOME-005b: a malformed scheduledAt string is rejected", async () => {
     const patient = await createPatient();
     await expect(
-      HomeVisitService.createRequest(patient._id.toString(), {
-        ...bookingInput(HomeVisitServiceTypes.NURSE, nextSlot()),
-        scheduledAt: "not-a-date",
-      } as never),
+      HomeVisitService.createRequest(
+        patient._id.toString(),
+        bookingInput(HomeVisitServiceTypes.NURSE, nextSlot(), { scheduledAt: "not-a-date" }),
+      ),
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
@@ -420,7 +420,10 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
       Array.from({ length: 5 }, () => HomeVisitService.initiateCheckout(visit.id, patient._id.toString())),
     );
     const fulfilled = results.filter(
-      (r): r is PromiseFulfilledResult<{ paymentId: string }> => r.status === "fulfilled",
+      (
+        r,
+      ): r is PromiseFulfilledResult<Awaited<ReturnType<typeof HomeVisitService.initiateCheckout>>> =>
+        r.status === "fulfilled",
     );
     expect(fulfilled.length).toBeGreaterThan(0);
     const distinctPaymentIds = new Set(fulfilled.map((r) => r.value.paymentId));

@@ -36,6 +36,7 @@ export async function HomePhysioHero() {
               alt={copy.imageAlt}
               fill
               priority
+              unoptimized
               sizes="(max-width: 1024px) 100vw, 40vw"
               className={`object-cover ${HOME_PHYSIO_HERO_IMAGE_CLASS}`}
             />

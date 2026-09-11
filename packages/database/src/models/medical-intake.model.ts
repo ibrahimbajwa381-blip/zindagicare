@@ -4,7 +4,7 @@ import {
   type IntakeSource,
   type IntakeStatus,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -80,7 +80,7 @@ medicalIntakeSchema.index({ doctorId: 1, status: 1 });
 export type MedicalIntakeDocument = InferSchemaType<
   typeof medicalIntakeSchema
 > & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   source: IntakeSource;
   status: IntakeStatus;
 };

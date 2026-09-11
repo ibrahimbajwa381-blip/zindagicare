@@ -12,21 +12,21 @@ export const PROVIDER_ONBOARDING_IMAGES = {
   },
   nurse: {
     preview: {
-      src: "/providers/nurse-onboarding.jpg",
+      src: "/providers/nurse-onboarding.webp",
       alt: "Pakistani nurse in hijab and medical scrubs in a hospital corridor",
     },
     hero: {
-      src: "/providers/nurse-onboarding.jpg",
+      src: "/providers/nurse-onboarding.webp",
       alt: "Pakistani nurse in hijab and medical scrubs in a hospital corridor",
     },
   },
   physiotherapist: {
     preview: {
-      src: "/hero/home-physio-male-pakistan.jpg",
+      src: "/hero/home-physio-male-pakistan.webp",
       alt: "Male Pakistani physiotherapist providing professional home rehabilitation care",
     },
     hero: {
-      src: "/hero/home-physio-male-pakistan.jpg",
+      src: "/hero/home-physio-male-pakistan.webp",
       alt: "Male Pakistani physiotherapist providing professional home rehabilitation care",
     },
   },

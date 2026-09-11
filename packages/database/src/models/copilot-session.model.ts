@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -55,7 +55,7 @@ const copilotSessionSchema = new Schema(
 copilotSessionSchema.index({ userId: 1, status: 1, lastMessageAt: -1 });
 
 export type CopilotSessionDocument = InferSchemaType<typeof copilotSessionSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   status: CopilotSessionStatus;
 };
 
@@ -89,7 +89,7 @@ applyFieldEncryption(copilotMessageSchema, {
 copilotMessageSchema.index({ sessionId: 1, createdAt: 1 });
 
 export type CopilotMessageDocument = InferSchemaType<typeof copilotMessageSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   role: CopilotMessageRole;
 };
 

@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /** Singleton platform settings (key = "global"). */
@@ -30,7 +30,7 @@ const systemSettingsSchema = new Schema(
 
 export type SystemSettingsDocument = InferSchemaType<
   typeof systemSettingsSchema
-> & { _id: Schema.Types.ObjectId };
+> & { _id: Types.ObjectId };
 
 export const SystemSettingsModel: Model<SystemSettingsDocument> =
   registerModel<SystemSettingsDocument>("SystemSettings", systemSettingsSchema);

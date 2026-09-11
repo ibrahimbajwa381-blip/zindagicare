@@ -134,6 +134,7 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
               alt={heroImage.alt}
               fill
               priority
+              unoptimized
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover object-center"
             />

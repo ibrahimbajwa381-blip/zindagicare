@@ -4,7 +4,7 @@ import {
   type PaymentProvider,
   type PaymentStatus,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -51,7 +51,7 @@ paymentSchema.index({ userId: 1, createdAt: -1 });
 paymentSchema.index({ status: 1, createdAt: -1 });
 
 export type PaymentDocument = InferSchemaType<typeof paymentSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   provider: PaymentProvider;
   status: PaymentStatus;
 };

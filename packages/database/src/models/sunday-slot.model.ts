@@ -1,5 +1,5 @@
 import { SlotStatuses, type SlotStatus } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -29,7 +29,7 @@ sundaySlotTemplateSchema.index({ doctorId: 1, isActive: 1 });
 
 export type SundaySlotTemplateDocument = InferSchemaType<
   typeof sundaySlotTemplateSchema
-> & { _id: Schema.Types.ObjectId };
+> & { _id: Types.ObjectId };
 
 export const SundaySlotTemplateModel: Model<SundaySlotTemplateDocument> =
   registerModel<SundaySlotTemplateDocument>(
@@ -90,7 +90,7 @@ export type EmbeddedSlot = InferSchemaType<typeof embeddedSlotSchema> & {
 export type SundaySlotInstanceDocument = InferSchemaType<
   typeof sundaySlotInstanceSchema
 > & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   slots: EmbeddedSlot[];
 };
 
