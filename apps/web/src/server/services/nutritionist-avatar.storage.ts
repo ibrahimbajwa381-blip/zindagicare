@@ -1,4 +1,3 @@
-import path from "path";
 import { randomUUID } from "crypto";
 import {
   deleteObject,
@@ -6,6 +5,7 @@ import {
   putObject,
   type StorageNamespace,
 } from "@/server/lib/object-storage";
+import { compressAvatarImage } from "@/server/lib/image-compression";
 
 const NAMESPACE: StorageNamespace = "nutritionist-avatars";
 const MAX_BYTES = 3 * 1024 * 1024;
@@ -46,17 +46,17 @@ export async function saveNutritionistAvatar(
     throw new Error("Photo must be 3 MB or smaller");
   }
 
-  const ext = path.extname(file.name) || mimeToExt(file.type);
+  const original = Buffer.from(await file.arrayBuffer());
+  const { buffer, contentType, ext } = await compressAvatarImage(original);
   const storageKey = `${userId}/${randomUUID()}${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
 
-  await putObject(NAMESPACE, storageKey, buffer, file.type);
+  await putObject(NAMESPACE, storageKey, buffer, contentType);
 
   return {
     storageKey,
     url: nutritionistAvatarPublicUrl(storageKey),
     originalName: file.name,
-    mimeType: file.type,
+    mimeType: contentType,
   };
 }
 
@@ -77,17 +77,4 @@ export function nutritionistAvatarStorageKeyFromUrl(url: string): string | null 
 
 export async function deleteNutritionistAvatar(storageKey: string): Promise<void> {
   await deleteObject(NAMESPACE, storageKey);
-}
-
-function mimeToExt(mime: string): string {
-  switch (mime) {
-    case "image/jpeg":
-      return ".jpg";
-    case "image/png":
-      return ".png";
-    case "image/webp":
-      return ".webp";
-    default:
-      return ".jpg";
-  }
 }
