@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Check, Copy, Stethoscope, User } from "lucide-react";
+import { Calendar, Check, Copy, Eye, Stethoscope, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
 import { AppointmentCardDialog } from "./appointment-card-dialog";
 import type { AppointmentCardProps } from "./appointment-card";
 import { AdminDoctorAvatar } from "./admin-doctor-avatar";
+import { PaymentProofModal } from "./payment-proof-modal";
 
 type Appointment = AppointmentDetail;
 
@@ -165,6 +166,7 @@ export function AdminAppointmentsBoard() {
   const [showManualForm, setShowManualForm] = useState(false);
   const [formMode, setFormMode] = useState<"new" | "reschedule">("new");
   const [cardState, setCardState] = useState<CardState | null>(null);
+  const [activeProofPaymentId, setActiveProofPaymentId] = useState<string | null>(null);
 
   const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
@@ -539,7 +541,7 @@ export function AdminAppointmentsBoard() {
                   {a.receiptUploaded && a.paymentId && (
                     <ReceiptThumbnail
                       paymentId={a.paymentId}
-                      onClick={() => setDetailFor(a)}
+                      onClick={() => setActiveProofPaymentId(a.paymentId)}
                     />
                   )}
                 </div>
@@ -676,6 +678,11 @@ export function AdminAppointmentsBoard() {
           onClose={() => setCardState(null)}
         />
       )}
+      <PaymentProofModal
+        isOpen={!!activeProofPaymentId}
+        paymentId={activeProofPaymentId}
+        onClose={() => setActiveProofPaymentId(null)}
+      />
     </div>
   );
 }
@@ -1077,23 +1084,15 @@ function ReceiptThumbnail({
   paymentId: string;
   onClick: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return null;
-
   return (
     <button
       type="button"
       onClick={onClick}
-      className="shrink-0 overflow-hidden rounded-lg border border-slate-200 transition hover:border-brand"
-      title="View receipt"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:border-brand hover:bg-brand/5 hover:text-brand"
+      title="View payment proof"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`/api/v1/payments/${paymentId}/receipt`}
-        alt="Payment receipt"
-        className="h-20 w-20 object-cover bg-slate-50"
-        onError={() => setFailed(true)}
-      />
+      <Eye className="h-3.5 w-3.5 text-brand" />
+      View Proof
     </button>
   );
 }

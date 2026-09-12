@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import type {
   SundayAdminRequestDto,
   SundayTeamDoctorOption,
 } from "@/features/sunday-consult/types";
+import { PaymentProofModal } from "./payment-proof-modal";
 
 type SundayOverview = {
   sundayConsultEnabled: boolean;
@@ -39,30 +41,23 @@ type SundayOverview = {
   }[];
 };
 
-function SundayReceiptThumbnail({ paymentId }: { paymentId: string }) {
-  const [failed, setFailed] = useState(false);
-  const href = `/api/v1/payments/${paymentId}/receipt`;
-
-  if (failed) {
-    return <span className="text-xs text-slate-400">No receipt</span>;
-  }
-
+function SundayReceiptButton({
+  paymentId,
+  onViewProof,
+}: {
+  paymentId: string;
+  onViewProof: (paymentId: string) => void;
+}) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="block h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-      title="View payment receipt"
+    <button
+      type="button"
+      onClick={() => onViewProof(paymentId)}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:border-brand hover:bg-brand/5 hover:text-brand"
+      title="View payment proof"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={href}
-        alt="Payment receipt"
-        className="h-full w-full object-cover"
-        onError={() => setFailed(true)}
-      />
-    </a>
+      <Eye className="h-3.5 w-3.5 text-brand" />
+      View Proof
+    </button>
   );
 }
 
@@ -76,6 +71,7 @@ export function AdminSundayControl() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [maxSlots, setMaxSlots] = useState(10);
   const [duration, setDuration] = useState(10);
+  const [activeProofPaymentId, setActiveProofPaymentId] = useState<string | null>(null);
 
   const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
@@ -244,7 +240,10 @@ export function AdminSundayControl() {
                     </div>
                     {request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE &&
                       request.paymentId && (
-                        <SundayReceiptThumbnail paymentId={request.paymentId} />
+                        <SundayReceiptButton
+                          paymentId={request.paymentId}
+                          onViewProof={setActiveProofPaymentId}
+                        />
                       )}
                   </div>
                 </div>
@@ -422,6 +421,11 @@ export function AdminSundayControl() {
           )}
         </CardContent>
       </Card>
+      <PaymentProofModal
+        isOpen={!!activeProofPaymentId}
+        paymentId={activeProofPaymentId}
+        onClose={() => setActiveProofPaymentId(null)}
+      />
     </div>
   );
 }

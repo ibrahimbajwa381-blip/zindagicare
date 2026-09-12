@@ -119,7 +119,7 @@ export async function GET(req: Request, { params }: Params) {
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "private, max-age=86400, immutable",
         ...(metadata.receipt?.originalName
           ? {
               "Content-Disposition": `inline; filename="${metadata.receipt.originalName.replace(/"/g, "")}"`,

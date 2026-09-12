@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, CreditCard } from "lucide-react";
+import { X, CreditCard, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
+import { PaymentProofModal } from "./payment-proof-modal";
 
 export type AppointmentDetail = {
   id: string;
@@ -74,6 +76,7 @@ export function AdminAppointmentDetailModal({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [receiptFailed, setReceiptFailed] = useState(false);
+  const [showProofModal, setShowProofModal] = useState(false);
   const [referralPending, setReferralPending] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
 
@@ -284,26 +287,22 @@ export function AdminAppointmentDetailModal({
                 <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Uploaded receipt
                 </h3>
-                {receiptFailed ? (
-                  <p className="rounded-xl border border-slate-100 px-3 py-3 text-sm text-slate-500">
-                    Receipt could not be loaded (patient may have provided only a transaction ID).
-                  </p>
-                ) : (
-                  <a
-                    href={`/api/v1/payments/${a.paymentId}/receipt`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block overflow-hidden rounded-xl border border-slate-100"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/v1/payments/${a.paymentId}/receipt`}
-                      alt="Payment receipt"
-                      className="max-h-72 w-full object-contain bg-slate-50"
-                      onError={() => setReceiptFailed(true)}
-                    />
-                  </a>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-1 gap-2 border-slate-200 bg-slate-50 text-slate-700 hover:border-brand hover:bg-brand/5 hover:text-brand"
+                  onClick={() => setShowProofModal(true)}
+                >
+                  <Eye className="h-4 w-4 text-brand" />
+                  View Payment Proof
+                </Button>
+
+                <PaymentProofModal
+                  isOpen={showProofModal}
+                  paymentId={a.paymentId}
+                  onClose={() => setShowProofModal(false)}
+                />
               </section>
             )}
           </div>
