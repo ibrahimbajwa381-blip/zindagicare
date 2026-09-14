@@ -1,5 +1,5 @@
 import { unwrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { apiError } from "@/server/api/response";
 import { contentTypeFromKey, validateStorageKey } from "@/server/lib/object-storage";
 import { canDoctorAccessDocument } from "@/server/services/doctor-profile.service";
@@ -8,9 +8,9 @@ import { AppError } from "@zindagi/shared";
 
 type Params = { params: Promise<{ key: string[] }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) {
       throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     }

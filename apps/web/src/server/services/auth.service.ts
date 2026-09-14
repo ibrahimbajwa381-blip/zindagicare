@@ -22,6 +22,20 @@ import { syncAdminRoleFromAllowlist } from "@/lib/auth/admin-allowlist";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { logActivity } from "@/server/services/activity-log.service";
+import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
+
+/**
+ * Shared by both login entry points (web NextAuth credentials provider and
+ * the mobile REST route) since both call verifyCredentialsLogin directly —
+ * this is the one choke point that sees every password attempt regardless
+ * of client. Keyed by the normalized email so brute-forcing one account is
+ * capped even if the attacker rotates IPs; it does not, by itself, cap
+ * credential-stuffing across many different accounts from one source (the
+ * mobile route adds an IP-based limiter for that; the web NextAuth route
+ * has no request-scoped IP available here to do the same).
+ */
+const LOGIN_ATTEMPT_LIMIT = 10;
+const loginAttemptLimiter = createRateLimiter(LOGIN_ATTEMPT_LIMIT, 15 * 60 * 1000);
 
 const BCRYPT_ROUNDS = 12;
 
@@ -156,7 +170,14 @@ export async function findUserByEmail(email: string) {
 
 /** Email/password sign-in for Auth.js credentials provider. */
 export async function verifyCredentialsLogin(email: string, password: string) {
-  const user = await findUserByEmail(email);
+  const normalizedEmail = email.trim().toLowerCase();
+  enforceRateLimit(
+    loginAttemptLimiter,
+    normalizedEmail,
+    "Too many login attempts for this account. Please try again later.",
+  );
+
+  const user = await findUserByEmail(normalizedEmail);
   if (!user?.passwordHash) return null;
 
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) {

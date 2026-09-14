@@ -83,6 +83,7 @@ async function resolveDoctorProfileId(doctorUserId: string): Promise<string> {
  * Prefer an existing user; otherwise map a DoctorProfile `_id` to its `userId`.
  */
 async function resolveChatParticipantUserId(participantId: string): Promise<string | null> {
+  if (!Types.ObjectId.isValid(participantId)) return null;
   const user = await UserModel.findById(participantId).select("_id").lean();
   if (user) return user._id.toString();
 
@@ -379,6 +380,10 @@ async function findLatestEligibleAppointment(
 }
 
 async function assertThreadParticipant(threadId: string, userId: string) {
+  if (!Types.ObjectId.isValid(threadId) || !Types.ObjectId.isValid(userId)) {
+    throw new AppError("Chat not found", "NOT_FOUND", 404);
+  }
+
   const thread = await ChatThreadModel.findOne(
     mongoFilter({ _id: threadId, participantIds: userId, deletedAt: null }),
   ).lean();
@@ -890,13 +895,26 @@ export class ChatService {
     let thread = await findExistingDirectThread(patientUserId, doctorUserId);
 
     if (!thread) {
-      const created = await ChatThreadModel.create({
-        type: ChatThreadTypes.DIRECT,
-        directKey,
-        appointmentId,
-        participantIds: [patientUserId, doctorUserId],
-      });
-      thread = created.toObject();
+      try {
+        const created = await ChatThreadModel.create({
+          type: ChatThreadTypes.DIRECT,
+          directKey,
+          appointmentId,
+          participantIds: [patientUserId, doctorUserId],
+        });
+        thread = created.toObject();
+      } catch (err: unknown) {
+        if ((err as { code?: number })?.code === 11000) {
+          const existing = await findExistingDirectThread(patientUserId, doctorUserId);
+          if (existing) {
+            thread = existing;
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
     } else {
       await ChatThreadModel.updateMany(
         mongoFilter({ appointmentId, _id: { $ne: thread._id } }),
@@ -956,10 +974,16 @@ export class ChatService {
     };
 
     if (options.before) {
-      const beforeMessage = await ChatMessageModel.findById(options.before).lean();
-      if (beforeMessage?.createdAt) {
-        filter.createdAt = { $lt: beforeMessage.createdAt };
+      if (!Types.ObjectId.isValid(options.before)) {
+        throw new AppError("Invalid cursor", "VALIDATION_ERROR", 400);
       }
+      const beforeMessage = await ChatMessageModel.findOne(
+        mongoFilter({ _id: options.before, threadId, deletedAt: null }),
+      ).lean();
+      if (!beforeMessage) {
+        return { messages: [], hasMore: false };
+      }
+      filter.createdAt = { $lt: beforeMessage.createdAt };
     }
 
     const rows = await ChatMessageModel.find(mongoFilter(filter))

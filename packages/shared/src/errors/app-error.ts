@@ -6,6 +6,8 @@ export class AppError extends Error {
     public readonly code: string,
     public readonly statusCode: number = 400,
     public readonly field?: AppErrorField,
+    /** Seconds the client should wait before retrying — surfaced as a `Retry-After` header for 429s. */
+    public readonly retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = "AppError";
@@ -20,4 +22,5 @@ export const ErrorCodes = {
   SLOT_UNAVAILABLE: "SLOT_UNAVAILABLE",
   USER_BANNED: "USER_BANNED",
   CONFLICT: "CONFLICT",
+  RATE_LIMITED: "RATE_LIMITED",
 } as const;

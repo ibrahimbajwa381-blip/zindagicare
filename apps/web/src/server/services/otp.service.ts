@@ -3,10 +3,19 @@ import { connectDatabase, OtpChallengeModel } from "@zindagi/database";
 import { AppError } from "@zindagi/shared";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { findActiveUserByPhone } from "@/server/services/auth.service";
+import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const REQUEST_COOLDOWN_MS = 30 * 1000;
+
+/**
+ * The per-phone cooldown above only spaces requests 30s apart — an attacker
+ * hammering it end-to-end could still trigger ~120 SMS/hour to one number.
+ * Cap total requests per phone per hour on top of the cooldown.
+ */
+const HOURLY_REQUEST_LIMIT = 5;
+const hourlyRequestLimiter = createRateLimiter(HOURLY_REQUEST_LIMIT, 60 * 60 * 1000);
 
 function hashCode(code: string, phone: string): string {
   return createHash("sha256").update(`${phone}:${code}`).digest("hex");
@@ -50,12 +59,26 @@ export const otpService = {
       existing?.updatedAt &&
       Date.now() - existing.updatedAt.getTime() < REQUEST_COOLDOWN_MS
     ) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil(
+          (REQUEST_COOLDOWN_MS - (Date.now() - existing.updatedAt.getTime())) / 1000,
+        ),
+      );
       throw new AppError(
         "Please wait before requesting another code",
         "RATE_LIMITED",
         429,
+        undefined,
+        retryAfterSeconds,
       );
     }
+
+    enforceRateLimit(
+      hourlyRequestLimiter,
+      phone,
+      "Too many code requests for this number. Please try again later.",
+    );
 
     const code = String(randomInt(100000, 999999));
     await OtpChallengeModel.findOneAndUpdate(

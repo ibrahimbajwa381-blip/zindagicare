@@ -12,6 +12,7 @@ import type {
   SendCopilotMessageInput,
 } from "@zindagi/validators";
 import { mongoFilter } from "@/lib/mongo/query";
+import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
 import {
   COPILOT_TOOLS,
   executeCopilotTool,
@@ -87,34 +88,20 @@ const EMERGENCY_PATTERNS = [
   /بے\s*ہوش/,
 ];
 
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-
 function getRateLimit(): number {
   const raw = process.env.COPILOT_RATE_LIMIT?.trim();
   const parsed = raw ? Number.parseInt(raw, 10) : 30;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
 }
 
+const copilotRateLimiter = createRateLimiter(getRateLimit(), 60 * 60 * 1000);
+
 function checkRateLimit(userId: string) {
-  const limit = getRateLimit();
-  const now = Date.now();
-  const hourMs = 60 * 60 * 1000;
-  const entry = rateLimitStore.get(userId);
-
-  if (!entry || entry.resetAt <= now) {
-    rateLimitStore.set(userId, { count: 1, resetAt: now + hourMs });
-    return;
-  }
-
-  if (entry.count >= limit) {
-    throw new AppError(
-      "Too many assistant messages. Please try again later.",
-      "RATE_LIMITED",
-      429,
-    );
-  }
-
-  entry.count += 1;
+  enforceRateLimit(
+    copilotRateLimiter,
+    userId,
+    "Too many assistant messages. Please try again later.",
+  );
 }
 
 function isEmergencyMessage(text: string): boolean {
@@ -305,6 +292,15 @@ export class CopilotService {
     }
   }
 
+  /**
+   * Callers must invoke this before opening the SSE stream in sendMessageStream
+   * — a throw from inside that stream only ever reaches the client as an
+   * `error` SSE event on an HTTP 200, never a real 429.
+   */
+  static checkRateLimit(userId: string) {
+    checkRateLimit(userId);
+  }
+
   static async listSessions(userId: string, limit = 20): Promise<CopilotSessionDto[]> {
     await connectDatabase();
     const rows = await CopilotSessionModel.find(
@@ -400,7 +396,8 @@ export class CopilotService {
     onEvent: (event: CopilotStreamEvent) => void,
   ): Promise<void> {
     await CopilotService.ensureEnabled();
-    checkRateLimit(userId);
+    // Rate limit is enforced by the caller (route) before the SSE stream
+    // opens — see CopilotService.checkRateLimit's doc comment.
 
     const session = await CopilotService.getSession(userId, sessionId);
     const inputAnalysis = analyzeCopilotUserInput(input.content);

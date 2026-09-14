@@ -32,5 +32,14 @@ export const POST = withApiHandler(
 
     return { accessToken, refreshToken, user: payload };
   },
-  { bodySchema: loginSchema, public: true },
+  {
+    bodySchema: loginSchema,
+    public: true,
+    rateLimit: {
+      limit: 20,
+      windowMs: 15 * 60_000,
+      by: "ip",
+      message: "Too many login attempts from this device. Please try again later.",
+    },
+  },
 );

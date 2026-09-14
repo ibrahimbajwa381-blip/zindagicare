@@ -6,11 +6,23 @@ type JsonLdProps = {
   data: Record<string, unknown> | Record<string, unknown>[];
 };
 
+/**
+ * `JSON.stringify` never escapes `<`, so any field flowing into JSON-LD that
+ * ultimately comes from user input (e.g. a doctor's own bio) can contain a
+ * literal `</script>` and break out of this tag into a real, executing
+ * `<script>` — a stored XSS against every visitor of that page. Escaping
+ * `<` as `<` keeps the JSON value identical (still valid inside a JSON
+ * string) while making that impossible to form in the raw HTML source.
+ */
+function safeJsonLd(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
 export function JsonLd({ data }: JsonLdProps) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(data) }}
     />
   );
 }

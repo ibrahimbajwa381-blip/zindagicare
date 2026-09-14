@@ -11,5 +11,13 @@ export const POST = withApiHandler<ReserveSlotInput>(
       body.slotId,
     );
   },
-  { auth: true, bodySchema: reserveSlotSchema },
+  {
+    auth: true,
+    bodySchema: reserveSlotSchema,
+    rateLimit: {
+      limit: 10,
+      windowMs: 60_000,
+      message: "Too many requests. Please wait a moment before trying again.",
+    },
+  },
 );

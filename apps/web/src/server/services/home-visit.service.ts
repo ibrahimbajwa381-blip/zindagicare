@@ -8,7 +8,7 @@ import {
   UserModel,
   type HomeVisitDocument,
 } from "@zindagi/database";
-import { mongoFilter } from "@/lib/mongo/query";
+import { mongoFilter, type MongoQueryFilter } from "@/lib/mongo/query";
 import { Types, type HydratedDocument } from "mongoose";
 import {
   AppError,
@@ -354,18 +354,23 @@ async function getBusyStaffIds(
   scheduledAt: Date,
   excludeVisitId?: string,
 ): Promise<string[]> {
-  const ids = await HomeVisitModel.find(
-    mongoFilter({
-      _id: excludeVisitId ? { $ne: excludeVisitId } : undefined,
-      assignedStaffId: { $exists: true },
-      status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
-      scheduledAt: {
-        $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
-        $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
-      },
-      deletedAt: { $exists: false },
-    }),
-  ).distinct("assignedStaffId");
+  const filter: MongoQueryFilter = {
+    assignedStaffId: { $exists: true },
+    status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+    scheduledAt: {
+      $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
+      $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
+    },
+    deletedAt: { $exists: false },
+  };
+  // A key present with value `undefined` is NOT dropped by Mongoose's query
+  // caster the way it is by the raw BSON serializer — it gets cast into an
+  // always-false condition on an ObjectId path, silently matching zero
+  // documents. Only add `_id` when there is an id to exclude.
+  if (excludeVisitId) {
+    filter._id = { $ne: excludeVisitId };
+  }
+  const ids = await HomeVisitModel.find(mongoFilter(filter)).distinct("assignedStaffId");
   return ids.map((id) => id.toString());
 }
 

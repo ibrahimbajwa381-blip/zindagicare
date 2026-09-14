@@ -4,5 +4,14 @@ import { otpService } from "@/server/services/otp.service";
 
 export const POST = withApiHandler(
   async ({ body }) => otpService.requestLoginOtp(body.phone),
-  { bodySchema: otpRequestSchema, public: true },
+  {
+    bodySchema: otpRequestSchema,
+    public: true,
+    rateLimit: {
+      limit: 20,
+      windowMs: 15 * 60_000,
+      by: "ip",
+      message: "Too many OTP requests from this device. Please try again later.",
+    },
+  },
 );

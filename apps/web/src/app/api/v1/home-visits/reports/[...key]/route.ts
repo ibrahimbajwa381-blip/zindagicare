@@ -1,6 +1,6 @@
 import { unwrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import path from "path";
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { connectDatabase, HomeVisitModel } from "@zindagi/database";
 import { AppError, isAdmin } from "@zindagi/shared";
 import { validateStorageKey } from "@/server/lib/object-storage";
@@ -8,9 +8,9 @@ import { readHomeVisitReport } from "@/server/services/home-visit-reports.storag
 
 type Params = { params: Promise<{ key: string[] }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) {
       return new Response("Unauthorized", { status: 401 });
     }

@@ -1,4 +1,4 @@
-import path from "path";
+import { AppError } from "@zindagi/shared";
 import { randomUUID } from "crypto";
 import {
   deleteObject,
@@ -23,13 +23,16 @@ export function testimonialAvatarPublicUrl(storageKey: string): string {
 
 export async function saveTestimonialAvatar(file: File): Promise<StoredTestimonialAvatar> {
   if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error("Only JPG, PNG, or WebP photos are allowed");
+    throw new AppError("Only JPG, PNG, or WebP photos are allowed", "VALIDATION_ERROR", 400);
   }
   if (file.size > MAX_BYTES) {
-    throw new Error("Photo must be 3 MB or smaller");
+    throw new AppError("Photo must be 3 MB or smaller", "VALIDATION_ERROR", 400);
+  }
+  if (file.size === 0) {
+    throw new AppError("Photo file is empty", "VALIDATION_ERROR", 400);
   }
 
-  const ext = path.extname(file.name) || mimeToExt(file.type);
+  const ext = mimeToExt(file.type);
   const storageKey = `${randomUUID()}${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 

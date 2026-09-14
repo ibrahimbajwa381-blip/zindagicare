@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { apiError } from "@/server/api/response";
 import { CopilotService } from "@/server/services/copilot.service";
-import { canAccessHealthAssistant, type Role } from "@zindagi/shared";
+import { AppError, canAccessHealthAssistant, type Role } from "@zindagi/shared";
 import { listCopilotMessagesQuerySchema, sendCopilotMessageSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 
@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: Params) {
   const handler = withApiHandler(
     async ({ session }) => {
       if (!canAccessHealthAssistant(session!.user!.roles as Role[])) {
-        throw new Error("Forbidden");
+        throw new AppError("Forbidden", "FORBIDDEN", 403);
       }
       return CopilotService.listMessages(session!.user!.id, id, query.limit ?? 50);
     },
@@ -34,11 +34,16 @@ export async function POST(req: Request, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return apiError(new Error("Unauthorized"));
+      return apiError(new AppError("Unauthorized", "UNAUTHORIZED", 401));
     }
     if (!canAccessHealthAssistant(session.user.roles as Role[])) {
-      return apiError(new Error("Forbidden"));
+      return apiError(new AppError("Forbidden", "FORBIDDEN", 403));
     }
+
+    // Must happen before the SSE stream opens: a throw from inside the
+    // stream body can only ever reach the client as an `error` event on an
+    // already-200 response, never a real 429.
+    CopilotService.checkRateLimit(session.user.id);
 
     const json = await req.json();
     const body = sendCopilotMessageSchema.parse(json);

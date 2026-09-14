@@ -14,5 +14,14 @@ export const POST = withApiHandler<ConsultCheckoutInput>(
     );
     return OnlineConsultService.initiateCheckout(session!.user!.id, body);
   },
-  { auth: true, roles: [Roles.PATIENT], bodySchema: consultCheckoutSchema },
+  {
+    auth: true,
+    roles: [Roles.PATIENT],
+    bodySchema: consultCheckoutSchema,
+    rateLimit: {
+      limit: 10,
+      windowMs: 60_000,
+      message: "Too many checkout attempts. Please wait a moment before trying again.",
+    },
+  },
 );

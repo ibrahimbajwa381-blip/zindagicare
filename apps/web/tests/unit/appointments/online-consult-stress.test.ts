@@ -86,6 +86,23 @@ jest.mock("@/server/services/video-session.service", () => ({
   },
 }));
 
+// This file's concurrency scenarios deliberately fire 25-50+ near-simultaneous
+// checkout requests from one mocked session to prove DB-level idempotency
+// (unique-index/race handling) — a different concern from per-user abuse
+// throttling (see tests/integration/rate-limit-endpoints.test.ts RT-007 for
+// that). Neutralize the route's rate limiter here so it can't produce a
+// false 429 partway through a burst and mask the actual race-condition
+// assertion under test.
+jest.mock("@/server/lib/rate-limit", () => {
+  const actual = jest.requireActual("@/server/lib/rate-limit");
+  return {
+    ...actual,
+    createRateLimiter: () => ({
+      consume: () => ({ allowed: true, remaining: Infinity, retryAfterSeconds: 0 }),
+    }),
+  };
+});
+
 function chain<T>(finalValue: T) {
   const obj = { ...(finalValue as Record<string, unknown>) } as Record<string, unknown>;
   obj.lean = jest.fn().mockResolvedValue(finalValue);
