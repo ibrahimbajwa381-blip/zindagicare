@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { createRealtimeEmitter } from "./create-emitter";
 
 export type SundaySlotEvent = {
   type: "slot_updated" | "instance_updated";
@@ -10,17 +11,16 @@ export type SundaySlotEvent = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var sundayRealtimeEmitter: EventEmitter | undefined;
 }
 
 /** In-process pub/sub; SSE route subscribes. Production: Redis adapter + Socket.io server. */
-export const sundayEmitter =
-  global.sundayRealtimeEmitter ?? new EventEmitter();
-
-if (process.env.NODE_ENV !== "production") {
-  global.sundayRealtimeEmitter = sundayEmitter;
-}
+export const sundayEmitter = createRealtimeEmitter({
+  get: () => global.sundayRealtimeEmitter,
+  set: (emitter) => {
+    global.sundayRealtimeEmitter = emitter;
+  },
+});
 
 export function publishSundayEvent(event: SundaySlotEvent) {
   const room = `sunday:${event.sundayDateKey}:${event.doctorId}`;

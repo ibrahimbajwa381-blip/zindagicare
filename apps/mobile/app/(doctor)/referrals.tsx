@@ -8,10 +8,7 @@ import { ApiRequestError } from "@/api/client";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts, cardShadow } from "@/lib/theme";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-PK", { timeZone: "Asia/Karachi", dateStyle: "medium" });
-}
+import { formatKarachiDate as formatDate } from "@/lib/format-date";
 
 export default function DoctorReferralsScreen() {
   const [referral, setReferral] = useState<{ code: string; url: string } | null>(null);

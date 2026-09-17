@@ -2,6 +2,7 @@ import { connectDatabase, NotificationModel, UserModel } from "@zindagi/database
 import { AppError, NotificationChannels, Roles, emailLookupHash } from "@zindagi/shared";
 import type { z } from "zod";
 import type { adminSendNotificationSchema } from "@zindagi/validators";
+import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
 import { mongoFilter } from "@/lib/mongo/query";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { sendWhatsAppMessage } from "@/server/services/whatsapp.service";
@@ -68,7 +69,9 @@ export async function adminSendNotification(input: SendInput) {
   const channel = CHANNEL_MAP[input.channel];
   const results = { sent: 0, failed: 0, recipientCount: recipientIds.length };
 
-  for (const userId of recipientIds) {
+  // Each recipient's delivery is independent, so fan them out instead of awaiting
+  // one at a time; bounded concurrency avoids hammering WhatsApp/Expo's rate limits.
+  const outcomes = await mapWithConcurrency(recipientIds, 10, async (userId) => {
     try {
       if (input.channel === "in_app") {
         const user = await UserModel.findById(userId).select("phone").lean();
@@ -107,10 +110,15 @@ export async function adminSendNotification(input: SendInput) {
           sentAt: new Date(),
         });
       }
-      results.sent += 1;
+      return true;
     } catch {
-      results.failed += 1;
+      return false;
     }
+  });
+
+  for (const ok of outcomes) {
+    if (ok) results.sent += 1;
+    else results.failed += 1;
   }
 
   return results;

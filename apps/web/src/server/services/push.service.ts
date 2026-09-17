@@ -7,6 +7,7 @@ import {
 } from "@zindagi/database";
 import { NotificationChannels } from "@zindagi/shared";
 import type { ExpoPushRegisterInput, PushSubscribeInput } from "@zindagi/validators";
+import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
 
 export type WebPushPayload = {
   title: string;
@@ -81,13 +82,12 @@ export async function sendWebPushToUser(
   }
 
   const pushBody = JSON.stringify(payload);
-  let sent = 0;
-  let failed = 0;
 
-  for (const sub of subscriptions) {
+  // A user's subscriptions (one per device/browser) are delivered independently, so
+  // fan them out instead of awaiting one at a time.
+  const outcomes = await mapWithConcurrency(subscriptions, 10, async (sub) => {
     if (!sub.keys?.p256dh || !sub.keys?.auth) {
-      failed += 1;
-      continue;
+      return "failed" as const;
     }
 
     try {
@@ -105,9 +105,8 @@ export async function sendWebPushToUser(
         { _id: sub._id },
         { lastUsedAt: new Date() },
       );
-      sent += 1;
+      return "sent" as const;
     } catch (error) {
-      failed += 1;
       const statusCode =
         error && typeof error === "object" && "statusCode" in error
           ? (error as { statusCode?: number }).statusCode
@@ -116,7 +115,15 @@ export async function sendWebPushToUser(
       if (statusCode === 404 || statusCode === 410) {
         await PushSubscriptionModel.deleteOne({ _id: sub._id });
       }
+      return "failed" as const;
     }
+  });
+
+  let sent = 0;
+  let failed = 0;
+  for (const outcome of outcomes) {
+    if (outcome === "sent") sent += 1;
+    else failed += 1;
   }
 
   if (sent > 0) {

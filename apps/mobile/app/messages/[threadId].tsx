@@ -19,12 +19,9 @@ import { AttachmentBubble } from "@/components/chat/attachment-bubble";
 import { FileAttachmentButton } from "@/components/chat/file-attachment-button";
 import { VoiceRecorderButton } from "@/components/chat/voice-recorder-button";
 import { colors, fonts } from "@/lib/theme";
+import { formatKarachiTime as timeLabel } from "@/lib/format-date";
 
 const POLL_MS = 5_000;
-
-function timeLabel(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-PK", { timeZone: "Asia/Karachi", hour: "numeric", minute: "2-digit" });
-}
 
 export default function MessagesThreadScreen() {
   const { user, isLoading: isAuthLoading } = useAuth();

@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { createRealtimeEmitter } from "./create-emitter";
 
 export type ChatRealtimeEvent = {
   type: "message" | "thread_updated" | "read";
@@ -20,13 +21,14 @@ declare global {
 }
 
 /** In-process pub/sub; SSE route subscribes. Production: Redis adapter + Socket.io server. */
-export const chatEmitter = global.chatRealtimeEmitter ?? new EventEmitter();
-
-// Allow unlimited concurrent SSE listeners without MaxListenersExceededWarning
-chatEmitter.setMaxListeners(0);
-
-// Always store on global to preserve single emitter across chunks and reload cycles
-global.chatRealtimeEmitter = chatEmitter;
+export const chatEmitter = createRealtimeEmitter({
+  get: () => global.chatRealtimeEmitter,
+  set: (emitter) => {
+    global.chatRealtimeEmitter = emitter;
+  },
+  // Always store on global to preserve single emitter across chunks and reload cycles.
+  alwaysPersist: true,
+});
 
 export function userRoomKey(userId: string) {
   return `chat:user:${userId}`;

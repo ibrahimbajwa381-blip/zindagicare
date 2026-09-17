@@ -14,6 +14,8 @@ import { ApiRequestError } from "@/api/client";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
+import { formatKarachiDate as reviewDate, formatKarachiTime as timeLabel } from "@/lib/format-date";
+import { initials } from "@/lib/format-name";
 
 function dayKey(iso: string) {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
@@ -26,30 +28,6 @@ function dayLabel(iso: string) {
     day: "numeric",
     month: "short",
   });
-}
-
-function timeLabel(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-PK", {
-    timeZone: "Asia/Karachi",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function reviewDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-PK", {
-    timeZone: "Asia/Karachi",
-    dateStyle: "medium",
-  });
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }
 
 function qualificationBadges(doctor: ConsultDoctorProfile) {
@@ -100,16 +78,34 @@ export default function DoctorProfileScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Guards against an in-flight request for a previous doctorId resolving after
+    // a newer one and silently overwriting it with the wrong doctor's data.
+    let isCurrent = true;
+
     getConsultDoctor(doctorId)
       .then((res) => {
+        if (!isCurrent) return;
         setDoctor(res.doctor);
         setReviews(res.reviews);
         setReviewTotal(res.reviewTotal);
       })
-      .catch((e) => setError(e instanceof ApiRequestError ? e.message : "Failed to load doctor"));
+      .catch((e) => {
+        if (!isCurrent) return;
+        setError(e instanceof ApiRequestError ? e.message : "Failed to load doctor");
+      });
     listConsultSlots(doctorId)
-      .then((res) => setSlots(res.slots))
-      .catch(() => setSlots([]));
+      .then((res) => {
+        if (!isCurrent) return;
+        setSlots(res.slots);
+      })
+      .catch(() => {
+        if (!isCurrent) return;
+        setSlots([]);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [doctorId]);
 
   const grouped = useMemo(() => {

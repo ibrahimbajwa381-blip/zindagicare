@@ -7,6 +7,7 @@ import { listDoctorRequests, type DoctorRequestOutcome, type DoctorRequestRow } 
 import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
+import { formatKarachi as formatDateTime } from "@/lib/format-date";
 
 const POLL_MS = 15_000;
 
@@ -49,17 +50,6 @@ function matchesFilter(outcome: DoctorRequestOutcome, filter: FilterKey) {
   if (filter === "all") return true;
   if (filter === "active") return outcome === "upcoming" || outcome === "in_progress" || outcome === "pending";
   return outcome === filter;
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-PK", {
-    timeZone: "Asia/Karachi",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function canWritePrescription(item: DoctorRequestRow) {
