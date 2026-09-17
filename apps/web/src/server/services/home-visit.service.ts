@@ -44,6 +44,7 @@ import {
 } from "@/lib/geo/city-match";
 import {
   notifyAdminsHomeVisitRequested,
+  notifyPatientHomeVisitPaymentConfirmed,
   notifyPatientHomeVisitStatus,
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
@@ -697,7 +698,30 @@ export class HomeVisitService {
       },
     );
 
+    await HomeVisitService.notifyPaymentConfirmed(metadata.homeVisitId, userId, payment.amount);
+
     return HomeVisitService.getById(metadata.homeVisitId, userId, [Roles.PATIENT]);
+  }
+
+  private static async notifyPaymentConfirmed(
+    visitId: string,
+    userId: string,
+    amount: number,
+  ) {
+    const [visit, patientUser] = await Promise.all([
+      HomeVisitModel.findById(visitId).select("serviceType").lean(),
+      UserModel.findById(userId).select("phone").lean(),
+    ]);
+
+    await notifyPatientHomeVisitPaymentConfirmed({
+      patientUserId: userId,
+      phone: safeDisplayText(patientUser?.phone) ?? undefined,
+      visitId,
+      serviceLabel: SERVICE_LABELS[visit?.serviceType ?? ""] ?? "Home visit",
+      amount,
+    }).catch((err) => {
+      console.error("[home-visit] payment confirmation notification failed", err);
+    });
   }
 
   static async completeTestPayment(paymentId: string, userId: string) {
@@ -721,6 +745,8 @@ export class HomeVisitService {
         },
       },
     );
+
+    await HomeVisitService.notifyPaymentConfirmed(metadata.homeVisitId, userId, payment.amount);
 
     return HomeVisitService.getById(metadata.homeVisitId, userId, [Roles.PATIENT]);
   }

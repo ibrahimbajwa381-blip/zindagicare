@@ -4,6 +4,8 @@ import { AppError } from "@zindagi/shared";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { findActiveUserByPhone } from "@/server/services/auth.service";
 import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
+import { sendEmail } from "@/server/services/email.service";
+import { otpEmail } from "@/server/lib/email-templates";
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -27,7 +29,8 @@ function storeKey(phone: string) {
 
 /**
  * Phone OTP architecture:
- * 1. Client POST /api/v1/auth/otp/request → SMS gateway (SMS_API_KEY) sends code.
+ * 1. Client POST /api/v1/auth/otp/request → SMS gateway (SMS_API_KEY) sends code,
+ *    and email (when the account has one on file) via Resend.
  * 2. Client submits code via signIn("phone-otp") with phone + code.
  * 3. Challenges persist in MongoDB so API routes and server actions share state.
  */
@@ -38,6 +41,18 @@ function sendOtpSms(phone: string, code: string) {
   } else if (process.env.NODE_ENV !== "production") {
     console.info(`[dev-otp] ${phone} → ${code}`);
   }
+}
+
+/**
+ * Best-effort email delivery of the same code. Never throws — a failed
+ * email must not block sign-in for users who also have SMS/WhatsApp.
+ */
+async function sendOtpEmail(email: string | null | undefined, name: string | undefined, code: string) {
+  if (!email) return;
+  const { subject, html, text } = otpEmail({ name, code, minutes: OTP_TTL_MS / 60_000 });
+  await sendEmail({ to: email, subject, html, text }).catch((err) => {
+    console.error("[otp] email send failed", err);
+  });
 }
 
 export const otpService = {
@@ -92,6 +107,7 @@ export const otpService = {
     );
 
     sendOtpSms(phone, code);
+    await sendOtpEmail(user.email, user.name, code);
 
     return { expiresInSeconds: OTP_TTL_MS / 1000 };
   },

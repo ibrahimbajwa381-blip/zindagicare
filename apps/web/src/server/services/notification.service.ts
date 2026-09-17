@@ -7,6 +7,8 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { sendWhatsAppMessage } from "@/server/services/whatsapp.service";
 import { sendExpoPushToUser } from "@/server/services/push.service";
+import { sendEmail } from "@/server/services/email.service";
+import { notificationEmail } from "@/server/lib/email-templates";
 
 type SendInput = z.infer<typeof adminSendNotificationSchema>;
 
@@ -58,7 +60,10 @@ async function deliverExternal(
     await sendWhatsAppMessage({ to: phone, title, body });
   }
   if (channel === "email" && user.email) {
-    console.info(`[Email stub] → ${user.email}: ${title} — ${body}`);
+    const { subject, html, text } = notificationEmail({ title, body });
+    await sendEmail({ to: user.email, subject, html, text }).catch((err) => {
+      console.error("[email] admin broadcast failed", err);
+    });
   }
 }
 

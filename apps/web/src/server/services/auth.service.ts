@@ -23,6 +23,8 @@ import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { logActivity } from "@/server/services/activity-log.service";
 import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
+import { sendEmail } from "@/server/services/email.service";
+import { welcomeEmail } from "@/server/lib/email-templates";
 
 /**
  * Shared by both login entry points (web NextAuth credentials provider and
@@ -321,6 +323,16 @@ export async function registerWithCredentials(
     entityId: user._id.toString(),
     metadata: { accountType },
   });
+
+  // Best-effort — a failed welcome email must never fail signup. Awaited
+  // (capped at 5s by the email service) rather than fire-and-forget so it
+  // isn't silently dropped by a serverless runtime tearing down the request.
+  if (user.email) {
+    const { subject, html, text } = welcomeEmail({ name: user.name });
+    await sendEmail({ to: user.email, subject, html, text }).catch((err) => {
+      console.error("[email] welcome email failed", err);
+    });
+  }
 
   return user;
 }

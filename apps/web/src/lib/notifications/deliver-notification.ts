@@ -1,7 +1,9 @@
-import { connectDatabase, NotificationModel } from "@zindagi/database";
+import { connectDatabase, NotificationModel, UserModel } from "@zindagi/database";
 import { NotificationChannels } from "@zindagi/shared";
 import { sendWhatsAppMessage } from "@/server/services/whatsapp.service";
 import { sendExpoPushToUser } from "@/server/services/push.service";
+import { sendEmail } from "@/server/services/email.service";
+import { notificationEmail } from "@/server/lib/email-templates";
 
 export type DeliverNotificationInput = {
   userId: string;
@@ -13,6 +15,8 @@ export type DeliverNotificationInput = {
   skipWhatsApp?: boolean;
   /** Skip the mobile push notification. Default false. */
   skipPush?: boolean;
+  /** Skip email even when the account has one on file. Default false. */
+  skipEmail?: boolean;
 };
 
 /**
@@ -33,30 +37,60 @@ export async function deliverUserNotification(
     sentAt: new Date(),
   });
 
+  const tasks: Promise<unknown>[] = [];
+
   if (!input.skipPush) {
-    await sendExpoPushToUser(input.userId, {
-      title: input.title,
-      body: input.body,
-      data: input.payload,
-    }).catch((err) => {
-      console.error("[expo-push] deliver failed", err);
-    });
+    tasks.push(
+      sendExpoPushToUser(input.userId, {
+        title: input.title,
+        body: input.body,
+        data: input.payload,
+      }).catch((err) => {
+        console.error("[expo-push] deliver failed", err);
+      }),
+    );
+  }
+
+  if (!input.skipEmail) {
+    tasks.push(
+      UserModel.findById(input.userId)
+        .select("email name")
+        .lean()
+        .then((user) => {
+          if (!user?.email) return;
+          const { subject, html, text } = notificationEmail({
+            name: user.name,
+            title: input.title,
+            body: input.body,
+          });
+          return sendEmail({ to: user.email, subject, html, text });
+        })
+        .catch((err) => {
+          console.error("[email] deliver failed", err);
+        }),
+    );
   }
 
   const phone = input.phone?.trim();
-  if (!phone) return;
+  if (phone) {
+    if (process.env.SMS_API_KEY) {
+      console.info("[SMS]", phone, input.body);
+    }
 
-  if (process.env.SMS_API_KEY) {
-    console.info("[SMS]", phone, input.body);
+    if (!input.skipWhatsApp) {
+      tasks.push(
+        sendWhatsAppMessage({
+          to: phone,
+          title: input.title,
+          body: input.body,
+        }).catch((err) => {
+          console.error("[WhatsApp] deliver failed", err);
+        }),
+      );
+    }
   }
 
-  if (!input.skipWhatsApp) {
-    await sendWhatsAppMessage({
-      to: phone,
-      title: input.title,
-      body: input.body,
-    }).catch((err) => {
-      console.error("[WhatsApp] deliver failed", err);
-    });
-  }
+  // Push/email/WhatsApp are independent side channels — fan them out
+  // concurrently instead of paying their latency serially.
+  await Promise.all(tasks);
 }
