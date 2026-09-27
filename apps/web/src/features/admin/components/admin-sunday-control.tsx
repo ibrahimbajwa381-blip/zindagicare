@@ -99,10 +99,16 @@ export function AdminSundayControl() {
     load();
   }, [load]);
 
-  const assignDoctor = async (requestId: string) => {
+  const assignDoctor = async (requestId: string, isReassign: boolean) => {
     const doctorId = selectedDoctor[requestId];
     if (!doctorId) {
       alert("Select a doctor first");
+      return;
+    }
+    if (
+      isReassign &&
+      !window.confirm("Replace the assigned doctor? The patient and new doctor will be notified.")
+    ) {
       return;
     }
     setAssigning(requestId);
@@ -117,6 +123,7 @@ export function AdminSundayControl() {
       alert(json?.error?.message ?? "Failed to assign doctor");
       return;
     }
+    setSelectedDoctor((prev) => ({ ...prev, [requestId]: "" }));
     dispatchAdminNavCountsRefresh();
     await load();
   };
@@ -247,7 +254,7 @@ export function AdminSundayControl() {
                       )}
                   </div>
                 </div>
-                {awaiting && (
+                {(awaiting || request.status === SundayFreeRequestStatuses.ASSIGNED) && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <select
                       className="min-w-[12rem] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -259,20 +266,28 @@ export function AdminSundayControl() {
                         }))
                       }
                     >
-                      <option value="">Select Sunday doctor…</option>
-                      {teamDoctors.map((doc) => (
-                        <option key={doc.doctorId} value={doc.doctorId}>
-                          {doc.name}
-                          {doc.specialties[0] ? ` · ${doc.specialties[0]}` : ""}
-                        </option>
-                      ))}
+                      <option value="">
+                        {awaiting ? "Select Sunday doctor…" : "Select replacement doctor…"}
+                      </option>
+                      {teamDoctors
+                        .filter((doc) => doc.doctorId !== request.doctor?.doctorId)
+                        .map((doc) => (
+                          <option key={doc.doctorId} value={doc.doctorId}>
+                            {doc.name}
+                            {doc.specialties[0] ? ` · ${doc.specialties[0]}` : ""}
+                          </option>
+                        ))}
                     </select>
                     <Button
                       size="sm"
                       disabled={assigning === request.requestId}
-                      onClick={() => assignDoctor(request.requestId)}
+                      onClick={() => assignDoctor(request.requestId, !awaiting)}
                     >
-                      {assigning === request.requestId ? "Assigning…" : "Assign doctor"}
+                      {assigning === request.requestId
+                        ? "Assigning…"
+                        : awaiting
+                          ? "Assign doctor"
+                          : "Change doctor"}
                     </Button>
                   </div>
                 )}

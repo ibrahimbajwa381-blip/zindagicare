@@ -1532,6 +1532,15 @@ export class SundayConsultService {
       );
     }
 
+    const previousDoctorId = request.assignedDoctorId?.toString();
+    if (previousDoctorId === doctor._id.toString()) {
+      throw new AppError(
+        "This doctor is already assigned to the request",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
     const assignedAt = new Date();
     const scheduledStart = assignedAt;
     // Admin match: keep the join window open for the SLA, not just one 10-min slot.
@@ -1602,6 +1611,11 @@ export class SundayConsultService {
             status: AppointmentStatuses.CONFIRMED,
           },
         },
+      );
+      // Reassignment: the previous doctor's join no longer counts for the new one.
+      await VideoSessionModel.updateOne(
+        mongoFilter({ appointmentId }),
+        { $unset: { doctorJoinedAt: "" } },
       );
     }
 
