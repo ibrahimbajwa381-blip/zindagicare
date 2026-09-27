@@ -1,5 +1,5 @@
 import { OrderStatuses, type OrderStatus } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
 
@@ -57,7 +57,7 @@ orderSchema.index({ patientId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 
 export type OrderDocument = InferSchemaType<typeof orderSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   status: OrderStatus;
 };
 

@@ -6,7 +6,7 @@ import {
   type AppointmentStatus,
   type AppointmentType,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -175,7 +175,7 @@ appointmentSchema.index(
 );
 
 export type AppointmentDocument = InferSchemaType<typeof appointmentSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   type: AppointmentType;
   status: AppointmentStatus;
 };

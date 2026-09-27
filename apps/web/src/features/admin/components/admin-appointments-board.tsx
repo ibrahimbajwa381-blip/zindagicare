@@ -541,7 +541,10 @@ export function AdminAppointmentsBoard() {
                   {a.receiptUploaded && a.paymentId && (
                     <ReceiptThumbnail
                       paymentId={a.paymentId}
-                      onClick={() => setActiveProofPaymentId(a.paymentId ?? null)}
+                      onClick={() => {
+                        if (!a.paymentId) return;
+                        setActiveProofPaymentId(a.paymentId);
+                      }}
                     />
                   )}
                 </div>

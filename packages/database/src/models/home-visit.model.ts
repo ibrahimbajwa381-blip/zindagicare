@@ -6,7 +6,7 @@ import {
   type HomeVisitServiceType,
   type HomeVisitStatus,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
@@ -105,7 +105,7 @@ homeVisitSchema.index({ assignedStaffId: 1, status: 1, scheduledAt: 1 });
 homeVisitSchema.index({ patientId: 1, createdAt: -1 });
 
 export type HomeVisitDocument = InferSchemaType<typeof homeVisitSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   serviceType: HomeVisitServiceType;
   status: HomeVisitStatus;
 };

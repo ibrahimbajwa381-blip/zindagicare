@@ -21,6 +21,8 @@ import { randomBytes } from "crypto";
 
 jest.setTimeout(60000);
 
+
+
 describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)", () => {
   let mongod: InstanceType<typeof MongoMemoryServer>;
   let UserModel: typeof import("@zindagi/database").UserModel;
@@ -68,6 +70,30 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
   afterAll(async () => {
     await mongooseMod.disconnect();
     await mongod.stop();
+  });
+
+  // Root cause of this file's long-standing flakiness (not the separately-
+  // documented "AsyncLocalStorage" Jest/Next environment crash, which was a
+  // different, now-fixed issue — see next.config.mjs): createNurse() and
+  // createDoctor() always place their fixture at the exact same fixed geo
+  // coordinates, and findNearestAvailableStaffByType/findNearestAvailable
+  // Doctor match by nearest-available across ALL staff in the DB, not just
+  // the one just created in the current test. With no cleanup between
+  // tests, every nurse/doctor ever created earlier in the file remained
+  // "available" and geographically tied for nearest, so later tests could
+  // nondeterministically get assigned a DIFFERENT test's leftover staff
+  // member instead of their own — a real fixture-isolation bug in the test,
+  // not in HomeVisitService itself. Clearing the operational collections
+  // before every test (not touching HomeVisitService or any other
+  // production code) makes "nearest available" unambiguous again.
+  beforeEach(async () => {
+    await Promise.all([
+      UserModel.deleteMany({}),
+      DoctorProfileModel.deleteMany({}),
+      StaffProfileModel.deleteMany({}),
+      HomeVisitModel.deleteMany({}),
+      PaymentModel.deleteMany({}),
+    ]);
   });
 
   function makePhone(roleTag: string, n: number) {
@@ -273,10 +299,10 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
   test("HOME-005b: a malformed scheduledAt string is rejected", async () => {
     const patient = await createPatient();
     await expect(
-      HomeVisitService.createRequest(patient._id.toString(), {
-        ...bookingInput(HomeVisitServiceTypes.NURSE, nextSlot()),
-        scheduledAt: "not-a-date",
-      } as never),
+      HomeVisitService.createRequest(
+        patient._id.toString(),
+        bookingInput(HomeVisitServiceTypes.NURSE, nextSlot(), { scheduledAt: "not-a-date" }),
+      ),
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
@@ -420,7 +446,10 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
       Array.from({ length: 5 }, () => HomeVisitService.initiateCheckout(visit.id, patient._id.toString())),
     );
     const fulfilled = results.filter(
-      (r): r is PromiseFulfilledResult<{ paymentId: string }> => r.status === "fulfilled",
+      (
+        r,
+      ): r is PromiseFulfilledResult<Awaited<ReturnType<typeof HomeVisitService.initiateCheckout>>> =>
+        r.status === "fulfilled",
     );
     expect(fulfilled.length).toBeGreaterThan(0);
     const distinctPaymentIds = new Set(fulfilled.map((r) => r.value.paymentId));

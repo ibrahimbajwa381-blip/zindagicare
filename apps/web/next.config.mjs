@@ -1,5 +1,4 @@
 import { withSerwist } from "@serwist/turbopack";
-import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,7 +7,8 @@ const monorepoRoot = path.resolve(
   "../..",
 );
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   outputFileTracingRoot: monorepoRoot,
   outputFileTracingIncludes: {
     "/**/*": [

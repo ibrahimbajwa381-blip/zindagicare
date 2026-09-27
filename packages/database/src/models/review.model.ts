@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -51,7 +51,7 @@ reviewSchema.index({ doctorId: 1, isVisible: 1, createdAt: -1 });
 reviewSchema.index({ patientId: 1, createdAt: -1 });
 
 export type ReviewDocument = InferSchemaType<typeof reviewSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const ReviewModel: Model<ReviewDocument> = registerModel<ReviewDocument>(

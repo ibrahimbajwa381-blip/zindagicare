@@ -1,5 +1,5 @@
 import { Roles } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
@@ -78,7 +78,7 @@ staffProfileSchema.index({ staffType: 1, isAvailable: 1 });
 
 export type StaffProfileDocument = InferSchemaType<
   typeof staffProfileSchema
-> & { _id: Schema.Types.ObjectId };
+> & { _id: Types.ObjectId };
 
 export const StaffProfileModel: Model<StaffProfileDocument> =
   registerModel<StaffProfileDocument>("StaffProfile", staffProfileSchema);

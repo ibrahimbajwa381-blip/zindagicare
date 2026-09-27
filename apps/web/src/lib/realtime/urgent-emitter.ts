@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { createRealtimeEmitter } from "./create-emitter";
 
 export type UrgentConsultEvent = {
   type: "booking_updated" | "doctor_assigned" | "status_changed";
@@ -9,16 +10,15 @@ export type UrgentConsultEvent = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var urgentRealtimeEmitter: EventEmitter | undefined;
 }
 
-export const urgentEmitter =
-  global.urgentRealtimeEmitter ?? new EventEmitter();
-
-if (process.env.NODE_ENV !== "production") {
-  global.urgentRealtimeEmitter = urgentEmitter;
-}
+export const urgentEmitter = createRealtimeEmitter({
+  get: () => global.urgentRealtimeEmitter,
+  set: (emitter) => {
+    global.urgentRealtimeEmitter = emitter;
+  },
+});
 
 export function publishUrgentEvent(event: UrgentConsultEvent) {
   urgentEmitter.emit(`urgent:${event.appointmentId}`, event);

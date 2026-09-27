@@ -1,4 +1,4 @@
-import path from "path";
+import { AppError } from "@zindagi/shared";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import {
@@ -28,13 +28,16 @@ export async function saveHomeVisitReport(
   file: File,
 ): Promise<StoredVisitReport> {
   if (!ALLOWED_TYPES.has(file.type)) {
-    throw new Error("Only JPG, PNG, WebP, or PDF files are allowed");
+    throw new AppError("Only JPG, PNG, WebP, or PDF files are allowed", "VALIDATION_ERROR", 400);
   }
   if (file.size > MAX_BYTES) {
-    throw new Error("File must be 5 MB or smaller");
+    throw new AppError("File must be 5 MB or smaller", "VALIDATION_ERROR", 400);
+  }
+  if (file.size === 0) {
+    throw new AppError("File is empty", "VALIDATION_ERROR", 400);
   }
 
-  const ext = path.extname(file.name) || mimeToExt(file.type);
+  const ext = mimeToExt(file.type);
   const storageKey = `${visitId}/${randomUUID()}${ext}`;
   const buffer = wrapEncryptedFile(Buffer.from(await file.arrayBuffer()));
 

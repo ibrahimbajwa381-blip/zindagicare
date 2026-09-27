@@ -4,7 +4,7 @@ import {
   type SundayAffordabilityChoice,
   type SundayFreeRequestStatus,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -80,7 +80,7 @@ applyFieldEncryption(sundayFreeRequestSchema, {
 });
 
 export type SundayFreeRequestDocument = InferSchemaType<typeof sundayFreeRequestSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   status: SundayFreeRequestStatus;
   affordabilityChoice: SundayAffordabilityChoice;
 };

@@ -16,10 +16,31 @@ export async function GET(req: NextRequest) {
   const room = userRoomKey(session.user.id);
   const encoder = new TextEncoder();
 
+  let cleanup = () => {};
+
   const stream = new ReadableStream({
     start(controller) {
+      let closed = false;
+
+      cleanup = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        chatEmitter.off(room, listener);
+        try {
+          controller.close();
+        } catch {
+          // Ignore if controller is already closed or errored
+        }
+      };
+
       const send = (data: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          cleanup();
+        }
       };
 
       send({ type: "connected", room });
@@ -28,14 +49,23 @@ export async function GET(req: NextRequest) {
       chatEmitter.on(room, listener);
 
       const heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(": ping\n\n"));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(": ping\n\n"));
+        } catch {
+          cleanup();
+        }
       }, 25000);
 
-      req.signal.addEventListener("abort", () => {
-        clearInterval(heartbeat);
-        chatEmitter.off(room, listener);
-        controller.close();
-      });
+      if (req.signal.aborted) {
+        cleanup();
+        return;
+      }
+
+      req.signal.addEventListener("abort", cleanup);
+    },
+    cancel() {
+      cleanup();
     },
   });
 

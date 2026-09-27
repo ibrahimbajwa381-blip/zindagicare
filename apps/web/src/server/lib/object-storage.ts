@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { AppError } from "@zindagi/shared";
 
 export type StorageNamespace =
   | "doctor-avatars"
@@ -167,7 +168,12 @@ export async function deleteObject(
 
 function mapStorageError(error: unknown): Error {
   if (isNotFoundError(error)) {
-    return new Error("File not found");
+    // Every GET route that serves a file (public avatars, private documents,
+    // receipts, attachments, ...) funnels a missing-object read through here.
+    // A plain Error was previously indistinguishable from an unexpected infra
+    // failure by apiError() (which only special-cases AppError/ZodError), so
+    // requesting a nonexistent/deleted key returned a raw 500 instead of 404.
+    return new AppError("File not found", "NOT_FOUND", 404);
   }
   if (error && typeof error === "object" && "message" in error) {
     return new Error(String((error as { message: string }).message));

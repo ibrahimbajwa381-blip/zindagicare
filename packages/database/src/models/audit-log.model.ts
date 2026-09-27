@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -28,7 +28,7 @@ auditLogSchema.index({ entityType: 1, entityId: 1, createdAt: -1 });
 auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 365 * 2 });
 
 export type AuditLogDocument = InferSchemaType<typeof auditLogSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const AuditLogModel: Model<AuditLogDocument> =

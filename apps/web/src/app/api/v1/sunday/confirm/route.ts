@@ -16,5 +16,13 @@ export const POST = withApiHandler<ConfirmBookingInput>(
       body.patientNotes,
       body.locale,
     ),
-  { auth: true, bodySchema: confirmBookingSchema },
+  {
+    auth: true,
+    bodySchema: confirmBookingSchema,
+    rateLimit: {
+      limit: 10,
+      windowMs: 60_000,
+      message: "Too many requests. Please wait a moment before trying again.",
+    },
+  },
 );

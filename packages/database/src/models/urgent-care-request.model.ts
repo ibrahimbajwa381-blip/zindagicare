@@ -2,7 +2,7 @@ import {
   UrgentCareRequestStatuses,
   type UrgentCareRequestStatus,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -50,7 +50,7 @@ applyFieldEncryption(urgentCareRequestSchema, {
 });
 
 export type UrgentCareRequestDocument = InferSchemaType<typeof urgentCareRequestSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   status: UrgentCareRequestStatus;
 };
 

@@ -6,10 +6,11 @@ import { listDoctorPatients } from "@/api/doctor";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
+import { formatKarachiDate } from "@/lib/format-date";
 
 function formatDate(iso?: string) {
   if (!iso) return undefined;
-  return new Date(iso).toLocaleDateString("en-PK", { timeZone: "Asia/Karachi", dateStyle: "medium" });
+  return formatKarachiDate(iso);
 }
 
 const OUTCOME_COLORS: Record<string, string> = {

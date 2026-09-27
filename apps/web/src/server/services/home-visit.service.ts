@@ -8,8 +8,8 @@ import {
   UserModel,
   type HomeVisitDocument,
 } from "@zindagi/database";
-import { mongoFilter } from "@/lib/mongo/query";
-import type { HydratedDocument } from "mongoose";
+import { mongoFilter, type MongoQueryFilter } from "@/lib/mongo/query";
+import { Types, type HydratedDocument } from "mongoose";
 import {
   AppError,
   CancellationRequestStatuses,
@@ -44,6 +44,7 @@ import {
 } from "@/lib/geo/city-match";
 import {
   notifyAdminsHomeVisitRequested,
+  notifyPatientHomeVisitPaymentConfirmed,
   notifyPatientHomeVisitStatus,
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
@@ -213,6 +214,21 @@ function toGeoPoint(lng: number, lat: number) {
   return { type: "Point" as const, coordinates: [lng, lat] as [number, number] };
 }
 
+/**
+ * Confirmed bug (same class already fixed as APT-013 in
+ * online-consult.service.ts): a malformed id — not a valid Mongo ObjectId —
+ * reaching `findById`/`findOne({_id})` throws a raw Mongoose CastError.
+ * apiError() has no special case for CastError, so it falls through to a
+ * generic 500 "Something went wrong" instead of the controlled 4xx a bad
+ * client-supplied id (typo'd URL, stale bookmark, fuzzed input) should
+ * produce.
+ */
+function assertValidObjectId(id: string, notFoundMessage: string): void {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new AppError(notFoundMessage, ErrorCodes.NOT_FOUND, 404);
+  }
+}
+
 function getBasePrice(serviceType: HomeVisitServiceType): number {
   return (
     HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ?? 2000
@@ -339,18 +355,23 @@ async function getBusyStaffIds(
   scheduledAt: Date,
   excludeVisitId?: string,
 ): Promise<string[]> {
-  const ids = await HomeVisitModel.find(
-    mongoFilter({
-      _id: excludeVisitId ? { $ne: excludeVisitId } : undefined,
-      assignedStaffId: { $exists: true },
-      status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
-      scheduledAt: {
-        $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
-        $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
-      },
-      deletedAt: { $exists: false },
-    }),
-  ).distinct("assignedStaffId");
+  const filter: MongoQueryFilter = {
+    assignedStaffId: { $exists: true },
+    status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+    scheduledAt: {
+      $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
+      $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
+    },
+    deletedAt: { $exists: false },
+  };
+  // A key present with value `undefined` is NOT dropped by Mongoose's query
+  // caster the way it is by the raw BSON serializer — it gets cast into an
+  // always-false condition on an ObjectId path, silently matching zero
+  // documents. Only add `_id` when there is an id to exclude.
+  if (excludeVisitId) {
+    filter._id = { $ne: excludeVisitId };
+  }
+  const ids = await HomeVisitModel.find(mongoFilter(filter)).distinct("assignedStaffId");
   return ids.map((id) => id.toString());
 }
 
@@ -501,6 +522,7 @@ export class HomeVisitService {
   /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */
   static async initiateCheckout(visitId: string, patientId: string) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -620,6 +642,7 @@ export class HomeVisitService {
   }
 
   private static async loadHomeVisitPayment(paymentId: string, userId: string) {
+    assertValidObjectId(paymentId, "Payment not found");
     const payment = await PaymentModel.findById(paymentId).lean();
     if (!payment || payment.userId.toString() !== userId) {
       throw new AppError("Payment not found", ErrorCodes.NOT_FOUND, 404);
@@ -675,7 +698,30 @@ export class HomeVisitService {
       },
     );
 
+    await HomeVisitService.notifyPaymentConfirmed(metadata.homeVisitId, userId, payment.amount);
+
     return HomeVisitService.getById(metadata.homeVisitId, userId, [Roles.PATIENT]);
+  }
+
+  private static async notifyPaymentConfirmed(
+    visitId: string,
+    userId: string,
+    amount: number,
+  ) {
+    const [visit, patientUser] = await Promise.all([
+      HomeVisitModel.findById(visitId).select("serviceType").lean(),
+      UserModel.findById(userId).select("phone").lean(),
+    ]);
+
+    await notifyPatientHomeVisitPaymentConfirmed({
+      patientUserId: userId,
+      phone: safeDisplayText(patientUser?.phone) ?? undefined,
+      visitId,
+      serviceLabel: SERVICE_LABELS[visit?.serviceType ?? ""] ?? "Home visit",
+      amount,
+    }).catch((err) => {
+      console.error("[home-visit] payment confirmation notification failed", err);
+    });
   }
 
   static async completeTestPayment(paymentId: string, userId: string) {
@@ -700,11 +746,17 @@ export class HomeVisitService {
       },
     );
 
+    await HomeVisitService.notifyPaymentConfirmed(metadata.homeVisitId, userId, payment.amount);
+
     return HomeVisitService.getById(metadata.homeVisitId, userId, [Roles.PATIENT]);
   }
 
   static async failPayment(paymentId: string, reason?: string) {
     await HomeVisitService.ensureConnected();
+    // Malformed ids (this is reachable from payment gateway webhooks/
+    // callbacks) fall through to the same silent no-op as "payment not
+    // found" below, instead of throwing a raw Mongoose CastError.
+    if (!Types.ObjectId.isValid(paymentId)) return;
     const payment = await PaymentModel.findById(paymentId).lean();
     if (
       !payment ||
@@ -757,6 +809,7 @@ export class HomeVisitService {
     action: "approve" | "deny",
   ) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const existing = await HomeVisitModel.findById(visitId).lean();
     if (!existing) {
@@ -892,6 +945,7 @@ export class HomeVisitService {
     roles: string[],
   ): Promise<HomeVisitDto> {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findOne(
       mongoFilter({
@@ -1177,6 +1231,7 @@ export class HomeVisitService {
 
   static async autoAssignStaff(visitId: string) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = (await HomeVisitModel.findById(visitId)) as HydratedDocument<
       HomeVisitDocument
@@ -1280,6 +1335,8 @@ export class HomeVisitService {
     if (!input.staffId) {
       throw new AppError("staffId is required for manual assignment", ErrorCodes.VALIDATION, 400);
     }
+    assertValidObjectId(visitId, "Visit not found");
+    assertValidObjectId(input.staffId, "Staff member not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -1439,6 +1496,7 @@ export class HomeVisitService {
     input: UpdateHomeVisitStatusInput,
   ) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -1563,6 +1621,7 @@ export class HomeVisitService {
     file: File,
   ) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId);
     if (!visit) {
@@ -1642,6 +1701,7 @@ export class HomeVisitService {
 
   static async listStaffForVisit(visitId: string) {
     await HomeVisitService.ensureConnected();
+    assertValidObjectId(visitId, "Visit not found");
 
     const visit = await HomeVisitModel.findById(visitId).lean();
     if (!visit) {

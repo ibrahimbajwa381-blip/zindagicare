@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -32,7 +32,7 @@ const testimonialSchema = new Schema(
 testimonialSchema.index({ isVisible: 1, createdAt: -1 });
 
 export type TestimonialDocument = InferSchemaType<typeof testimonialSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const TestimonialModel: Model<TestimonialDocument> = registerModel<TestimonialDocument>(

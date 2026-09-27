@@ -1,11 +1,11 @@
-import { auth } from "@/lib/auth";
+import { resolveSession } from "@/server/api/resolve-session";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { saveNurseDocument } from "@/server/services/nurse-documents.storage";
 import { AppError, Roles } from "@zindagi/shared";
 
 export async function POST(req: Request) {
   try {
-    const session = await auth();
+    const session = await resolveSession(req);
     if (!session?.user?.id) {
       throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     }

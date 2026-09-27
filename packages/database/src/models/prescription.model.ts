@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -52,7 +52,7 @@ prescriptionSchema.index({ appointmentId: 1 }, { sparse: true });
 
 export type PrescriptionDocument = InferSchemaType<
   typeof prescriptionSchema
-> & { _id: Schema.Types.ObjectId };
+> & { _id: Types.ObjectId };
 
 export const PrescriptionModel: Model<PrescriptionDocument> =
   registerModel<PrescriptionDocument>("Prescription", prescriptionSchema);

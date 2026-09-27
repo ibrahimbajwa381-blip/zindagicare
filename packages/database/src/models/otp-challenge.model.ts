@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -18,7 +18,7 @@ const otpChallengeSchema = new Schema(
 otpChallengeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export type OtpChallengeDocument = InferSchemaType<typeof otpChallengeSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const OtpChallengeModel: Model<OtpChallengeDocument> =

@@ -66,8 +66,11 @@ export type VoiceNoteUpload = {
   mimeType: string;
 };
 
-/** Voice notes only — the backend only accepts audio/webm, audio/ogg, audio/mp4, audio/mpeg. */
-export async function uploadChatVoiceNote(
+export type ChatFileUpload = VoiceNoteUpload;
+
+/** Shared implementation behind {@link uploadChatVoiceNote} and {@link uploadChatFile} — both
+ * hit the same attachment-upload endpoint and only differ in the caller-facing type name. */
+async function uploadChatAttachment(
   threadId: string,
   fileUri: string,
   mimeType: string,
@@ -89,11 +92,14 @@ export async function uploadChatVoiceNote(
   return json.data;
 }
 
-export type ChatFileUpload = {
-  storageKey: string;
-  url: string;
-  mimeType: string;
-};
+/** Voice notes only — the backend only accepts audio/webm, audio/ogg, audio/mp4, audio/mpeg. */
+export async function uploadChatVoiceNote(
+  threadId: string,
+  fileUri: string,
+  mimeType: string,
+): Promise<VoiceNoteUpload> {
+  return uploadChatAttachment(threadId, fileUri, mimeType);
+}
 
 export async function uploadChatFile(
   threadId: string,
@@ -101,21 +107,7 @@ export async function uploadChatFile(
   mimeType: string,
   fileName: string,
 ): Promise<ChatFileUpload> {
-  const { accessToken } = await getStoredTokens();
-
-  const { status, json } = await uploadFileMultipart<
-    | { success: true; data: ChatFileUpload; error: null }
-    | { success: false; data: null; error: { code: string; message: string } }
-  >(`${API_URL}/api/v1/chat/attachments/upload`, fileUri, {
-    mimeType,
-    parameters: { threadId },
-    accessToken,
-  });
-
-  if (!json.success) {
-    throw new ApiRequestError(json.error.message, json.error.code, status);
-  }
-  return json.data;
+  return uploadChatAttachment(threadId, fileUri, mimeType);
 }
 
 /** Chat attachments require the bearer token — build authenticated fetch headers for audio/image/file sources. */

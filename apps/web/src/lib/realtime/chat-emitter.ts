@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { createRealtimeEmitter } from "./create-emitter";
 
 export type ChatRealtimeEvent = {
   type: "message" | "thread_updated" | "read";
@@ -16,16 +17,18 @@ export type ChatRealtimeEvent = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var chatRealtimeEmitter: EventEmitter | undefined;
 }
 
 /** In-process pub/sub; SSE route subscribes. Production: Redis adapter + Socket.io server. */
-export const chatEmitter = global.chatRealtimeEmitter ?? new EventEmitter();
-
-if (process.env.NODE_ENV !== "production") {
-  global.chatRealtimeEmitter = chatEmitter;
-}
+export const chatEmitter = createRealtimeEmitter({
+  get: () => global.chatRealtimeEmitter,
+  set: (emitter) => {
+    global.chatRealtimeEmitter = emitter;
+  },
+  // Always store on global to preserve single emitter across chunks and reload cycles.
+  alwaysPersist: true,
+});
 
 export function userRoomKey(userId: string) {
   return `chat:user:${userId}`;
@@ -37,9 +40,19 @@ export function threadRoomKey(threadId: string) {
 
 export function publishChatEvent(userIds: string[], event: ChatRealtimeEvent) {
   const threadRoom = threadRoomKey(event.threadId);
-  chatEmitter.emit(threadRoom, event);
+  try {
+    chatEmitter.emit(threadRoom, event);
+  } catch {
+    // Isolate thread room error so it does not propagate
+  }
 
-  for (const userId of userIds) {
-    chatEmitter.emit(userRoomKey(userId), event);
+  // De-duplicate recipient user IDs so each user receives exactly one event
+  const uniqueUserIds = [...new Set(userIds)];
+  for (const userId of uniqueUserIds) {
+    try {
+      chatEmitter.emit(userRoomKey(userId), event);
+    } catch {
+      // Isolate per-user error so a failing listener does not block other recipients
+    }
   }
 }

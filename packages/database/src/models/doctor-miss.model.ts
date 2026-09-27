@@ -2,7 +2,7 @@ import {
   AppointmentTypes,
   type AppointmentType,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -44,7 +44,7 @@ const doctorMissSchema = new Schema(
 doctorMissSchema.index({ doctorId: 1, monthKey: 1, missedAt: -1 });
 
 export type DoctorMissDocument = InferSchemaType<typeof doctorMissSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   appointmentType: AppointmentType;
 };
 

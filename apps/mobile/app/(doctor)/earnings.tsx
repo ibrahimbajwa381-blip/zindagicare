@@ -14,13 +14,10 @@ import { ApiRequestError } from "@/api/client";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { Spinner } from "@/components/ui/spinner";
 import { colors, fonts, cardShadow } from "@/lib/theme";
+import { formatKarachiDate as formatDate } from "@/lib/format-date";
 
 function money(n: number) {
   return `Rs. ${n.toLocaleString()}`;
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-PK", { timeZone: "Asia/Karachi", dateStyle: "medium" });
 }
 
 const WITHDRAWAL_COLORS: Record<string, string> = {

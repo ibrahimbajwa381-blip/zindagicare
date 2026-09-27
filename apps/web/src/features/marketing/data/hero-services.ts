@@ -1,11 +1,11 @@
 import { siteConfig } from "@/config/site";
 
-export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.png";
-export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.jpg";
-export const HOME_PHYSIO_HERO_IMAGE = "/hero/home-physio-male-pakistan.jpg";
+export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.webp";
+export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.webp";
+export const HOME_PHYSIO_HERO_IMAGE = "/hero/home-physio-male-pakistan.webp";
 /** Doctor on a phone / video consult — used for urgent care hero & banners */
 export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.jpg";
-export const ONLINE_CONSULT_HERO_IMAGE = "/hero/dr-usama-riyaz.png";
+export const ONLINE_CONSULT_HERO_IMAGE = "/hero/dr-usama-riyaz.webp";
 
 export type HeroService = {
   id: string;
@@ -95,7 +95,7 @@ export const heroServices: HeroService[] = [
   },
   {
     id: "online-consult",
-    image: "/hero/dr-usama-riyaz.png",
+    image: "/hero/dr-usama-riyaz.webp",
     imageAlt: "Dr. Usama Riyaz, founder of Zindagi Care, in medical scrubs",
     carousel: {
       eyebrow: "Online consultation",

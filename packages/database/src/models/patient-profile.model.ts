@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -68,7 +68,7 @@ applyFieldEncryption(patientProfileSchema, {
 
 export type PatientProfileDocument = InferSchemaType<
   typeof patientProfileSchema
-> & { _id: Schema.Types.ObjectId };
+> & { _id: Types.ObjectId };
 
 export const PatientProfileModel: Model<PatientProfileDocument> =
   registerModel<PatientProfileDocument>(

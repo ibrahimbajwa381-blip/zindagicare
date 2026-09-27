@@ -4,7 +4,7 @@ import {
   type ChatMessageKind,
   type ChatThreadType,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -50,7 +50,7 @@ applyFieldEncryption(chatThreadSchema, {
 chatThreadSchema.index({ participantIds: 1, lastMessageAt: -1 });
 
 export type ChatThreadDocument = InferSchemaType<typeof chatThreadSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   type: ChatThreadType;
 };
 
@@ -96,7 +96,7 @@ applyFieldEncryption(chatMessageSchema, {
 chatMessageSchema.index({ threadId: 1, createdAt: -1 });
 
 export type ChatMessageDocument = InferSchemaType<typeof chatMessageSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   kind: ChatMessageKind;
 };
 

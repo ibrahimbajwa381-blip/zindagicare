@@ -4,7 +4,7 @@ import {
   Roles,
   type Role,
 } from "@zindagi/shared";
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
@@ -85,7 +85,7 @@ userSchema.index({ roles: 1, isActive: 1 });
 userSchema.index({ bannedUntil: 1 }, { sparse: true });
 
 export type UserDocument = InferSchemaType<typeof userSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
   roles: Role[];
 };
 

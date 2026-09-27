@@ -67,6 +67,7 @@ export function ProviderOnboardingPreview() {
                   src={card.image.src}
                   alt={card.image.alt}
                   fill
+                  unoptimized
                   sizes="(max-width: 640px) 100vw, 22vw"
                   className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
                 />

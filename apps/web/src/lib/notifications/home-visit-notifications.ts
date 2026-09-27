@@ -41,6 +41,25 @@ export async function notifyStaffHomeVisitAssigned(input: {
   });
 }
 
+export async function notifyPatientHomeVisitPaymentConfirmed(input: {
+  patientUserId: string;
+  phone?: string;
+  visitId: string;
+  serviceLabel: string;
+  amount: number;
+}) {
+  await deliverUserNotification({
+    userId: input.patientUserId,
+    phone: input.phone,
+    title: "Payment received",
+    body: `We've received your payment of Rs. ${input.amount.toLocaleString()} for ${input.serviceLabel}. Your home visit is confirmed.`,
+    payload: {
+      type: "home_visit_payment_confirmed",
+      visitId: input.visitId,
+    },
+  });
+}
+
 export async function notifyPatientHomeVisitStatus(input: {
   patientUserId: string;
   phone?: string;

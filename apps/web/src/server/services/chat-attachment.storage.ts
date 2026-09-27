@@ -1,3 +1,4 @@
+import { AppError } from "@zindagi/shared";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import {
@@ -34,15 +35,15 @@ export async function saveChatAttachment(
   mimeType: string,
 ): Promise<StoredChatAttachment> {
   if (buffer.length === 0) {
-    throw new Error("Attachment is empty");
+    throw new AppError("Attachment is empty", "VALIDATION_ERROR", 400);
   }
   if (buffer.length > MAX_BYTES) {
-    throw new Error("Attachment must be 20 MB or smaller");
+    throw new AppError("Attachment must be 20 MB or smaller", "VALIDATION_ERROR", 400);
   }
 
   const ext = ALLOWED_MIME_EXT[mimeType];
   if (!ext) {
-    throw new Error("Unsupported attachment format");
+    throw new AppError("Unsupported attachment format", "VALIDATION_ERROR", 400);
   }
 
   const storageKey = `${threadId}/${randomUUID()}.${ext}`;

@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 /**
@@ -33,7 +33,7 @@ activityEventSchema.index({ action: 1, createdAt: -1 });
 activityEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 });
 
 export type ActivityEventDocument = InferSchemaType<typeof activityEventSchema> & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const ActivityEventModel: Model<ActivityEventDocument> =

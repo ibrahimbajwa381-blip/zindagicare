@@ -1,3 +1,4 @@
+import { AppError } from "@zindagi/shared";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
 import {
@@ -21,7 +22,7 @@ export async function savePrescriptionPdf(
   pdfBuffer: Buffer,
 ): Promise<StoredPrescriptionFile> {
   if (pdfBuffer.length > MAX_BYTES) {
-    throw new Error("Prescription PDF must be 5 MB or smaller");
+    throw new AppError("Prescription PDF must be 5 MB or smaller", "VALIDATION_ERROR", 400);
   }
 
   const storageKey = `${appointmentId}/${randomUUID()}.pdf`;

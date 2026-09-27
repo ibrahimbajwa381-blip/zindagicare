@@ -8,13 +8,17 @@ export function apiSuccess<T>(data: T, status = 200) {
 
 export function apiError(error: unknown) {
   if (error instanceof AppError) {
+    const headers =
+      error.retryAfterSeconds !== undefined
+        ? { "Retry-After": String(Math.max(0, Math.ceil(error.retryAfterSeconds))) }
+        : undefined;
     return NextResponse.json(
       {
         success: false,
         data: null,
         error: { code: error.code, message: error.message },
       },
-      { status: error.statusCode },
+      { status: error.statusCode, headers },
     );
   }
 

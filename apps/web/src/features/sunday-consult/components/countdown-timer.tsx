@@ -1,17 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCountdownRemaining } from "@/hooks/use-countdown-remaining";
 
 export function CountdownTimer({ targetDate }: { targetDate: Date | string }) {
-  const target = new Date(targetDate).getTime();
-  const [remaining, setRemaining] = useState<number | null>(null);
-
-  useEffect(() => {
-    const tick = () => setRemaining(Math.max(0, target - Date.now()));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [target]);
+  const remaining = useCountdownRemaining(targetDate);
 
   if (remaining === null) {
     return (

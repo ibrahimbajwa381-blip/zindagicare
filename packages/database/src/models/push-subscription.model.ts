@@ -1,4 +1,4 @@
-import { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { registerModel } from "../lib/register-model";
 
 const pushSubscriptionSchema = new Schema(
@@ -26,7 +26,7 @@ pushSubscriptionSchema.index({ userId: 1, updatedAt: -1 });
 export type PushSubscriptionDocument = InferSchemaType<
   typeof pushSubscriptionSchema
 > & {
-  _id: Schema.Types.ObjectId;
+  _id: Types.ObjectId;
 };
 
 export const PushSubscriptionModel: Model<PushSubscriptionDocument> =
