@@ -4,7 +4,7 @@ export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.webp";
 export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.webp";
 export const HOME_PHYSIO_HERO_IMAGE = "/hero/home-physio-male-pakistan.webp";
 /** Doctor on a phone / video consult — used for urgent care hero & banners */
-export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.jpg";
+export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.webp";
 export const ONLINE_CONSULT_HERO_IMAGE = "/hero/dr-usama-riyaz.webp";
 
 export type HeroService = {

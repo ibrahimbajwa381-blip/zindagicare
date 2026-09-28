@@ -99,7 +99,9 @@ async function optimize(file) {
   let image;
   let meta;
   try {
-    image = sharp(file);
+    // Decode from a buffer, not the path: on Windows sharp holds the file handle open,
+    // which makes the later writeFileSync back to the same path fail with UNKNOWN.
+    image = sharp(fs.readFileSync(file));
     meta = await image.metadata();
   } catch (err) {
     console.warn(`[optimize-images] Skipping ${path.relative(publicDir, file)}: ${err.message}`);

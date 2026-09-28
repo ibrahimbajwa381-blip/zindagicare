@@ -2,11 +2,11 @@
 export const PROVIDER_ONBOARDING_IMAGES = {
   doctor: {
     preview: {
-      src: "/doctors/hassan-raza.jpg",
+      src: "/doctors/hassan-raza.webp",
       alt: "Dr. Hassan Raza, PMDC-verified Pakistani doctor with stethoscope",
     },
     hero: {
-      src: "/doctors/hassan-raza.jpg",
+      src: "/doctors/hassan-raza.webp",
       alt: "Dr. Hassan Raza, PMDC-verified Pakistani doctor with stethoscope",
     },
   },

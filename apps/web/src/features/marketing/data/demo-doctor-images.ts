@@ -1,7 +1,7 @@
 /** Temporary demo portraits — replace with real uploads later. */
 export const DEMO_DOCTOR_IMAGES = {
   "Dr. Ayesha Khan": "/doctors/ayesha-khan.jpg",
-  "Dr. Hassan Raza": "/doctors/hassan-raza.jpg",
+  "Dr. Hassan Raza": "/doctors/hassan-raza.webp",
   "Dr. Sara Ahmed": "/doctors/sara-ahmed.jpg",
   "Dr. Omar Siddiqui": "/doctors/omar-siddiqui.jpg",
   "Dr. Fatima Malik": "/doctors/fatima-malik.jpg",
