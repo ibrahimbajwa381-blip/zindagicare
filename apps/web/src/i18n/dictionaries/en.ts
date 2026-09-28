@@ -188,6 +188,8 @@ export const en = {
     addNutritionistProfileButton: "Continue to verification",
     addingProfile: "Setting up profile…",
     signedInAs: "Signed in as",
+    oneRolePerAccountNotice:
+      "Each account has one role. Log out first to create a separate professional account with a different email.",
     signInAfterRegisterFailed:
       "Account created but sign-in failed. Please log in with your email and password.",
     sendOtp: "Send OTP",

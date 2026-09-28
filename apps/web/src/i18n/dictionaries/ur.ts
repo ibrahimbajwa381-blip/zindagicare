@@ -188,6 +188,8 @@ export const ur: Dictionary = {
     addNutritionistProfileButton: "تصدیق کی طرف جائیں",
     addingProfile: "پروفائل تیار ہو رہی ہے…",
     signedInAs: "سائن ان بطور",
+    oneRolePerAccountNotice:
+      "ہر اکاؤنٹ کا ایک ہی کردار ہوتا ہے۔ الگ ای میل کے ساتھ نیا پروفیشنل اکاؤنٹ بنانے کے لیے پہلے لاگ آؤٹ کریں۔",
     signInAfterRegisterFailed:
       "اکاؤنٹ بن گیا مگر سائن ان نہیں ہوا۔ ای میل اور پاس ورڈ سے لاگ ان کریں۔",
     sendOtp: "او ٹی پی بھیجیں",
