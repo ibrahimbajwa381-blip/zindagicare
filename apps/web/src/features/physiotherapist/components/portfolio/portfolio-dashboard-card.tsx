@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ExternalLink, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,19 @@ type Props = {
   specialties: string[];
   portfolio: PhysiotherapistPortfolio;
   publicPath: string | null;
+  /** Extra action (e.g. the shareable profile card) shown beside "View live". */
+  shareAction?: ReactNode;
 };
 
 /** Overview-page summary: a mini preview of the public profile plus the next steps to finish it. */
-export function PortfolioDashboardCard({ name, avatarUrl, specialties, portfolio, publicPath }: Props) {
+export function PortfolioDashboardCard({
+  name,
+  avatarUrl,
+  specialties,
+  portfolio,
+  publicPath,
+  shareAction,
+}: Props) {
   const checklist = portfolioChecklist(portfolio, avatarUrl);
   const percent = portfolioCompleteness(checklist);
   const complete = percent === 100;
@@ -74,6 +84,7 @@ export function PortfolioDashboardCard({ name, avatarUrl, specialties, portfolio
                 </Link>
               </Button>
             )}
+            {shareAction}
           </div>
         </div>
 

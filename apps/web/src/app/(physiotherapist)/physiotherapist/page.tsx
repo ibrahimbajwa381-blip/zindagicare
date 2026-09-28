@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { VerificationStatuses, Roles } from "@zindagi/shared";
+import {
+  HOME_CARE_PRICING,
+  HomeVisitServiceTypes,
+  VerificationStatuses,
+  Roles,
+} from "@zindagi/shared";
 import {
   CalendarClock,
   CheckCircle2,
@@ -11,6 +16,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { siteConfig } from "@/config/site";
+import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
 import { PhysiotherapistAvailabilityToggle } from "@/features/physiotherapist/components/physiotherapist-availability-toggle";
 import { PortfolioDashboardCard } from "@/features/physiotherapist/components/portfolio/portfolio-dashboard-card";
@@ -43,6 +50,9 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
     isApproved && profile.publicProfile.slug
       ? physiotherapistProfilePath(profile.publicProfile.slug, profile.user.id)
       : null;
+  const serviceLocation = [profile.staff.serviceArea.area, profile.staff.serviceArea.city]
+    .filter(Boolean)
+    .join(", ");
 
   const stats = [
     {
@@ -163,6 +173,26 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
           specialties={verification.specialties ?? []}
           portfolio={profile.portfolio}
           publicPath={publicPath}
+          shareAction={
+            publicPath ? (
+              <DoctorShareCardDialog
+                triggerLabel="Share profile card"
+                shareText={`Book a home physiotherapy visit with ${profile.user.name} on ${siteConfig.name}`}
+                card={{
+                  name: profile.user.name,
+                  avatarUrl: profile.user.avatarUrl,
+                  specialty: verification.specialties?.join(" · ") || "Physiotherapist",
+                  qualifications: verification.qualification ? [verification.qualification] : [],
+                  location: serviceLocation ? `Home visits in ${serviceLocation}` : undefined,
+                  experienceYears: verification.experienceYears,
+                  consultationFee: HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY],
+                  feeLabel: "per home visit",
+                  pmdcVerified: true,
+                  profileUrl: `${siteConfig.url}${publicPath}`,
+                }}
+              />
+            ) : undefined
+          }
         />
       </div>
 

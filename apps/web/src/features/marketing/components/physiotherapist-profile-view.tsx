@@ -17,6 +17,7 @@ import {
 import { HOME_CARE_MATCH_RADIUS_KM, HOME_CARE_PRICING, HomeVisitServiceTypes } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
 import { DoctorMobileBookBar } from "@/features/marketing/components/doctor-profile-interactive";
 import {
   PortfolioFacts,
@@ -37,6 +38,7 @@ import {
   PortfolioExperienceTimeline,
   PortfolioTagList,
 } from "@/features/physiotherapist/components/portfolio/portfolio-views";
+import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import type { PublicPhysiotherapist } from "@/server/services/public-physiotherapist.service";
 
@@ -110,7 +112,30 @@ export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiothe
         >
           ← All physiotherapists
         </Link>
-        <ShareProfileButton className="shrink-0 whitespace-nowrap" doctorName={physio.name} shareLabel="Share profile" copiedLabel="Link copied" />
+        <div className="flex shrink-0 items-center gap-3">
+          <ShareProfileButton
+            className="whitespace-nowrap"
+            doctorName={physio.name}
+            shareLabel="Share profile"
+            copiedLabel="Link copied"
+          />
+          <DoctorShareCardDialog
+            triggerLabel="Share card"
+            shareText={`Book a home physiotherapy visit with ${physio.name} on ${siteConfig.name}`}
+            card={{
+              name: physio.name,
+              avatarUrl: physio.avatarUrl,
+              specialty: physio.specialties.join(" · ") || "Physiotherapist",
+              qualifications: physio.qualification ? [physio.qualification] : [],
+              location: location ? `Home visits in ${location}` : undefined,
+              experienceYears: physio.experienceYears,
+              consultationFee: homeVisitPrice,
+              feeLabel: "per home visit",
+              pmdcVerified: true,
+              profileUrl: `${siteConfig.url}${physiotherapistProfilePath(physio.slug, physio.id)}`,
+            }}
+          />
+        </div>
       </div>
 
       <ProfileHero

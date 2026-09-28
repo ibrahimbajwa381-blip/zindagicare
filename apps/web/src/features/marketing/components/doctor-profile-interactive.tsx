@@ -144,7 +144,7 @@ export function DoctorMobileBookBar({
     <div
       className={cn(
         "fixed z-30 transition-all duration-200 lg:hidden",
-        "bottom-[max(1.25rem,env(safe-area-inset-bottom))] start-[max(1rem,env(safe-area-inset-left))] end-[calc(max(1rem,env(safe-area-inset-right))+4.25rem)]",
+        "bottom-[max(1.25rem,env(safe-area-inset-bottom))] start-[calc(max(1rem,env(safe-area-inset-left))+4.25rem)] end-[max(1rem,env(safe-area-inset-right))]",
         panelVisible ? "pointer-events-none translate-y-4 opacity-0" : "opacity-100",
       )}
       aria-hidden={panelVisible}

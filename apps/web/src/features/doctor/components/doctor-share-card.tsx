@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { BadgeCheck, Building2, Star } from "lucide-react";
+import { BadgeCheck, Building2, MapPin, Star } from "lucide-react";
 
 export const SHARE_CARD_WIDTH = 540;
 export const SHARE_CARD_HEIGHT = 960;
@@ -15,6 +15,10 @@ export type DoctorShareCardProps = {
   ratingAvg?: number;
   ratingCount?: number;
   consultationFee?: number;
+  /** Caption under the fee, e.g. "per home visit" for physiotherapists. */
+  feeLabel?: string;
+  /** Shown with a pin icon when there is no hospital (e.g. a physio's service area). */
+  location?: string;
   pmdcVerified?: boolean;
   profileUrl: string;
   qrDataUrl?: string | null;
@@ -47,6 +51,8 @@ export const DoctorShareCard = forwardRef<HTMLDivElement, DoctorShareCardProps>(
       ratingAvg,
       ratingCount,
       consultationFee,
+      feeLabel = "per consultation",
+      location,
       pmdcVerified,
       profileUrl,
       qrDataUrl,
@@ -224,6 +230,23 @@ export const DoctorShareCard = forwardRef<HTMLDivElement, DoctorShareCardProps>(
             </div>
           )}
 
+          {!hospital && location && (
+            <div
+              style={{
+                marginTop: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 14,
+                color: "rgba(255,255,255,0.9)",
+                textAlign: "center",
+              }}
+            >
+              <MapPin size={16} />
+              <span>{location}</span>
+            </div>
+          )}
+
           {hospital && (
             <div
               style={{
@@ -306,7 +329,7 @@ export const DoctorShareCard = forwardRef<HTMLDivElement, DoctorShareCardProps>(
                   Rs. {consultationFee.toLocaleString()}
                 </div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>
-                  per consultation
+                  {feeLabel}
                 </div>
               </div>
             )}
