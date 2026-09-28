@@ -4,6 +4,7 @@ import {
   Gift,
   Home,
   LayoutDashboard,
+  Sparkles,
   MessageSquare,
   Sun,
   UserCog,
@@ -108,6 +109,12 @@ export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         icon: UserCog,
       },
       {
+        href: "/doctor/portfolio",
+        label: "My portfolio",
+        description: "Your public profile website",
+        icon: Sparkles,
+      },
+      {
         href: "/doctor/earnings",
         label: "Earnings",
         description: "Paid consult & home visit revenue",
@@ -143,6 +150,12 @@ export const DOCTOR_ONBOARDING_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         label: "Edit profile",
         description: "Update details while awaiting approval",
         icon: UserCog,
+      },
+      {
+        href: "/doctor/portfolio",
+        label: "My portfolio",
+        description: "Your public profile website",
+        icon: Sparkles,
       },
     ],
   },

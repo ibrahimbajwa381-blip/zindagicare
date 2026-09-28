@@ -44,15 +44,20 @@ export function PortfolioProgressBar({ percent }: { percent: number }) {
   );
 }
 
-export function PortfolioChecklist({
+type ChecklistRow = { id: string; label: string; hint: string; done: boolean };
+
+export function PortfolioChecklist<T extends ChecklistRow = PortfolioChecklistItem>({
   items,
   limit,
   showDone = true,
+  itemHref,
 }: {
-  items: PortfolioChecklistItem[];
+  items: T[];
   /** Cap on rows shown (dashboard shows only the next few steps). */
   limit?: number;
   showDone?: boolean;
+  /** Where each item is edited; defaults to the physiotherapist portfolio. */
+  itemHref?: (id: T["id"]) => string;
 }) {
   const visible = (showDone ? items : items.filter((i) => !i.done)).slice(0, limit);
 
@@ -61,7 +66,7 @@ export function PortfolioChecklist({
       {visible.map((item) => (
         <li key={item.id}>
           <Link
-            href={portfolioItemHref(item.id)}
+            href={itemHref ? itemHref(item.id) : portfolioItemHref(item.id as PortfolioChecklistItem["id"])}
             className="group flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-slate-50"
           >
             {item.done ? (

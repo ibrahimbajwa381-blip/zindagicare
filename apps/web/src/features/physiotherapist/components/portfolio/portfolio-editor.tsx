@@ -90,6 +90,13 @@ const CERTIFICATION_FIELDS: ListFieldDef[] = [
   { key: "title", label: "Certification / course", kind: "text", required: true, maxLength: 160, placeholder: "e.g. Certified Dry Needling Practitioner" },
   { key: "issuer", label: "Issued by", kind: "text", maxLength: 160, placeholder: "e.g. PPTA" },
   { key: "year", label: "Year", kind: "year" },
+  {
+    key: "url",
+    label: "Verification link",
+    kind: "url",
+    maxLength: 500,
+    placeholder: "e.g. https://issuer.org/verify/ABC123",
+  },
 ];
 
 const AWARD_FIELDS: ListFieldDef[] = [
@@ -289,7 +296,7 @@ export function PhysiotherapistPortfolioEditor({
               fields={CERTIFICATION_FIELDS}
               itemLabel="Certification"
               max={LIMITS.certifications}
-              emptyRow={{ title: "", issuer: "", year: "" }}
+              emptyRow={{ title: "", issuer: "", year: "", url: "" }}
               onSave={save}
               onDone={done}
             />

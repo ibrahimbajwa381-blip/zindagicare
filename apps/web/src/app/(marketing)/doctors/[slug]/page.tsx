@@ -14,6 +14,14 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+/** Meta descriptions over ~155 chars get cut by search engines; end on a whole word. */
+function truncateDescription(text: string, max = 155): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 80 ? cut.lastIndexOf(" ") : cut.length)}…`;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const doctor = await PublicDoctorService.getPublicDoctor(slug);
@@ -23,8 +31,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const specialty = doctor.specialties[0] ?? "Specialist";
   const canonicalSlug = doctor.slug;
+  const summary = [doctor.portfolio.headline?.replace(/[.!?]+$/, ""), doctor.bio].filter(Boolean).join(". ");
   const description =
-    doctor.bio?.slice(0, 155) ??
+    (summary ? truncateDescription(summary) : undefined) ??
     `Book online doctor consultation with ${doctor.name}, ${specialty} in Lahore, Pakistan on ZindagiCare. PMDC-verified, secure video consult from home.`;
 
   return buildPageMetadata({
@@ -61,7 +70,7 @@ export default async function DoctorProfilePage({ params }: PageProps) {
         ]}
       />
       <DoctorJsonLd doctor={doctor} />
-      <PageSection variant="brand" spacing="default" flipBlur>
+      <PageSection variant="brand" spacing="sm" flipBlur className="md:overflow-clip">
         <DoctorProfileView
           doctor={doctor}
           reviews={reviews}

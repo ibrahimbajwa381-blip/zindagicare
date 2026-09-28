@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { DoctorAvatar } from "@/features/doctor/components/doctor-avatar";
 import { DoctorEarningsSummaryCard } from "@/features/doctor/components/doctor-earnings-panel";
 import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
+import { DoctorPortfolioDashboardCard } from "@/features/doctor/components/portfolio/doctor-portfolio-dashboard-card";
 import { DOCTOR_OVERVIEW_ACTIONS } from "@/features/doctor/data/doctor-workspace-nav";
 import { formatDayOfWeek, type DoctorProfileDto } from "@/features/doctor/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -210,6 +211,19 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
           )}
         </div>
       </div>
+
+      <DoctorPortfolioDashboardCard
+        name={profile.user.name}
+        avatarUrl={avatarSrc}
+        specialty={specialty}
+        portfolio={profile.portfolio}
+        context={{
+          avatarUrl: profile.user.avatarUrl,
+          hospitalCount: profile.hospitals.length,
+          weeklySlotCount: profile.weeklyAvailability.length,
+        }}
+        publicPath={isApproved && profile.isListed ? doctorProfilePath(profile.slug, profile.id) : null}
+      />
 
       {isApproved && (
         <>

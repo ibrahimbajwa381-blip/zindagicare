@@ -4,6 +4,99 @@ import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
 
+const yearField = { type: Number, min: 1900, max: 2100 };
+
+/**
+ * Doctor public portfolio — the doctor-authored content that turns /doctors/[slug] into a
+ * personal website. Verified credentials (PMDC, degree, specialties) stay top-level and
+ * admin-controlled; `bio` and `languages` also stay top-level (older fields). Public by
+ * design, so not encrypted.
+ */
+const doctorPortfolioSchema = new Schema(
+  {
+    headline: { type: String, maxlength: 120 },
+    approach: { type: String, maxlength: 1000 },
+    introVideoUrl: { type: String, maxlength: 300 },
+    conditionsTreated: { type: [String], default: undefined },
+    memberships: { type: [String], default: undefined },
+    services: {
+      type: [
+        new Schema(
+          { name: String, description: String, fee: { type: Number, min: 0 } },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    education: {
+      type: [new Schema({ degree: String, institute: String, year: yearField }, { _id: false })],
+      default: undefined,
+    },
+    experience: {
+      type: [
+        new Schema(
+          {
+            role: String,
+            organization: String,
+            city: String,
+            startYear: yearField,
+            endYear: yearField,
+            current: { type: Boolean, default: false },
+            description: { type: String, maxlength: 500 },
+          },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    certifications: {
+      type: [
+        new Schema(
+          { title: String, issuer: String, year: yearField, url: { type: String, maxlength: 500 } },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    awards: {
+      type: [new Schema({ title: String, year: yearField }, { _id: false })],
+      default: undefined,
+    },
+    publications: {
+      type: [
+        new Schema(
+          { title: String, publisher: String, year: yearField, url: String },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    faqs: {
+      type: [new Schema({ question: String, answer: String }, { _id: false })],
+      default: undefined,
+    },
+    links: {
+      type: new Schema(
+        {
+          website: String,
+          linkedin: String,
+          facebook: String,
+          instagram: String,
+          youtube: String,
+          x: String,
+          researchgate: String,
+          googleScholar: String,
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+    hiddenSections: { type: [String], default: undefined },
+    updatedAt: { type: Date },
+  },
+  { _id: false },
+);
+
 /**
  * DoctorProfile — 1:1 with User when role includes doctor.
  * Referenced (not embedded on User) so doctor listings don't load auth fields.
@@ -51,6 +144,7 @@ const doctorProfileSchema = new Schema(
     experienceYears: { type: Number, default: 0, min: 0 },
     bio: { type: String, maxlength: 2000 },
     languages: { type: [String], default: ["English", "Urdu"] },
+    portfolio: { type: doctorPortfolioSchema, default: undefined },
     hospitals: [
       {
         name: { type: String, required: true },

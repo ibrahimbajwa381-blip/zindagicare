@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
 import { MapPin, Navigation } from "lucide-react";
@@ -15,22 +16,44 @@ import { physiotherapistHomeVisitHref } from "./physiotherapist-profile-view";
 
 type Props = {
   initial: PublicPhysiotherapist[];
+  cities: readonly string[];
+  specialties: readonly string[];
+  /** Active filters from the URL (?city= / ?specialty=); undefined = all. */
+  city?: string;
+  specialty?: string;
 };
 
-export function PhysiotherapistDirectory({ initial }: Props) {
+const selectClass =
+  "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm";
+
+export function PhysiotherapistDirectory({ initial, cities, specialties, city, specialty }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
-  // Keyed by the location it was fetched for, so "loading" is derived rather than set in the effect.
+  // Keyed by the location + filters it was fetched for, so "loading" is derived rather than set in the effect.
   const [sorted, setSorted] = useState<{ key: string; rows: PublicPhysiotherapist[] } | null>(
     null,
   );
-  const geoKey = geo ? `${geo.lat},${geo.lng}` : null;
+  const geoKey = geo ? `${geo.lat},${geo.lng}|${city ?? ""}|${specialty ?? ""}` : null;
   const loading = geoKey !== null && sorted?.key !== geoKey;
   const rows = sorted && sorted.key === geoKey ? sorted.rows : initial;
+
+  function setFilter(name: "city" | "specialty", value: string) {
+    const params = new URLSearchParams();
+    const next = { city, specialty, [name]: value || undefined };
+    if (next.city) params.set("city", next.city);
+    if (next.specialty) params.set("specialty", next.specialty);
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   useEffect(() => {
     if (!geo || !geoKey) return;
     let cancelled = false;
-    fetch(`/api/v1/public/physiotherapists?lat=${geo.lat}&lng=${geo.lng}`)
+    const params = new URLSearchParams({ lat: String(geo.lat), lng: String(geo.lng) });
+    if (city) params.set("city", city);
+    if (specialty) params.set("specialty", specialty);
+    fetch(`/api/v1/public/physiotherapists?${params}`)
       .then((res) => res.json())
       .then((json) => {
         if (!cancelled) setSorted({ key: geoKey, rows: json.success ? (json.data ?? []) : initial });
@@ -41,12 +64,51 @@ export function PhysiotherapistDirectory({ initial }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [geo, geoKey, initial]);
+  }, [geo, geoKey, initial, city, specialty]);
 
   const nearbyCount = geo ? rows.filter((r) => r.withinRadius).length : 0;
 
   return (
     <div className="space-y-6">
+      <div className={`grid gap-4 p-5 sm:grid-cols-2 ${surfaceCard}`}>
+        <div className="min-w-0">
+          <label htmlFor="physio-filter-city" className="mb-1.5 block text-sm font-semibold text-slate-900">
+            Your city
+          </label>
+          <select
+            id="physio-filter-city"
+            value={city ?? ""}
+            onChange={(e) => setFilter("city", e.target.value)}
+            className={selectClass}
+          >
+            <option value="">All cities</option>
+            {cities.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="min-w-0">
+          <label htmlFor="physio-filter-specialty" className="mb-1.5 block text-sm font-semibold text-slate-900">
+            Specialty
+          </label>
+          <select
+            id="physio-filter-specialty"
+            value={specialty ?? ""}
+            onChange={(e) => setFilter("specialty", e.target.value)}
+            className={selectClass}
+          >
+            <option value="">All specialties</option>
+            {specialties.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className={`p-5 ${surfaceCard}`}>
         <p className="text-sm font-semibold text-slate-900">Find physiotherapists near you</p>
         <p className="mb-3 text-xs text-slate-500">
@@ -71,7 +133,9 @@ export function PhysiotherapistDirectory({ initial }: Props) {
 
       {rows.length === 0 ? (
         <p className={`p-8 text-center text-sm text-slate-500 ${surfaceCard}`}>
-          No verified physiotherapists listed yet.
+          {city || specialty
+            ? `No verified ${specialty ? `${specialty} ` : ""}physiotherapists${city ? ` in ${city}` : ""} yet.`
+            : "No verified physiotherapists listed yet."}
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">

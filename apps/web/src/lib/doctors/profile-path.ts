@@ -33,3 +33,8 @@ export function resolveDoctorSlug(
 export function doctorProfilePath(slug?: string | null, doctorId?: string): string {
   return buildProfilePath("/doctors", slug, doctorId);
 }
+
+/** Short, shareable link (/dr/<slug>) that permanently redirects to the full profile. */
+export function doctorShortLinkPath(slug: string): string {
+  return `/dr/${encodeURIComponent(slug)}`;
+}

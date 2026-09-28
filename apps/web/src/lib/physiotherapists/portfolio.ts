@@ -13,7 +13,7 @@ export type PortfolioExperience = {
   current: boolean;
   description?: string;
 };
-export type PortfolioCertification = { title: string; issuer?: string; year?: number };
+export type PortfolioCertification = { title: string; issuer?: string; year?: number; url?: string };
 export type PortfolioAward = { title: string; year?: number };
 
 export type PhysiotherapistPortfolio = {
@@ -46,6 +46,11 @@ type RawPortfolio = {
 
 const text = (value: unknown) =>
   typeof value === "string" && value.trim() ? value.trim() : undefined;
+/** Only http(s) links are rendered as hrefs, so stored values can never become `javascript:` URLs. */
+const httpUrl = (value: unknown) => {
+  const v = text(value);
+  return v && /^https?:\/\//i.test(v) ? v : undefined;
+};
 const year = (value: unknown) => (typeof value === "number" ? value : undefined);
 const strings = (value: RawList): string[] =>
   Array.isArray(value) ? value.map(text).filter((v): v is string => Boolean(v)) : [];
@@ -86,7 +91,12 @@ export function mapPhysiotherapistPortfolio(staff: {
       })),
     certifications: records(p.certifications)
       .filter((c) => text(c.title))
-      .map((c) => ({ title: text(c.title)!, issuer: text(c.issuer), year: year(c.year) })),
+      .map((c) => ({
+        title: text(c.title)!,
+        issuer: text(c.issuer),
+        year: year(c.year),
+        url: httpUrl(c.url),
+      })),
     awards: records(p.awards)
       .filter((a) => text(a.title))
       .map((a) => ({ title: text(a.title)!, year: year(a.year) })),

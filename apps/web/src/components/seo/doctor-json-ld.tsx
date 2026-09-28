@@ -1,5 +1,5 @@
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildPhysicianSchema } from "@/lib/seo/schema";
+import { buildFaqSchema, buildPhysicianSchema } from "@/lib/seo/schema";
 import type { PublicDoctorProfile } from "@/features/marketing/types/doctor-public";
 
 type DoctorJsonLdProps = {
@@ -7,5 +7,15 @@ type DoctorJsonLdProps = {
 };
 
 export function DoctorJsonLd({ doctor }: DoctorJsonLdProps) {
-  return <JsonLd data={buildPhysicianSchema({ ...doctor, slug: doctor.slug })} />;
+  const physician = buildPhysicianSchema({ ...doctor, slug: doctor.slug });
+  const faqs = doctor.portfolio.faqs;
+  return (
+    <JsonLd
+      data={
+        faqs.length
+          ? [physician, buildFaqSchema(faqs.map((f) => ({ q: f.question, a: f.answer })))]
+          : physician
+      }
+    />
+  );
 }

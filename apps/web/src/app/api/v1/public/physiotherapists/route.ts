@@ -4,16 +4,21 @@ import { PublicPhysiotherapistService } from "@/server/services/public-physiothe
 
 const querySchema = z.object({
   city: z.string().trim().max(60).optional(),
+  specialty: z.string().trim().max(80).optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
   nearby: z.enum(["1", "true"]).optional(),
 });
 
-/** Public directory: verified physiotherapists, nearest-first when lat/lng are given. */
+/**
+ * Public directory: verified physiotherapists, optionally filtered by city/specialty,
+ * nearest-first when lat/lng are given.
+ */
 export const GET = withApiHandler(
   async ({ searchParams }) => {
     const query = querySchema.parse({
       city: searchParams.get("city") ?? undefined,
+      specialty: searchParams.get("specialty") ?? undefined,
       lat: searchParams.get("lat") ?? undefined,
       lng: searchParams.get("lng") ?? undefined,
       nearby: searchParams.get("nearby") ?? undefined,
@@ -24,6 +29,7 @@ export const GET = withApiHandler(
         : undefined;
     return PublicPhysiotherapistService.list({
       city: query.city,
+      specialty: query.specialty,
       near,
       nearbyOnly: Boolean(near && query.nearby),
     });

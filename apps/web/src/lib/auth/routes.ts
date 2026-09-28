@@ -20,6 +20,7 @@ export const AUTH_ROUTES = {
   onboarding: "/onboarding",
   doctorVerification: "/doctor/verification",
   doctorProfile: "/doctor/profile",
+  doctorPortfolio: "/doctor/portfolio",
   patientDashboard: "/dashboard",
   adminDoctors: "/admin/doctors",
   adminDashboard: "/admin",
@@ -141,6 +142,9 @@ export const DOCTOR_VERIFICATION_EXEMPT_PREFIXES = [
   "/consult",
   "/api/v1/doctor/verification",
   "/api/v1/doctor/profile",
+  // Doctors can build their public portfolio while the application is under review.
+  AUTH_ROUTES.doctorPortfolio,
+  "/api/v1/doctor/portfolio",
 ] as const;
 
 /** Nurse verification pending — can access these paths. */

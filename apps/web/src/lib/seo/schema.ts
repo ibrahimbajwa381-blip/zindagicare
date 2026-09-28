@@ -44,9 +44,20 @@ export function buildPhysicianSchema(doctor: {
   ratingAvg: number;
   ratingCount: number;
   consultationFee: number;
+  medicalCollege?: string;
+  portfolio?: {
+    headline?: string;
+    conditionsTreated: string[];
+    services: { name: string; description?: string }[];
+    awards: { title: string }[];
+    memberships: string[];
+    links: Partial<Record<string, string>>;
+  };
 }) {
   const specialty = doctor.specialties[0] ?? "Physician";
   const hospital = doctor.hospitals[0];
+  const portfolio = doctor.portfolio;
+  const sameAs = portfolio ? Object.values(portfolio.links).filter(Boolean) : [];
 
   return {
     "@context": "https://schema.org",
@@ -62,6 +73,27 @@ export function buildPhysicianSchema(doctor: {
       doctor.bio ??
       `${doctor.name} is a ${specialty} offering online video consultations in Lahore, Pakistan via ZindagiCare.`,
     medicalSpecialty: doctor.specialties,
+    ...(portfolio?.headline ? { slogan: portfolio.headline } : {}),
+    ...(doctor.medicalCollege
+      ? { alumniOf: { "@type": "CollegeOrUniversity", name: doctor.medicalCollege } }
+      : {}),
+    ...(portfolio?.conditionsTreated.length ? { knowsAbout: portfolio.conditionsTreated } : {}),
+    ...(portfolio?.services.length
+      ? {
+          availableService: portfolio.services.map((service) => ({
+            "@type": "MedicalProcedure",
+            name: service.name,
+            ...(service.description ? { description: service.description } : {}),
+          })),
+        }
+      : {}),
+    ...(portfolio?.awards.length ? { award: portfolio.awards.map((a) => a.title) } : {}),
+    ...(portfolio?.memberships.length
+      ? {
+          memberOf: portfolio.memberships.map((name) => ({ "@type": "Organization", name })),
+        }
+      : {}),
+    ...(sameAs.length ? { sameAs } : {}),
     ...(hospital
       ? {
           hospitalAffiliation: {

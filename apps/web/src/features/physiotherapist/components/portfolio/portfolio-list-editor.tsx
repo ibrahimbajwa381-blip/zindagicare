@@ -11,10 +11,12 @@ export type DraftRow = Record<string, string | boolean>;
 export type ListFieldDef = {
   key: string;
   label: string;
-  kind: "text" | "year" | "textarea" | "checkbox";
+  kind: "text" | "year" | "number" | "textarea" | "checkbox" | "url";
   placeholder?: string;
   required?: boolean;
   maxLength?: number;
+  /** Upper bound for `number` fields (lower bound is 0). */
+  maxValue?: number;
   /** Span both grid columns on wider screens. */
   wide?: boolean;
   /** Hide (and ignore) the field for this row, e.g. end year while "current". */
@@ -152,10 +154,16 @@ export function PortfolioListEditor({
                   ) : (
                     <Input
                       id={id}
-                      type={field.kind === "year" ? "number" : "text"}
-                      inputMode={field.kind === "year" ? "numeric" : undefined}
-                      min={field.kind === "year" ? PORTFOLIO_MIN_YEAR : undefined}
-                      max={field.kind === "year" ? MAX_YEAR : undefined}
+                      type={field.kind === "year" || field.kind === "number" ? "number" : "text"}
+                      inputMode={
+                        field.kind === "year" || field.kind === "number"
+                          ? "numeric"
+                          : field.kind === "url"
+                            ? "url"
+                            : undefined
+                      }
+                      min={field.kind === "year" ? PORTFOLIO_MIN_YEAR : field.kind === "number" ? 0 : undefined}
+                      max={field.kind === "year" ? MAX_YEAR : field.kind === "number" ? field.maxValue : undefined}
                       maxLength={field.maxLength}
                       value={String(value ?? "")}
                       placeholder={field.placeholder}
@@ -215,6 +223,26 @@ export function draftRowsToItems<T>(
           };
         }
         item[field.key] = year;
+      } else if (field.kind === "number") {
+        const amount = Number(value);
+        const max = field.maxValue ?? Number.MAX_SAFE_INTEGER;
+        if (!Number.isInteger(amount) || amount < 0 || amount > max) {
+          return {
+            items,
+            error: `${itemLabel} ${index + 1}: ${field.label} must be a whole number between 0 and ${max.toLocaleString()}.`,
+          };
+        }
+        item[field.key] = amount;
+      } else if (field.kind === "url") {
+        // Accept "example.com/cert" by assuming https, but reject anything that isn't a web link.
+        const url = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+        if (!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(url)) {
+          return {
+            items,
+            error: `${itemLabel} ${index + 1}: ${field.label} must be a valid web link.`,
+          };
+        }
+        item[field.key] = url;
       } else {
         if (field.required && value.length < 2) {
           return { items, error: `${itemLabel} ${index + 1}: ${field.label} is too short.` };

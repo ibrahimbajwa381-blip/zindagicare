@@ -1,4 +1,5 @@
 import { ActivityEventModel, connectDatabase, UserModel } from "@zindagi/database";
+import { highestRole, type Role } from "@zindagi/shared";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { getRequestGeo } from "@/server/lib/request-geo";
@@ -111,11 +112,16 @@ export async function listActivityForAdmin(params: {
   const userIds = [...new Set(rows.map((r) => r.userId?.toString()).filter(Boolean))] as string[];
   const users = userIds.length
     ? await UserModel.find(mongoFilter({ _id: { $in: mongoObjectIds(userIds) } }))
-        .select("name")
+        .select("name roles")
         .lean()
     : [];
   const nameById = new Map(
     users.map((u) => [u._id.toString(), safeDisplayText(u.name) ?? UNKNOWN]),
+  );
+  // Show the user's current highest role (e.g. a patient who later became a
+  // doctor shows as doctor), not whatever role was stamped on older events.
+  const roleById = new Map(
+    users.map((u) => [u._id.toString(), highestRole(u.roles as Role[] | undefined)]),
   );
 
   const events: ActivityFeedRow[] = rows.map((row) => ({
@@ -132,7 +138,7 @@ export async function listActivityForAdmin(params: {
       : row.visitorId
         ? `Guest ${row.visitorId.slice(0, 4).toUpperCase()}`
         : "Guest",
-    userRole: row.userRole ?? UNKNOWN,
+    userRole: (row.userId && roleById.get(row.userId.toString())) || row.userRole || UNKNOWN,
     action: row.action,
     status: (row.status as "success" | "error") ?? "success",
     entityType: row.entityType ?? null,

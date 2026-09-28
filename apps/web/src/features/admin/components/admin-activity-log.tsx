@@ -27,31 +27,29 @@ type ViewMode = "journeys" | "table";
 
 type Focus = { kind: "user" | "visitor"; id: string; label: string } | null;
 
-type ActorColor = { dot: string; soft: string; text: string; ring: string; border: string };
+type ActorColor = { dot: string; border: string };
 
-/** Full class strings so Tailwind keeps them — one entry per person colour. */
+/**
+ * Muted identifier colours — used only for a small marker dot and a thin left
+ * rule so a person's actions can be followed without colouring the whole UI.
+ * Full class strings so Tailwind keeps them.
+ */
 const ACTOR_PALETTE: readonly ActorColor[] = [
-  { dot: "bg-sky-500", soft: "bg-sky-50", text: "text-sky-700", ring: "ring-sky-200", border: "border-l-sky-500" },
-  { dot: "bg-violet-500", soft: "bg-violet-50", text: "text-violet-700", ring: "ring-violet-200", border: "border-l-violet-500" },
-  { dot: "bg-amber-500", soft: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200", border: "border-l-amber-500" },
-  { dot: "bg-emerald-500", soft: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200", border: "border-l-emerald-500" },
-  { dot: "bg-rose-500", soft: "bg-rose-50", text: "text-rose-700", ring: "ring-rose-200", border: "border-l-rose-500" },
-  { dot: "bg-indigo-500", soft: "bg-indigo-50", text: "text-indigo-700", ring: "ring-indigo-200", border: "border-l-indigo-500" },
-  { dot: "bg-orange-500", soft: "bg-orange-50", text: "text-orange-700", ring: "ring-orange-200", border: "border-l-orange-500" },
-  { dot: "bg-teal-500", soft: "bg-teal-50", text: "text-teal-700", ring: "ring-teal-200", border: "border-l-teal-500" },
-  { dot: "bg-fuchsia-500", soft: "bg-fuchsia-50", text: "text-fuchsia-700", ring: "ring-fuchsia-200", border: "border-l-fuchsia-500" },
-  { dot: "bg-lime-600", soft: "bg-lime-50", text: "text-lime-700", ring: "ring-lime-200", border: "border-l-lime-600" },
-  { dot: "bg-cyan-600", soft: "bg-cyan-50", text: "text-cyan-700", ring: "ring-cyan-200", border: "border-l-cyan-600" },
-  { dot: "bg-pink-500", soft: "bg-pink-50", text: "text-pink-700", ring: "ring-pink-200", border: "border-l-pink-500" },
+  { dot: "bg-sky-700", border: "border-l-sky-700" },
+  { dot: "bg-teal-700", border: "border-l-teal-700" },
+  { dot: "bg-indigo-600", border: "border-l-indigo-600" },
+  { dot: "bg-amber-600", border: "border-l-amber-600" },
+  { dot: "bg-rose-700", border: "border-l-rose-700" },
+  { dot: "bg-emerald-700", border: "border-l-emerald-700" },
+  { dot: "bg-violet-700", border: "border-l-violet-700" },
+  { dot: "bg-cyan-700", border: "border-l-cyan-700" },
+  { dot: "bg-orange-700", border: "border-l-orange-700" },
+  { dot: "bg-blue-800", border: "border-l-blue-800" },
+  { dot: "bg-stone-500", border: "border-l-stone-500" },
+  { dot: "bg-lime-700", border: "border-l-lime-700" },
 ];
 
-const ANON_COLOR: ActorColor = {
-  dot: "bg-slate-400",
-  soft: "bg-slate-50",
-  text: "text-slate-600",
-  ring: "ring-slate-200",
-  border: "border-l-slate-300",
-};
+const ANON_COLOR: ActorColor = { dot: "bg-slate-300", border: "border-l-slate-200" };
 
 function hashString(value: string) {
   let hash = 0;
@@ -122,6 +120,11 @@ function formatTime(iso: string) {
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function roleLabel(event: Pick<ActivityFeedRow, "userId" | "userRole">) {
+  if (!event.userId) return "Guest";
+  return formatAction(event.userRole);
 }
 
 function initials(name: string) {
@@ -201,13 +204,14 @@ function DistributionList({
 
 function ActorAvatar({ name, color }: { name: string; color: ActorColor }) {
   return (
-    <span
-      className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-        color.dot,
-      )}
-    >
+    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
       {initials(name)}
+      <span
+        className={cn(
+          "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white",
+          color.dot,
+        )}
+      />
     </span>
   );
 }
@@ -478,17 +482,14 @@ export function AdminActivityLog() {
                   disabled={!target}
                   onClick={() => target && changeFocus(target)}
                   className={cn(
-                    "flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ring-1 transition",
-                    color.soft,
-                    color.text,
-                    color.ring,
-                    target ? "hover:shadow-sm" : "cursor-default",
+                    "flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 transition",
+                    target ? "hover:border-slate-300 hover:bg-slate-50" : "cursor-default",
                   )}
                 >
-                  <span className={cn("h-2.5 w-2.5 rounded-full", color.dot)} />
-                  {event.userName}
-                  {location ? <span className="opacity-70">· {location}</span> : null}
-                  <span className="rounded-full bg-white/70 px-1.5 tabular-nums">{count}</span>
+                  <span className={cn("h-2 w-2 rounded-full", color.dot)} />
+                  <span className="font-medium">{event.userName}</span>
+                  {location ? <span className="text-slate-400">{location}</span> : null}
+                  <span className="tabular-nums text-slate-400">{count}</span>
                 </button>
               );
             })}
@@ -513,7 +514,7 @@ export function AdminActivityLog() {
               const location = formatLocation(last);
               const errors = journey.events.filter((e) => e.status === "error").length;
               return (
-                <div key={journey.key} className={cn("border-l-4 px-5 py-4", color.border)}>
+                <div key={journey.key} className={cn("border-l-2 px-5 py-4", color.border)}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <ActorAvatar name={last.userName} color={color} />
                     <div className="min-w-0 flex-1">
@@ -521,10 +522,10 @@ export function AdminActivityLog() {
                         {focusButton(
                           last,
                           last.userName,
-                          cn("font-semibold", color.text),
+                          "font-semibold text-slate-900",
                         )}
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                          {last.userRole}
+                        <span className="rounded border border-slate-200 px-1.5 py-px text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          {roleLabel(last)}
                         </span>
                         {errors > 0 ? (
                           <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
@@ -564,16 +565,16 @@ export function AdminActivityLog() {
                         <span
                           title={`${formatDateTime(event.createdAt)}${event.path ? ` · ${event.path}` : ""}`}
                           className={cn(
-                            "rounded-lg px-2.5 py-1 text-xs font-medium ring-1",
+                            "rounded-md border px-2 py-0.5 font-mono text-xs",
                             event.status === "error"
-                              ? "bg-red-50 text-red-700 ring-red-200"
-                              : cn(color.soft, color.text, color.ring),
+                              ? "border-red-200 bg-red-50/60 text-red-700"
+                              : "border-slate-200 bg-slate-50 text-slate-700",
                           )}
                         >
                           {event.action === "page.view" && event.path
                             ? event.path
                             : formatAction(event.action)}
-                          <span className="ml-1.5 font-normal opacity-60">
+                          <span className="ml-2 font-sans text-slate-400">
                             {formatTime(event.createdAt)}
                           </span>
                         </span>
@@ -605,15 +606,15 @@ export function AdminActivityLog() {
                   return (
                     <tr
                       key={event.id}
-                      className={cn("border-l-4 transition hover:bg-slate-50/60", color.border)}
+                      className={cn("border-l-2 transition hover:bg-slate-50/60", color.border)}
                     >
                       <td className="px-5 py-4">
                         <span className="flex items-center gap-2">
-                          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", color.dot)} />
-                          {focusButton(event, event.userName, cn("font-semibold", color.text))}
+                          <span className={cn("h-2 w-2 shrink-0 rounded-full", color.dot)} />
+                          {focusButton(event, event.userName, "font-semibold text-slate-900")}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-slate-600">{event.userRole}</td>
+                      <td className="px-5 py-4 text-slate-600">{roleLabel(event)}</td>
                       <td className="px-5 py-4 text-slate-600">
                         {formatAction(event.action)}
                         {event.path ? (

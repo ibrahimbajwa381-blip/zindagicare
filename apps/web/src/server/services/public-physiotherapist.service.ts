@@ -3,10 +3,11 @@ import {
   HOME_CARE_MATCH_RADIUS_KM,
   LAUNCH_CITY,
   Roles,
+  SUPPORTED_CITIES,
   VerificationStatuses,
 } from "@zindagi/shared";
 import { Types } from "mongoose";
-import { citiesMatch } from "@/lib/geo/city-match";
+import { citiesMatch, normalizeCityName } from "@/lib/geo/city-match";
 import { haversineKm } from "@/lib/geo/distance";
 import { mongoFilter } from "@/lib/mongo/query";
 import {
@@ -58,6 +59,7 @@ async function mapStaff(
   staff: Record<string, unknown> & { _id: Types.ObjectId },
   origin?: { lng: number; lat: number },
   includePortfolio = false,
+  city?: string,
 ): Promise<PublicPhysiotherapist | null> {
   const user = staff.userId as PopulatedUser | null;
   if (!user?._id || user.deletedAt || user.isActive === false) return null;
@@ -76,7 +78,9 @@ async function mapStaff(
     area?: string;
     geo?: { coordinates?: number[] };
   }[];
-  const area = areas[0];
+  // Show the service area in the filtered city, falling back to the primary one.
+  const area =
+    (city && areas.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city))) || areas[0];
 
   let distanceKm: number | undefined;
   if (origin) {
@@ -115,16 +119,19 @@ async function mapStaff(
 
 export class PublicPhysiotherapistService {
   /**
-   * Verified physiotherapists in a city. With `near`, results are sorted nearest-first
-   * and `nearbyOnly` keeps only those within the home-visit radius who take home visits.
+   * Verified physiotherapists, optionally narrowed to a city and/or specialty (all cities
+   * when `city` is omitted). With `near`, results are sorted nearest-first and `nearbyOnly`
+   * keeps only those within the home-visit radius who take home visits.
    */
   static async list(options: {
     city?: string;
+    specialty?: string;
     near?: { lng: number; lat: number };
     nearbyOnly?: boolean;
   } = {}): Promise<PublicPhysiotherapist[]> {
     await connectDatabase();
-    const city = options.city?.trim() || LAUNCH_CITY;
+    const city = options.city?.trim();
+    const specialty = options.specialty?.trim().toLowerCase();
 
     const docs = await StaffProfileModel.find(PUBLIC_FILTER)
       .populate("userId", "name avatarUrl isActive deletedAt")
@@ -132,10 +139,17 @@ export class PublicPhysiotherapistService {
 
     const mapped = await Promise.all(
       docs
-        .filter((doc) =>
-          (doc.serviceAreas ?? []).some((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)),
+        .filter(
+          (doc) =>
+            !city ||
+            (doc.serviceAreas ?? []).some((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)),
         )
-        .map((doc) => mapStaff(doc as never, options.near)),
+        .filter(
+          (doc) =>
+            !specialty ||
+            (doc.specialties ?? []).some((s) => s.trim().toLowerCase() === specialty),
+        )
+        .map((doc) => mapStaff(doc as never, options.near, false, city)),
     );
 
     let rows = mapped.filter((row): row is PublicPhysiotherapist => row !== null);
@@ -152,6 +166,25 @@ export class PublicPhysiotherapistService {
     }
 
     return rows;
+  }
+
+  /**
+   * Cities offered in the directory filter: the cities we operate in, plus any other city
+   * a verified physiotherapist serves, deduplicated case-insensitively.
+   */
+  static async listCities(): Promise<string[]> {
+    await connectDatabase();
+    const docs = await StaffProfileModel.find(PUBLIC_FILTER).select("serviceAreas.city").lean();
+
+    const byKey = new Map<string, string>();
+    for (const city of SUPPORTED_CITIES) byKey.set(normalizeCityName(city), city);
+    for (const doc of docs) {
+      for (const a of doc.serviceAreas ?? []) {
+        const city = a.city?.trim();
+        if (city && !byKey.has(normalizeCityName(city))) byKey.set(normalizeCityName(city), city);
+      }
+    }
+    return [...byKey.values()].sort((a, b) => a.localeCompare(b));
   }
 
   /** Look up by public slug or by User id (used by ?physio= deep links). */

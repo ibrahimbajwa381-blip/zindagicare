@@ -44,7 +44,7 @@ export default async function PhysiotherapistProfilePage({ params }: PageProps) 
           { name: physio.name, path: `/physiotherapists/${physio.slug}` },
         ]}
       />
-      <PageSection variant="brand" spacing="default" flipBlur>
+      <PageSection variant="brand" spacing="sm" flipBlur className="md:overflow-clip">
         <PhysiotherapistProfileView physio={physio} />
       </PageSection>
     </>

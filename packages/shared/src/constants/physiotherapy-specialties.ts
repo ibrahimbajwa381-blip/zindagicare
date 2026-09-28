@@ -13,6 +13,7 @@ export const PHYSIOTHERAPY_SPECIALTIES = [
   "Chronic Pain Management",
   "Manual Therapy",
   "Vestibular Rehabilitation",
+  "Hijama (Cupping) Therapy",
   "Home Care / Domiciliary Physiotherapy",
 ] as const;
 

@@ -8,6 +8,7 @@ export * from "./pakistan-phone";
 export * from "./pakistan-phone";
 export * from "./patient-profile.schema";
 export * from "./staff-profile.schema";
+export * from "./doctor-portfolio.schema";
 export * from "./sunday-consult.schema";
 export * from "./consult.schema";
 export * from "./urgent-consult.schema";

@@ -44,7 +44,10 @@ const portfolioSchema = new Schema(
     },
     certifications: {
       type: [
-        new Schema({ title: String, issuer: String, year: yearField }, { _id: false }),
+        new Schema(
+          { title: String, issuer: String, year: yearField, url: { type: String, maxlength: 500 } },
+          { _id: false },
+        ),
       ],
       default: undefined,
     },

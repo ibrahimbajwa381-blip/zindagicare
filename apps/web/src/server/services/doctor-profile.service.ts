@@ -13,7 +13,7 @@ import {
   phoneLookupHash,
   withDoctorTitle,
 } from "@zindagi/shared";
-import type { UpdateDoctorProfileInput } from "@zindagi/validators";
+import type { UpdateDoctorPortfolioInput, UpdateDoctorProfileInput } from "@zindagi/validators";
 
 import type {
   DoctorProfileDto,
@@ -27,6 +27,7 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { SundayConsultService } from "./sunday-consult.service";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
+import { mapDoctorPortfolio, type DoctorPortfolio } from "@/lib/doctors/portfolio";
 import {
   deleteDoctorAvatar,
   doctorAvatarStorageKeyFromUrl,
@@ -100,6 +101,7 @@ function mapProfileToDto(
     specialties: profile.specialties ?? [],
     bio: profile.bio ?? undefined,
     languages: profile.languages ?? ["English", "Urdu"],
+    portfolio: mapDoctorPortfolio(profile),
     hospitals: (profile.hospitals ?? []).map((h) => ({
       name: h.name,
       city: h.city,
@@ -417,4 +419,68 @@ export async function canDoctorAccessDocument(
 
 export function isDoctorProfileEditable(status: string): boolean {
   return status === VerificationStatuses.APPROVED;
+}
+
+/** Saves the portfolio sections present in `input` (each editor card saves independently). */
+export async function updateDoctorPortfolio(
+  userId: string,
+  input: UpdateDoctorPortfolioInput,
+): Promise<DoctorPortfolio> {
+  await connectDatabase();
+
+  const user = await UserModel.findById(userId).select("roles").lean();
+  if (!user?.roles.includes(Roles.DOCTOR)) {
+    throw new AppError("Forbidden", "FORBIDDEN", 403);
+  }
+
+  const profile = await DoctorProfileModel.findOne(mongoFilter({ userId: user._id }));
+  if (!profile) {
+    throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
+  }
+
+  // Start from the normalized current state so legacy/blank rows never get re-saved.
+  const current = mapDoctorPortfolio(profile);
+  const next: Record<string, unknown> = {
+    headline: current.headline,
+    approach: current.approach,
+    introVideoUrl: current.introVideoUrl,
+    conditionsTreated: current.conditionsTreated,
+    memberships: current.memberships,
+    services: current.services,
+    education: current.education,
+    experience: current.experience,
+    certifications: current.certifications,
+    awards: current.awards,
+    publications: current.publications,
+    faqs: current.faqs,
+    links: current.links,
+    hiddenSections: current.hiddenSections,
+  };
+
+  for (const key of ["headline", "approach", "introVideoUrl"] as const) {
+    if (input[key] !== undefined) next[key] = input[key] || undefined;
+  }
+  for (const key of [
+    "conditionsTreated",
+    "memberships",
+    "services",
+    "education",
+    "experience",
+    "certifications",
+    "awards",
+    "publications",
+    "faqs",
+    "links",
+    "hiddenSections",
+  ] as const) {
+    if (input[key] !== undefined) next[key] = input[key];
+  }
+  next.updatedAt = new Date();
+
+  profile.set("portfolio", next);
+  if (input.bio !== undefined) profile.bio = input.bio || undefined;
+  if (input.languages !== undefined) profile.languages = input.languages;
+
+  await profile.save();
+  return mapDoctorPortfolio(profile);
 }

@@ -238,6 +238,16 @@ export const portfolioCertificationSchema = z.object({
   title: portfolioTextSchema("Certification", 160),
   issuer: optionalPortfolioText(160),
   year: portfolioYearSchema,
+  /** Public link where patients can verify the certificate (issuer's registry, credential page…). */
+  url: z
+    .string()
+    .trim()
+    .max(500, "Certificate link is too long")
+    .optional()
+    .transform((v) => v || undefined)
+    .refine((v) => !v || /^https?:\/\/[^\s]+\.[^\s]+/i.test(v), {
+      message: "Certificate link must be a valid http(s) URL",
+    }),
 });
 
 export const portfolioAwardSchema = z.object({

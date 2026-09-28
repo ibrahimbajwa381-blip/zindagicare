@@ -5,6 +5,7 @@ import { CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { signIn } from "@/lib/auth";
+import { readVisitorId } from "@/server/lib/visitor-id";
 import { authActionErrorMessage } from "@/lib/auth/errors";
 import { getLocale } from "@/i18n/server";
 import { getDictionary } from "@/i18n";
@@ -153,7 +154,7 @@ export async function registerAction(
     const referredByDoctorId = await resolveReferralDoctorId(
       cookieStore.get(REFERRAL_COOKIE_NAME)?.value,
     );
-    await registerWithCredentials(parsed.data, referredByDoctorId);
+    await registerWithCredentials(parsed.data, referredByDoctorId, await readVisitorId());
     redirect(AUTH_ROUTES.login);
   } catch (e) {
     if (isRedirectError(e)) throw e;

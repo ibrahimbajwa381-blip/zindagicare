@@ -5,6 +5,7 @@ export * from "./constants/pakistan-cities";
 export * from "./constants/specialties";
 export * from "./constants/physiotherapy-specialties";
 export * from "./constants/physiotherapist-portfolio";
+export * from "./constants/doctor-portfolio";
 export * from "./constants/herbalist-specialties";
 export * from "./constants/nutritionist-specialties";
 export * from "./constants/sunday-consult";
