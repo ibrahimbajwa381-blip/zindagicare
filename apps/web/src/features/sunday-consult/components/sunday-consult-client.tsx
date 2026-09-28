@@ -9,13 +9,14 @@ import {
   SundayAffordabilityChoices,
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
+  PAID_ONLINE_INTAKE_QUESTION_KEYS,
   cn,
   type SundayAffordabilityChoice,
 } from "@zindagi/shared";
 import { PageSection } from "@/components/layout/page-section";
 import { SundayExplainer } from "./sunday-explainer";
 import { formatNextSundayLong, isSundayBookingOpenNow } from "@/lib/sunday/display";
-import { useTranslations } from "@/i18n/locale-provider";
+import { useOptionalLocale, useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { siteConfig } from "@/config/site";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
 import { SundayMatchingStatus } from "./sunday-matching-status";
+import { SundayHistoryFields } from "./sunday-history-fields";
 import type {
   SundayPatientBookingDto,
   SundayPatientRequestDto,
@@ -92,10 +94,12 @@ function scrollToRequest() {
 
 export function SundayConsultClient() {
   const { sunday: sundayCopy, dashboard: dashboardCopy } = useTranslations();
+  const locale = useOptionalLocale();
   const { data: session, status } = useSession();
   const [booking, setBooking] = useState<SundayPatientBookingDto | null>(null);
   const [patientPhone, setPatientPhone] = useState("");
-  const [patientNotes, setPatientNotes] = useState("");
+  const [history, setHistory] = useState<Record<string, string>>({});
+  const [showHistoryErrors, setShowHistoryErrors] = useState(false);
   const [affordabilityChoice, setAffordabilityChoice] =
     useState<SundayAffordabilityChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +176,15 @@ export function SundayConsultClient() {
       return;
     }
 
+    const historyComplete = PAID_ONLINE_INTAKE_QUESTION_KEYS.every(
+      (key) => (history[key] ?? "").trim().length > 0,
+    );
+    if (!historyComplete) {
+      setShowHistoryErrors(true);
+      setError(sundayCopy.errors.historyRequired);
+      return;
+    }
+
     if (!affordabilityChoice) {
       setError(
         sundayCopy.errors.affordabilityRequired ?? sundayCopy.affordabilityRequired,
@@ -188,7 +201,11 @@ export function SundayConsultClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientPhone: phone,
-          patientNotes: patientNotes.trim() || undefined,
+          history: PAID_ONLINE_INTAKE_QUESTION_KEYS.map((key) => ({
+            key,
+            answer: (history[key] ?? "").trim(),
+          })),
+          locale: locale === "ur" ? "ur" : "en",
           affordabilityChoice,
         }),
       });
@@ -335,20 +352,14 @@ export function SundayConsultClient() {
                         disabled={loading}
                       />
                     </div>
-                    <div>
-                      <label htmlFor="sunday-notes" className="text-sm font-medium text-slate-700">
-                        {sundayCopy.notesLabel}
-                      </label>
-                      <textarea
-                        id="sunday-notes"
-                        rows={3}
-                        value={patientNotes}
-                        onChange={(e) => setPatientNotes(e.target.value)}
-                        placeholder={sundayCopy.notesPlaceholder}
-                        disabled={loading}
-                        className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none ring-brand/30 placeholder:text-slate-400 focus:ring-2"
-                      />
-                    </div>
+                    <SundayHistoryFields
+                      answers={history}
+                      onChange={(key, value) =>
+                        setHistory((prev) => ({ ...prev, [key]: value }))
+                      }
+                      disabled={loading}
+                      showErrors={showHistoryErrors}
+                    />
 
                     <fieldset className="space-y-3">
                       <legend className="text-sm font-medium text-slate-700">

@@ -7,6 +7,7 @@ export type StorageNamespace =
   | "doctor-verification"
   | "nurse-verification"
   | "physiotherapist-verification"
+  | "physiotherapist-avatars"
   | "herbalist-avatars"
   | "herbalist-verification"
   | "nutritionist-avatars"

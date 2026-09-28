@@ -22,11 +22,8 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { PrescriptionService } from "@/server/services/prescription.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
-function maskPatientName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "Patient";
-  if (parts.length === 1) return `${parts[0][0]?.toUpperCase() ?? "P"}.`;
-  return `${parts[0]} ${parts[parts.length - 1][0]?.toUpperCase() ?? ""}.`;
+function formatPatientName(name: string) {
+  return name.trim().replace(/\s+/g, " ") || "Patient";
 }
 
 export type PatientReviewDto = {
@@ -185,7 +182,7 @@ export class ReviewService {
       id: row._id.toString(),
       rating: row.rating,
       comment: row.comment ?? undefined,
-      patientName: maskPatientName(
+      patientName: formatPatientName(
         row.patientId ? nameById.get(row.patientId.toString()) ?? "Patient" : row.patientName ?? "Patient",
       ),
       createdAt: row.createdAt.toISOString(),

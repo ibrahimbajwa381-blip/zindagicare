@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/doctors", label: "Doctor verifications" },
   { href: "/admin/doctors/manage", label: "Doctor management" },
+  { href: "/admin/physiotherapists/manage", label: "Physiotherapist management" },
   { href: "/admin/patients", label: "Patients" },
   { href: "/admin/appointments", label: "Appointments" },
   { href: "/admin/sunday-consult", label: "Sunday consult" },

@@ -494,6 +494,7 @@ export const en = {
     title: "Loved by patients across Pakistan",
     description: "Real experiences from patients who booked appointments, consulted doctors, and got care from the comfort of their homes.",
     addReview: "Write a review",
+    seeAll: "See all reviews",
     submit: {
       title: "Share your experience",
       description: "Tell other patients about your experience with ZindagiCare. Your review goes live right away.",
@@ -520,7 +521,7 @@ export const en = {
     onlineOnlyTitle: "Online only",
     onlineOnlyDesc: "secure video on ZindagiCare, no clinic visit.",
     oneSlotTitle: "One free request",
-    oneSlotDesc: `one per patient per week · we assign an available doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
+    oneSlotDesc: `one per patient per week · an available doctor picks your request within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
     alreadyBookedTitle: "Your request this week",
     alreadyBookedMessage:
       "You already have a free Sunday consult for this week. Only one free request per patient each week.",
@@ -534,12 +535,14 @@ export const en = {
       "Log in once — then submit your free request in under a minute. No doctor picking needed.",
     requestTitle: "Request your free consult",
     requestDescription:
-      "No doctor picking. Tell us how to reach you — we connect you with an available PMDC-verified doctor.",
+      "No doctor picking. Share your number and medical history — an available PMDC-verified doctor picks your request.",
     waitBadge: "Doctor connected within {minutes} minutes",
     phoneLabel: "Mobile number",
     phonePlaceholder: "03XXXXXXXXX",
-    notesLabel: "What do you need help with? (optional)",
-    notesPlaceholder: "Symptoms, reports, or follow-up notes",
+    history: {
+      title: "Your medical history",
+      hint: "The same questions we ask before a paid consultation. Answer every question — write \"None\" if it does not apply. Doctors read this before picking your request.",
+    },
     affordabilityTitle: "Can you afford a small consultation fee?",
     affordabilityHint:
       "Sunday consults are for people who need care. Choose honestly — needy patients stay free.",
@@ -554,12 +557,12 @@ export const en = {
       "Transfer Rs. {amount} to our JazzCash account, then upload your receipt or enter the TID.",
     paymentCancel: "Back to Sunday consult",
     matchingTitle: "Request received",
-    matchingMessage: "Our doctor will call you within a few minutes.",
+    matchingMessage: "A verified doctor will pick your request and set a time. You will be notified as soon as they do.",
     matchingHint: `If we are not connecting with you within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes, call our support team directly:`,
     closedTitle: "Requests are not open yet",
     closedMessage: "Sunday free consult requests open closer to the next Sunday (Pakistan time).",
     noDoctorPickHint:
-      "You do not choose a doctor. ZindagiCare assigns the next available Sunday free consult doctor.",
+      "You do not need to choose a doctor. Verified doctors see your request and one of them picks it and sets a time.",
     howItWorks: "How it works",
     howItWorksDesc: "Three quick steps for your free Sunday consult.",
     rulesTitle: "Good to know",
@@ -573,6 +576,7 @@ export const en = {
     ],
     errors: {
       phoneRequired: "Enter your mobile number so we can reach you.",
+      historyRequired: "Please answer every medical history question (write \"None\" if it does not apply).",
       requestFailed: "Could not submit your request. Please try again.",
       affordabilityRequired: "Please select whether you can afford the fee.",
     },
@@ -598,11 +602,11 @@ export const en = {
     steps: [
       {
         title: "Submit a request",
-        description: "Share your phone number and optional notes — no doctor picker.",
+        description: "Share your phone number and answer a few medical history questions — no doctor picker.",
       },
       {
-        title: "We connect a doctor",
-        description: `Our team assigns an available PMDC-verified doctor within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
+        title: "A doctor picks you",
+        description: `An available PMDC-verified doctor picks your request and sets a time, usually within ${SUNDAY_CONSULT_CONFIG.matchWithinMinutes} minutes.`,
       },
       {
         title: "Join your video call",

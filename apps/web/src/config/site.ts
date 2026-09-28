@@ -49,7 +49,9 @@ export const siteConfig = {
     sundayConsult: "/sunday-consult",
     urgentCare: "/urgent-care",
     homeServices: "/home-services",
-    homePhysiotherapy: "/home-physiotherapy",
+    /** Home physiotherapy is booked from the physiotherapist directory (old /home-physiotherapy redirects there). */
+    homePhysiotherapy: "/physiotherapists",
+    physiotherapists: "/physiotherapists",
     homeCareRequest: "/home-care/request",
     homeCareVisits: "/home-care/visits",
     login: "/login",
@@ -72,6 +74,7 @@ export const siteConfig = {
     assistant: "/assistant",
     doctorMessages: "/doctor/messages",
     shareReview: "/share-review",
+    reviews: "/reviews",
     getApp: "/get-app",
     getAppAndroid: "/get-app?platform=android",
     getAppIos: "/get-app?platform=ios",

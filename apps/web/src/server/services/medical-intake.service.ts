@@ -212,9 +212,8 @@ export class MedicalIntakeService {
       });
     } catch (error) {
       // Two callers can both pass the findOne() check above for the same
-      // appointment before either has written — e.g. two concurrent Sunday
-      // free-request assignments recovering the same already-created
-      // appointment (see SundayConsultService.assignDoctor) both then call
+      // appointment before either has written — e.g. two concurrent
+      // bookings recovering the same already-created appointment both call
       // this "idempotent" method for that one appointmentId. The unique
       // index on MedicalIntake{appointmentId} rejects the loser's insert;
       // without this catch the loser got a raw, unhandled MongoServerError

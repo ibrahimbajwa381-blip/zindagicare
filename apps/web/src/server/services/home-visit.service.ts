@@ -154,6 +154,13 @@ export type HomeVisitDto = {
     currency: string;
   };
   paymentStatus?: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+  paymentId?: string;
+  /** Present once the patient uploaded a transfer receipt — the image is served by /api/v1/payments/:id/receipt. */
+  paymentReceipt?: {
+    hasImage: boolean;
+    transactionId?: string;
+    uploadedAt?: string;
+  };
   cancellationRequestStatus?: "none" | "pending" | "approved" | "denied";
   refundMethod?: string;
   refundAccountTitle?: string;
@@ -161,6 +168,8 @@ export type HomeVisitDto = {
   refundBankName?: string;
   patientNotes?: string;
   patient?: { id: string; name: string; phone?: string };
+  /** Provider the patient picked when booking (physiotherapy). */
+  preferredStaff?: { id: string; name: string };
   assignedStaff?: {
     id: string;
     name: string;
@@ -245,6 +254,9 @@ function serializeVisit(
   const staff = doc.assignedStaffId as
     | { _id?: { toString(): string }; name?: string; phone?: string }
     | undefined;
+  const preferred = doc.preferredStaffId as
+    | { _id?: { toString(): string }; name?: string }
+    | undefined;
   const address = doc.address as {
     line: string;
     city: string;
@@ -258,7 +270,16 @@ function serializeVisit(
         uploadedAt: Date;
       }
     | undefined;
-  const payment = doc.paymentId as { status?: string } | undefined;
+  const payment = doc.paymentId as
+    | {
+        _id?: { toString(): string };
+        status?: string;
+        metadata?: {
+          receipt?: { storageKey?: string; transactionId?: string; uploadedAt?: string };
+        };
+      }
+    | undefined;
+  const receipt = payment?.metadata?.receipt;
 
   return {
     id: (doc._id as { toString(): string }).toString(),
@@ -275,6 +296,14 @@ function serializeVisit(
     },
     pricing: doc.pricing as HomeVisitDto["pricing"],
     paymentStatus: payment?.status as HomeVisitDto["paymentStatus"],
+    paymentId: payment?._id?.toString(),
+    paymentReceipt: receipt
+      ? {
+          hasImage: Boolean(receipt.storageKey),
+          transactionId: receipt.transactionId,
+          uploadedAt: receipt.uploadedAt,
+        }
+      : undefined,
     cancellationRequestStatus: doc.cancellationRequestStatus as HomeVisitDto["cancellationRequestStatus"],
     refundMethod: doc.refundMethod as string | undefined,
     refundAccountTitle: doc.refundAccountTitle as string | undefined,
@@ -285,14 +314,20 @@ function serializeVisit(
       ? {
           id: patient._id.toString(),
           name: patient.name ?? "Patient",
-          phone: patient.phone,
+          phone: safeDisplayText(patient.phone),
+        }
+      : undefined,
+    preferredStaff: preferred?._id
+      ? {
+          id: preferred._id.toString(),
+          name: safeDisplayText(preferred.name) ?? "Physiotherapist",
         }
       : undefined,
     assignedStaff: staff?._id
       ? {
           id: staff._id.toString(),
           name: staff.name ?? "Staff",
-          phone: staff.phone,
+          phone: safeDisplayText(staff.phone),
           role: assigneeMeta?.role,
           specialties: assigneeMeta?.specialties,
         }
@@ -475,6 +510,21 @@ export class HomeVisitService {
     const lng = input.geo.lng;
     const lat = input.geo.lat;
     const base = getBasePrice(input.serviceType);
+    const visitCity = input.city || LAUNCH_CITY;
+
+    // Only physiotherapy supports picking a specific provider for now.
+    const preferredStaffId = isPhysiotherapyHomeVisitService(input.serviceType)
+      ? input.preferredStaffId
+      : undefined;
+    if (preferredStaffId) {
+      await HomeVisitService.assertPhysiotherapistBookable(
+        preferredStaffId,
+        lng,
+        lat,
+        visitCity,
+        scheduledAt,
+      );
+    }
 
     const visit = await HomeVisitModel.create({
       patientId,
@@ -483,7 +533,7 @@ export class HomeVisitService {
       scheduledAt,
       address: {
         line: input.addressLine,
-        city: input.city || LAUNCH_CITY,
+        city: visitCity,
         geo: toGeoPoint(lng, lat),
       },
       pricing: {
@@ -494,6 +544,7 @@ export class HomeVisitService {
         currency: "PKR",
       },
       patientNotes: input.patientNotes,
+      ...(preferredStaffId ? { preferredStaffId } : {}),
     });
 
     const patient = await UserModel.findById(patientId).select("name").lean();
@@ -506,7 +557,19 @@ export class HomeVisitService {
       console.error("[home-visit] admin notification failed", err);
     });
 
-    if (input.autoAssign) {
+    if (preferredStaffId) {
+      try {
+        await HomeVisitService.assignStaff(visit._id.toString(), {
+          staffId: preferredStaffId,
+          override: false,
+        });
+      } catch (err) {
+        // Pre-checked above, so this only fails on a race (e.g. the physio was
+        // booked a moment ago). Leave as requested with preferredStaffId set so
+        // admin sees the patient's choice and can assign.
+        console.error("[home-visit] preferred physiotherapist assignment failed", err);
+      }
+    } else if (input.autoAssign) {
       try {
         await HomeVisitService.autoAssignStaff(visit._id.toString());
       } catch {
@@ -517,6 +580,72 @@ export class HomeVisitService {
     return HomeVisitService.getById(visit._id.toString(), patientId, [
       Roles.PATIENT,
     ]);
+  }
+
+  /**
+   * Patient-facing check before a physiotherapy visit is booked with a chosen
+   * provider — same rules admin manual assignment enforces (verified, taking
+   * home visits, covers the city, within radius, free at that time), but with
+   * patient-readable errors so they can pick someone else or another time.
+   */
+  static async assertPhysiotherapistBookable(
+    staffUserId: string,
+    lng: number,
+    lat: number,
+    city: string,
+    scheduledAt: Date,
+  ) {
+    const profile = await StaffProfileModel.findOne(
+      mongoFilter({ userId: staffUserId, staffType: Roles.PHYSIOTHERAPIST }),
+    ).lean();
+    if (
+      !profile ||
+      profile.deletedAt ||
+      profile.verificationStatus !== VerificationStatuses.APPROVED ||
+      !profile.homeVisitEnabled ||
+      profile.isAvailable === false ||
+      !(await UserModel.exists(
+        mongoFilter({ _id: staffUserId, isActive: { $ne: false }, deletedAt: { $exists: false } }),
+      ))
+    ) {
+      throw new AppError(
+        "This physiotherapist isn't taking home visits right now. Please choose another.",
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+    if (!nurseCoversCity(profile, city, LAUNCH_CITY)) {
+      throw new AppError(
+        `This physiotherapist doesn't cover ${city}. Please choose another.`,
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    const distanceKm = await HomeVisitService.getStaffDistanceKm(
+      staffUserId,
+      false,
+      lng,
+      lat,
+      city,
+      Roles.PHYSIOTHERAPIST,
+    );
+    if (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM) {
+      throw new AppError(
+        `This physiotherapist is more than ${HOME_CARE_MATCH_RADIUS_KM} km from your location. Please choose someone nearer.`,
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    const busyIds = await getBusyStaffIds(scheduledAt);
+    if (busyIds.includes(staffUserId)) {
+      throw new AppError(
+        "This physiotherapist already has a visit at that time. Please pick another time or physiotherapist.",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
   }
 
   /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */
@@ -929,7 +1058,8 @@ export class HomeVisitService {
       .sort(sort)
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
-      .populate("paymentId", "status")
+      .populate("paymentId", "status metadata.receipt")
+      .populate("preferredStaffId", "name")
       .lean();
 
     return Promise.all(
@@ -955,7 +1085,8 @@ export class HomeVisitService {
     )
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
-      .populate("paymentId", "status")
+      .populate("paymentId", "status metadata.receipt")
+      .populate("preferredStaffId", "name")
       .lean();
 
     if (!visit) {

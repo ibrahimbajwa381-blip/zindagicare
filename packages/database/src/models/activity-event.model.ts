@@ -24,12 +24,18 @@ const activityEventSchema = new Schema(
     metadata: { type: Schema.Types.Mixed },
     platform: { type: String },
     path: { type: String },
+    /** Client IP + edge-geolocated location at the time of the event (best effort). */
+    ip: { type: String },
+    city: { type: String },
+    region: { type: String },
+    country: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
 activityEventSchema.index({ userId: 1, createdAt: -1 });
 activityEventSchema.index({ action: 1, createdAt: -1 });
+activityEventSchema.index({ visitorId: 1, createdAt: -1 });
 activityEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 });
 
 export type ActivityEventDocument = InferSchemaType<typeof activityEventSchema> & {

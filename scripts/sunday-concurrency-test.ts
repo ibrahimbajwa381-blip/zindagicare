@@ -112,6 +112,13 @@ async function main() {
   function submitInput(phone: string) {
     return {
       patientPhone: phone,
+      history: [
+        { key: "chief_complaint", answer: "Fever and cough for 3 days" },
+        { key: "current_medications", answer: "Panadol" },
+        { key: "allergies", answer: "None" },
+        { key: "chronic_conditions", answer: "None" },
+        { key: "additional_info", answer: "None" },
+      ],
       affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD,
     } as const;
   }
@@ -317,19 +324,13 @@ async function main() {
 
   // ===========================================================================
   // SCENARIO 4 — Admin double-assigns the SAME request concurrently
-  // (double-click / two-admins race).
+  // (two doctors picking the same patient at once).
   // ===========================================================================
   async function scenarioConcurrentAssign() {
-    console.log(`\n=== SCENARIO 4: same Sunday free-request assigned to a doctor twice, concurrently ===`);
+    console.log(`\n=== SCENARIO 4: same Sunday free-request picked by two doctors concurrently ===`);
     const patient = await createPatient("assign");
-    const { profile: doctor } = await createDoctor();
-    const admin = await UserModel.create({
-      name: "Sunday Admin",
-      email: `sunday-admin-${Date.now()}@example.com`,
-      phone: makePhone("2", 1),
-      roles: ["admin"],
-      isActive: true,
-    });
+    const { profile: doctorA } = await createDoctor();
+    const { profile: doctorB } = await createDoctor();
 
     const request = await SundayFreeRequestModel.create({
       patientId: patient._id,
@@ -340,8 +341,8 @@ async function main() {
     });
 
     const results = await Promise.allSettled([
-      SundayConsultService.assignDoctor(request._id.toString(), admin._id.toString(), { doctorId: doctor._id.toString() }),
-      SundayConsultService.assignDoctor(request._id.toString(), admin._id.toString(), { doctorId: doctor._id.toString() }),
+      SundayConsultService.claimRequest(doctorA.userId.toString(), request._id.toString(), { startTimeLocal: "23:40" }),
+      SundayConsultService.claimRequest(doctorB.userId.toString(), request._id.toString(), { startTimeLocal: "23:40" }),
     ]);
 
     const fulfilled = results.filter((r) => r.status === "fulfilled").length;

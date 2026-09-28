@@ -32,6 +32,7 @@ export const AUTH_ROUTES = {
   physiotherapistDashboard: "/physiotherapist",
   physiotherapistVerification: "/physiotherapist/verification",
   physiotherapistVisits: "/physiotherapist/visits",
+  physiotherapistPortfolio: "/physiotherapist/portfolio",
   herbalistDashboard: "/herbalist",
   herbalistVerification: "/herbalist/verification",
   herbalistProfile: "/herbalist/profile",
@@ -55,6 +56,7 @@ export const PUBLIC_PATH_PREFIXES = [
   "/for-doctors",
   "/for-nurses",
   "/for-physiotherapists",
+  "/physiotherapists",
   "/for-herbalists",
   "/for-nutritionists",
   "/home-care/request",
@@ -154,9 +156,12 @@ export const NURSE_VERIFICATION_EXEMPT_PREFIXES = [
 export const PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES = [
   AUTH_ROUTES.physiotherapistVerification,
   "/physiotherapist/profile",
+  // Physios can build their public portfolio while the application is under review.
+  AUTH_ROUTES.physiotherapistPortfolio,
   AUTH_ROUTES.physiotherapistDashboard,
   "/api/v1/physiotherapist/verification",
   "/api/v1/physiotherapist/profile",
+  "/api/v1/physiotherapist/portfolio",
 ] as const;
 
 /** Herbalist verification pending — can access these paths. */

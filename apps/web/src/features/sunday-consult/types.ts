@@ -75,11 +75,33 @@ export type SundayPatientBookingDto = {
   requestStatus?: SundayFreeRequestStatus;
 };
 
-export type SundayTeamDoctorOption = {
-  doctorId: string;
-  name: string;
-  specialties: string[];
-  pmdcVerified: boolean;
+/** One answered medical-history question (same set as the paid online consult). */
+export type SundayHistoryAnswerDto = {
+  key: string;
+  text: string;
+  answer: string;
+};
+
+/**
+ * Sunday request as seen by doctors on the open-requests board.
+ * Contact phone is only revealed to the doctor who picked the request.
+ */
+export type SundayDoctorRequestDto = {
+  requestId: string;
+  status: SundayFreeRequestStatus;
+  sundayDateKey: string;
+  patientName: string;
+  patientPhone?: string;
+  /** Legacy free-text notes on requests made before history was required. */
+  patientNotes?: string;
+  history: SundayHistoryAnswerDto[];
+  affordabilityChoice: SundayAffordabilityChoice;
+  createdAt: string;
+  /** True when the signed-in doctor picked this request. */
+  pickedByMe: boolean;
+  appointmentId?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
 };
 
 export type SundayAdminRequestDto = {

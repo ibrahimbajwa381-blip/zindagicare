@@ -16,6 +16,10 @@ import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { useTranslations } from "@/i18n/locale-provider";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import {
+  PhysiotherapistPicker,
+  type PhysiotherapistChoice,
+} from "./physiotherapist-picker";
 import { Syringe, Droplets, Bandage, Stethoscope, UserRound, Activity } from "lucide-react";
 
 const SERVICE_META: Record<
@@ -83,6 +87,11 @@ export function HomeCareRequestForm() {
   const [scheduledAt, setScheduledAt] = useState("");
   const [patientNotes, setPatientNotes] = useState("");
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
+  const initialPhysioId = searchParams.get("physio");
+  const [physioChoice, setPhysioChoice] = useState<PhysiotherapistChoice>(
+    () => initialPhysioId || "nearest",
+  );
+  const isPhysio = serviceType === HomeVisitServiceTypes.PHYSIOTHERAPY;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -137,7 +146,9 @@ export function HomeCareRequestForm() {
           city: "Lahore",
           geo,
           patientNotes: patientNotes.trim() || undefined,
-          autoAssign: false,
+          autoAssign: isPhysio && physioChoice === "nearest",
+          preferredStaffId:
+            isPhysio && physioChoice !== "nearest" ? physioChoice : undefined,
         }),
       });
       const json = await res.json();
@@ -209,7 +220,17 @@ export function HomeCareRequestForm() {
             value={geo}
             onChange={setGeo}
             required
+            description={`Tap "Use my current location", or paste a Google Maps link / coordinates of your home. We match the nearest available provider to this location.`}
           />
+
+          {isPhysio && (
+            <PhysiotherapistPicker
+              geo={geo}
+              value={physioChoice}
+              onChange={setPhysioChoice}
+              initialPhysioId={initialPhysioId}
+            />
+          )}
 
           <div>
             <Label htmlFor="scheduled">{h.scheduledAt} *</Label>

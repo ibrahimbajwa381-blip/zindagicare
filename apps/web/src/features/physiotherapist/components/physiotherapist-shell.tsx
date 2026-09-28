@@ -12,6 +12,7 @@ import { UnifiedHeader } from "@/components/layout/unified-header";
 import {
   ChevronRight,
   Home,
+  IdCard,
   LayoutDashboard,
   ShieldCheck,
   UserCog,
@@ -50,6 +51,12 @@ const Physiotherapist_APPROVED_NAV_ITEMS: PhysiotherapistNavItem[] = [
     description: "Availability, service area & contact",
     icon: UserCog,
   },
+  {
+    href: "/physiotherapist/portfolio",
+    label: "Portfolio",
+    description: "Your public profile & experience",
+    icon: IdCard,
+  },
 ];
 
 const Physiotherapist_ONBOARDING_NAV_ITEMS: PhysiotherapistNavItem[] = [
@@ -71,6 +78,12 @@ const Physiotherapist_ONBOARDING_NAV_ITEMS: PhysiotherapistNavItem[] = [
     label: "Profile",
     description: "Service area & contact details",
     icon: UserCog,
+  },
+  {
+    href: "/physiotherapist/portfolio",
+    label: "Portfolio",
+    description: "Your public profile & experience",
+    icon: IdCard,
   },
 ];
 

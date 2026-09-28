@@ -1,10 +1,31 @@
 import { z } from "zod";
-import { SundayAffordabilityChoices } from "@zindagi/shared";
+import {
+  PAID_ONLINE_INTAKE_QUESTION_KEYS,
+  SundayAffordabilityChoices,
+} from "@zindagi/shared";
 import { pakistaniPhoneSchema } from "./auth.schema";
+
+/**
+ * Medical history — same question set as the paid online consult
+ * (PAID_ONLINE_INTAKE_QUESTION_KEYS). Every question must be answered.
+ */
+export const sundayFreeHistorySchema = z
+  .array(
+    z.object({
+      key: z.enum(PAID_ONLINE_INTAKE_QUESTION_KEYS),
+      answer: z.string().trim().min(1, "Please answer every question").max(2000),
+    }),
+  )
+  .refine(
+    (answers) =>
+      PAID_ONLINE_INTAKE_QUESTION_KEYS.every((key) => answers.some((a) => a.key === key)),
+    { message: "Please answer every medical history question" },
+  );
 
 export const sundayFreeRequestSchema = z.object({
   patientPhone: pakistaniPhoneSchema,
-  patientNotes: z.string().max(1000).optional(),
+  history: sundayFreeHistorySchema,
+  locale: z.enum(["en", "ur"]).optional(),
   affordabilityChoice: z.enum([
     SundayAffordabilityChoices.CANNOT_AFFORD,
     SundayAffordabilityChoices.PAY_FEE,
@@ -13,12 +34,14 @@ export const sundayFreeRequestSchema = z.object({
 
 export type SundayFreeRequestInput = z.infer<typeof sundayFreeRequestSchema>;
 
-export const sundayFreeAssignSchema = z.object({
-  doctorId: z.string().min(1),
-  adminNotes: z.string().max(2000).optional(),
+/** Doctor picks an open Sunday request and chooses the consult time (PK local HH:mm). */
+export const sundayFreeClaimSchema = z.object({
+  startTimeLocal: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm (24-hour) time"),
 });
 
-export type SundayFreeAssignInput = z.infer<typeof sundayFreeAssignSchema>;
+export type SundayFreeClaimInput = z.infer<typeof sundayFreeClaimSchema>;
 
 export const reserveSlotSchema = z.object({
   doctorId: z.string().min(1),

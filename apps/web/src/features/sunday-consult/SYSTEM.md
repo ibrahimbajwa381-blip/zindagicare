@@ -2,7 +2,9 @@
 
 ## 1. Overview
 
-Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a request (no doctor picker); ops assigns an available doctor within 60 minutes. One free request per patient per week, no-show bans. Legacy slot templates remain for doctor capacity/admin tooling.
+Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a request (no doctor picker). **Doctors pick requests themselves**: any verified doctor sees the open-requests board on `/doctor/sunday-consult`, picks a patient and chooses a time on that Sunday. The patient gets the consult free; the doctor earns the review. Admins only watch progress on `/admin/sunday-consult` (read-only, no assignment). One free request per patient per week, no-show bans. Legacy slot templates remain for doctor capacity/admin tooling.
+
+Request lifecycle: `requested` → (doctor picks + time) `assigned` → `completed` / `cancelled`. A doctor may release an `assigned` request before the consult starts; it goes back to `requested` and the appointment is cancelled.
 
 ## 2. Data model
 
@@ -10,7 +12,8 @@ Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a
 |------------|---------|
 | `SundaySlotTemplate` | Recurring rules per doctor (start/end, duration, max slots) |
 | `SundaySlotInstance` | One doc per doctor per Sunday; **embedded slots[]** for atomic updates |
-| `Appointment` | Confirmed booking (`type: sunday_free`) |
+| `SundayFreeRequest` | Patient request; `assignedDoctorId` = the doctor who picked it |
+| `Appointment` | Confirmed booking (`type: sunday_free`), created when a doctor picks a request |
 | `User` | `noShowCount`, `sundayBannedUntil`, `earlyAccessSunday` |
 
 ## 3. API endpoints
@@ -27,6 +30,10 @@ Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a
 | PUT | `/api/v1/sunday/doctor/template` | Doctor | Upsert weekly template |
 | PATCH | `/api/v1/sunday/doctor/toggle` | Doctor | Enable/disable Sunday |
 | GET | `/api/v1/sunday/doctor/queue` | Doctor | Queue + slots |
+| GET | `/api/v1/sunday/doctor/requests` | Doctor | Open requests + the doctor's own picks |
+| POST | `/api/v1/sunday/doctor/requests/{id}/claim` | Doctor | Pick request at `startTimeLocal` (HH:mm PK) |
+| POST | `/api/v1/sunday/doctor/requests/{id}/release` | Doctor | Hand a picked request back to the board |
+| GET | `/api/v1/admin/sunday/requests` | Admin | Read-only request progress |
 | PATCH | `/api/v1/sunday/doctor/appointment-status` | Doctor | Complete / no-show |
 | POST | `/api/internal/sunday/materialize` | Cron | Materialize 4 weeks |
 | POST | `/api/internal/seed-sunday` | Dev | Demo doctors |
@@ -46,6 +53,8 @@ Production: add Socket.io server with Redis adapter; same event payload.
 | Case | Handling |
 |------|----------|
 | Double book | `findOneAndUpdate` with `slots.status: available` |
+| Two doctors pick same patient | Atomic `requested → assigned` `findOneAndUpdate`; loser gets 409 |
+| Doctor time clash | Overlap check on doctor's active appointments + unique `{doctorId, scheduledStart}` index |
 | One per patient/Sunday | Service check + partial unique index on Appointment (`patientId + sundayDateKey`) |
 | Hold expiry | `releaseExpiredHolds()` on each request + cron |
 | User banned | `sundayBannedUntil` / `noShowCount >= 3` |

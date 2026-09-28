@@ -3,6 +3,7 @@ import { getSiteUrl } from "@/lib/seo/metadata";
 import { getAllConditionSlugs, conditionDoctorPath } from "@/lib/seo/conditions";
 import { getAllSpecialtySlugs, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
+import { PublicPhysiotherapistService } from "@/server/services/public-physiotherapist.service";
 
 const MARKETING_ROUTES = [
   "/",
@@ -11,13 +12,14 @@ const MARKETING_ROUTES = [
   "/sunday-consult",
   "/urgent-care",
   "/home-services",
-  "/home-physiotherapy",
+  "/physiotherapists",
   "/home-care/request",
   "/for-doctors",
   "/for-doctors/guide",
   "/for-nurses",
   "/for-physiotherapists",
   "/get-app",
+  "/reviews",
   "/privacy",
   "/terms",
   "/refund-policy",
@@ -61,5 +63,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sitemap still works without DB (e.g. local build without MongoDB).
   }
 
-  return [...staticEntries, ...specialtyEntries, ...conditionEntries, ...doctorEntries];
+  let physiotherapistEntries: MetadataRoute.Sitemap = [];
+  try {
+    const physios = await PublicPhysiotherapistService.list();
+    physiotherapistEntries = physios.map((p) => ({
+      url: getSiteUrl(`/physiotherapists/${p.slug}`),
+      lastModified,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
+  } catch {
+    // Sitemap still works without DB.
+  }
+
+  return [
+    ...staticEntries,
+    ...specialtyEntries,
+    ...conditionEntries,
+    ...doctorEntries,
+    ...physiotherapistEntries,
+  ];
 }

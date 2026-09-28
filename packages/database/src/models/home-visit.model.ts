@@ -35,6 +35,8 @@ const homeVisitSchema = new Schema(
       index: true,
     },
     assignedStaffId: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    /** Provider the patient picked when booking; assigned directly when eligible, otherwise left for admin. */
+    preferredStaffId: { type: Schema.Types.ObjectId, ref: "User" },
     scheduledAt: { type: Date, required: true, index: true },
     address: {
       line: { type: String, required: true },

@@ -180,6 +180,12 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: Stethoscope,
       },
       {
+        href: "/admin/physiotherapists/manage",
+        label: "Physiotherapist management",
+        description: "Manage approved physiotherapists",
+        icon: Activity,
+      },
+      {
         href: "/admin/patients",
         label: "Patients",
         description: "Patient accounts and activity",
@@ -278,6 +284,12 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
       return (
         pathname === "/admin/doctors" ||
         pathname.startsWith("/admin/doctors/review")
+      );
+    }
+    if (item.href === "/admin/physiotherapists") {
+      return (
+        pathname === "/admin/physiotherapists" ||
+        pathname.startsWith("/admin/physiotherapists/review")
       );
     }
     if (item.href === "/admin/doctors/manage") {

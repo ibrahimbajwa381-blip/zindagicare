@@ -13,10 +13,13 @@ import { Input, Label } from "@/components/ui/input";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
+import { PhysiotherapistProfilePhotoUpload } from "@/features/physiotherapist/components/physiotherapist-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 type PhysiotherapistVerificationFormProps = {
+  name: string;
   defaults?: {
+    avatarUrl?: string;
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
@@ -25,12 +28,16 @@ type PhysiotherapistVerificationFormProps = {
   };
 };
 
-export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVerificationFormProps) {
+export function PhysiotherapistVerificationForm({
+  name,
+  defaults,
+}: PhysiotherapistVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(defaults?.avatarUrl);
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -41,6 +48,12 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
     setPending(true);
     setError(undefined);
     const form = new FormData(e.currentTarget);
+
+    if (!avatarUrl) {
+      setError("Please upload a profile photo.");
+      setPending(false);
+      return;
+    }
 
     const requiredDocs = ["licenseCertificate", "cnicFront", "cnicBack"] as const;
     for (const key of requiredDocs) {
@@ -75,6 +88,7 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
       specialties,
+      avatarUrl,
       serviceArea: {
         city: form.get("city"),
         area: form.get("area"),
@@ -125,6 +139,13 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      <PhysiotherapistProfilePhotoUpload
+        name={name}
+        value={avatarUrl}
+        onUploaded={setAvatarUrl}
+        required
+      />
+
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Identity & registration</h2>
         <div>

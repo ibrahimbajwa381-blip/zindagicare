@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type { AdminPhysiotherapistDetailDto } from "@/features/admin/types/physiotherapist-admin";
+import { AdminPhysiotherapistPortfolioPanel } from "@/features/admin/components/admin-physiotherapist-portfolio-panel";
+import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
+import { PhysiotherapistAvatar } from "@/features/physiotherapist/components/physiotherapist-avatar";
 import {
   ExternalLink,
   FileText,
@@ -178,62 +181,81 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold text-slate-900">{profile.user.name}</h2>
-              {isPending && hasSubmitted && (
-                <Badge variant="secondary">Pending review</Badge>
-              )}
-              {isPending && !hasSubmitted && (
-                <Badge variant="outline">Documents not submitted</Badge>
-              )}
-              {isApproved && <Badge>Approved</Badge>}
-              {isRejected && <Badge variant="outline">Rejected</Badge>}
-            </div>
-            <p className="mt-1 text-sm text-slate-600">
-              {profile.licenseNumber ?? "No license on file"} ·{" "}
-              {profile.qualification ?? "—"}
-              {profile.experienceYears !== undefined
-                ? ` · ${profile.experienceYears} yrs experience`
-                : ""}
-            </p>
-            {profile.verificationSubmittedAt && (
-              <p className="mt-1 text-xs text-slate-500">
-                Submitted{" "}
-                {new Date(profile.verificationSubmittedAt).toLocaleString("en-PK", {
-                  dateStyle: "full",
-                  timeStyle: "short",
-                })}
-              </p>
+          <div className="flex min-w-0 items-start gap-4">
+            {profile.user.avatarUrl ? (
+              <a
+                href={profile.user.avatarUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open full-size photo"
+                className="shrink-0"
+              >
+                <PhysiotherapistAvatar
+                  name={profile.user.name}
+                  avatarUrl={profile.user.avatarUrl}
+                  size="xl"
+                />
+              </a>
+            ) : (
+              <PhysiotherapistAvatar name={profile.user.name} size="xl" />
             )}
-            <p className="mt-1 text-xs text-slate-500">
-              Provider agreement:{" "}
-              {profile.platformAgreementAcceptedAt ? (
-                <span className="font-medium text-emerald-700">
-                  Accepted{" "}
-                  {new Date(profile.platformAgreementAcceptedAt).toLocaleDateString("en-PK")}
-                </span>
-              ) : (
-                <span className="font-medium text-red-600">Not accepted</span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900">{profile.user.name}</h2>
+                {isPending && hasSubmitted && (
+                  <Badge variant="secondary">Pending review</Badge>
+                )}
+                {isPending && !hasSubmitted && (
+                  <Badge variant="outline">Documents not submitted</Badge>
+                )}
+                {isApproved && <Badge>Approved</Badge>}
+                {isRejected && <Badge variant="outline">Rejected</Badge>}
+              </div>
+              <p className="mt-1 text-sm text-slate-600">
+                {profile.licenseNumber ?? "No license on file"} ·{" "}
+                {profile.qualification ?? "—"}
+                {profile.experienceYears !== undefined
+                  ? ` · ${profile.experienceYears} yrs experience`
+                  : ""}
+              </p>
+              {profile.verificationSubmittedAt && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Submitted{" "}
+                  {new Date(profile.verificationSubmittedAt).toLocaleString("en-PK", {
+                    dateStyle: "full",
+                    timeStyle: "short",
+                  })}
+                </p>
               )}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {profile.user.phone && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`tel:${profile.user.phone}`}>
-                    <Phone className="h-4 w-4" />
-                    {profile.user.phone}
-                  </a>
-                </Button>
-              )}
-              {profile.user.email && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`mailto:${profile.user.email}`}>
-                    <Mail className="h-4 w-4" />
-                    {profile.user.email}
-                  </a>
-                </Button>
-              )}
+              <p className="mt-1 text-xs text-slate-500">
+                Provider agreement:{" "}
+                {profile.platformAgreementAcceptedAt ? (
+                  <span className="font-medium text-emerald-700">
+                    Accepted{" "}
+                    {new Date(profile.platformAgreementAcceptedAt).toLocaleDateString("en-PK")}
+                  </span>
+                ) : (
+                  <span className="font-medium text-red-600">Not accepted</span>
+                )}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {profile.user.phone && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`tel:${profile.user.phone}`}>
+                      <Phone className="h-4 w-4" />
+                      {profile.user.phone}
+                    </a>
+                  </Button>
+                )}
+                {profile.user.email && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`mailto:${profile.user.email}`}>
+                      <Mail className="h-4 w-4" />
+                      {profile.user.email}
+                    </a>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -364,6 +386,22 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
             <p className="text-sm text-slate-500">No documents uploaded yet.</p>
           )}
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Public portfolio</h2>
+        <p className="text-sm text-slate-600">
+          What patients will see on this physiotherapist&apos;s public profile once approved.
+        </p>
+        <AdminPhysiotherapistPortfolioPanel
+          portfolio={profile.portfolio}
+          avatarUrl={profile.user.avatarUrl}
+          publicPath={
+            isApproved && profile.slug
+              ? physiotherapistProfilePath(profile.slug, profile.user.id)
+              : null
+          }
+        />
       </section>
 
       {(isApproved || profile.stats.completedTotal > 0) && (

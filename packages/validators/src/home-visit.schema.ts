@@ -21,6 +21,8 @@ export const createHomeVisitSchema = z.object({
   geo: geoSchema,
   patientNotes: z.string().max(1000).optional(),
   autoAssign: z.boolean().default(false),
+  /** Physiotherapy only: the physiotherapist (User id) the patient chose. */
+  preferredStaffId: z.string().regex(/^[a-f0-9]{24}$/i, "Invalid provider").optional(),
 });
 
 export const assignHomeVisitSchema = z.object({

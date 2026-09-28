@@ -41,7 +41,7 @@ const CORE_SERVICES = [
   {
     name: "Home Physiotherapy",
     description: marketingPageSeo.homePhysiotherapy.description,
-    path: "/home-physiotherapy",
+    path: "/physiotherapists",
   },
   {
     name: "Urgent Care",

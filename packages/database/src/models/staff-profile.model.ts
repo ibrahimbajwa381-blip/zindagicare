@@ -4,6 +4,59 @@ import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { geoPointSchema } from "../schemas/geo.schema";
 import { registerModel } from "../lib/register-model";
 
+const yearField = { type: Number, min: 1900, max: 2100 };
+
+/**
+ * Physiotherapist public portfolio — everything beyond the verification basics that
+ * builds out /physiotherapists/[slug]. `bio` and `languages` stay top-level (older field).
+ */
+const portfolioSchema = new Schema(
+  {
+    headline: { type: String, maxlength: 120 },
+    conditionsTreated: { type: [String], default: undefined },
+    techniques: { type: [String], default: undefined },
+    memberships: { type: [String], default: undefined },
+    education: {
+      type: [
+        new Schema(
+          { degree: String, institute: String, year: yearField },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    experience: {
+      type: [
+        new Schema(
+          {
+            role: String,
+            organization: String,
+            city: String,
+            startYear: yearField,
+            endYear: yearField,
+            current: { type: Boolean, default: false },
+            description: { type: String, maxlength: 500 },
+          },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    certifications: {
+      type: [
+        new Schema({ title: String, issuer: String, year: yearField }, { _id: false }),
+      ],
+      default: undefined,
+    },
+    awards: {
+      type: [new Schema({ title: String, year: yearField }, { _id: false })],
+      default: undefined,
+    },
+    updatedAt: { type: Date },
+  },
+  { _id: false },
+);
+
 /**
  * StaffProfile — nurse / rider operational profile (1:1 User).
  */
@@ -44,6 +97,11 @@ const staffProfileSchema = new Schema(
     experienceYears: { type: Number },
     /** Physiotherapy sub-specialties (physiotherapist only). */
     specialties: [{ type: String }],
+    /** Public profile (physiotherapist only) — shown on /physiotherapists/[slug]. */
+    slug: { type: String, unique: true, sparse: true, lowercase: true },
+    bio: { type: String, maxlength: 2000 },
+    languages: { type: [String], default: undefined },
+    portfolio: { type: portfolioSchema, default: undefined },
     verificationDocuments: {
       licenseCertificate: { type: String },
       cnicFront: { type: String },

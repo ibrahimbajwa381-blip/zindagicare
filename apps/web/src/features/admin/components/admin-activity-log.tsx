@@ -1,7 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Activity as ActivityIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Activity as ActivityIcon,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  MapPin,
+  Monitor,
+  Route,
+  Smartphone,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import type {
@@ -10,7 +21,141 @@ import type {
 } from "@/server/services/activity-log.service";
 import { cn } from "@zindagi/shared";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
+
+type ViewMode = "journeys" | "table";
+
+type Focus = { kind: "user" | "visitor"; id: string; label: string } | null;
+
+type ActorColor = { dot: string; soft: string; text: string; ring: string; border: string };
+
+/** Full class strings so Tailwind keeps them — one entry per person colour. */
+const ACTOR_PALETTE: readonly ActorColor[] = [
+  { dot: "bg-sky-500", soft: "bg-sky-50", text: "text-sky-700", ring: "ring-sky-200", border: "border-l-sky-500" },
+  { dot: "bg-violet-500", soft: "bg-violet-50", text: "text-violet-700", ring: "ring-violet-200", border: "border-l-violet-500" },
+  { dot: "bg-amber-500", soft: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200", border: "border-l-amber-500" },
+  { dot: "bg-emerald-500", soft: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200", border: "border-l-emerald-500" },
+  { dot: "bg-rose-500", soft: "bg-rose-50", text: "text-rose-700", ring: "ring-rose-200", border: "border-l-rose-500" },
+  { dot: "bg-indigo-500", soft: "bg-indigo-50", text: "text-indigo-700", ring: "ring-indigo-200", border: "border-l-indigo-500" },
+  { dot: "bg-orange-500", soft: "bg-orange-50", text: "text-orange-700", ring: "ring-orange-200", border: "border-l-orange-500" },
+  { dot: "bg-teal-500", soft: "bg-teal-50", text: "text-teal-700", ring: "ring-teal-200", border: "border-l-teal-500" },
+  { dot: "bg-fuchsia-500", soft: "bg-fuchsia-50", text: "text-fuchsia-700", ring: "ring-fuchsia-200", border: "border-l-fuchsia-500" },
+  { dot: "bg-lime-600", soft: "bg-lime-50", text: "text-lime-700", ring: "ring-lime-200", border: "border-l-lime-600" },
+  { dot: "bg-cyan-600", soft: "bg-cyan-50", text: "text-cyan-700", ring: "ring-cyan-200", border: "border-l-cyan-600" },
+  { dot: "bg-pink-500", soft: "bg-pink-50", text: "text-pink-700", ring: "ring-pink-200", border: "border-l-pink-500" },
+];
+
+const ANON_COLOR: ActorColor = {
+  dot: "bg-slate-400",
+  soft: "bg-slate-50",
+  text: "text-slate-600",
+  ring: "ring-slate-200",
+  border: "border-l-slate-300",
+};
+
+function hashString(value: string) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Colour per person: seeded by a hash of their id (so a person keeps their
+ * colour across refreshes), probing forward so two people on the same page
+ * don't share a colour while free ones remain.
+ */
+function assignActorColors(events: ActivityFeedRow[]) {
+  const colors = new Map<string, ActorColor>();
+  const taken = new Set<number>();
+  for (const event of events) {
+    if (colors.has(event.actorKey)) continue;
+    if (event.actorKey === "anon") {
+      colors.set(event.actorKey, ANON_COLOR);
+      continue;
+    }
+    let slot = hashString(event.actorKey) % ACTOR_PALETTE.length;
+    if (taken.size < ACTOR_PALETTE.length) {
+      while (taken.has(slot)) slot = (slot + 1) % ACTOR_PALETTE.length;
+    }
+    taken.add(slot);
+    colors.set(event.actorKey, ACTOR_PALETTE[slot]);
+  }
+  return colors;
+}
+
+function formatAction(action: string) {
+  return action
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+const countryNames = (() => {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" });
+  } catch {
+    return null;
+  }
+})();
+
+function countryName(code: string | null) {
+  if (!code) return null;
+  try {
+    return countryNames?.of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function formatLocation(event: Pick<ActivityFeedRow, "city" | "region" | "country">) {
+  const country = countryName(event.country);
+  if (event.city) return [event.city, country].filter(Boolean).join(", ");
+  return country;
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-PK", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-PK", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function initials(name: string) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "?").toUpperCase() + (parts[1]?.[0] ?? "").toUpperCase();
+}
+
+/** Consecutive events by the same person (newest first) form one journey block. */
+type Journey = {
+  key: string;
+  actorKey: string;
+  events: ActivityFeedRow[]; // oldest → newest
+};
+
+/** A gap longer than this between two actions starts a new journey, even for the same person. */
+const JOURNEY_GAP_MS = 30 * 60 * 1000;
+
+function groupJourneys(events: ActivityFeedRow[]): Journey[] {
+  const journeys: Journey[] = [];
+  for (const event of events) {
+    const current = journeys[journeys.length - 1];
+    const oldest = current?.events[0];
+    const sameActor = current && current.actorKey === event.actorKey;
+    const withinGap =
+      oldest &&
+      new Date(oldest.createdAt).getTime() - new Date(event.createdAt).getTime() <= JOURNEY_GAP_MS;
+    if (sameActor && withinGap) {
+      current.events.unshift(event);
+    } else {
+      journeys.push({ key: event.id, actorKey: event.actorKey, events: [event] });
+    }
+  }
+  return journeys;
+}
 
 function DistributionList({
   title,
@@ -54,12 +199,29 @@ function DistributionList({
   );
 }
 
-function formatAction(action: string) {
-  return action
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((w) => w[0].toUpperCase() + w.slice(1))
-    .join(" ");
+function ActorAvatar({ name, color }: { name: string; color: ActorColor }) {
+  return (
+    <span
+      className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
+        color.dot,
+      )}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+function PlatformIcon({ platform }: { platform: string | null }) {
+  if (platform === "mobile") return <Smartphone className="h-3.5 w-3.5" />;
+  if (platform === "web") return <Monitor className="h-3.5 w-3.5" />;
+  return null;
+}
+
+function focusFor(event: ActivityFeedRow): Focus {
+  if (event.userId) return { kind: "user", id: event.userId, label: event.userName };
+  if (event.visitorId) return { kind: "visitor", id: event.visitorId, label: event.userName };
+  return null;
 }
 
 export function AdminActivityLog() {
@@ -70,6 +232,8 @@ export function AdminActivityLog() {
   const [actionFilter, setActionFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [focus, setFocus] = useState<Focus>(null);
+  const [view, setView] = useState<ViewMode>("journeys");
   const [loading, setLoading] = useState(true);
 
   const loadSummary = useCallback(async () => {
@@ -84,6 +248,8 @@ export function AdminActivityLog() {
     if (actionFilter) params.set("action", actionFilter);
     if (roleFilter) params.set("role", roleFilter);
     if (statusFilter) params.set("status", statusFilter);
+    if (focus?.kind === "user") params.set("userId", focus.id);
+    if (focus?.kind === "visitor") params.set("visitorId", focus.id);
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
 
@@ -94,7 +260,7 @@ export function AdminActivityLog() {
       setTotal(json.data.total ?? 0);
     }
     setLoading(false);
-  }, [actionFilter, roleFilter, statusFilter, page]);
+  }, [actionFilter, roleFilter, statusFilter, focus, page]);
 
   useEffect(() => {
     void loadSummary();
@@ -104,9 +270,17 @@ export function AdminActivityLog() {
     void loadEvents();
   }, [loadEvents]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [actionFilter, roleFilter, statusFilter]);
+  /** Wraps a filter setter so changing it jumps back to page 1. */
+  const resetting =
+    <T,>(setter: (value: T) => void) =>
+    (value: T) => {
+      setter(value);
+      setPage(1);
+    };
+  const changeAction = resetting(setActionFilter);
+  const changeRole = resetting(setRoleFilter);
+  const changeStatus = resetting(setStatusFilter);
+  const changeFocus = resetting(setFocus);
 
   const actionOptions = useMemo(
     () => summary?.topActions.map((a) => a.action) ?? [],
@@ -117,7 +291,37 @@ export function AdminActivityLog() {
     [summary],
   );
 
+  const colors = useMemo(() => assignActorColors(events), [events]);
+  const colorOf = (actorKey: string) => colors.get(actorKey) ?? ANON_COLOR;
+  const journeys = useMemo(() => groupJourneys(events), [events]);
+
+  /** People on this page, in order of most recent activity, with their event counts. */
+  const people = useMemo(() => {
+    const byActor = new Map<string, { event: ActivityFeedRow; count: number }>();
+    for (const event of events) {
+      const entry = byActor.get(event.actorKey);
+      if (entry) entry.count += 1;
+      else byActor.set(event.actorKey, { event, count: 1 });
+    }
+    return [...byActor.entries()].map(([actorKey, v]) => ({ actorKey, ...v }));
+  }, [events]);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const focusButton = (event: ActivityFeedRow, children: ReactNode, className?: string) => {
+    const target = focusFor(event);
+    if (!target || focus) return <span className={className}>{children}</span>;
+    return (
+      <button
+        type="button"
+        onClick={() => changeFocus(target)}
+        title={`Show every action by ${event.userName}`}
+        className={cn("text-left hover:underline", className)}
+      >
+        {children}
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -139,18 +343,22 @@ export function AdminActivityLog() {
             label: "Visited, didn't sign up (7d)",
             value: summary?.visitorsNotConverted7d ?? "—",
           },
+          {
+            label: "Top city (7d)",
+            value: summary?.topCities.find((c) => c.city !== "Unknown")?.city ?? "—",
+          },
         ].map((s) => (
           <div
             key={s.label}
             className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
           >
             <p className="text-sm font-medium text-slate-500">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">{s.value}</p>
+            <p className="mt-1 truncate text-2xl font-semibold text-slate-900">{s.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <DistributionList
           title="Most-used features (7d)"
           rows={(summary?.topActions ?? []).map((a) => ({
@@ -170,13 +378,17 @@ export function AdminActivityLog() {
           title="Activity by role (7d)"
           rows={(summary?.byRole ?? []).map((r) => ({ label: r.role, count: r.count }))}
         />
+        <DistributionList
+          title="Activity by city (7d)"
+          rows={(summary?.topCities ?? []).map((c) => ({ label: c.city, count: c.count }))}
+        />
       </div>
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between sm:p-5">
         <div className="flex flex-wrap gap-2">
           <select
             value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
+            onChange={(e) => changeAction(e.target.value)}
             className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700"
           >
             <option value="">All actions</option>
@@ -188,8 +400,9 @@ export function AdminActivityLog() {
           </select>
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700"
+            onChange={(e) => changeRole(e.target.value)}
+            disabled={Boolean(focus)}
+            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 disabled:opacity-50"
           >
             <option value="">All roles</option>
             {roleOptions.map((r) => (
@@ -200,7 +413,7 @@ export function AdminActivityLog() {
           </select>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => changeStatus(e.target.value)}
             className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700"
           >
             <option value="">All outcomes</option>
@@ -211,7 +424,77 @@ export function AdminActivityLog() {
             Refresh
           </Button>
         </div>
+        <div className="inline-flex rounded-lg border border-slate-200 p-1">
+          {(
+            [
+              { id: "journeys", label: "Journeys", icon: Route },
+              { id: "table", label: "Table", icon: List },
+            ] as const
+          ).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setView(id)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition",
+                view === id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50",
+              )}
+            >
+              <Icon className="h-4 w-4" /> {label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {focus ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-900 px-5 py-3 text-sm text-white shadow-sm">
+          <span>
+            Showing every action by <span className="font-semibold">{focus.label}</span>
+            {" · "}
+            {total} events
+          </span>
+          <button
+            type="button"
+            onClick={() => changeFocus(null)}
+            className="flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
+          >
+            <X className="h-3.5 w-3.5" /> Show everyone
+          </button>
+        </div>
+      ) : people.length > 0 ? (
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            People on this page · click one to see their full trail
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {people.map(({ actorKey, event, count }) => {
+              const color = colorOf(actorKey);
+              const target = focusFor(event);
+              const location = formatLocation(event);
+              return (
+                <button
+                  key={actorKey}
+                  type="button"
+                  disabled={!target}
+                  onClick={() => target && changeFocus(target)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ring-1 transition",
+                    color.soft,
+                    color.text,
+                    color.ring,
+                    target ? "hover:shadow-sm" : "cursor-default",
+                  )}
+                >
+                  <span className={cn("h-2.5 w-2.5 rounded-full", color.dot)} />
+                  {event.userName}
+                  {location ? <span className="opacity-70">· {location}</span> : null}
+                  <span className="rounded-full bg-white/70 px-1.5 tabular-nums">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         {loading ? (
@@ -221,53 +504,145 @@ export function AdminActivityLog() {
             <ActivityIcon className="h-10 w-10 text-slate-300" />
             <p className="text-sm text-slate-500">No activity recorded yet.</p>
           </div>
+        ) : view === "journeys" ? (
+          <div className="divide-y divide-slate-100">
+            {journeys.map((journey) => {
+              const first = journey.events[0];
+              const last = journey.events[journey.events.length - 1];
+              const color = colorOf(journey.actorKey);
+              const location = formatLocation(last);
+              const errors = journey.events.filter((e) => e.status === "error").length;
+              return (
+                <div key={journey.key} className={cn("border-l-4 px-5 py-4", color.border)}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <ActorAvatar name={last.userName} color={color} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        {focusButton(
+                          last,
+                          last.userName,
+                          cn("font-semibold", color.text),
+                        )}
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          {last.userRole}
+                        </span>
+                        {errors > 0 ? (
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                            {errors} error{errors > 1 ? "s" : ""}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                        {location ? (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" /> {location}
+                          </span>
+                        ) : null}
+                        {last.ip ? <span className="font-mono">{last.ip}</span> : null}
+                        {last.platform ? (
+                          <span className="flex items-center gap-1">
+                            <PlatformIcon platform={last.platform} /> {last.platform}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-slate-500">
+                      <p className="font-medium text-slate-700">
+                        {journey.events.length} action{journey.events.length > 1 ? "s" : ""}
+                      </p>
+                      <p>
+                        {journey.events.length > 1
+                          ? `${formatDateTime(first.createdAt)} – ${formatTime(last.createdAt)}`
+                          : formatDateTime(last.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <ol className="mt-3 flex flex-wrap items-center gap-1.5 pl-12">
+                    {journey.events.map((event, i) => (
+                      <li key={event.id} className="flex items-center gap-1.5">
+                        {i > 0 ? <ArrowRight className="h-3.5 w-3.5 text-slate-300" /> : null}
+                        <span
+                          title={`${formatDateTime(event.createdAt)}${event.path ? ` · ${event.path}` : ""}`}
+                          className={cn(
+                            "rounded-lg px-2.5 py-1 text-xs font-medium ring-1",
+                            event.status === "error"
+                              ? "bg-red-50 text-red-700 ring-red-200"
+                              : cn(color.soft, color.text, color.ring),
+                          )}
+                        >
+                          {event.action === "page.view" && event.path
+                            ? event.path
+                            : formatAction(event.action)}
+                          <span className="ml-1.5 font-normal opacity-60">
+                            {formatTime(event.createdAt)}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[1000px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-5 py-4">User</th>
                   <th className="px-5 py-4">Role</th>
                   <th className="px-5 py-4">Action</th>
                   <th className="px-5 py-4">Outcome</th>
+                  <th className="px-5 py-4">Location</th>
                   <th className="px-5 py-4">Platform</th>
                   <th className="px-5 py-4">When</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {events.map((event) => (
-                  <tr key={event.id} className="transition hover:bg-slate-50/60">
-                    <td className="px-5 py-4 font-semibold text-slate-900">
-                      {event.userName}
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">{event.userRole}</td>
-                    <td className="px-5 py-4 text-slate-600">
-                      {formatAction(event.action)}
-                      {event.path ? (
-                        <span className="ml-2 text-xs text-slate-400">{event.path}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-xs font-medium",
-                          event.status === "error"
-                            ? "bg-red-50 text-red-600"
-                            : "bg-emerald-50 text-emerald-600",
-                        )}
-                      >
-                        {event.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">{event.platform ?? "—"}</td>
-                    <td className="px-5 py-4 text-slate-600">
-                      {new Date(event.createdAt).toLocaleString("en-PK", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </td>
-                  </tr>
-                ))}
+                {events.map((event) => {
+                  const color = colorOf(event.actorKey);
+                  const location = formatLocation(event);
+                  return (
+                    <tr
+                      key={event.id}
+                      className={cn("border-l-4 transition hover:bg-slate-50/60", color.border)}
+                    >
+                      <td className="px-5 py-4">
+                        <span className="flex items-center gap-2">
+                          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", color.dot)} />
+                          {focusButton(event, event.userName, cn("font-semibold", color.text))}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">{event.userRole}</td>
+                      <td className="px-5 py-4 text-slate-600">
+                        {formatAction(event.action)}
+                        {event.path ? (
+                          <span className="ml-2 text-xs text-slate-400">{event.path}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-xs font-medium",
+                            event.status === "error"
+                              ? "bg-red-50 text-red-600"
+                              : "bg-emerald-50 text-emerald-600",
+                          )}
+                        >
+                          {event.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">
+                        {location ?? "—"}
+                        {event.ip ? (
+                          <span className="block font-mono text-xs text-slate-400">{event.ip}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">{event.platform ?? "—"}</td>
+                      <td className="px-5 py-4 text-slate-600">{formatDateTime(event.createdAt)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

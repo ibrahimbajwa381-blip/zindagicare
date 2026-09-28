@@ -52,9 +52,13 @@ export type SundaySubmitRequestResult =
   | ({ kind: "request" } & SundayPatientRequestDto)
   | SundayCheckoutResult;
 
+export type SundayHistoryAnswerInput = { key: string; answer: string };
+
 export type SundayFreeRequestInput = {
   patientPhone: string;
-  patientNotes?: string;
+  /** Same medical-history questions as the paid online consult — all required. */
+  history: SundayHistoryAnswerInput[];
+  locale?: "en" | "ur";
   affordabilityChoice: SundayAffordabilityChoice;
 };
 

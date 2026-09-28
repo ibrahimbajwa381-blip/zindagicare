@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PaymentProofModal } from "@/features/admin/components/payment-proof-modal";
 import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
@@ -21,7 +22,7 @@ import type {
   HomeCareStaffOption,
   HomeVisitDto,
 } from "@/server/services/home-visit.service";
-import { ExternalLink, MapPin } from "lucide-react";
+import { Check, Copy, ExternalLink, MapPin, Phone } from "lucide-react";
 
 type VisitStaffLists = {
   nearby: { nurses: HomeCareStaffOption[]; doctors: HomeCareStaffOption[] };
@@ -42,6 +43,14 @@ const REFUND_METHOD_LABEL: Record<string, string> = {
   bank: "Bank transfer",
   jazzcash: "JazzCash",
   easypaisa: "Easypaisa",
+};
+
+const PAYMENT_STATUS_BADGE: Record<string, { label: string; tone: string }> = {
+  paid: { label: "Paid", tone: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+  pending: { label: "Payment pending", tone: "border-amber-200 bg-amber-50 text-amber-800" },
+  failed: { label: "Payment failed", tone: "border-red-200 bg-red-50 text-red-700" },
+  refunded: { label: "Refunded", tone: "border-slate-200 bg-slate-50 text-slate-700" },
+  cancelled: { label: "Payment cancelled", tone: "border-slate-200 bg-slate-50 text-slate-700" },
 };
 
 const ACTIVE_STATUS_HINTS: Partial<Record<string, string>> = {
@@ -80,6 +89,20 @@ export function AdminHomeVisitsBoard() {
   const [manualOverride, setManualOverride] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  const [proofPaymentId, setProofPaymentId] = useState<string | null>(null);
+  const [copiedPhoneVisitId, setCopiedPhoneVisitId] = useState<string | null>(null);
+
+  const copyPhone = async (visitId: string, phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setCopiedPhoneVisitId(visitId);
+      setTimeout(() => {
+        setCopiedPhoneVisitId((current) => (current === visitId ? null : current));
+      }, 2000);
+    } catch {
+      window.prompt("Copy the phone number:", phone);
+    }
+  };
 
   const loadStaffForVisits = useCallback(async (visitList: HomeVisitDto[]) => {
     const assignable = visitList.filter(
@@ -310,6 +333,102 @@ export function AdminHomeVisitsBoard() {
     );
   }
 
+  function renderPatientPhone(visit: HomeVisitDto) {
+    const phone = visit.patient?.phone;
+    if (!phone) {
+      return <p className="text-xs text-slate-500">Phone: not provided</p>;
+    }
+    const copied = copiedPhoneVisitId === visit.id;
+    return (
+      <div className="flex items-center gap-2">
+        <a
+          href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-800 hover:text-brand hover:underline"
+        >
+          <Phone className="h-3.5 w-3.5" />
+          {phone}
+        </a>
+        <button
+          type="button"
+          onClick={() => copyPhone(visit.id, phone)}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          title="Copy phone number"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3 w-3 text-emerald-600" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" />
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  function renderPaymentProof(visit: HomeVisitDto) {
+    const badge = PAYMENT_STATUS_BADGE[visit.paymentStatus ?? ""] ?? {
+      label: "Not paid yet",
+      tone: "border-slate-200 bg-slate-50 text-slate-600",
+    };
+    const receipt = visit.paymentReceipt;
+    const paymentId = visit.paymentId;
+
+    return (
+      <div className="mt-2 flex flex-wrap items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+        {paymentId && receipt?.hasImage ? (
+          <button
+            type="button"
+            onClick={() => setProofPaymentId(paymentId)}
+            className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white"
+            title="View payment screenshot"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/v1/payments/${paymentId}/receipt`}
+              alt="Payment screenshot"
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            />
+          </button>
+        ) : null}
+        <div className="min-w-0 space-y-1 text-xs text-slate-600">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-slate-800">
+              Payment · Rs. {visit.pricing.total.toLocaleString()}
+            </span>
+            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.tone}`}>
+              {badge.label}
+            </span>
+          </div>
+          {receipt?.transactionId && (
+            <p>
+              TID: <span className="font-mono text-slate-800">{receipt.transactionId}</span>
+            </p>
+          )}
+          {receipt?.uploadedAt && (
+            <p>Receipt uploaded {formatKarachiDateTime(receipt.uploadedAt)}</p>
+          )}
+          {paymentId && receipt?.hasImage ? (
+            <button
+              type="button"
+              onClick={() => setProofPaymentId(paymentId)}
+              className="font-medium text-brand hover:underline"
+            >
+              View payment screenshot
+            </button>
+          ) : (
+            <p className="text-amber-700">Patient hasn&apos;t uploaded a payment screenshot yet.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   function renderPatientLocation(visit: HomeVisitDto) {
     const { geo } = visit.address;
     const mapsUrl = googleMapsLink(geo);
@@ -329,6 +448,13 @@ export function AdminHomeVisitsBoard() {
 
   return (
     <div className="space-y-6">
+      <PaymentProofModal
+        paymentId={proofPaymentId}
+        isOpen={proofPaymentId !== null}
+        onClose={() => setProofPaymentId(null)}
+        title="Home visit payment screenshot"
+      />
+
       <div className="rounded-xl border border-brand/15 bg-brand-muted/30 p-4 text-sm text-slate-700">
         <p className="font-medium text-slate-900">Home treatment dispatch</p>
         <p className="mt-1">
@@ -403,7 +529,7 @@ export function AdminHomeVisitsBoard() {
                       {SERVICE_LABELS[visit.serviceType] ?? visit.serviceType}
                     </CardTitle>
                     <Badge variant={isDoctorVisit(visit) ? "default" : "secondary"}>
-                      {isDoctorVisit(visit) ? "Doctor" : "Nurse"}
+                      {isDoctorVisit(visit) ? "Doctor" : isPhysioVisit(visit) ? "Physiotherapist" : "Nurse"}
                     </Badge>
                   </div>
                   <p className="text-sm text-slate-500">
@@ -411,16 +537,21 @@ export function AdminHomeVisitsBoard() {
                   </p>
                   <p className="text-sm text-slate-600">{visit.address.line}</p>
                   <p className="text-xs text-slate-500">
-                    Visit city:{" "}
-                    <span className="font-medium text-slate-700">{visit.address.city}</span>
-                  </p>
-                  <p className="text-xs text-slate-500">
                     Visit city: <span className="font-medium text-slate-700">{visit.address.city}</span>
                   </p>
+                  {renderPatientPhone(visit)}
                   {renderPatientLocation(visit)}
+                  {visit.preferredStaff && (
+                    <p className="text-xs text-amber-700">
+                      Patient chose{" "}
+                      <span className="font-semibold">{visit.preferredStaff.name}</span> — they
+                      couldn&apos;t be auto-assigned (likely booked at this time).
+                    </p>
+                  )}
                   {visit.patientNotes && (
                     <p className="text-xs text-slate-500">Notes: {visit.patientNotes}</p>
                   )}
+                  {renderPaymentProof(visit)}
                 </CardHeader>
                 <CardContent>{renderAssignControls(visit)}</CardContent>
               </Card>
@@ -443,17 +574,27 @@ export function AdminHomeVisitsBoard() {
                       {SERVICE_LABELS[visit.serviceType] ?? visit.serviceType}
                     </CardTitle>
                     <Badge variant="outline">
-                      {visit.assignedStaff?.role === "doctor" ? "Doctor" : "Nurse"}
+                      {visit.assignedStaff?.role === "doctor"
+                        ? "Doctor"
+                        : visit.assignedStaff?.role === "physiotherapist"
+                          ? "Physiotherapist"
+                          : "Nurse"}
                     </Badge>
                   </div>
                   <p className="text-sm text-slate-500">
                     {visit.patient?.name} ·{" "}
                     {visit.assignedStaff?.name ?? "Unassigned"}
+                    {visit.preferredStaff &&
+                    visit.preferredStaff.id === visit.assignedStaff?.id
+                      ? " (chosen by patient)"
+                      : ""}
                     {visit.assignedStaff?.specialties?.length
                       ? ` · ${visit.assignedStaff.specialties.join(", ")}`
                       : ""}
                   </p>
+                  {renderPatientPhone(visit)}
                   {renderPatientLocation(visit)}
+                  {renderPaymentProof(visit)}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <VisitStatusStepper status={visit.status} compact />

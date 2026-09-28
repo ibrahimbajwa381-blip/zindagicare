@@ -18,6 +18,8 @@ type GeoLocationPickerProps = {
   onChange: (geo: GeoCoordinates | null) => void;
   required?: boolean;
   id?: string;
+  /** Overrides the default provider-oriented help text (e.g. for patient-facing forms). */
+  description?: string;
 };
 
 export function GeoLocationPicker({
@@ -25,6 +27,7 @@ export function GeoLocationPicker({
   onChange,
   required = false,
   id = "geo-location",
+  description,
 }: GeoLocationPickerProps) {
   const mountedRef = useIsMountedRef();
   const [mapsInput, setMapsInput] = useState("");
@@ -111,9 +114,13 @@ export function GeoLocationPicker({
             Google Maps location{required ? " *" : ""}
           </Label>
           <p className="mt-0.5 text-xs text-slate-500">
-            Open Google Maps, share your clinic or home base location, and paste the link
-            below. We use this to match you with in-house visits within{" "}
-            {HOME_CARE_MATCH_RADIUS_KM} km.
+            {description ?? (
+              <>
+                Open Google Maps, share your clinic or home base location, and paste the link
+                below. We use this to match you with in-house visits within{" "}
+                {HOME_CARE_MATCH_RADIUS_KM} km.
+              </>
+            )}
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <Input

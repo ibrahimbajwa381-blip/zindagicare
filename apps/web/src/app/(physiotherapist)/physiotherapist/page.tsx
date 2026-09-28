@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
 import { PhysiotherapistAvailabilityToggle } from "@/features/physiotherapist/components/physiotherapist-availability-toggle";
+import { PortfolioDashboardCard } from "@/features/physiotherapist/components/portfolio/portfolio-dashboard-card";
+import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import {
   getPhysiotherapistDashboardSummary,
   getPhysiotherapistProfile,
@@ -37,6 +39,10 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
   const isApproved = verification.status === VerificationStatuses.APPROVED;
   const isRejected = verification.status === VerificationStatuses.REJECTED;
   const hasSubmitted = Boolean(verification.submittedAt);
+  const publicPath =
+    isApproved && profile.publicProfile.slug
+      ? physiotherapistProfilePath(profile.publicProfile.slug, profile.user.id)
+      : null;
 
   const stats = [
     {
@@ -148,6 +154,16 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
             </Card>
           );
         })}
+      </div>
+
+      <div className="mt-6">
+        <PortfolioDashboardCard
+          name={profile.user.name}
+          avatarUrl={profile.user.avatarUrl}
+          specialties={verification.specialties ?? []}
+          portfolio={profile.portfolio}
+          publicPath={publicPath}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

@@ -122,7 +122,17 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
   }
 
   function requestInput(phone: string) {
-    return { patientPhone: phone, affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD } as const;
+    return {
+      patientPhone: phone,
+      history: [
+        { key: "chief_complaint", answer: "Fever and cough for 3 days" },
+        { key: "current_medications", answer: "Panadol" },
+        { key: "allergies", answer: "None" },
+        { key: "chronic_conditions", answer: "None" },
+        { key: "additional_info", answer: "None" },
+      ],
+      affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD,
+    } as const;
   }
 
   // submitRequest's return type is a union (request vs. payment-checkout);
@@ -253,20 +263,14 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
   });
 
   // ===========================================================================
-  // SUN-015 — concurrent doctor allocation: two admin actions assigning the
-  // SAME request to a doctor at the same time must never create two
-  // appointments, and the loser must not crash with a raw error.
+  // SUN-015 — concurrent doctor pick: two doctors picking the SAME request at
+  // the same time must never create two appointments, and the loser must get
+  // a clean 409 rather than a raw error.
   // ===========================================================================
-  test("SUN-015: concurrently assigning the same Sunday request twice creates exactly one appointment and never raises a raw error", async () => {
+  test("SUN-015: two doctors concurrently picking the same Sunday request creates exactly one appointment and never raises a raw error", async () => {
     const patient = await createPatient();
-    const doctor = await createDoctor();
-    const admin = await UserModel.create({
-      name: "Sunday Admin",
-      email: `sunday-jest-admin-${Date.now()}@example.com`,
-      phone: makePhone("7", counter + 1),
-      roles: ["admin"],
-      isActive: true,
-    });
+    const doctorA = await createDoctor();
+    const doctorB = await createDoctor();
 
     const request = await SundayFreeRequestModel.create({
       patientId: patient._id.toString(),
@@ -277,8 +281,8 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
     });
 
     const results = await Promise.allSettled([
-      SundayConsultService.assignDoctor(request._id.toString(), admin._id.toString(), { doctorId: doctor._id.toString() }),
-      SundayConsultService.assignDoctor(request._id.toString(), admin._id.toString(), { doctorId: doctor._id.toString() }),
+      SundayConsultService.claimRequest(doctorA.userId.toString(), request._id.toString(), { startTimeLocal: "23:40" }),
+      SundayConsultService.claimRequest(doctorB.userId.toString(), request._id.toString(), { startTimeLocal: "23:40" }),
     ]);
 
     for (const r of results) {
@@ -295,6 +299,41 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
       sundayDateKey,
     }).lean();
     expect(appointments.length).toBe(1);
+  });
+
+  test("SUN-015b: a doctor releasing a picked request puts it back on the board and another doctor can pick it", async () => {
+    const patient = await createPatient();
+    const doctorA = await createDoctor();
+    const doctorB = await createDoctor();
+
+    const request = await SundayFreeRequestModel.create({
+      patientId: patient._id.toString(),
+      patientPhone: patient.phone!,
+      sundayDateKey,
+      affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD,
+      status: SundayFreeRequestStatuses.REQUESTED,
+    });
+    const requestId = request._id.toString();
+
+    await SundayConsultService.claimRequest(doctorA.userId.toString(), requestId, { startTimeLocal: "23:20" });
+    await SundayConsultService.releaseRequest(doctorA.userId.toString(), requestId);
+
+    const released = await SundayFreeRequestModel.findById(requestId).lean();
+    expect(released?.status).toBe(SundayFreeRequestStatuses.REQUESTED);
+    expect(released?.assignedDoctorId).toBeUndefined();
+
+    const picked = await SundayConsultService.claimRequest(doctorB.userId.toString(), requestId, { startTimeLocal: "23:20" });
+    expect(picked.pickedByMe).toBe(true);
+    expect(picked.status).toBe(SundayFreeRequestStatuses.ASSIGNED);
+
+    const active = await AppointmentModel.find({
+      patientId: patient._id.toString(),
+      type: AppointmentTypes.SUNDAY_FREE,
+      sundayDateKey,
+      status: { $ne: "cancelled" },
+    }).lean();
+    expect(active.length).toBe(1);
+    expect(active[0]!.doctorId.toString()).toBe(doctorB._id.toString());
   });
 
   // ===========================================================================
