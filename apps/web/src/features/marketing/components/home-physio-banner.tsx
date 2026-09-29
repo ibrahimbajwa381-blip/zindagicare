@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Activity, MapPin, Users } from "lucide-react";
-import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { WhatsAppCtaButton } from "@/components/shared/whatsapp-cta-button";
@@ -17,7 +16,7 @@ import {
 export function HomePhysioBanner() {
   const t = useTranslations();
   const copy = t.homePhysio;
-  const bookHref = `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.PHYSIOTHERAPY}`;
+  const bookHref = siteConfig.links.physiotherapists;
 
   return (
     <PageSection

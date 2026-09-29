@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@zindagi/shared";
@@ -31,6 +32,7 @@ export function HeroServiceCards({
   labels,
 }: HeroServiceCardsProps) {
   const t = useTranslations();
+  const router = useRouter();
   const pinRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -104,7 +106,12 @@ export function HeroServiceCards({
                   key={service.id}
                   type="button"
                   role="listitem"
-                  onClick={() => onSelect(index)}
+                  onClick={() =>
+                    // Physio card goes straight to the physiotherapist directory.
+                    service.id === "home-physiotherapy"
+                      ? router.push(service.carousel.href)
+                      : onSelect(index)
+                  }
                   className={cn(
                     "group flex w-[10.5rem] shrink-0 flex-col overflow-hidden rounded-xl text-left duration-200 sm:w-auto sm:rounded-2xl",
                     surfaceCardInteractive,
