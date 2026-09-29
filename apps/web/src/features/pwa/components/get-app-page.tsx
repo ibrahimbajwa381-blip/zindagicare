@@ -13,6 +13,7 @@ import {
   isStandalonePwa,
   type AppPlatform,
 } from "@/lib/pwa/platform";
+import { trackPwaInstall } from "@/lib/pwa/track-install";
 import { useTranslations } from "@/i18n/locale-provider";
 import { cn } from "@zindagi/shared";
 
@@ -127,7 +128,8 @@ export function GetAppPage() {
   const installAndroid = useCallback(async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const choice = await deferredPrompt.userChoice;
+    trackPwaInstall(choice.outcome, "get-app-page");
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 

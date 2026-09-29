@@ -17,6 +17,7 @@ import {
   isStandalonePwa,
   type AppPlatform,
 } from "@/lib/pwa/platform";
+import { trackPwaInstall } from "@/lib/pwa/track-install";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { cn } from "@zindagi/shared";
 
@@ -92,6 +93,7 @@ export function InstallPrompt() {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
+    trackPwaInstall(choice.outcome, "install-prompt");
     setDeferredPrompt(null);
     if (choice.outcome === "accepted") {
       setDismissed(true);

@@ -166,10 +166,13 @@ export type ActivitySummary = {
   signups7d: number;
   visitors7d: number;
   visitorsNotConverted7d: number;
+  androidInstallsTotal: number;
+  androidInstalls7d: number;
 };
 
 const PAGE_VIEW_ACTION = "page.view";
 const SIGNUP_ACTION = "user.signup";
+const PWA_INSTALL_ACTION = "pwa.install";
 
 export async function getActivitySummary(): Promise<ActivitySummary> {
   await connectDatabase();
@@ -178,8 +181,16 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
   const last24hStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const last7dStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalEvents, last24h, window7d, signups7d, visitorIds7d, signupVisitorIds7d] =
-    await Promise.all([
+  const [
+    totalEvents,
+    last24h,
+    window7d,
+    signups7d,
+    visitorIds7d,
+    signupVisitorIds7d,
+    androidInstallsTotal,
+    androidInstalls7d,
+  ] = await Promise.all([
       ActivityEventModel.countDocuments({}),
       ActivityEventModel.countDocuments({ createdAt: { $gte: last24hStart } }),
       ActivityEventModel.find({ createdAt: { $gte: last7dStart } })
@@ -198,6 +209,15 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
       ActivityEventModel.distinct("visitorId", {
         action: SIGNUP_ACTION,
         visitorId: { $exists: true },
+        createdAt: { $gte: last7dStart },
+      }),
+      ActivityEventModel.countDocuments({
+        action: PWA_INSTALL_ACTION,
+        "metadata.platform": "android",
+      }),
+      ActivityEventModel.countDocuments({
+        action: PWA_INSTALL_ACTION,
+        "metadata.platform": "android",
         createdAt: { $gte: last7dStart },
       }),
     ]);
@@ -257,5 +277,7 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     signups7d,
     visitors7d: (visitorIds7d as string[]).length,
     visitorsNotConverted7d,
+    androidInstallsTotal,
+    androidInstalls7d,
   };
 }

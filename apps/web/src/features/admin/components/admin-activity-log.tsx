@@ -348,6 +348,11 @@ export function AdminActivityLog() {
             value: summary?.visitorsNotConverted7d ?? "—",
           },
           {
+            label: "Android app installs (all time)",
+            value: summary?.androidInstallsTotal ?? "—",
+          },
+          { label: "Android app installs (7d)", value: summary?.androidInstalls7d ?? "—" },
+          {
             label: "Top city (7d)",
             value: summary?.topCities.find((c) => c.city !== "Unknown")?.city ?? "—",
           },
