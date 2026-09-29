@@ -134,7 +134,14 @@ export type PhysiotherapistBankAccountInput = z.infer<
 export const physiotherapistVerificationSchema = nurseVerificationSchema.extend({
   specialties: physiotherapySpecialtiesSchema.min(1, "Select at least one specialty"),
   avatarUrl: z.string().min(1, "Profile photo is required").max(500),
-  bankAccount: physiotherapistBankAccountSchema,
+  // A form opened before the bank section shipped sends no bankAccount at all — tell the
+  // physio how to get the section instead of a raw "expected object" error.
+  bankAccount: z.object(physiotherapistBankAccountSchema.shape, {
+    error: (issue) =>
+      issue.input === undefined
+        ? "Please add your payout bank account. Refresh this page to see the bank account section."
+        : undefined,
+  }),
 });
 export type PhysiotherapistVerificationInput = z.infer<
   typeof physiotherapistVerificationSchema

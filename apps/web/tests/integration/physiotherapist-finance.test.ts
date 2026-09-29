@@ -144,7 +144,10 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
       documentUrls: { licenseCertificate: "a", cnicFront: "b", cnicBack: "c" },
       acceptedProviderAgreement: true,
     };
-    expect(validators.physiotherapistVerificationSchema.safeParse(base).success).toBe(false);
+    const missing = validators.physiotherapistVerificationSchema.safeParse(base);
+    expect(missing.success).toBe(false);
+    expect(missing.error?.issues[0]?.path).toEqual(["bankAccount"]);
+    expect(missing.error?.issues[0]?.message).toMatch(/Refresh this page/);
     expect(
       validators.physiotherapistVerificationSchema.safeParse({ ...base, bankAccount: bank })
         .success,
