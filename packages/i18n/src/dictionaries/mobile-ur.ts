@@ -83,7 +83,7 @@ export const mobileUr: MobileDictionary = {
     heroHintEmpty: "آپ کی کنسلٹیشنز، ہوم وزٹس، اور نسخے — سب ایک ہی جگہ پر۔",
     location: {
       label: "موجودہ مقام",
-      city: "لاہور، پاکستان",
+      city: "پاکستان",
     },
     help: "مدد",
     helpErrorTitle: "واٹس ایپ نہیں کھل سکا",
@@ -108,7 +108,7 @@ export const mobileUr: MobileDictionary = {
       homeCare: {
         badge: "آپ کی دہلیز پر",
         title: "ہوم کیئر وزٹس",
-        subtitle: "لاہور میں گھر بیٹھے ڈاکٹر، نرس یا فزیوتھراپسٹ کی وزٹ بک کریں۔",
+        subtitle: "گھر بیٹھے ڈاکٹر، نرس یا فزیوتھراپسٹ کی وزٹ بک کریں۔",
         action: "ہوم وزٹ بک کریں",
       },
       findDoctor: {

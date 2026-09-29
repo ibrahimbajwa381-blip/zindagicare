@@ -81,7 +81,7 @@ export const mobileEn = {
     heroHintEmpty: "Your consultations, home visits, and prescriptions — all in one place.",
     location: {
       label: "Current Location",
-      city: "Lahore, Pakistan",
+      city: "Pakistan",
     },
     help: "Help",
     helpErrorTitle: "Couldn't open WhatsApp",
@@ -106,7 +106,7 @@ export const mobileEn = {
       homeCare: {
         badge: "At your doorstep",
         title: "Home Care Visits",
-        subtitle: "Book a doctor, nurse, or physiotherapist to visit you at home in Lahore.",
+        subtitle: "Book a doctor, nurse, or physiotherapist to visit you at home.",
         action: "Book a home visit",
       },
       findDoctor: {

@@ -108,7 +108,7 @@ export class CopilotPatientDataService {
   }
 
   static async resolveDoctorIdByName(
-    city: string,
+    city: string | undefined,
     nameQuery: string,
   ): Promise<string | undefined> {
     await connectDatabase();
@@ -119,7 +119,7 @@ export class CopilotPatientDataService {
       mongoFilter({
         isListed: true,
         verificationStatus: "approved",
-        coverageCities: city,
+        ...(city ? { coverageCities: city } : {}),
       }),
     )
       .populate("userId", "name")

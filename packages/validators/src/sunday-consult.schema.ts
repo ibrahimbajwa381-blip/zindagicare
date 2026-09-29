@@ -83,7 +83,7 @@ export const appointmentStatusSchema = z.object({
 });
 
 export const listDoctorsQuerySchema = z.object({
-  city: z.string().default("Lahore"),
+  city: z.string().optional(),
   date: z.string().optional(),
 });
 

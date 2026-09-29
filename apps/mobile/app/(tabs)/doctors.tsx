@@ -23,7 +23,7 @@ export default function DoctorsScreen() {
   const router = useRouter();
   const { t, isRTL } = useLocale();
   const params = useLocalSearchParams<{ specialty?: string }>();
-  const [city, setCity] = useState("Lahore");
+  const [city, setCity] = useState("");
   const [specialty, setSpecialty] = useState(params.specialty ?? "");
   const [doctors, setDoctors] = useState<ConsultDoctorRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);

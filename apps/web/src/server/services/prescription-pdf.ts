@@ -210,7 +210,7 @@ function drawFooter(
     .font("Helvetica")
     .fontSize(7)
     .fillColor(BRAND.muted)
-    .text("Verified telemedicine — Lahore, Pakistan", textX, textY + 12, {
+    .text("Verified telemedicine — Pakistan", textX, textY + 12, {
       width: textWidth,
     });
 }

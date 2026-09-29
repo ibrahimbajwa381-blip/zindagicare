@@ -44,9 +44,9 @@ export function conditionDoctorPath(slug: string) {
 }
 
 export function conditionSeoTitle(label: string) {
-  return `${label} — Online Doctor Consultation in Lahore | ZindagiCare`;
+  return `${label} — Online Doctor Consultation in Pakistan | ZindagiCare`;
 }
 
 export function conditionSeoDescription(label: string, specialty: string) {
-  return `Book an online consultation for ${label.toLowerCase()} with PMDC-verified ${specialty} doctors in Lahore, Pakistan on ZindagiCare. Compare fees, read reviews, and join a secure video consult from home.`;
+  return `Book an online consultation for ${label.toLowerCase()} with PMDC-verified ${specialty} doctors in Pakistan on ZindagiCare. Compare fees, read reviews, and join a secure video consult from home.`;
 }

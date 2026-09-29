@@ -5,8 +5,8 @@ export const en = {
     name: "ZindagiCare",
     tagline: "At-home medical care, online consults & free Sunday care",
     description:
-      "Lahore's at-home medical care — verified doctors and nurses visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations and free 10-minute Sunday consults (Rs. 0).",
-    launchNote: "Launching in {city}. PMDC-verified doctors only.",
+      "Pakistan's at-home medical care — verified doctors and nurses visit you with geo-tracked, transparent-priced visits. Plus secure online video consultations and free 10-minute Sunday consults (Rs. 0).",
+    launchNote: "Available across Pakistan. PMDC-verified doctors only.",
     rights: "All rights reserved.",
   },
   nav: {
@@ -127,7 +127,7 @@ export const en = {
       "Create a nurse account. After signup you will submit your license, service area, and identity documents.",
     registerPhysiotherapist: "Register as physiotherapist",
     registerPhysiotherapistDescription:
-      "Join ZindagiCare as a verified physiotherapist for home physiotherapy sessions in Lahore.",
+      "Join ZindagiCare as a verified physiotherapist for home physiotherapy sessions across Pakistan.",
     registerHerbalist: "Register as herbalist",
     registerHerbalistDescription:
       "Join ZindagiCare as a verified herbalist and offer secure video consultations across Pakistan.",
@@ -385,7 +385,7 @@ export const en = {
           title: "A doctor at",
           titleHighlight: "your home",
           description:
-            "Verified doctors and nurses visit you at home in Lahore.",
+            "Verified doctors and nurses visit you at home.",
           highlights: ["Verified doctors & nurses", "Transparent pricing"],
           badge: "Doctor & nurse home visits",
           ctaLabel: "Book in-house care",
@@ -397,18 +397,18 @@ export const en = {
       },
       {
         imageAlt:
-          "Male Pakistani physiotherapist providing professional home rehabilitation care in Lahore",
+          "Male Pakistani physiotherapist providing professional home rehabilitation care in Pakistan",
         carousel: {
           eyebrow: "Home physiotherapy",
           title: "Physiotherapy at",
           titleHighlight: "your home",
           description:
-            "Verified male or female physiotherapists visit you in Lahore — tell us your preference when you book. Rehab, mobility, and pain relief from Rs. 2,800.",
+            "Verified male or female physiotherapists visit you at home — tell us your preference when you book. Rehab, mobility, and pain relief from Rs. 2,800.",
           highlights: [
             "Male or female physio on request",
             "Rs. 2,800 per session",
           ],
-          badge: "Male & female physios · Lahore",
+          badge: "Male & female physios · Across Pakistan",
           ctaLabel: "Book home physiotherapy",
         },
         card: {
@@ -441,7 +441,7 @@ export const en = {
           title: "Talk to PMDC doctors via",
           titleHighlight: "secure video",
           description:
-            "Book a video slot with PMDC-verified doctors in Lahore.",
+            "Book a video slot with PMDC-verified doctors across Pakistan.",
           highlights: ["PMDC verified specialists", "E-prescriptions included"],
           badge: "PMDC verified · Secure video call",
           ctaLabel: "Book online consultation",
@@ -477,7 +477,7 @@ export const en = {
     freeSundayDesc: "Rs. 0 every Sunday",
     secureVideo: "Secure online video",
     secureVideoDesc: "Private HD consult rooms",
-    homeCare: "In-house care in Lahore",
+    homeCare: "In-house care at your doorstep",
     homeCareDesc: "Doctors & nurses at home",
   },
   refundGuarantee: {
@@ -749,7 +749,7 @@ export const en = {
       },
       {
         title: "Book",
-        desc: "Pick a doctor and time slot, or schedule a verified visit to your address in Lahore.",
+        desc: "Pick a doctor and time slot, or schedule a verified visit to your address.",
       },
       {
         title: "Get care",
@@ -765,14 +765,14 @@ export const en = {
     eyebrow: "FAQ",
     title: "Frequently asked questions",
     description:
-      "Quick answers about online consults, Sunday free care, and in-house medical visits in Lahore.",
+      "Quick answers about online consults, Sunday free care, and in-house medical visits across Pakistan.",
     stillHaveQuestions: "Still have questions?",
     stillHaveQuestionsHint: "Message us on WhatsApp and our team will help you.",
     contactWhatsApp: "Message on WhatsApp",
     items: [
       {
         q: "What services does ZindagiCare offer at launch?",
-        a: "We offer three services in Lahore: secure online video consultations with PMDC-verified doctors, free 10-minute Sunday video consults (Rs. 0), and in-house medical services — licensed doctors and nurses who visit you at home for check-ups, nursing, IV therapy, and related care.",
+        a: "We offer three services across Pakistan: secure online video consultations with PMDC-verified doctors, free 10-minute Sunday video consults (Rs. 0), and in-house medical services — licensed doctors and nurses who visit you at home for check-ups, nursing, IV therapy, and related care.",
       },
       {
         q: "What is Sunday Free Consult?",
@@ -797,7 +797,7 @@ export const en = {
     title: "In-house medical services",
     bannerBadge: "Doctor visits · Nursing · Physiotherapy · IV & injections",
     description:
-      "Geo-tracked scheduling, transparent pricing, and verified staff across Lahore.",
+      "Geo-tracked scheduling, transparent pricing, and verified staff across Pakistan.",
     differentiator:
       "What sets us apart — verified doctors, nurses, and physiotherapists come to your home, geo-tracked and transparently priced. Safe, convenient care that comes to you.",
     items: [
@@ -807,13 +807,13 @@ export const en = {
       { title: "Wound & post-op care", desc: "Dressings and recovery support at home" },
     ],
     hero: {
-      badge: "Lahore · Licensed doctors, nurses & physiotherapists",
+      badge: "Pakistan-wide · Licensed doctors, nurses & physiotherapists",
       heroHeadline: "Licensed medical care at",
       heroHeadlineHighlight: "your home",
       headline: "Medical care at your doorstep",
       subheadline: "IV drips, injections, wound care & more — without leaving home",
       body:
-        "Request a verified doctor, nurse, or physiotherapist visit anywhere in Lahore. See the price upfront, track your provider in real time, and get a visit report when care is complete.",
+        "Request a verified doctor, nurse, or physiotherapist visit at your home. See the price upfront, track your provider in real time, and get a visit report when care is complete.",
       highlights: [
         {
           title: "Verified staff",
@@ -841,7 +841,7 @@ export const en = {
       eyebrow: "Book now",
       title: "What do you need at home?",
       description:
-        "Tap what matches your need — you'll pick a time and address on the next step. All services are live in Lahore with upfront pricing.",
+        "Tap what matches your need — you'll pick a time and address on the next step. All services come with upfront pricing.",
       scenariosLabel: "Common needs",
       notSure: "Not sure which one?",
       notSureLink: "Start a general request and we'll help you choose",
@@ -872,7 +872,7 @@ export const en = {
       eyebrow: "Book now",
       title: "Services you can request today",
       description:
-        "These services are live in Lahore. Choose one, pick a time, and we match a verified doctor or nurse to your address.",
+        "These services are live now. Choose one, pick a time, and we match a verified doctor or nurse to your address.",
       fromLabel: "From",
       bookCta: "Book this service",
       durationLabel: "Typical visit",
@@ -899,7 +899,7 @@ export const en = {
       eyebrow: "Full range",
       title: "Everything we offer at home",
       description:
-        "Beyond today's bookable services, ZindagiCare covers a wider range of in-house medical needs across Lahore.",
+        "Beyond today's bookable services, ZindagiCare covers a wider range of in-house medical needs across Pakistan.",
     },
     howItWorks: {
       eyebrow: "Simple process",
@@ -925,22 +925,21 @@ export const en = {
       ],
     },
     coverage: {
-      eyebrow: "Lahore coverage",
-      title: "Serving all major areas",
+      eyebrow: "Coverage",
+      title: "Serving cities across Pakistan",
       description:
-        "Home care is available across Lahore. GPS helps us dispatch the closest doctor or nurse to you faster.",
-      areasLabel: "Lahore neighborhoods",
+        "Home care is available in cities across Pakistan. GPS helps us dispatch the closest doctor or nurse to you faster.",
+      areasLabel: "Cities we serve",
       areas: [
-        "DHA",
-        "Gulberg",
-        "Johar Town",
-        "Model Town",
-        "Bahria Town",
-        "Cantt",
-        "Faisal Town",
-        "Wapda Town",
-        "Garden Town",
-        "Allama Iqbal Town",
+        "Lahore",
+        "Karachi",
+        "Islamabad",
+        "Rawalpindi",
+        "Faisalabad",
+        "Multan",
+        "Gujranwala",
+        "Sialkot",
+        "Peshawar",
       ],
       trustPoints: [
         {
@@ -967,7 +966,7 @@ export const en = {
       items: [
         {
           q: "Which services can I book right now?",
-          a: "Doctor home visits, physiotherapy, general nursing, IV drip therapy, injections, and wound care are all live in Lahore. Pick one on this page and we'll match the nearest provider.",
+          a: "Doctor home visits, physiotherapy, general nursing, IV drip therapy, injections, and wound care are all live. Pick one on this page and we'll match the nearest provider.",
         },
         {
           q: "How quickly can someone reach me?",
@@ -978,8 +977,8 @@ export const en = {
           a: "For injections and IV therapy, bring or upload your doctor's prescription in the notes field. Wound care can often be booked with a brief description of the injury.",
         },
         {
-          q: "What areas of Lahore do you cover?",
-          a: "We serve all major Lahore neighborhoods including DHA, Gulberg, Model Town, Johar Town, Bahria Town, Cantt, and surrounding areas.",
+          q: "Which cities do you cover?",
+          a: "We serve patients in cities across Pakistan. Share your location when you book and we'll match the nearest verified provider in your city.",
         },
         {
           q: "How do I pay?",
@@ -998,15 +997,15 @@ export const en = {
   homePhysio: {
     eyebrow: "Home physiotherapy",
     imageAlt:
-      "Male Pakistani physiotherapist providing professional home rehabilitation care in Lahore",
+      "Male Pakistani physiotherapist providing professional home rehabilitation care in Pakistan",
     headline: "Rehab & recovery",
     headlineHighlight: "at your home",
     description:
-      "Licensed physiotherapists visit you in Lahore for post-injury rehab, mobility, and pain relief — professional care without leaving home.",
+      "Licensed physiotherapists visit you at home for post-injury rehab, mobility, and pain relief — professional care without leaving home.",
     genderPreference:
       "Request a male or female physiotherapist when you book — we match your preference.",
     priceLabel: "From Rs. 2,800 per session",
-    badge: "Geo-matched across Lahore · Verified providers",
+    badge: "Geo-matched across Pakistan · Verified providers",
     primaryCta: "Book home physiotherapy",
     secondaryCta: "Join as physiotherapist",
     exploreCta: "Explore home physiotherapy",
@@ -1014,7 +1013,7 @@ export const en = {
       heroHeadline: "Physiotherapy at",
       heroHeadlineHighlight: "your home",
       body:
-        "Verified male or female physiotherapists visit you in Lahore. Tell us your preference when you book — rehab, mobility, and pain relief with upfront pricing and geo-tracked dispatch.",
+        "Verified male or female physiotherapists visit you at home. Tell us your preference when you book — rehab, mobility, and pain relief with upfront pricing and geo-tracked dispatch.",
       highlights: [
         {
           title: "Male or female physio",
@@ -1046,7 +1045,7 @@ export const en = {
         includesLabel: "Includes",
         includes:
           "Assessment, guided rehab exercises, and recovery guidance at your doorstep",
-        priceNote: "Fixed rate · Lahore only · Male or female on request",
+        priceNote: "Upfront rate · Male or female on request",
         bookCta: "Book a home physio session",
         providerCta: "I'm a physiotherapist",
       },
@@ -1109,7 +1108,7 @@ export const en = {
         eyebrow: "Why ZindagiCare",
         title: "Professional physio care you can trust",
         description:
-          "Built for Lahore patients who want expert rehabilitation without the clinic commute.",
+          "Built for patients across Pakistan who want expert rehabilitation without the clinic commute.",
         points: [
           {
             title: "Licensed physiotherapists",
@@ -1146,8 +1145,8 @@ export const en = {
             a: "Typical sessions run 45–60 minutes, including assessment, guided exercises, and recovery guidance.",
           },
           {
-            q: "Which areas of Lahore do you cover?",
-            a: "We serve all major Lahore neighborhoods including DHA, Gulberg, Model Town, Johar Town, Bahria Town, Cantt, and surrounding areas.",
+            q: "Which cities do you cover?",
+            a: "We serve patients in cities across Pakistan. Share your location when you book and we'll match the nearest verified physiotherapist in your city.",
           },
           {
             q: "Do I need a doctor's referral?",
@@ -1167,7 +1166,7 @@ export const en = {
   homeCare: {
     requestTitle: "Request in-house care",
     requestDesc:
-      "Book a doctor, nurse, or physiotherapist at your home in Lahore — IV therapy, injections, wound care, physiotherapy, or a doctor home visit. We match the nearest available provider to your location.",
+      "Book a doctor, nurse, or physiotherapist at your home — IV therapy, injections, wound care, physiotherapy, or a doctor home visit. We match the nearest available provider to your location.",
     serviceType: "Service type",
     services: {
       doctorVisit: "Doctor home visit",
@@ -1183,7 +1182,7 @@ export const en = {
     useMyLocation: "Use my location",
     locating: "Detecting…",
     locationOk: "Location captured for provider matching",
-    locationFallback: "Using Lahore center — enable GPS for better matching",
+    locationFallback: "Using a default location — enable GPS for better matching",
     scheduledAt: "Preferred visit time",
     notes: "Notes for the provider (optional)",
     notesPlaceholder:
@@ -1216,7 +1215,7 @@ export const en = {
       cancelled: "Cancelled",
     },
     adminTitle: "Home care dispatch",
-    adminDesc: "Assign nurses, doctors, and physiotherapists to home treatment visits in Lahore.",
+    adminDesc: "Assign nurses, doctors, and physiotherapists to home treatment visits.",
     autoAssign: "Auto-assign nearest provider",
     manualAssign: "Assign selected provider",
     selectNurse: "Select provider",
@@ -1246,7 +1245,7 @@ export const en = {
   },
   doctors: {
     eyebrow: "Online consultation",
-    title: "Top doctors in Lahore",
+    title: "Top doctors in Pakistan",
     description: "PMDC verified specialists available for secure video consults.",
     browseTitle: "Consult best doctors online",
     searchByCondition: "Search doctor by condition",
@@ -1259,10 +1258,10 @@ export const en = {
     page: {
       metaTitle: "Book a video consultation",
       metaDescription:
-        "Book secure video consultations with PMDC-verified doctors in Lahore on ZindagiCare.",
+        "Book secure video consultations with PMDC-verified doctors across Pakistan on ZindagiCare.",
       title: "Book a video consultation",
       description:
-        "Browse PMDC-verified specialists in Lahore. View profiles, compare fees, and book a secure video slot.",
+        "Browse PMDC-verified specialists across Pakistan. View profiles, compare fees, and book a secure video slot.",
       listTitle: "Browse doctors",
       listDescription:
         "PMDC-verified specialists with open video slots. Tap a profile to view details and book.",
@@ -1280,7 +1279,7 @@ export const en = {
         badge: "PMDC verified · Secure video call",
         headline: "Talk to PMDC doctors via",
         headlineHighlight: "secure video",
-        subheadline: "Book a video slot with verified specialists in Lahore",
+        subheadline: "Book a video slot with verified specialists across Pakistan",
         body:
           "Compare profiles, see fees upfront, and join a private video consultation from home. Digital prescriptions included when clinically appropriate.",
         highlights: [
@@ -1333,7 +1332,7 @@ export const en = {
         eyebrow: "Why ZindagiCare",
         title: "Telemedicine you can trust",
         description:
-          "Built for patients in Lahore who want specialist care without the clinic visit.",
+          "Built for patients across Pakistan who want specialist care without the clinic visit.",
         points: [
           {
             title: "Verified credentials",
@@ -1370,8 +1369,8 @@ export const en = {
             a: "Availability changes throughout the day. You can also book a free 10-minute Sunday consult or use Urgent Care for faster access.",
           },
           {
-            q: "Is online consultation available outside Lahore?",
-            a: "Doctors on ZindagiCare primarily serve patients in Lahore and across Pakistan via video. You can join from anywhere with a stable internet connection.",
+            q: "Can I consult from any city?",
+            a: "Doctors on ZindagiCare serve patients across Pakistan via video. You can join from anywhere with a stable internet connection.",
           },
           {
             q: "How do I pay?",
@@ -1875,7 +1874,7 @@ export const en = {
       eyebrow: "For medical professionals",
       title: "Doctors & nurses — grow your practice on ZindagiCare",
       description:
-        "Join Lahore's trusted platform for online consults, Sunday free care, and in-house medical visits. We handle booking, payments, and patient matching so you can focus on care.",
+        "Join Pakistan's trusted platform for online consults, Sunday free care, and in-house medical visits. We handle booking, payments, and patient matching so you can focus on care.",
       doctorCard: {
         title: "For doctors",
         description:
@@ -1893,7 +1892,7 @@ export const en = {
       eyebrow: "For doctors",
       title: "Practice medicine on your terms",
       subheadline: "Online consults, Sunday free care, and home visits — one workspace",
-      body: "ZindagiCare connects PMDC-verified doctors with patients across Lahore. Set your availability, join secure video calls, manage consult requests, and track earnings — all from one dashboard.",
+      body: "ZindagiCare connects PMDC-verified doctors with patients across Pakistan. Set your availability, join secure video calls, manage consult requests, and track earnings — all from one dashboard.",
       benefitsEyebrow: "Why join",
       benefitsTitle: "Built for how you work",
       benefitsDescription:
@@ -1952,7 +1951,7 @@ export const en = {
       eyebrow: "For nurses",
       title: "Deliver skilled care at patients' homes",
       subheadline: "In-house visits matched to your location and schedule",
-      body: "ZindagiCare sends verified in-house visit requests to licensed nurses across Lahore — IV therapy, injections, wound dressing, and post-operative care. Accept visits that fit your route and get paid through the platform.",
+      body: "ZindagiCare sends verified in-house visit requests to licensed nurses across Pakistan — IV therapy, injections, wound dressing, and post-operative care. Accept visits that fit your route and get paid through the platform.",
       benefitsEyebrow: "Why join",
       benefitsTitle: "Your nursing workspace",
       benefitsDescription:
@@ -2010,7 +2009,7 @@ export const en = {
       eyebrow: "For physiotherapists",
       title: "Deliver rehab and mobility care at home",
       subheadline: "Home physiotherapy sessions matched to your location",
-      body: "ZindagiCare connects verified physiotherapists with patients across Lahore for home rehabilitation, pain relief, and post-injury recovery. Accept sessions that fit your schedule and get paid through the platform.",
+      body: "ZindagiCare connects verified physiotherapists with patients across Pakistan for home rehabilitation, pain relief, and post-injury recovery. Accept sessions that fit your schedule and get paid through the platform.",
       benefitsEyebrow: "Why join",
       benefitsTitle: "Your physiotherapy workspace",
       benefitsDescription:

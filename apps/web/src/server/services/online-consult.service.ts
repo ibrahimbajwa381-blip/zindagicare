@@ -399,14 +399,14 @@ export class OnlineConsultService {
     return resumable;
   }
 
-  static async listConsultDoctors(city = "Lahore", specialty?: string) {
+  static async listConsultDoctors(city?: string, specialty?: string) {
     await OnlineConsultService.ensureConnected();
     await OnlineConsultService.expireStalePendingBookings();
 
     const filter: Record<string, unknown> = {
       isListed: true,
       verificationStatus: VerificationStatuses.APPROVED,
-      coverageCities: city,
+      ...(city ? { coverageCities: city } : {}),
       consultationFee: { $gte: ONLINE_CONSULT_CONFIG.minConsultationFee },
     };
 

@@ -34,10 +34,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const summary = [doctor.portfolio.headline?.replace(/[.!?]+$/, ""), doctor.bio].filter(Boolean).join(". ");
   const description =
     (summary ? truncateDescription(summary) : undefined) ??
-    `Book online doctor consultation with ${doctor.name}, ${specialty} in Lahore, Pakistan on ZindagiCare. PMDC-verified, secure video consult from home.`;
+    `Book online doctor consultation with ${doctor.name}, ${specialty} in Pakistan on ZindagiCare. PMDC-verified, secure video consult from home.`;
 
   return buildPageMetadata({
-    title: `${doctor.name} — ${specialty} | Online Consult Lahore`,
+    title: `${doctor.name} — ${specialty} | Online Consult Pakistan`,
     description,
     path: `/doctors/${canonicalSlug}`,
   });

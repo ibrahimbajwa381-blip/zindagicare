@@ -24,7 +24,7 @@ export const DOCTOR_GUIDE_FAQ = [
   },
   {
     q: "Where does ZindagiCare operate?",
-    a: "Online consultations, urgent care, and Sunday free consults are Pakistan-wide. In-house (home visit) doctor services are Lahore only in Phase 1.",
+    a: "Online consultations, urgent care, Sunday free consults, and in-house (home visit) doctor services are available across Pakistan.",
   },
   {
     q: "What documents do I need to join?",

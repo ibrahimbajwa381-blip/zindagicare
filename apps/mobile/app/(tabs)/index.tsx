@@ -129,7 +129,7 @@ export default function HomeScreen() {
       getOnlineBooking(),
       listMyHomeVisits(),
       listPrescriptions(),
-      listConsultDoctors({ city: "Lahore" }),
+      listConsultDoctors(),
     ]);
 
     if (bookingResult.status === "fulfilled") {

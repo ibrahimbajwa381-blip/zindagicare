@@ -26,7 +26,6 @@ import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { AppDownloadBanner } from "@/components/pwa/app-download-banner";
-import { formatMessage } from "@/i18n/messages";
 import { useTranslations } from "@/i18n/locale-provider";
 
 type FooterLinkItem = {
@@ -179,7 +178,7 @@ export function SiteFooter() {
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#062a5c] px-3 py-1.5 text-xs font-medium text-slate-200">
                 <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-lighter" aria-hidden />
-                {formatMessage(t.site.launchNote, { city: siteConfig.launchCity })}
+                {t.site.launchNote}
               </span>
             </div>
 

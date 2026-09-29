@@ -14,7 +14,7 @@ export const siteConfig = {
   icon: "/icon-192.png",
   tagline: "At-home medical care, online consults, urgent care & free Sunday care",
   description:
-    "Pakistan's at-home medical care — verified doctors, nurses, and physiotherapists visit you in Lahore with geo-tracked, transparent-priced visits. Plus secure online video consultations, urgent care in 10 minutes, and free Sunday consults (Rs. 0).",
+    "Pakistan's at-home medical care — verified doctors, nurses, and physiotherapists visit you at home with geo-tracked, transparent-priced visits. Plus secure online video consultations, urgent care in 10 minutes, and free Sunday consults (Rs. 0).",
   seo: {
     defaultTitle: marketingPageSeo.home.title,
     defaultDescription: marketingPageSeo.home.description,

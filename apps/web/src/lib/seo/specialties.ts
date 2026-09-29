@@ -15,11 +15,11 @@ export function specialtyDoctorPath(slug: string) {
 }
 
 export function specialtySeoTitle(label: string) {
-  return `Best ${label} in Lahore — Online Consultation | ZindagiCare`;
+  return `Best ${label} in Pakistan — Online Consultation | ZindagiCare`;
 }
 
 export function specialtySeoDescription(label: string) {
-  return `Book an online consultation with PMDC-verified ${label} doctors in Lahore, Pakistan on ZindagiCare. Compare fees, read reviews, and join a secure video consult from home.`;
+  return `Book an online consultation with PMDC-verified ${label} doctors in Pakistan on ZindagiCare. Compare fees, read reviews, and join a secure video consult from home.`;
 }
 
 export { slugifySpecialty };

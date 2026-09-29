@@ -71,7 +71,7 @@ export function buildPhysicianSchema(doctor: {
         : undefined,
     description:
       doctor.bio ??
-      `${doctor.name} is a ${specialty} offering online video consultations in Lahore, Pakistan via ZindagiCare.`,
+      `${doctor.name} is a ${specialty} offering online video consultations across Pakistan via ZindagiCare.`,
     medicalSpecialty: doctor.specialties,
     ...(portfolio?.headline ? { slogan: portfolio.headline } : {}),
     ...(doctor.medicalCollege
@@ -147,10 +147,6 @@ export function buildMedicalServiceSchema(service: {
       name: siteConfig.name,
       url: getSiteUrl(),
     },
-    areaServed: {
-      "@type": "City",
-      name: siteConfig.launchCity,
-      containedInPlace: { "@type": "Country", name: "Pakistan" },
-    },
+    areaServed: { "@type": "Country", name: "Pakistan" },
   };
 }

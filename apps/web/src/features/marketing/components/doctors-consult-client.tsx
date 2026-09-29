@@ -79,7 +79,7 @@ type DoctorsConsultClientProps = {
 
 export function DoctorsConsultClient({
   initialSpecialty,
-  initialCity = "Lahore",
+  initialCity,
 }: DoctorsConsultClientProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -127,7 +127,8 @@ export function DoctorsConsultClient({
   const loadDoctors = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ city: initialCity });
+      const params = new URLSearchParams();
+      if (initialCity) params.set("city", initialCity);
       // When free-text search is active we fetch the full city list and filter
       // client-side, since search can match name/hospital/disease as well as specialty.
       if (activeSpecialty && !hasSearchQuery) params.set("specialty", activeSpecialty);

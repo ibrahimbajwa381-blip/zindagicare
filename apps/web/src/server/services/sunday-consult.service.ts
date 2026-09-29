@@ -217,7 +217,7 @@ export class SundayConsultService {
     }
   }
 
-  static async listSundayDoctors(city = "Lahore", dateKey?: string) {
+  static async listSundayDoctors(city?: string, dateKey?: string) {
     await SundayConsultService.ensureConnected();
     const globallyEnabled = await isSundayConsultGloballyEnabled();
     if (!globallyEnabled) return [];
@@ -231,7 +231,7 @@ export class SundayConsultService {
       sundayConsultEnabled: true,
       isListed: true,
       verificationStatus: "approved",
-      coverageCities: city,
+      ...(city ? { coverageCities: city } : {}),
     })
       .populate("userId", "name avatarUrl")
       .lean();

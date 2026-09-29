@@ -3,22 +3,22 @@ export const marketingPageSeo = {
   home: {
     title: "ZindagiCare — Online Doctor Consultation & In-House Medical Services in Pakistan",
     description:
-      "ZindagiCare (zindagicare.com) — Pakistan's platform for online video consultations with PMDC-verified doctors, in-house medical services, nurse and physiotherapist home visits in Lahore, urgent care in 10 minutes, and free Sunday consults.",
+      "ZindagiCare (zindagicare.com) — Pakistan's platform for online video consultations with PMDC-verified doctors, in-house medical services, nurse and physiotherapist home visits across Pakistan, urgent care in 10 minutes, and free Sunday consults.",
   },
   doctors: {
     title: "Online Doctor Consultation Pakistan — Book Video Consult",
     description:
-      "Book an online doctor consultation in Pakistan with PMDC-verified physicians on ZindagiCare. Secure video consults from home in Lahore — transparent fees, digital prescriptions, and trusted telemedicine.",
+      "Book an online doctor consultation in Pakistan with PMDC-verified physicians on ZindagiCare. Secure video consults from home anywhere in Pakistan — transparent fees, digital prescriptions, and trusted telemedicine.",
   },
   homeServices: {
-    title: "In-House Medical Services — Doctor & Nurse at Home Lahore",
+    title: "In-House Medical Services — Doctor & Nurse at Home Pakistan",
     description:
-      "In-house medical services in Lahore: verified doctors, nurses, and physiotherapists visit your home. IV therapy, injections, wound care, physiotherapy, and more — geo-tracked visits on ZindagiCare.",
+      "In-house medical services across Pakistan: verified doctors, nurses, and physiotherapists visit your home. IV therapy, injections, wound care, physiotherapy, and more — geo-tracked visits on ZindagiCare.",
   },
   homePhysiotherapy: {
-    title: "Home Physiotherapy Lahore — Male or Female Physio at Your Doorstep",
+    title: "Home Physiotherapy Pakistan — Male or Female Physio at Your Doorstep",
     description:
-      "Book home physiotherapy in Lahore with verified male or female physiotherapists on ZindagiCare. Post-injury rehab, back pain, sports recovery, and mobility sessions from Rs. 2,800 — geo-tracked home visits.",
+      "Book home physiotherapy across Pakistan with verified male or female physiotherapists on ZindagiCare. Post-injury rehab, back pain, sports recovery, and mobility sessions from Rs. 2,800 — geo-tracked home visits.",
   },
   sundayConsult: {
     title: "Free Sunday Online Doctor Consultation — Pakistan",
@@ -43,21 +43,21 @@ export const marketingPageSeo = {
   forDoctorsGuide: {
     title: "Doctor Guide — Earnings, How to Join & Use ZindagiCare",
     description:
-      "Complete ZindagiCare doctor guide: keep 70% of paid consults, monthly payouts, how to join, Sunday volunteer care, urgent care, home visits in Lahore, and a full product demo.",
+      "Complete ZindagiCare doctor guide: keep 70% of paid consults, monthly payouts, how to join, Sunday volunteer care, urgent care, home visits, and a full product demo.",
   },
   forNurses: {
-    title: "Join ZindagiCare as a Nurse — Home Nursing Lahore",
+    title: "Join ZindagiCare as a Nurse — Home Nursing Pakistan",
     description:
-      "Licensed nurses in Lahore: join ZindagiCare for in-house medical visits, IV therapy, injections, wound care, and home nursing assignments with transparent payouts.",
+      "Licensed nurses across Pakistan: join ZindagiCare for in-house medical visits, IV therapy, injections, wound care, and home nursing assignments with transparent payouts.",
   },
   forPhysiotherapists: {
-    title: "Join ZindagiCare as a Physiotherapist — Home Physio Lahore",
+    title: "Join ZindagiCare as a Physiotherapist — Home Physio Pakistan",
     description:
-      "Verified physiotherapists in Lahore: offer home physiotherapy sessions on ZindagiCare. Rehabilitation, pain relief, and post-injury recovery at patients' homes.",
+      "Verified physiotherapists across Pakistan: offer home physiotherapy sessions on ZindagiCare. Rehabilitation, pain relief, and post-injury recovery at patients' homes.",
   },
   homeCareRequest: {
-    title: "Book In-House Medical Visit — Doctor or Nurse at Home Lahore",
+    title: "Book In-House Medical Visit — Doctor or Nurse at Home Pakistan",
     description:
-      "Request an in-house medical visit in Lahore on ZindagiCare. Book doctor home visits, nursing, IV therapy, injections, wound care, or physiotherapy at your doorstep.",
+      "Request an in-house medical visit anywhere in Pakistan on ZindagiCare. Book doctor home visits, nursing, IV therapy, injections, wound care, or physiotherapy at your doorstep.",
   },
 } as const;

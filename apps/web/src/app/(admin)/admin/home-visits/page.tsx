@@ -3,7 +3,7 @@ import { AdminHomeVisitsBoard } from "@/features/home-care/components/admin-home
 
 export const metadata = {
   title: "Home care dispatch",
-  description: "Assign nurses and doctors to in-house medical visits in Lahore.",
+  description: "Assign nurses and doctors to in-house medical visits.",
 };
 
 export default function AdminHomeVisitsPage() {

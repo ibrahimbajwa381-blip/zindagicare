@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const listConsultDoctorsQuerySchema = z.object({
-  city: z.string().default("Lahore"),
+  city: z.string().optional(),
   specialty: z.string().optional(),
 });
 

@@ -550,7 +550,7 @@ export function DoctorProfileEditForm({
           <div>
             <h2 className="text-sm font-semibold text-slate-900">In-house visit service</h2>
             <p className="mt-0.5 text-xs text-slate-600">
-              Offer doctor home visits in Lahore. Admin assigns you to nearby patient requests
+              Offer doctor home visits in your city. Admin assigns you to nearby patient requests
               when you are the nearest available doctor within {HOME_CARE_MATCH_RADIUS_KM} km.
             </p>
           </div>
