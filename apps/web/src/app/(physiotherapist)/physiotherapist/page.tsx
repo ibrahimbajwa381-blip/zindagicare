@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import {
-  HOME_CARE_PRICING,
-  HomeVisitServiceTypes,
-  VerificationStatuses,
-  Roles,
-} from "@zindagi/shared";
+import { resolvePhysioHomeVisitFee, VerificationStatuses, Roles } from "@zindagi/shared";
 import {
   CalendarClock,
   CheckCircle2,
@@ -185,7 +180,7 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
                   qualifications: verification.qualification ? [verification.qualification] : [],
                   location: serviceLocation ? `Home visits in ${serviceLocation}` : undefined,
                   experienceYears: verification.experienceYears,
-                  consultationFee: HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY],
+                  consultationFee: resolvePhysioHomeVisitFee(profile.staff.homeVisitFee),
                   feeLabel: "per home visit",
                   pmdcVerified: true,
                   profileUrl: `${siteConfig.url}${publicPath}`,

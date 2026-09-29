@@ -7,7 +7,10 @@ import {
   cn,
   HOME_CARE_MATCH_RADIUS_KM,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIO_HOME_VISIT_FEE_MAX,
+  PHYSIO_HOME_VISIT_FEE_MIN,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
+  resolvePhysioHomeVisitFee,
 } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
@@ -78,6 +81,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
 
     const form = new FormData(e.currentTarget);
     const radiusRaw = form.get("radiusKm");
+    const feeRaw = String(form.get("homeVisitFee") ?? "").trim();
     const body = {
       name: String(form.get("name") ?? "").trim(),
       phone: String(form.get("phone") ?? "").trim() || undefined,
@@ -85,6 +89,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
       area: String(form.get("area") ?? "").trim(),
       radiusKm: radiusRaw ? Number(radiusRaw) : undefined,
       homeVisitEnabled,
+      homeVisitFee: feeRaw ? Number(feeRaw) : undefined,
       geo: geo ?? undefined,
       specialties,
       avatarUrl: avatarUrl !== profile.user.avatarUrl ? avatarUrl : undefined,
@@ -229,6 +234,26 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                   </p>
                 </div>
               </label>
+
+              <div>
+                <Label htmlFor="homeVisitFee">Your fee per home visit (Rs.)</Label>
+                <Input
+                  id="homeVisitFee"
+                  name="homeVisitFee"
+                  type="number"
+                  inputMode="numeric"
+                  min={PHYSIO_HOME_VISIT_FEE_MIN}
+                  max={PHYSIO_HOME_VISIT_FEE_MAX}
+                  step={50}
+                  defaultValue={resolvePhysioHomeVisitFee(profile.staff.homeVisitFee)}
+                  required
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Patients who book you directly pay this amount. Between Rs.{" "}
+                  {PHYSIO_HOME_VISIT_FEE_MIN.toLocaleString("en-PK")} and Rs.{" "}
+                  {PHYSIO_HOME_VISIT_FEE_MAX.toLocaleString("en-PK")}.
+                </p>
+              </div>
 
               {homeVisitEnabled && (
                 <GeoLocationPicker

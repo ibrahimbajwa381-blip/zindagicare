@@ -111,6 +111,8 @@ export type PhysiotherapistProfileDto = {
       geo?: { lng: number; lat: number };
     };
     homeVisitEnabled: boolean;
+    /** Fee the physio set themselves; undefined means the platform rate applies. */
+    homeVisitFee?: number;
   };
   verification: {
     status: string;
@@ -207,6 +209,7 @@ export async function getPhysiotherapistProfile(userId: string): Promise<Physiot
             : undefined,
       },
       homeVisitEnabled: staff.homeVisitEnabled ?? false,
+      homeVisitFee: staff.homeVisitFee ?? undefined,
     },
     verification: {
       status: staff.verificationStatus ?? VerificationStatuses.PENDING,
@@ -319,6 +322,10 @@ export async function updatePhysiotherapistProfile(
 
   if (data.homeVisitEnabled !== undefined) {
     staff.homeVisitEnabled = data.homeVisitEnabled;
+  }
+
+  if (data.homeVisitFee !== undefined) {
+    staff.homeVisitFee = data.homeVisitFee;
   }
 
   await staff.save();

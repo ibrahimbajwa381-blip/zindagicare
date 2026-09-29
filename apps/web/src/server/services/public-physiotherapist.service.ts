@@ -2,6 +2,7 @@ import { connectDatabase, StaffProfileModel } from "@zindagi/database";
 import {
   HOME_CARE_MATCH_RADIUS_KM,
   LAUNCH_CITY,
+  resolvePhysioHomeVisitFee,
   Roles,
   SUPPORTED_CITIES,
   VerificationStatuses,
@@ -34,6 +35,8 @@ export type PublicPhysiotherapist = {
   city: string;
   area?: string;
   homeVisitEnabled: boolean;
+  /** Per-visit fee in PKR — the physio's own fee, or the platform rate. */
+  homeVisitFee: number;
   isAvailable: boolean;
   /** Distance from the patient's pin, when a location was supplied. */
   distanceKm?: number;
@@ -110,6 +113,7 @@ async function mapStaff(
     city: area?.city ?? LAUNCH_CITY,
     area: area?.area ?? undefined,
     homeVisitEnabled: Boolean(staff.homeVisitEnabled),
+    homeVisitFee: resolvePhysioHomeVisitFee(staff.homeVisitFee as number | undefined),
     isAvailable: staff.isAvailable !== false,
     distanceKm,
     withinRadius:

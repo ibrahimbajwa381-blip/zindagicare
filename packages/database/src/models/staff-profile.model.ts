@@ -86,6 +86,8 @@ const staffProfileSchema = new Schema(
       },
     ],
     homeVisitEnabled: { type: Boolean, default: false, index: true },
+    /** Physiotherapist's own per-visit fee (PKR); unset means the platform rate. */
+    homeVisitFee: { type: Number, min: 0 },
     isAvailable: { type: Boolean, default: true, index: true },
     verificationStatus: {
       type: String,

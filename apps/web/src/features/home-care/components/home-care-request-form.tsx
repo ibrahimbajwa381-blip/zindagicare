@@ -95,8 +95,12 @@ export function HomeCareRequestForm() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
+  const [physioFee, setPhysioFee] = useState<number | null>(null);
+
   const price =
-    HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ?? 2000;
+    (isPhysio ? physioFee : null) ??
+    HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ??
+    2000;
   const isAuthenticated = status === "authenticated";
   const isLoadingSession = status === "loading";
 
@@ -229,6 +233,7 @@ export function HomeCareRequestForm() {
               value={physioChoice}
               onChange={setPhysioChoice}
               initialPhysioId={initialPhysioId}
+              onFeeChange={setPhysioFee}
             />
           )}
 

@@ -18,9 +18,17 @@ type Props = {
   onChange: (value: PhysiotherapistChoice) => void;
   /** Physio pre-selected from a profile page (?physio=<userId>). */
   initialPhysioId?: string | null;
+  /** Reports the chosen physio's fee (null for "nearest", which uses the platform rate). */
+  onFeeChange?: (fee: number | null) => void;
 };
 
-export function PhysiotherapistPicker({ geo, value, onChange, initialPhysioId }: Props) {
+export function PhysiotherapistPicker({
+  geo,
+  value,
+  onChange,
+  initialPhysioId,
+  onFeeChange,
+}: Props) {
   // Keyed by the location it was fetched for, so "loading" is derived rather than set in the effect.
   const [result, setResult] = useState<{ key: string; rows: PublicPhysiotherapist[] } | null>(
     null,
@@ -64,6 +72,15 @@ export function PhysiotherapistPicker({ geo, value, onChange, initialPhysioId }:
       cancelled = true;
     };
   }, [geo, geoKey]);
+
+  const selectedFee =
+    value === "nearest"
+      ? null
+      : ([...nearby, ...(preselectedRow ? [preselectedRow] : [])].find((p) => p.id === value)
+          ?.homeVisitFee ?? null);
+  useEffect(() => {
+    onFeeChange?.(selectedFee);
+  }, [selectedFee, onFeeChange]);
 
   const selectedIsNearby = value === "nearest" || nearby.some((p) => p.id === value);
   const selectedOutsideRadius =
@@ -178,6 +195,9 @@ function PhysioOption({
                 {physio.area}
               </span>
             )}
+            <span className="font-semibold text-slate-800">
+              Rs. {physio.homeVisitFee.toLocaleString("en-PK")}
+            </span>
           </span>
         </span>
       </button>

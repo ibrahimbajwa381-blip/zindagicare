@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIO_HOME_VISIT_FEE_MAX,
+  PHYSIO_HOME_VISIT_FEE_MIN,
   PHYSIOTHERAPIST_PORTFOLIO_LIMITS,
   PORTFOLIO_MIN_YEAR,
 } from "@zindagi/shared";
@@ -90,6 +92,12 @@ export const updatePhysiotherapistProfileSchema = updateNurseProfileSchema.exten
   bio: z.string().trim().max(2000, "Bio is too long").optional(),
   languages: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
   avatarUrl: z.string().min(1).max(500).optional(),
+  homeVisitFee: z.coerce
+    .number()
+    .int("Fee must be a whole number")
+    .min(PHYSIO_HOME_VISIT_FEE_MIN, `Fee must be at least Rs. ${PHYSIO_HOME_VISIT_FEE_MIN}`)
+    .max(PHYSIO_HOME_VISIT_FEE_MAX, `Fee can be at most Rs. ${PHYSIO_HOME_VISIT_FEE_MAX}`)
+    .optional(),
 });
 export type UpdatePhysiotherapistProfileInput = z.infer<
   typeof updatePhysiotherapistProfileSchema

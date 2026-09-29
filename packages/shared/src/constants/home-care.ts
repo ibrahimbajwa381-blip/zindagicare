@@ -24,6 +24,15 @@ export const HOME_CARE_PRICING: Record<
   [HomeVisitServiceTypes.PHYSIOTHERAPY]: 2800,
 };
 
+/** Bounds (PKR) for the per-visit fee a physiotherapist sets on their own profile. */
+export const PHYSIO_HOME_VISIT_FEE_MIN = 500;
+export const PHYSIO_HOME_VISIT_FEE_MAX = 20000;
+
+/** A physiotherapist's own home-visit fee, or the platform rate when they haven't set one. */
+export function resolvePhysioHomeVisitFee(fee?: number | null): number {
+  return fee && fee > 0 ? fee : HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY];
+}
+
 /** Lahore MVP — services patients can request from the booking form. */
 export const HOME_CARE_MVP_SERVICES = [
   HomeVisitServiceTypes.DOCTOR_VISIT,

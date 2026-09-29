@@ -14,7 +14,7 @@ import {
   UserRound,
   Video,
 } from "lucide-react";
-import { HOME_CARE_MATCH_RADIUS_KM, HOME_CARE_PRICING, HomeVisitServiceTypes } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, HomeVisitServiceTypes } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
@@ -47,7 +47,7 @@ export function physiotherapistHomeVisitHref(physioId: string) {
 }
 
 export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiotherapist }) {
-  const homeVisitPrice = HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY];
+  const homeVisitPrice = physio.homeVisitFee;
   const takesHomeVisits = physio.homeVisitEnabled && physio.isAvailable;
   const bookHref = takesHomeVisits
     ? physiotherapistHomeVisitHref(physio.id)

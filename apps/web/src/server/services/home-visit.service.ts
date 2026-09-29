@@ -25,6 +25,7 @@ import {
   Roles,
   VerificationStatuses,
   isAdmin,
+  resolvePhysioHomeVisitFee,
   isDoctorHomeVisitService,
   isPhysiotherapyHomeVisitService,
   type HomeVisitServiceType,
@@ -509,7 +510,7 @@ export class HomeVisitService {
 
     const lng = input.geo.lng;
     const lat = input.geo.lat;
-    const base = getBasePrice(input.serviceType);
+    let base = getBasePrice(input.serviceType);
     const visitCity = input.city || LAUNCH_CITY;
 
     // Only physiotherapy supports picking a specific provider for now.
@@ -517,13 +518,14 @@ export class HomeVisitService {
       ? input.preferredStaffId
       : undefined;
     if (preferredStaffId) {
-      await HomeVisitService.assertPhysiotherapistBookable(
+      // A patient who picks a physio pays that physio's own fee.
+      ({ homeVisitFee: base } = await HomeVisitService.assertPhysiotherapistBookable(
         preferredStaffId,
         lng,
         lat,
         visitCity,
         scheduledAt,
-      );
+      ));
     }
 
     const visit = await HomeVisitModel.create({
@@ -646,6 +648,8 @@ export class HomeVisitService {
         409,
       );
     }
+
+    return { homeVisitFee: resolvePhysioHomeVisitFee(profile.homeVisitFee) };
   }
 
   /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */

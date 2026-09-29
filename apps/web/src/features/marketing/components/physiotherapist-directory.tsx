@@ -187,9 +187,14 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
                     <Link href={profileHref}>View profile</Link>
                   </Button>
                   {canBookHome ? (
-                    <Button size="sm" asChild>
-                      <Link href={physiotherapistHomeVisitHref(physio.id)}>Book home visit</Link>
-                    </Button>
+                    <>
+                      <Button size="sm" asChild>
+                        <Link href={physiotherapistHomeVisitHref(physio.id)}>Book home visit</Link>
+                      </Button>
+                      <span className="self-center text-sm font-semibold text-slate-900">
+                        Rs. {physio.homeVisitFee.toLocaleString("en-PK")}
+                      </span>
+                    </>
                   ) : (
                     <span className="self-center text-xs text-slate-500">
                       {physio.homeVisitEnabled && physio.isAvailable
