@@ -54,8 +54,17 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DocumentCard({ label, url }: { label: string; url?: string }) {
-  const isImage = url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+function DocumentCard({
+  label,
+  url,
+  image = false,
+}: {
+  label: string;
+  url?: string;
+  /** Always render as an image (avatar URLs don't always carry a file extension). */
+  image?: boolean;
+}) {
+  const isImage = url && (image || /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url));
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -69,7 +78,11 @@ function DocumentCard({ label, url }: { label: string; url?: string }) {
             <img
               src={url}
               alt={label}
-              className="max-h-40 w-full rounded-lg border border-slate-100 bg-slate-50 object-contain"
+              className={
+                image
+                  ? "h-56 w-full rounded-lg border border-slate-100 bg-slate-50 object-contain"
+                  : "max-h-40 w-full rounded-lg border border-slate-100 bg-slate-50 object-contain"
+              }
             />
           )}
           <a
@@ -79,7 +92,7 @@ function DocumentCard({ label, url }: { label: string; url?: string }) {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
           >
             <FileText className="h-4 w-4" />
-            Open document
+            {image ? "Open full size" : "Open document"}
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
@@ -378,14 +391,14 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900">Verification documents</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {profile.documents.length > 0 ? (
-            profile.documents.map((doc) => (
-              <DocumentCard key={doc.label} label={doc.label} url={doc.url} />
-            ))
-          ) : (
-            <p className="text-sm text-slate-500">No documents uploaded yet.</p>
-          )}
+          <DocumentCard label="Profile photo" url={profile.user.avatarUrl} image />
+          {profile.documents.map((doc) => (
+            <DocumentCard key={doc.label} label={doc.label} url={doc.url} />
+          ))}
         </div>
+        {profile.documents.length === 0 && (
+          <p className="text-sm text-slate-500">No verification documents uploaded yet.</p>
+        )}
       </section>
 
       <section className="space-y-3">
