@@ -86,6 +86,36 @@ export function PhysiotherapistPicker({
   const selectedOutsideRadius =
     geo && !loading && value !== "nearest" && !selectedIsNearby;
 
+  // Arriving from a profile page means the patient already picked someone, so show only that
+  // physio until they ask to change. Expand automatically if the pick can't visit this location.
+  const [showAll, setShowAll] = useState(!initialPhysioId);
+  const selectedRow =
+    value === "nearest"
+      ? null
+      : (nearby.find((p) => p.id === value) ??
+        (preselectedRow?.id === value ? preselectedRow : null));
+  const collapsed = !showAll && value !== "nearest" && !selectedOutsideRadius;
+
+  if (collapsed) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-slate-900">Your physiotherapist</p>
+        {selectedRow ? (
+          <PhysioOption physio={selectedRow} selected onSelect={() => {}} />
+        ) : (
+          <p className="text-xs text-slate-500">Loading physiotherapist…</p>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="text-xs font-medium text-brand hover:underline"
+        >
+          Choose a different physiotherapist
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div>
