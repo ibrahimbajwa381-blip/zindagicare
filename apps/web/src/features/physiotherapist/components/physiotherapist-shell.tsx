@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   ShieldCheck,
   UserCog,
+  Wallet,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -44,6 +45,12 @@ const Physiotherapist_APPROVED_NAV_ITEMS: PhysiotherapistNavItem[] = [
     description: "In-house visits assigned to you",
     icon: Home,
     showActiveBadge: true,
+  },
+  {
+    href: "/physiotherapist/earnings",
+    label: "Earnings",
+    description: "Your 70% share, Sunday payouts & bank account",
+    icon: Wallet,
   },
   {
     href: "/physiotherapist/profile",

@@ -89,6 +89,8 @@ export type AdminPhysiotherapistManageRow = {
   isAvailable: boolean;
   homeVisitEnabled: boolean;
   commissionPercent: number;
+  /** Per-physio revenue-share % override; null means the standard 70/30 split. */
+  commissionOverride: number | null;
   stats: AdminPhysiotherapistManageStats;
   createdAt: string;
 };

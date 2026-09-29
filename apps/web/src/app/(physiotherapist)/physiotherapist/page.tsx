@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { siteConfig } from "@/config/site";
 import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
+import { PhysiotherapistEarningsSplitCard } from "@/features/physiotherapist/components/physiotherapist-earnings-split-card";
 import { PhysiotherapistAvailabilityToggle } from "@/features/physiotherapist/components/physiotherapist-availability-toggle";
 import { PortfolioDashboardCard } from "@/features/physiotherapist/components/portfolio/portfolio-dashboard-card";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
@@ -159,6 +160,16 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
             </Card>
           );
         })}
+      </div>
+
+      <div className="mt-6">
+        <PhysiotherapistEarningsSplitCard
+          earnings={
+            isApproved
+              ? { thisMonth: summary.earningsThisMonth, total: summary.earningsTotal }
+              : undefined
+          }
+        />
       </div>
 
       <div className="mt-6">

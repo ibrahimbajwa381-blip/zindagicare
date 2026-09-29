@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
 import { PhysiotherapistVerificationForm } from "@/features/physiotherapist/components/physiotherapist-verification-form";
 import { getPhysiotherapistProfile } from "@/server/services/physiotherapist.service";
+import { getOwnPhysiotherapistBankAccount } from "@/server/services/physiotherapist-finance.service";
 
 export const metadata = { title: "Verification | Physiotherapist" };
 
@@ -20,6 +21,8 @@ export default async function PhysiotherapistVerificationPage() {
   if (profile.verification.status === VerificationStatuses.APPROVED) {
     redirect("/physiotherapist");
   }
+  // Prefill a resubmission with the payout account given last time.
+  const bankAccount = await getOwnPhysiotherapistBankAccount(session.user.id);
 
   const isRejected = profile.verification.status === VerificationStatuses.REJECTED;
   const isPendingReview =
@@ -92,6 +95,7 @@ export default async function PhysiotherapistVerificationPage() {
             experienceYears: profile.verification.experienceYears,
             city: profile.staff.serviceArea.city,
             area: profile.staff.serviceArea.area,
+            bankAccount: bankAccount ?? undefined,
           }}
         />
       </div>

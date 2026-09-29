@@ -16,7 +16,7 @@ const doctorPayoutSchema = new Schema(
     /** Which provider role this payout belongs to. Defaults to "doctor". */
     providerRole: {
       type: String,
-      enum: ["doctor", "herbalist", "nutritionist"],
+      enum: ["doctor", "herbalist", "nutritionist", "physiotherapist"],
       default: "doctor",
       index: true,
     },

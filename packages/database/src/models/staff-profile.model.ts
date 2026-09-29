@@ -123,6 +123,13 @@ const staffProfileSchema = new Schema(
     commissionPercent: { type: Number, min: 0, max: 100, default: null },
     /** Private admin-only notes (e.g. interview observations). */
     adminNotes: { type: String, maxlength: 5000 },
+    /** Payout destination for admin-initiated Sunday payouts (physiotherapist). */
+    bankAccount: {
+      accountTitle: String,
+      accountNumber: String,
+      bankName: String,
+      iban: String,
+    },
     deletedAt: { type: Date },
   },
   { timestamps: true },
@@ -134,6 +141,7 @@ applyFieldEncryption(staffProfileSchema, {
     { path: "qualification", kind: "string" },
     { path: "rejectionReason", kind: "string" },
     { path: "adminNotes", kind: "string" },
+    { path: "bankAccount", kind: "object" },
   ],
 });
 

@@ -103,9 +103,38 @@ export type UpdatePhysiotherapistProfileInput = z.infer<
   typeof updatePhysiotherapistProfileSchema
 >;
 
+/** Where a physiotherapist's Sunday payouts are sent. */
+export const physiotherapistBankAccountSchema = z.object({
+  accountTitle: z
+    .string()
+    .trim()
+    .min(2, "Enter the account title (name on the account)")
+    .max(120, "Account title is too long"),
+  bankName: z
+    .string()
+    .trim()
+    .min(2, "Enter your bank or wallet name")
+    .max(120, "Bank name is too long"),
+  accountNumber: z
+    .string()
+    .trim()
+    .min(4, "Enter your account number")
+    .max(40, "Account number is too long"),
+  iban: z
+    .string()
+    .trim()
+    .max(40, "IBAN is too long")
+    .optional()
+    .transform((value) => value || undefined),
+});
+export type PhysiotherapistBankAccountInput = z.infer<
+  typeof physiotherapistBankAccountSchema
+>;
+
 export const physiotherapistVerificationSchema = nurseVerificationSchema.extend({
   specialties: physiotherapySpecialtiesSchema.min(1, "Select at least one specialty"),
   avatarUrl: z.string().min(1, "Profile photo is required").max(500),
+  bankAccount: physiotherapistBankAccountSchema,
 });
 export type PhysiotherapistVerificationInput = z.infer<
   typeof physiotherapistVerificationSchema

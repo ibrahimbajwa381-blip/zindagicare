@@ -6,6 +6,7 @@ import { ChevronDown, ExternalLink, FileText, Trash2, X } from "lucide-react";
 import {
   cn,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIOTHERAPY_HOME_VISIT_SPLIT as SPLIT,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
   VerificationStatuses,
 } from "@zindagi/shared";
@@ -325,7 +326,11 @@ export function AdminPhysiotherapistManageDetail({
         <StatTile
           label="Total earnings"
           value={formatCurrency(profile.stats.totalEarnings)}
-          hint={`Keeps ${profile.commissionPercent}% of visit fees`}
+          hint={
+            profile.commissionOverride == null
+              ? `Keeps ${SPLIT.physiotherapistPercent}% of visit fees (platform keeps ${SPLIT.platformPercent}%)`
+              : `Keeps ${profile.commissionPercent}% of visit fees`
+          }
         />
         <StatTile
           label="Earnings this month"
@@ -436,8 +441,8 @@ export function AdminPhysiotherapistManageDetail({
                   step="0.5"
                   placeholder={
                     profile.commissionOverride == null
-                      ? `Platform default (${profile.commissionPercent}%)`
-                      : "Platform default"
+                      ? `Standard split (${SPLIT.physiotherapistPercent}%)`
+                      : "Standard split"
                   }
                   value={commissionInput}
                   onChange={(e) => setCommissionInput(e.target.value)}
@@ -451,7 +456,11 @@ export function AdminPhysiotherapistManageDetail({
                   Save
                 </Button>
               </div>
-              <p className="mt-1 text-xs text-slate-500">Leave empty to use the platform default.</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Leave empty to use the standard split: the physiotherapist keeps{" "}
+                {SPLIT.physiotherapistPercent}% of each visit fee and ZindagiCare keeps{" "}
+                {SPLIT.platformPercent}%.
+              </p>
             </div>
 
             <div className="pt-4">

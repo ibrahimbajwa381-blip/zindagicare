@@ -17,6 +17,7 @@ import {
 import {
   cn,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIOTHERAPY_HOME_VISIT_SPLIT as SPLIT,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
   VerificationStatuses,
 } from "@zindagi/shared";
@@ -748,7 +749,9 @@ export function AdminPhysiotherapistsManagement() {
                                 </Badge>
                               )}
                               <Badge variant="secondary" className="text-xs">
-                                Keeps {row.commissionPercent}% of visit fees
+                                {row.commissionOverride == null
+                                  ? `Keeps ${SPLIT.physiotherapistPercent}% of visit fees`
+                                  : `Keeps ${row.commissionPercent}% of visit fees`}
                               </Badge>
                             </div>
                             {row.verificationStatus === VerificationStatuses.REJECTED &&

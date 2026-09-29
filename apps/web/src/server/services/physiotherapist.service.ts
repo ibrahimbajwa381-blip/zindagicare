@@ -7,6 +7,7 @@ import {
 } from "@zindagi/database";
 import {
   AppError,
+  calculatePhysiotherapistVisitEarnings,
   HomeVisitStatuses,
   LAHORE_GEO,
   LAUNCH_CITY,
@@ -35,10 +36,7 @@ import type {
   AdminPhysiotherapistVisitRow,
 } from "@/features/admin/types/physiotherapist-admin";
 import { cnicLast4, hashCnic } from "./auth.service";
-import {
-  calculateStaffNetEarnings,
-  getPhysiotherapistCommissionPercentByUserId,
-} from "./commission.service";
+import { getPhysiotherapistCommissionPercentByUserId } from "./commission.service";
 import {
   deletePhysiotherapistDocument,
   physiotherapistDocumentStorageKeyFromUrl,
@@ -131,6 +129,9 @@ export type PhysiotherapistDashboardSummary = {
   upcomingToday: number;
   completedTotal: number;
   completedThisMonth: number;
+  /** Net earnings (physiotherapist's share) from completed visits. */
+  earningsTotal: number;
+  earningsThisMonth: number;
   isAvailable: boolean;
 };
 
@@ -396,7 +397,7 @@ export async function getPhysiotherapistDashboardSummary(
     deletedAt: { $exists: false },
   };
 
-  const [activeVisits, upcomingToday, completedTotal, completedThisMonth] =
+  const [activeVisits, upcomingToday, completedTotal, completedThisMonth, completedVisits] =
     await Promise.all([
       HomeVisitModel.countDocuments(
         mongoFilter({ ...baseFilter, status: { $in: ACTIVE_VISIT_STATUSES } }),
@@ -418,13 +419,31 @@ export async function getPhysiotherapistDashboardSummary(
           completedAt: { $gte: startOfMonth },
         }),
       ),
+      HomeVisitModel.find(
+        mongoFilter({ ...baseFilter, status: HomeVisitStatuses.COMPLETED }),
+      )
+        .select("pricing.total completedAt")
+        .lean(),
     ]);
+
+  let earningsTotal = 0;
+  let earningsThisMonth = 0;
+  for (const visit of completedVisits) {
+    const net = calculatePhysiotherapistVisitEarnings(
+      visit.pricing?.total ?? 0,
+      staff.commissionPercent,
+    );
+    earningsTotal += net;
+    if (visit.completedAt && visit.completedAt >= startOfMonth) earningsThisMonth += net;
+  }
 
   return {
     activeVisits,
     upcomingToday,
     completedTotal,
     completedThisMonth,
+    earningsTotal,
+    earningsThisMonth,
     isAvailable: staff.isAvailable ?? true,
   };
 }
@@ -463,6 +482,12 @@ export async function submitPhysiotherapistVerification(
   staff.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
   staff.verificationStatus = VerificationStatuses.PENDING;
   staff.rejectionReason = undefined;
+  staff.bankAccount = {
+    accountTitle: input.bankAccount.accountTitle,
+    bankName: input.bankAccount.bankName,
+    accountNumber: input.bankAccount.accountNumber,
+    iban: input.bankAccount.iban,
+  };
 
   const { serviceArea } = input;
   staff.homeVisitEnabled = serviceArea.homeVisitEnabled;
@@ -792,7 +817,7 @@ export async function getPhysiotherapistProfileForAdmin(
   const commissionPercent = await getPhysiotherapistCommissionPercentByUserId(userId);
   for (const visit of completedVisits) {
     const gross = visit.pricing?.total ?? 0;
-    const total = calculateStaffNetEarnings(gross, commissionPercent);
+    const total = calculatePhysiotherapistVisitEarnings(gross, staff.commissionPercent);
     totalEarnings += total;
     if (visit.completedAt && visit.completedAt >= startOfMonth) {
       earningsThisMonth += total;

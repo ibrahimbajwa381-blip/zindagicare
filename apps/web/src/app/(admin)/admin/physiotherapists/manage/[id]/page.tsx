@@ -5,6 +5,7 @@ import { AppError, isAdmin } from "@zindagi/shared";
 import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminPhysiotherapistFinance } from "@/features/admin/components/admin-physiotherapist-finance";
 import { AdminPhysiotherapistManageDetail } from "@/features/admin/components/admin-physiotherapist-manage-detail";
 import { getPhysiotherapistProfileForAdmin } from "@/server/services/physiotherapist.service";
 
@@ -52,6 +53,10 @@ export default async function AdminPhysiotherapistManageDetailPage({ params }: P
         }
       />
       <AdminPhysiotherapistManageDetail initialProfile={profile} />
+      <section className="mt-8 space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Earnings &amp; Sunday payouts</h2>
+        <AdminPhysiotherapistFinance staffProfileId={id} />
+      </section>
     </>
   );
 }

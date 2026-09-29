@@ -13,7 +13,7 @@ import {
   LAUNCH_CITY,
   Roles,
   VerificationStatuses,
-  calculateStaffNetEarnings,
+  calculatePhysiotherapistVisitEarnings,
   emailLookupHash,
   phoneLookupHash,
 } from "@zindagi/shared";
@@ -94,7 +94,7 @@ async function findPhysiotherapistStaff(staffProfileId: string) {
 /** Visit counts + net earnings per physiotherapist user id. */
 async function loadStatsBatch(
   userIds: string[],
-  commissionByUserId: Map<string, number>,
+  commissionOverrideByUserId: Map<string, number | null>,
 ): Promise<Map<string, AdminPhysiotherapistManageStats>> {
   const statsMap = new Map<string, AdminPhysiotherapistManageStats>();
   for (const id of userIds) statsMap.set(id, { ...EMPTY_STATS });
@@ -130,9 +130,9 @@ async function loadStatsBatch(
     }
 
     // Completed — per-visit net, matching the detail page and payouts.
-    const net = calculateStaffNetEarnings(
+    const net = calculatePhysiotherapistVisitEarnings(
       visit.pricing?.total ?? 0,
-      commissionByUserId.get(userId) ?? 0,
+      commissionOverrideByUserId.get(userId),
     );
     stats.completedTotal += 1;
     stats.totalEarnings += net;
@@ -179,7 +179,9 @@ async function buildRows(
   );
 
   const commissionByUserId = new Map<string, number>();
+  const commissionOverrideByUserId = new Map<string, number | null>();
   for (const p of profiles) {
+    commissionOverrideByUserId.set(String(p.userId), p.commissionPercent ?? null);
     commissionByUserId.set(
       String(p.userId),
       resolveCommissionPercent(
@@ -188,7 +190,7 @@ async function buildRows(
       ),
     );
   }
-  const statsMap = await loadStatsBatch([...userMap.keys()], commissionByUserId);
+  const statsMap = await loadStatsBatch([...userMap.keys()], commissionOverrideByUserId);
 
   const rows: AdminPhysiotherapistManageRow[] = [];
   for (const p of profiles) {
@@ -217,6 +219,7 @@ async function buildRows(
       isAvailable: p.isAvailable !== false,
       homeVisitEnabled: Boolean(p.homeVisitEnabled),
       commissionPercent: commissionByUserId.get(userId) ?? 0,
+      commissionOverride: p.commissionPercent ?? null,
       stats: statsMap.get(userId) ?? { ...EMPTY_STATS },
       createdAt: p.createdAt?.toISOString() ?? new Date().toISOString(),
     });
