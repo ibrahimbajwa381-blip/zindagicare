@@ -60,6 +60,7 @@ export const ur: Dictionary = {
     reviewApplication: "درخواست کا جائزہ",
     adminUsers: "ایڈمن صارفین",
     patientReviews: "مریضوں کے جائزے",
+    reviews: "جائزے",
     appointments: "اپائنٹمنٹس",
     finances: "مالیات",
     newPrescription: "نیا نسخہ",

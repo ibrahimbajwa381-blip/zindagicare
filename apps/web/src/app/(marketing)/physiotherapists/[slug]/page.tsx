@@ -4,6 +4,7 @@ import { PageSection } from "@/components/layout/page-section";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 import { PhysiotherapistProfileView } from "@/features/marketing/components/physiotherapist-profile-view";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { HomeVisitReviewService } from "@/server/services/home-visit-review.service";
 import { PublicPhysiotherapistService } from "@/server/services/public-physiotherapist.service";
 
 type PageProps = {
@@ -35,6 +36,8 @@ export default async function PhysiotherapistProfilePage({ params }: PageProps) 
     permanentRedirect(`/physiotherapists/${physio.slug}`);
   }
 
+  const reviews = await HomeVisitReviewService.listStaffReviews(physio.id, { limit: 20 });
+
   return (
     <>
       <BreadcrumbJsonLd
@@ -45,7 +48,7 @@ export default async function PhysiotherapistProfilePage({ params }: PageProps) 
         ]}
       />
       <PageSection variant="brand" spacing="sm" flipBlur className="md:overflow-clip">
-        <PhysiotherapistProfileView physio={physio} />
+        <PhysiotherapistProfileView physio={physio} reviews={reviews} />
       </PageSection>
     </>
   );

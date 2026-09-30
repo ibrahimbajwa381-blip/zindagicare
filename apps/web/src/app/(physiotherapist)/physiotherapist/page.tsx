@@ -17,7 +17,9 @@ import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components
 import { PhysiotherapistEarningsSplitCard } from "@/features/physiotherapist/components/physiotherapist-earnings-split-card";
 import { PhysiotherapistAvailabilityToggle } from "@/features/physiotherapist/components/physiotherapist-availability-toggle";
 import { PortfolioDashboardCard } from "@/features/physiotherapist/components/portfolio/portfolio-dashboard-card";
+import { ProfileReviewList, RatingSummary } from "@/features/marketing/components/profile-reviews";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
+import { HomeVisitReviewService } from "@/server/services/home-visit-review.service";
 import {
   getPhysiotherapistDashboardSummary,
   getPhysiotherapistProfile,
@@ -33,9 +35,10 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
   if (!session.user.roles?.includes(Roles.PHYSIOTHERAPIST)) redirect("/onboarding");
 
   const { submitted } = await searchParams;
-  const [profile, summary] = await Promise.all([
+  const [profile, summary, reviews] = await Promise.all([
     getPhysiotherapistProfile(session.user.id),
     getPhysiotherapistDashboardSummary(session.user.id),
+    HomeVisitReviewService.listStaffReviews(session.user.id, { limit: 5 }),
   ]);
 
   const verification = profile.verification;
@@ -201,6 +204,26 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
           }
         />
       </div>
+
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
+          <CardTitle className="text-base">Patient reviews</CardTitle>
+          {reviews.total > 0 && (
+            <RatingSummary ratingAvg={reviews.ratingAvg} total={reviews.total} />
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ProfileReviewList
+            reviews={reviews.reviews}
+            emptyText="No reviews yet. Patients can rate you after a completed home visit."
+          />
+          {publicPath && reviews.total > reviews.reviews.length && (
+            <Button variant="outline" asChild>
+              <Link href={`${publicPath}#reviews`}>See all reviews</Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>

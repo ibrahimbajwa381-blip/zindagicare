@@ -9,6 +9,7 @@ import {
   Home,
   Languages,
   MapPin,
+  MessageSquareQuote,
   Sparkles,
   Stethoscope,
   UserRound,
@@ -29,6 +30,10 @@ import {
   heroSecondaryAction,
   type ProfileStat,
 } from "@/features/marketing/components/profile-portfolio";
+import {
+  ProfileReviewList,
+  RatingSummary,
+} from "@/features/marketing/components/profile-reviews";
 import { ProfileSectionNav } from "@/features/marketing/components/profile-section-nav";
 import { ShareProfileButton } from "@/features/marketing/components/share-profile-button";
 import {
@@ -40,13 +45,20 @@ import {
 } from "@/features/physiotherapist/components/portfolio/portfolio-views";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import type { StaffReviewSummary } from "@/server/services/home-visit-review.service";
 import type { PublicPhysiotherapist } from "@/server/services/public-physiotherapist.service";
 
 export function physiotherapistHomeVisitHref(physioId: string) {
   return `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.PHYSIOTHERAPY}&physio=${physioId}`;
 }
 
-export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiotherapist }) {
+export function PhysiotherapistProfileView({
+  physio,
+  reviews,
+}: {
+  physio: PublicPhysiotherapist;
+  reviews: StaffReviewSummary;
+}) {
   const homeVisitPrice = physio.homeVisitFee;
   const takesHomeVisits = physio.homeVisitEnabled && physio.isAvailable;
   const bookHref = takesHomeVisits
@@ -67,16 +79,22 @@ export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiothe
   const hasFocus = physio.specialties.length > 0 || conditions.length > 0 || techniques.length > 0;
   const hasRecognition = awards.length > 0 || memberships.length > 0;
 
+  // The hero shows at most four stats — keep the home-visit fee as the last one.
   const stats: ProfileStat[] = [
-    physio.experienceYears ? { value: `${physio.experienceYears}+`, label: "Years experience" } : null,
-    conditions.length ? { value: String(conditions.length), label: "Conditions treated" } : null,
-    certifications.length
-      ? { value: String(certifications.length), label: "Certifications" }
-      : physio.specialties.length
-        ? { value: String(physio.specialties.length), label: "Specialties" }
-        : null,
+    ...[
+      physio.experienceYears ? { value: `${physio.experienceYears}+`, label: "Years experience" } : null,
+      reviews.total > 0 ? { value: `${reviews.ratingAvg.toFixed(1)} ★`, label: "Patient rating" } : null,
+      conditions.length ? { value: String(conditions.length), label: "Conditions treated" } : null,
+      certifications.length
+        ? { value: String(certifications.length), label: "Certifications" }
+        : physio.specialties.length
+          ? { value: String(physio.specialties.length), label: "Specialties" }
+          : null,
+    ]
+      .filter((s): s is ProfileStat => s !== null)
+      .slice(0, 3),
     { value: `Rs. ${homeVisitPrice.toLocaleString("en-PK")}`, label: "Home visit" },
-  ].filter((s): s is ProfileStat => s !== null);
+  ];
 
   const facts = [
     physio.qualification && { icon: GraduationCap, label: "Qualification", value: physio.qualification },
@@ -100,6 +118,7 @@ export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiothe
     { id: "education", label: "Education", show: education.length > 0 },
     { id: "certifications", label: "Certifications", show: certifications.length > 0 },
     { id: "recognition", label: "Awards", show: hasRecognition },
+    { id: "reviews", label: "Reviews", show: true },
     { id: "book", label: "Book a visit", show: true },
   ].filter((item) => item.show);
 
@@ -254,6 +273,23 @@ export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiothe
               </div>
             </PortfolioSection>
           )}
+
+          <PortfolioSection
+            id="reviews"
+            icon={MessageSquareQuote}
+            eyebrow="Patient feedback"
+            title="Patient reviews"
+            aside={
+              reviews.total > 0 ? (
+                <RatingSummary ratingAvg={reviews.ratingAvg} total={reviews.total} />
+              ) : undefined
+            }
+          >
+            <ProfileReviewList
+              reviews={reviews.reviews}
+              emptyText={`No reviews yet. Patients can rate ${firstName} after a completed home visit.`}
+            />
+          </PortfolioSection>
         </div>
 
         <aside id="book" className="scroll-mt-36 space-y-4 lg:sticky lg:top-[var(--profile-sticky-top,9rem)] lg:transition-[top] lg:duration-300 lg:ease-in-out">

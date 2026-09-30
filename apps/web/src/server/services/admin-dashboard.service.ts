@@ -23,6 +23,7 @@ import {
 } from "@zindagi/shared";
 import { getSystemSettings } from "./system-settings.service";
 import { HomeVisitService } from "./home-visit.service";
+import { HomeVisitReviewService } from "./home-visit-review.service";
 import {
   formatSundayDateKey,
   getActiveOrNextSundayDate,
@@ -56,10 +57,11 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
     doctors,
     nurses,
     physiotherapists,
-    reviews,
+    consultReviews,
     sundayConsult,
     urgentCare,
     homeVisits,
+    homeVisitReviews,
   ] = await Promise.all([
     DoctorProfileModel.countDocuments({
       verificationStatus: VerificationStatuses.PENDING,
@@ -89,18 +91,21 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
       },
     }),
     HomeVisitService.countOpenVisitsByProvider(),
+    HomeVisitReviewService.countPendingByProvider(),
   ]);
 
   return {
     doctors,
     nurses,
     physiotherapists,
-    reviews,
     sundayConsult,
     urgentCare,
     homeVisitsDoctor: homeVisits.doctor,
     homeVisitsPhysiotherapist: homeVisits.physiotherapist,
     homeVisitsNurse: homeVisits.nurse,
+    reviewsDoctor: consultReviews + homeVisitReviews.doctor,
+    reviewsPhysiotherapist: homeVisitReviews.physiotherapist,
+    reviewsNurse: homeVisitReviews.nurse,
   };
 }
 

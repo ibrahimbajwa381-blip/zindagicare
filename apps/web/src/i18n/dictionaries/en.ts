@@ -59,6 +59,7 @@ export const en = {
     reviewApplication: "Review application",
     adminUsers: "Admin users",
     patientReviews: "Patient reviews",
+    reviews: "Reviews",
     appointments: "Appointments",
     finances: "Finances",
     newPrescription: "New prescription",

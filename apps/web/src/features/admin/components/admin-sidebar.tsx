@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
+import {
+  ADMIN_REVIEWS_ROOT,
+  ADMIN_REVIEW_CATEGORY_LIST,
+} from "@/features/admin/lib/admin-review-categories";
 import { ADMIN_NAV_COUNTS_EVENT } from "@/features/admin/lib/nav-counts-events";
 import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
 import {
@@ -23,7 +27,6 @@ import {
   HeartPulse,
   Home,
   LayoutDashboard,
-  MessageSquareQuote,
   ShieldCheck,
   Stethoscope,
   Star,
@@ -218,17 +221,17 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: ShieldCheck,
       },
       {
-        href: "/admin/reviews",
-        label: "Patient reviews",
-        description: "Moderate submitted reviews",
+        href: ADMIN_REVIEWS_ROOT,
+        label: "Reviews",
+        description: "Moderate patient and platform reviews",
         icon: Star,
-        countKey: "reviews",
-      },
-      {
-        href: "/admin/testimonials",
-        label: "Testimonials",
-        description: "Manage homepage testimonials",
-        icon: MessageSquareQuote,
+        children: ADMIN_REVIEW_CATEGORY_LIST.map((category) => ({
+          href: category.href,
+          label: category.navLabel,
+          description: category.navDescription,
+          icon: category.icon,
+          countKey: category.navCountKey,
+        })),
       },
     ],
   },
