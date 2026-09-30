@@ -8,6 +8,7 @@ import {
   HOME_CARE_MVP_SERVICES,
   HOME_CARE_PRICING,
   HomeVisitServiceTypes,
+  nearestCity,
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,7 +148,7 @@ export function HomeCareRequestForm() {
           serviceType,
           addressLine: trimmedAddress,
           scheduledAt: scheduled.toISOString(),
-          city: "Lahore",
+          city: nearestCity(geo.lng, geo.lat),
           geo,
           patientNotes: patientNotes.trim() || undefined,
           autoAssign: isPhysio && physioChoice === "nearest",

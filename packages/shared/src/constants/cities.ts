@@ -21,3 +21,32 @@ const CITY_CENTERS: Record<string, { lng: number; lat: number }> = {
 export function cityCenter(city: string | null | undefined): { lng: number; lat: number } {
   return CITY_CENTERS[(city ?? "").trim().toLowerCase()] ?? CITY_CENTERS.lahore!;
 }
+
+const CITY_NAMES: Record<string, string> = {
+  lahore: "Lahore",
+  faisalabad: "Faisalabad",
+  karachi: "Karachi",
+  islamabad: "Islamabad",
+  rawalpindi: "Rawalpindi",
+  multan: "Multan",
+  gujranwala: "Gujranwala",
+  sialkot: "Sialkot",
+  peshawar: "Peshawar",
+};
+
+/** Known city whose centre is closest to the given point (e.g. a patient's map pin). */
+export function nearestCity(lng: number, lat: number): string {
+  let best = LAUNCH_CITY as string;
+  let bestDist = Infinity;
+  for (const [key, c] of Object.entries(CITY_CENTERS)) {
+    // Equirectangular approximation is plenty for picking the closest city.
+    const x = (lng - c.lng) * Math.cos(((lat + c.lat) / 2) * (Math.PI / 180));
+    const y = lat - c.lat;
+    const d = x * x + y * y;
+    if (d < bestDist) {
+      bestDist = d;
+      best = CITY_NAMES[key] ?? key;
+    }
+  }
+  return best;
+}

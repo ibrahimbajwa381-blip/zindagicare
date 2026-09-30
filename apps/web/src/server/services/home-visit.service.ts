@@ -20,6 +20,7 @@ import {
   HOME_CARE_MATCH_RADIUS_KM,
   LAHORE_GEO,
   LAUNCH_CITY,
+  nearestCity,
   PaymentProviders,
   PaymentStatuses,
   Roles,
@@ -41,7 +42,6 @@ import {
   citiesMatch,
   doctorCoversCity,
   mongoCoverageCityFilter,
-  nurseCoversCity,
 } from "@/lib/geo/city-match";
 import {
   notifyAdminsHomeVisitRequested,
@@ -511,7 +511,9 @@ export class HomeVisitService {
     const lng = input.geo.lng;
     const lat = input.geo.lat;
     let base = getBasePrice(input.serviceType);
-    const visitCity = input.city || LAUNCH_CITY;
+    // The map pin is the source of truth for where the visit is — a client-sent
+    // city can be stale or defaulted, which would reject providers in other cities.
+    const visitCity = nearestCity(lng, lat);
 
     // Only physiotherapy supports picking a specific provider for now.
     const preferredStaffId = isPhysiotherapyHomeVisitService(input.serviceType)
@@ -523,7 +525,6 @@ export class HomeVisitService {
         preferredStaffId,
         lng,
         lat,
-        visitCity,
         scheduledAt,
       ));
     }
@@ -587,14 +588,13 @@ export class HomeVisitService {
   /**
    * Patient-facing check before a physiotherapy visit is booked with a chosen
    * provider — same rules admin manual assignment enforces (verified, taking
-   * home visits, covers the city, within radius, free at that time), but with
-   * patient-readable errors so they can pick someone else or another time.
+   * home visits, within radius, free at that time), but with patient-readable
+   * errors so they can pick someone else or another time.
    */
   static async assertPhysiotherapistBookable(
     staffUserId: string,
     lng: number,
     lat: number,
-    city: string,
     scheduledAt: Date,
   ) {
     const profile = await StaffProfileModel.findOne(
@@ -616,20 +616,14 @@ export class HomeVisitService {
         400,
       );
     }
-    if (!nurseCoversCity(profile, city, LAUNCH_CITY)) {
-      throw new AppError(
-        `This physiotherapist doesn't cover ${city}. Please choose another.`,
-        ErrorCodes.VALIDATION,
-        400,
-      );
-    }
-
+    // Distance from the patient's pin decides coverage — city names are free
+    // text (or missing on older areas) and would wrongly reject nearby physios.
     const distanceKm = await HomeVisitService.getStaffDistanceKm(
       staffUserId,
       false,
       lng,
       lat,
-      city,
+      undefined,
       Roles.PHYSIOTHERAPIST,
     );
     if (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM) {
@@ -1133,16 +1127,10 @@ export class HomeVisitService {
     }
   }
 
-  static async findNearestAvailableStaff(
-    lng: number,
-    lat: number,
-    city: string,
-    scheduledAt: Date,
-  ) {
+  static async findNearestAvailableStaff(lng: number, lat: number, scheduledAt: Date) {
     return HomeVisitService.findNearestAvailableStaffByType(
       lng,
       lat,
-      city,
       Roles.NURSE,
       scheduledAt,
     );
@@ -1151,22 +1139,20 @@ export class HomeVisitService {
   static async findNearestAvailablePhysiotherapist(
     lng: number,
     lat: number,
-    city: string,
     scheduledAt: Date,
   ) {
     return HomeVisitService.findNearestAvailableStaffByType(
       lng,
       lat,
-      city,
       Roles.PHYSIOTHERAPIST,
       scheduledAt,
     );
   }
 
+  /** Nearest free nurse/physio whose service-area pin is within its radius — in any city. */
   private static async findNearestAvailableStaffByType(
     lng: number,
     lat: number,
-    city: string,
     staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
     scheduledAt: Date,
   ) {
@@ -1191,8 +1177,6 @@ export class HomeVisitService {
     const defaultName = staffType === Roles.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
 
     for (const staff of staffProfiles) {
-      if (!nurseCoversCity(staff, city, LAUNCH_CITY)) continue;
-
       const user = staff.userId as { _id?: { toString(): string }; name?: string };
       if (!user?._id || busyIds.includes(user._id.toString())) continue;
 
@@ -1468,8 +1452,8 @@ export class HomeVisitService {
     }
 
     const match = isPhysiotherapyHomeVisitService(visit.serviceType)
-      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, city, visit.scheduledAt)
-      : await HomeVisitService.findNearestAvailableStaff(lng, lat, city, visit.scheduledAt);
+      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, visit.scheduledAt)
+      : await HomeVisitService.findNearestAvailableStaff(lng, lat, visit.scheduledAt);
 
     if (!match) {
       throw new AppError(
@@ -1585,13 +1569,6 @@ export class HomeVisitService {
           400,
         );
       }
-      if (!nurseCoversCity(profile, visitCity, LAUNCH_CITY)) {
-        throw new AppError(
-          `Physiotherapist is not listed for home visits in ${visitCity}`,
-          ErrorCodes.VALIDATION,
-          400,
-        );
-      }
       physioFee = resolvePhysioHomeVisitFee(profile.homeVisitFee);
     } else if (!staff.roles?.includes(Roles.NURSE)) {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
@@ -1599,9 +1576,9 @@ export class HomeVisitService {
       const nurseProfile = await StaffProfileModel.findOne(
         mongoFilter({ userId: staff._id, staffType: Roles.NURSE }),
       ).lean();
-      if (!nurseProfile || !nurseCoversCity(nurseProfile, visitCity, LAUNCH_CITY)) {
+      if (!nurseProfile) {
         throw new AppError(
-          `Nurse is not listed for home visits in ${visitCity}`,
+          "Nurse is not set up for home visits",
           ErrorCodes.VALIDATION,
           400,
         );
@@ -1881,7 +1858,8 @@ export class HomeVisitService {
       mongoFilter({ userId: staffUserId, staffType }),
     ).lean();
     if (!profile) return null;
-    const points = nurseGeoPoints(profile, visitCity);
+    // Nurses/physios are matched by distance to any of their areas, whatever city it's labelled.
+    const points = nurseGeoPoints(profile);
     if (!points.length) return null;
     return nearestGeoDistanceKm(patientLng, patientLat, points);
   }
@@ -1916,7 +1894,6 @@ export class HomeVisitService {
 
     const staffWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
       staffProfiles
-        .filter((p) => nurseCoversCity(p, city, LAUNCH_CITY))
         .map((p) => {
           const user = p.userId as {
             _id?: { toString(): string };
@@ -1926,7 +1903,7 @@ export class HomeVisitService {
           const area =
             p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
             p.serviceAreas?.[0];
-          const points = nurseGeoPoints(p, city);
+          const points = nurseGeoPoints(p);
           const distanceKm = points.length
             ? nearestGeoDistanceKm(lng, lat, points)
             : undefined;
