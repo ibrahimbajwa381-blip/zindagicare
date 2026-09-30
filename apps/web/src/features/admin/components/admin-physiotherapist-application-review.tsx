@@ -15,6 +15,7 @@ import {
   FileText,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   Save,
   UserCheck,
@@ -99,6 +100,12 @@ function DocumentCard({
       )}
     </div>
   );
+}
+
+/** wa.me wants international digits only: 0300… → 92300… */
+function whatsAppNumber(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.startsWith("0") ? `92${digits.slice(1)}` : digits;
 }
 
 function formatCurrency(amount: number, currency = "PKR") {
@@ -251,24 +258,62 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
                   <span className="font-medium text-red-600">Not accepted</span>
                 )}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {profile.user.phone && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={`tel:${profile.user.phone}`}>
-                      <Phone className="h-4 w-4" />
-                      {profile.user.phone}
-                    </a>
-                  </Button>
-                )}
-                {profile.user.email && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={`mailto:${profile.user.email}`}>
-                      <Mail className="h-4 w-4" />
-                      {profile.user.email}
-                    </a>
-                  </Button>
-                )}
-              </div>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <Phone className="h-3.5 w-3.5" />
+                    Phone
+                  </dt>
+                  {profile.user.phone ? (
+                    <dd className="mt-1">
+                      <a
+                        href={`tel:${profile.user.phone}`}
+                        className="text-base font-semibold tabular-nums text-slate-900 hover:text-brand"
+                      >
+                        {profile.user.phone}
+                      </a>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={`tel:${profile.user.phone}`}>
+                            <Phone className="h-4 w-4" />
+                            Call
+                          </a>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={`https://wa.me/${whatsAppNumber(profile.user.phone)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                      </div>
+                    </dd>
+                  ) : (
+                    <dd className="mt-1 text-sm text-slate-500">Not provided</dd>
+                  )}
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </dt>
+                  {profile.user.email ? (
+                    <dd className="mt-1">
+                      <a
+                        href={`mailto:${profile.user.email}`}
+                        className="break-all text-base font-semibold text-slate-900 hover:text-brand"
+                      >
+                        {profile.user.email}
+                      </a>
+                    </dd>
+                  ) : (
+                    <dd className="mt-1 text-sm text-slate-500">Not provided</dd>
+                  )}
+                </div>
+              </dl>
             </div>
           </div>
 
