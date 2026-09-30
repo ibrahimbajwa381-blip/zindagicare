@@ -28,6 +28,10 @@ export const HOME_CARE_PRICING: Record<
 export const PHYSIO_HOME_VISIT_FEE_MIN = 500;
 export const PHYSIO_HOME_VISIT_FEE_MAX = 20000;
 
+/** Bounds for the written session report a nurse or physiotherapist must submit when completing a visit. */
+export const VISIT_SUMMARY_MIN_LENGTH = 20;
+export const VISIT_SUMMARY_MAX_LENGTH = 3000;
+
 /** A physiotherapist's own home-visit fee, or the platform rate when they haven't set one. */
 export function resolvePhysioHomeVisitFee(fee?: number | null): number {
   return fee && fee > 0 ? fee : HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY];

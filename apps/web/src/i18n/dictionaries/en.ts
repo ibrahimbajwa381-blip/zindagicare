@@ -1239,6 +1239,13 @@ export const en = {
     markEnRoute: "Mark en route",
     markArrived: "Mark arrived",
     markCompleted: "Mark completed",
+    visitSummary: {
+      label: "Session report",
+      hint: "Required to complete the visit. Describe the treatment given, the patient's condition and progress, and any advice or follow-up. Only the ZindagiCare team sees this.",
+      placeholder: "e.g. 40-minute session for lower back pain — mobility exercises and TENS. Pain reduced from 7/10 to 4/10. Advised daily stretches; follow-up in 3 days.",
+      minLength: "Write at least {count} characters.",
+      submit: "Submit report & complete visit",
+    },
     review: {
       rateVisit: "Rate your home visit",
       yourRating: "Your rating",

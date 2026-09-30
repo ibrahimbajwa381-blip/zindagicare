@@ -3,6 +3,7 @@ import {
   connectDatabase,
   DoctorProfileModel,
   HomeVisitModel,
+  HomeVisitReviewModel,
   PaymentModel,
   StaffProfileModel,
   UserModel,
@@ -25,6 +26,7 @@ import {
   PaymentStatuses,
   Roles,
   VerificationStatuses,
+  VISIT_SUMMARY_MIN_LENGTH,
   isAdmin,
   resolvePhysioHomeVisitFee,
   isDoctorHomeVisitService,
@@ -189,6 +191,17 @@ export type HomeVisitDto = {
     mimeType: string;
     uploadedAt: string;
   };
+  /** Provider's written session report — admin and the assigned provider only. */
+  visitSummary?: {
+    text: string;
+    submittedAt: string;
+  };
+  /** Patient's rating of the visit — attached on admin listings only. */
+  patientReview?: {
+    rating: number;
+    comment?: string;
+    createdAt: string;
+  };
   completedAt?: string;
   createdAt: string;
 };
@@ -276,6 +289,9 @@ function serializeVisit(
         uploadedAt: Date;
       }
     | undefined;
+  const summary = doc.visitSummary as
+    | { text?: string; submittedAt?: Date }
+    | undefined;
   const payment = doc.paymentId as
     | {
         _id?: { toString(): string };
@@ -346,6 +362,13 @@ function serializeVisit(
           uploadedAt: report.uploadedAt.toISOString(),
         }
       : undefined,
+    visitSummary:
+      summary?.text && summary.submittedAt
+        ? {
+            text: summary.text,
+            submittedAt: summary.submittedAt.toISOString(),
+          }
+        : undefined,
     completedAt: doc.completedAt
       ? (doc.completedAt as Date).toISOString()
       : undefined,
@@ -359,6 +382,40 @@ function refId(ref: unknown): string | undefined {
     return (ref as { _id: { toString(): string } })._id.toString();
   }
   return (ref as { toString(): string }).toString();
+}
+
+/** Strips provider-to-admin fields from a visit shown to someone other than admin or the assigned provider. */
+function redactForViewer(dto: HomeVisitDto, userId: string, roles: string[]): HomeVisitDto {
+  if (isAdmin(roles as never) || dto.assignedStaff?.id === userId) return dto;
+  return { ...dto, visitSummary: undefined };
+}
+
+/** Attaches each visit's patient review (visible or not) for the admin board. */
+async function attachPatientReviews(dtos: HomeVisitDto[]): Promise<HomeVisitDto[]> {
+  const completedIds = dtos
+    .filter((v) => v.status === HomeVisitStatuses.COMPLETED)
+    .map((v) => v.id);
+  if (!completedIds.length) return dtos;
+
+  const reviews = await HomeVisitReviewModel.find(
+    mongoFilter({ homeVisitId: { $in: completedIds }, deletedAt: { $exists: false } }),
+  )
+    .select("homeVisitId rating comment createdAt")
+    .lean();
+  const byVisit = new Map(reviews.map((r) => [r.homeVisitId.toString(), r]));
+
+  return dtos.map((dto) => {
+    const review = byVisit.get(dto.id);
+    if (!review) return dto;
+    return {
+      ...dto,
+      patientReview: {
+        rating: review.rating,
+        comment: review.comment ?? undefined,
+        createdAt: (review.createdAt as Date).toISOString(),
+      },
+    };
+  });
 }
 
 async function getAssigneeMeta(
@@ -1190,11 +1247,15 @@ export class HomeVisitService {
       .populate("preferredStaffId", "name")
       .lean();
 
-    return Promise.all(
-      visits.map((v) =>
-        HomeVisitService.serializeVisitDoc(v as Record<string, unknown>),
-      ),
-    );
+    const dtos = (
+      await Promise.all(
+        visits.map((v) =>
+          HomeVisitService.serializeVisitDoc(v as Record<string, unknown>),
+        ),
+      )
+    ).map((dto) => redactForViewer(dto, userId, roles));
+
+    return isAdmin(roles as never) ? attachPatientReviews(dtos) : dtos;
   }
 
   /**
@@ -1262,7 +1323,12 @@ export class HomeVisitService {
 
     HomeVisitService.assertCanAccess(visit as HomeVisitDocument, userId, roles);
 
-    return HomeVisitService.serializeVisitDoc(visit as Record<string, unknown>);
+    const dto = redactForViewer(
+      await HomeVisitService.serializeVisitDoc(visit as Record<string, unknown>),
+      userId,
+      roles,
+    );
+    return isAdmin(roles as never) ? (await attachPatientReviews([dto]))[0] : dto;
   }
 
   static assertCanAccess(
@@ -1892,6 +1958,27 @@ export class HomeVisitService {
       if (nextIdx <= currentIdx) {
         throw new AppError("Invalid status transition", ErrorCodes.VALIDATION, 400);
       }
+      const summaryText = input.visitSummary?.trim();
+      if (input.status === HomeVisitStatuses.COMPLETED) {
+        if (
+          !admin &&
+          !isDoctorHomeVisitService(visit.serviceType) &&
+          (summaryText?.length ?? 0) < VISIT_SUMMARY_MIN_LENGTH
+        ) {
+          throw new AppError(
+            `Please write a session report (at least ${VISIT_SUMMARY_MIN_LENGTH} characters) before completing the visit`,
+            ErrorCodes.VALIDATION,
+            400,
+          );
+        }
+        if (summaryText) {
+          visit.visitSummary = {
+            text: summaryText,
+            submittedAt: new Date(),
+            submittedBy: userId as never,
+          };
+        }
+      }
       visit.status = input.status;
       if (input.status === HomeVisitStatuses.COMPLETED) {
         visit.completedAt = new Date();
@@ -1968,7 +2055,12 @@ export class HomeVisitService {
       uploadedBy: userId as never,
     };
 
-    if (visit.status === HomeVisitStatuses.ARRIVED) {
+    // Nurse and physiotherapy visits complete only through the status endpoint,
+    // which requires the written session report — a file upload alone can't close them.
+    if (
+      visit.status === HomeVisitStatuses.ARRIVED &&
+      isDoctorHomeVisitService(visit.serviceType)
+    ) {
       visit.status = HomeVisitStatuses.COMPLETED;
       visit.completedAt = new Date();
     }

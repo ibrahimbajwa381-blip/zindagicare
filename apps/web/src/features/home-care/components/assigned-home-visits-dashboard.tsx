@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HomeVisitStatuses } from "@zindagi/shared";
+import {
+  HomeVisitStatuses,
+  VISIT_SUMMARY_MAX_LENGTH,
+  VISIT_SUMMARY_MIN_LENGTH,
+} from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -38,14 +42,19 @@ export type AssignedHomeVisitsServiceLabels = Record<
  */
 export function AssignedHomeVisitsDashboard({
   serviceLabels,
+  requireVisitSummary = false,
 }: {
   serviceLabels: AssignedHomeVisitsServiceLabels;
+  /** Completing a visit first asks for a written session report (sent with the status change). */
+  requireVisitSummary?: boolean;
 }) {
   const t = useTranslations();
   const h = t.homeCare;
   const [visits, setVisits] = useState<HomeVisitDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [summaryDrafts, setSummaryDrafts] = useState<Record<string, string>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const load = useCallback(async () => {
@@ -59,16 +68,24 @@ export function AssignedHomeVisitsDashboard({
     load();
   }, [load]);
 
-  const updateStatus = async (visitId: string, status: string) => {
+  const updateStatus = async (visitId: string, status: string, visitSummary?: string) => {
     setPending(visitId);
     try {
       const res = await fetch(`/api/v1/home-visits/${visitId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, visitSummary }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? "Update failed");
+      if (visitSummary !== undefined) {
+        setCompletingId(null);
+        setSummaryDrafts((d) => {
+          const next = { ...d };
+          delete next[visitId];
+          return next;
+        });
+      }
       await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Update failed");
@@ -115,6 +132,10 @@ export function AssignedHomeVisitsDashboard({
         const serviceName = labelKey ? h.services[labelKey] : visit.serviceType;
         const nextStatus = NEXT_STATUS[visit.status];
         const buttonLabelKey = STATUS_BUTTON_LABEL[visit.status];
+        const needsSummary =
+          requireVisitSummary && nextStatus === HomeVisitStatuses.COMPLETED;
+        const summaryDraft = summaryDrafts[visit.id] ?? "";
+        const summaryLength = summaryDraft.trim().length;
 
         return (
           <Card key={visit.id} className={surfaceCard}>
@@ -131,12 +152,60 @@ export function AssignedHomeVisitsDashboard({
             <CardContent className="space-y-4">
               <VisitStatusStepper status={visit.status} compact />
 
+              {needsSummary && completingId === visit.id && (
+                <div className="space-y-2 rounded-lg border border-brand/20 bg-brand-muted/20 p-3">
+                  <label htmlFor={`summary-${visit.id}`} className="block text-sm font-medium text-slate-900">
+                    {h.visitSummary.label}
+                  </label>
+                  <p className="text-xs text-slate-600">{h.visitSummary.hint}</p>
+                  <textarea
+                    id={`summary-${visit.id}`}
+                    rows={5}
+                    maxLength={VISIT_SUMMARY_MAX_LENGTH}
+                    value={summaryDraft}
+                    onChange={(e) =>
+                      setSummaryDrafts((d) => ({ ...d, [visit.id]: e.target.value }))
+                    }
+                    placeholder={h.visitSummary.placeholder}
+                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
+                  />
+                  <p className="text-xs text-slate-500">
+                    {summaryLength < VISIT_SUMMARY_MIN_LENGTH
+                      ? h.visitSummary.minLength.replace("{count}", String(VISIT_SUMMARY_MIN_LENGTH))
+                      : `${summaryLength}/${VISIT_SUMMARY_MAX_LENGTH}`}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={pending === visit.id || summaryLength < VISIT_SUMMARY_MIN_LENGTH}
+                      onClick={() =>
+                        updateStatus(visit.id, HomeVisitStatuses.COMPLETED, summaryDraft.trim())
+                      }
+                    >
+                      {h.visitSummary.submit}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pending === visit.id}
+                      onClick={() => setCompletingId(null)}
+                    >
+                      {h.review.cancel}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
-                {nextStatus && buttonLabelKey && (
+                {nextStatus && buttonLabelKey && !(needsSummary && completingId === visit.id) && (
                   <Button
                     size="sm"
                     disabled={pending === visit.id}
-                    onClick={() => updateStatus(visit.id, nextStatus)}
+                    onClick={() =>
+                      needsSummary
+                        ? setCompletingId(visit.id)
+                        : updateStatus(visit.id, nextStatus)
+                    }
                   >
                     {h[buttonLabelKey]}
                   </Button>

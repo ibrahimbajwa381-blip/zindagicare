@@ -3,6 +3,7 @@ import {
   HomeVisitServiceTypes,
   HomeVisitStatuses,
   RefundMethods,
+  VISIT_SUMMARY_MAX_LENGTH,
 } from "@zindagi/shared";
 import { z } from "zod";
 
@@ -46,6 +47,8 @@ export const updateHomeVisitStatusSchema = z.object({
     HomeVisitStatuses.CANCELLED,
   ]),
   staffNotes: z.string().max(2000).optional(),
+  /** Session report sent with the "completed" transition; mandatory for nurse and physiotherapy visits. */
+  visitSummary: z.string().trim().max(VISIT_SUMMARY_MAX_LENGTH).optional(),
   cancellationReason: z.string().max(500).optional(),
   /** Required when a patient cancels a visit that's already been paid for. */
   refundMethod: z.enum([RefundMethods.BANK, RefundMethods.JAZZCASH, RefundMethods.EASYPAISA]).optional(),

@@ -83,6 +83,12 @@ const homeVisitSchema = new Schema(
       uploadedAt: Date,
       uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
     },
+    /** Written session report the provider submits when marking the visit completed. */
+    visitSummary: {
+      text: { type: String, maxlength: 3000 },
+      submittedAt: Date,
+      submittedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    },
     deletedAt: { type: Date },
   },
   { timestamps: true },
@@ -98,6 +104,7 @@ applyFieldEncryption(homeVisitSchema, {
     { path: "refundAccountNumber", kind: "string" },
     { path: "refundBankName", kind: "string" },
     { path: "visitReport.originalName", kind: "string" },
+    { path: "visitSummary.text", kind: "string" },
   ],
 });
 

@@ -13,5 +13,5 @@ const SERVICE_LABELS: AssignedHomeVisitsServiceLabels = {
 };
 
 export function NurseVisitsDashboard() {
-  return <AssignedHomeVisitsDashboard serviceLabels={SERVICE_LABELS} />;
+  return <AssignedHomeVisitsDashboard serviceLabels={SERVICE_LABELS} requireVisitSummary />;
 }

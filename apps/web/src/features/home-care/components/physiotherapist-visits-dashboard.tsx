@@ -14,5 +14,5 @@ const SERVICE_LABELS: AssignedHomeVisitsServiceLabels = {
 };
 
 export function PhysiotherapistVisitsDashboard() {
-  return <AssignedHomeVisitsDashboard serviceLabels={SERVICE_LABELS} />;
+  return <AssignedHomeVisitsDashboard serviceLabels={SERVICE_LABELS} requireVisitSummary />;
 }

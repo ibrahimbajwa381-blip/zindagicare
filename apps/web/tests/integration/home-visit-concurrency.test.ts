@@ -21,6 +21,9 @@ import { randomBytes } from "crypto";
 
 jest.setTimeout(60000);
 
+/** Nurse/physio visits need a written session report to be marked completed. */
+const VISIT_SUMMARY = "Session completed as planned; patient stable and advised on follow-up care.";
+
 
 
 describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)", () => {
@@ -577,7 +580,7 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
     await HomeVisitService.autoAssignStaff(visit.id);
     await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.EN_ROUTE } as never);
     await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.ARRIVED } as never);
-    await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.COMPLETED } as never);
+    await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.COMPLETED, visitSummary: VISIT_SUMMARY } as never);
 
     await expect(
       HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], {
@@ -759,7 +762,7 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
     await HomeVisitService.autoAssignStaff(visit.id);
 
     for (const status of [HomeVisitStatuses.EN_ROUTE, HomeVisitStatuses.ARRIVED, HomeVisitStatuses.COMPLETED]) {
-      const result = await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status } as never);
+      const result = await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status, visitSummary: VISIT_SUMMARY } as never);
       expect(result.status).toBe(status);
     }
     const doc = await HomeVisitModel.findById(visit.id).lean();
@@ -777,7 +780,7 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
     await HomeVisitService.autoAssignStaff(visit.id);
     await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.EN_ROUTE } as never);
     await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.ARRIVED } as never);
-    await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.COMPLETED } as never);
+    await HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.COMPLETED, visitSummary: VISIT_SUMMARY } as never);
 
     await expect(
       HomeVisitService.updateStatus(visit.id, nurse._id.toString(), ["nurse"], { status: HomeVisitStatuses.ARRIVED } as never),

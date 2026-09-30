@@ -23,7 +23,7 @@ import type {
   VisitStaffCandidate,
   VisitStaffCandidates,
 } from "@/server/services/home-visit.service";
-import { Check, Copy, ExternalLink, MapPin, Phone } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, MapPin, MessageSquareQuote, Phone, Star } from "lucide-react";
 
 type VisitStaffLists = Pick<VisitStaffCandidates, "nearby" | "all" | "radiusKm">;
 
@@ -466,6 +466,82 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
     );
   }
 
+  /** Provider's session report and the patient's review, side by side. */
+  function renderVisitFeedback(visit: HomeVisitDto) {
+    const summary = visit.visitSummary;
+    const review = visit.patientReview;
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <FileText className="h-3.5 w-3.5" />
+            {providerTitle} session report
+          </p>
+          {summary ? (
+            <>
+              <p className="mt-1.5 whitespace-pre-wrap break-words text-sm text-slate-800">
+                {summary.text}
+              </p>
+              <p className="mt-1.5 text-xs text-slate-500">
+                Submitted {formatKarachiDateTime(summary.submittedAt)}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1.5 text-sm text-slate-500">No written report submitted.</p>
+          )}
+          {visit.visitReport && (
+            <a
+              href={visit.visitReport.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-brand hover:underline"
+            >
+              View attached file ({visit.visitReport.originalName})
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <MessageSquareQuote className="h-3.5 w-3.5" />
+            Patient feedback
+          </p>
+          {review ? (
+            <>
+              <div
+                className="mt-1.5 flex items-center gap-0.5"
+                aria-label={`${review.rating} out of 5 stars`}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={cn(
+                      "h-4 w-4",
+                      n <= review.rating ? "fill-amber-400 text-amber-400" : "text-slate-300",
+                    )}
+                  />
+                ))}
+                <span className="ml-1.5 text-sm font-medium text-slate-800">{review.rating}/5</span>
+              </div>
+              {review.comment ? (
+                <p className="mt-1.5 whitespace-pre-wrap break-words text-sm text-slate-800">
+                  {review.comment}
+                </p>
+              ) : (
+                <p className="mt-1.5 text-sm text-slate-500">Rating only, no comment.</p>
+              )}
+              <p className="mt-1.5 text-xs text-slate-500">
+                Reviewed {formatKarachiDateTime(review.createdAt)}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1.5 text-sm text-slate-500">Patient hasn&apos;t reviewed this visit yet.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   function renderPatientLocation(visit: HomeVisitDto) {
     const { geo } = visit.address;
     const mapsUrl = googleMapsLink(geo);
@@ -622,6 +698,8 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <VisitStatusStepper status={visit.status} compact />
+
+                  {visit.status === HomeVisitStatuses.COMPLETED && renderVisitFeedback(visit)}
 
                   {visit.cancellationRequestStatus === "pending" && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
