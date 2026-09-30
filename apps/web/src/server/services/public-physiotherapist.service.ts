@@ -4,11 +4,10 @@ import {
   LAUNCH_CITY,
   resolvePhysioHomeVisitFee,
   Roles,
-  SUPPORTED_CITIES,
   VerificationStatuses,
 } from "@zindagi/shared";
 import { Types } from "mongoose";
-import { citiesMatch, normalizeCityName } from "@/lib/geo/city-match";
+import { citiesMatch, formatCityName, normalizeCityName } from "@/lib/geo/city-match";
 import { haversineKm } from "@/lib/geo/distance";
 import { mongoFilter } from "@/lib/mongo/query";
 import {
@@ -58,6 +57,14 @@ const PUBLIC_FILTER = {
   deletedAt: { $exists: false },
 };
 
+/** Account fields that decide whether a physiotherapist is publicly listed. */
+const USER_VISIBILITY_FIELDS = "isActive deletedAt";
+
+function isListedUser(user: PopulatedUser | null): user is PopulatedUser {
+  if (!user?._id) return false;
+  return !user.deletedAt && user.isActive !== false;
+}
+
 async function mapStaff(
   staff: Record<string, unknown> & { _id: Types.ObjectId },
   origin?: { lng: number; lat: number },
@@ -65,7 +72,7 @@ async function mapStaff(
   city?: string,
 ): Promise<PublicPhysiotherapist | null> {
   const user = staff.userId as PopulatedUser | null;
-  if (!user?._id || user.deletedAt || user.isActive === false) return null;
+  if (!isListedUser(user)) return null;
 
   const name = safeDisplayText(user.name);
   if (!name) return null;
@@ -138,7 +145,7 @@ export class PublicPhysiotherapistService {
     const specialty = options.specialty?.trim().toLowerCase();
 
     const docs = await StaffProfileModel.find(PUBLIC_FILTER)
-      .populate("userId", "name avatarUrl isActive deletedAt")
+      .populate("userId", `name avatarUrl ${USER_VISIBILITY_FIELDS}`)
       .lean();
 
     const mapped = await Promise.all(
@@ -173,19 +180,24 @@ export class PublicPhysiotherapistService {
   }
 
   /**
-   * Cities offered in the directory filter: the cities we operate in, plus any other city
-   * a verified physiotherapist serves, deduplicated case-insensitively.
+   * Cities offered in the directory filter: every city served by a physiotherapist the
+   * directory would list, deduplicated case-insensitively and title-cased for display.
    */
   static async listCities(): Promise<string[]> {
     await connectDatabase();
-    const docs = await StaffProfileModel.find(PUBLIC_FILTER).select("serviceAreas.city").lean();
+    const docs = await StaffProfileModel.find(PUBLIC_FILTER)
+      .select("serviceAreas.city userId")
+      .populate("userId", USER_VISIBILITY_FIELDS)
+      .lean();
 
     const byKey = new Map<string, string>();
-    for (const city of SUPPORTED_CITIES) byKey.set(normalizeCityName(city), city);
     for (const doc of docs) {
+      if (!isListedUser(doc.userId as unknown as PopulatedUser | null)) continue;
       for (const a of doc.serviceAreas ?? []) {
         const city = a.city?.trim();
-        if (city && !byKey.has(normalizeCityName(city))) byKey.set(normalizeCityName(city), city);
+        if (city && !byKey.has(normalizeCityName(city))) {
+          byKey.set(normalizeCityName(city), formatCityName(city));
+        }
       }
     }
     return [...byKey.values()].sort((a, b) => a.localeCompare(b));
@@ -202,7 +214,7 @@ export class PublicPhysiotherapistService {
       : { ...PUBLIC_FILTER, slug: key };
 
     const doc = await StaffProfileModel.findOne(mongoFilter(filter))
-      .populate("userId", "name avatarUrl isActive deletedAt")
+      .populate("userId", `name avatarUrl ${USER_VISIBILITY_FIELDS}`)
       .lean();
     if (!doc) return null;
     return mapStaff(doc as never, undefined, true);
