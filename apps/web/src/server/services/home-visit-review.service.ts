@@ -252,6 +252,29 @@ export class HomeVisitReviewService {
     };
   }
 
+  /** Visible-review rating average and count per provider, for directory cards (one query). */
+  static async ratingsByStaff(
+    staffUserIds: string[],
+  ): Promise<Map<string, { ratingAvg: number; total: number }>> {
+    await HomeVisitReviewService.ensureConnected();
+    const ids = [...new Set(staffUserIds)]
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    if (!ids.length) return new Map();
+
+    const rows = await HomeVisitReviewModel.aggregate<{ _id: Types.ObjectId; avg: number; count: number }>([
+      { $match: { staffUserId: { $in: ids }, isVisible: true, deletedAt: { $exists: false } } },
+      { $group: { _id: "$staffUserId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+    ]);
+
+    return new Map(
+      rows.map((row) => [
+        row._id.toString(),
+        { ratingAvg: Math.round((row.avg + Number.EPSILON) * 10) / 10, total: row.count },
+      ]),
+    );
+  }
+
   /** Admin moderation list for one provider type's home-visit reviews, newest first. */
   static async listAdminReviews(
     providerKind: HomeVisitProviderKind,

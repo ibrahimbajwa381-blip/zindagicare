@@ -15,6 +15,7 @@ import {
   type PhysiotherapistPortfolio,
 } from "@/lib/physiotherapists/portfolio";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { HomeVisitReviewService } from "./home-visit-review.service";
 import { ensureCanonicalPhysiotherapistSlug } from "./physiotherapist-slug.service";
 
 export type PublicPhysiotherapist = {
@@ -41,6 +42,10 @@ export type PublicPhysiotherapist = {
   distanceKm?: number;
   /** True when the patient's pin is within the home-visit match radius. */
   withinRadius?: boolean;
+  /** Average visible patient rating (one decimal); only set by `list()` when reviewed. */
+  ratingAvg?: number;
+  /** Number of visible patient reviews; only set by `list()`. */
+  reviewCount?: number;
 };
 
 type PopulatedUser = {
@@ -165,6 +170,12 @@ export class PublicPhysiotherapistService {
 
     let rows = mapped.filter((row): row is PublicPhysiotherapist => row !== null);
 
+    const ratings = await HomeVisitReviewService.ratingsByStaff(rows.map((r) => r.id));
+    rows = rows.map((r) => {
+      const rating = ratings.get(r.id);
+      return { ...r, ratingAvg: rating?.ratingAvg, reviewCount: rating?.total ?? 0 };
+    });
+
     if (options.near) {
       if (options.nearbyOnly) {
         rows = rows.filter((r) => r.homeVisitEnabled && r.isAvailable && r.withinRadius);
@@ -173,7 +184,13 @@ export class PublicPhysiotherapistService {
         (a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY),
       );
     } else {
-      rows.sort((a, b) => (b.experienceYears ?? 0) - (a.experienceYears ?? 0));
+      // Most-reviewed first, then higher rating, then more experience.
+      rows.sort(
+        (a, b) =>
+          (b.reviewCount ?? 0) - (a.reviewCount ?? 0) ||
+          (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0) ||
+          (b.experienceYears ?? 0) - (a.experienceYears ?? 0),
+      );
     }
 
     return rows;

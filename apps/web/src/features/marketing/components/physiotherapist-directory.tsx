@@ -7,6 +7,7 @@ import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { RatingStars } from "@/features/marketing/components/profile-reviews";
 import { PhysiotherapistAvatar } from "@/features/physiotherapist/components/physiotherapist-avatar";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
@@ -151,6 +152,19 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
                     <p className="font-display text-base font-semibold text-slate-900 hover:text-brand">
                       {physio.name}
                     </p>
+                    {physio.ratingAvg !== undefined && physio.reviewCount ? (
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-600">
+                        <RatingStars rating={physio.ratingAvg} />
+                        <span className="font-semibold text-slate-900">
+                          {physio.ratingAvg.toFixed(1)}
+                        </span>
+                        <span className="text-slate-500">
+                          ({physio.reviewCount} review{physio.reviewCount === 1 ? "" : "s"})
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-xs text-slate-400">No reviews yet</p>
+                    )}
                     <p className="truncate text-sm text-brand/90">
                       {physio.specialties.slice(0, 2).join(" · ") || "Physiotherapist"}
                     </p>
