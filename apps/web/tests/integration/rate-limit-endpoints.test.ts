@@ -18,6 +18,7 @@
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { randomBytes } from "crypto";
 import { NextRequest } from "next/server";
+import { PAID_ONLINE_INTAKE_QUESTION_KEYS } from "@zindagi/shared";
 
 jest.setTimeout(60000);
 
@@ -366,12 +367,19 @@ describe("Rate Limiting / Abuse Protection (RT-001 .. RT-007)", () => {
       const user = await createPatientUser();
       const headers = await authHeaders(user._id.toString());
 
+      // Must pass sundayFreeRequestSchema (every intake question answered),
+      // otherwise requests stop at validation (400) and never exercise the limiter.
+      const validBody = JSON.stringify({
+        patientPhone: "03001234567",
+        affordabilityChoice: "cannot_afford",
+        history: PAID_ONLINE_INTAKE_QUESTION_KEYS.map((key) => ({ key, answer: "None" })),
+      });
       const submit = () =>
         sundayRequestRoute.POST(
           new Request("http://localhost/api/v1/sunday/request", {
             method: "POST",
             headers,
-            body: JSON.stringify({ patientPhone: "03001234567", affordabilityChoice: "cannot_afford" }),
+            body: validBody,
           }) as never,
         );
 

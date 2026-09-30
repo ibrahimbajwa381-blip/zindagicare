@@ -2,22 +2,25 @@
  * DOC-001..DOC-009 — Doctor Discovery backend integration tests.
  *
  * Real integration tests: route -> OnlineConsultService -> MongoDB -> response.
- * No mocking of DoctorProfileModel/UserModel/database connection. This file
- * itself never calls create/insertMany/updateOne/updateMany/findOneAndUpdate/
- * deleteOne/deleteMany/drop* — it only reads.
+ * No mocking of DoctorProfileModel/UserModel/database connection.
  *
- * DOC-008 and DOC-009 use two explicitly user-approved, clearly-labeled
- * throwaway fixtures ("TEST-STRESS Unverified Doctor" / "TEST-STRESS
- * Restricted Doctor") created out-of-band by scripts/create-doc-fixtures.ts,
- * not by this test file. They are located dynamically by DB state
- * (verificationStatus / isListed), not by hardcoded id.
+ * Runs against an ephemeral local MongoDB (mongodb-memory-server — never
+ * Atlas, never production) seeded in beforeAll with a known dataset:
+ * 6 approved+listed doctors spread over three cities and three specialties,
+ * plus two fixtures that discovery must never return — an unverified
+ * (pending) doctor and a restricted+unlisted doctor, both sharing the exact
+ * city/specialty of a listed doctor so only the verification/listing filter
+ * can exclude them. The suite therefore needs no external database or
+ * out-of-band fixture script.
  */
 import { NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
+import { randomBytes } from "crypto";
 import mongoose from "mongoose";
-import { connectDatabase, DoctorProfileModel } from "@zindagi/database";
-import { VerificationStatuses } from "@zindagi/shared";
+import { MongoMemoryServer } from "mongodb-memory-server";
+import { connectDatabase, DoctorProfileModel, UserModel } from "@zindagi/database";
+import { VerificationStatuses, type VerificationStatus } from "@zindagi/shared";
 
 // The route module chain (with-api-handler -> resolve-session -> @/lib/auth)
 // pulls in next-auth, which is ESM-only and Jest can't parse. The discovery
@@ -29,9 +32,63 @@ jest.mock("@/server/api/resolve-session", () => ({
   resolveSession: jest.fn(),
 }));
 
-// Real network calls to a remote MongoDB Atlas cluster — the 5s Jest default
-// is too tight for connection setup + multiple beforeAll hooks in this file.
-jest.setTimeout(30000);
+// First run downloads the MongoDB binary; the 5s Jest default is too tight.
+jest.setTimeout(60000);
+
+type SeedDoctor = {
+  name: string;
+  city: string;
+  specialty: string;
+  verificationStatus: VerificationStatus;
+  isListed: boolean;
+};
+
+const APPROVED_LISTED_SEED: SeedDoctor[] = [
+  { name: "Discovery Lahore Derm A", city: "Lahore", specialty: "Dermatologist" },
+  { name: "Discovery Lahore GP", city: "Lahore", specialty: "General Physician" },
+  { name: "Discovery Lahore Derm B", city: "Lahore", specialty: "Dermatologist" },
+  { name: "Discovery Karachi Derm", city: "Karachi", specialty: "Dermatologist" },
+  { name: "Discovery Karachi Peds", city: "Karachi", specialty: "Pediatrician" },
+  { name: "Discovery Islamabad GP", city: "Islamabad", specialty: "General Physician" },
+].map((d) => ({ ...d, verificationStatus: VerificationStatuses.APPROVED, isListed: true }));
+
+// Same city/specialty as a listed doctor, so only the status/listing filter excludes them.
+const UNVERIFIED_SEED: SeedDoctor = {
+  name: "TEST-STRESS Unverified Doctor",
+  city: "Lahore",
+  specialty: "Dermatologist",
+  verificationStatus: VerificationStatuses.PENDING,
+  isListed: true,
+};
+const RESTRICTED_SEED: SeedDoctor = {
+  name: "TEST-STRESS Restricted Doctor",
+  city: "Lahore",
+  specialty: "Dermatologist",
+  verificationStatus: VerificationStatuses.RESTRICTED,
+  isListed: false,
+};
+
+let seedCounter = 0;
+
+async function seedDoctor(seed: SeedDoctor) {
+  seedCounter += 1;
+  const user = await UserModel.create({
+    name: seed.name,
+    email: `discovery-${seedCounter}@example.com`,
+    phone: `+92300${seedCounter.toString().padStart(7, "0")}`,
+    roles: ["doctor"],
+    isActive: true,
+  });
+  const profile = await DoctorProfileModel.create({
+    userId: user._id,
+    isListed: seed.isListed,
+    verificationStatus: seed.verificationStatus,
+    consultationFee: 1500,
+    specialties: [seed.specialty],
+    coverageCities: [seed.city],
+  });
+  return { _id: profile._id.toString(), ...seed };
+}
 
 const ROUTE = "http://localhost/api/v1/consult/doctors";
 
@@ -73,7 +130,8 @@ async function callDiscovery(query: Record<string, string | undefined> = {}) {
   return { res, body };
 }
 
-describe("Doctor Discovery integration (real MongoDB, read-only)", () => {
+describe("Doctor Discovery integration (real local MongoDB)", () => {
+  let mongod: MongoMemoryServer;
   let approvedListed: {
     _id: string;
     city: string;
@@ -82,7 +140,15 @@ describe("Doctor Discovery integration (real MongoDB, read-only)", () => {
   }[] = [];
 
   beforeAll(async () => {
+    mongod = await MongoMemoryServer.create();
+    process.env.MONGODB_URI = mongod.getUri("doctor_discovery_test");
+    process.env.FIELD_ENCRYPTION_KEY = randomBytes(32).toString("base64");
     await connectDatabase();
+
+    // Sequential so approvedListed[0] (the fixture most tests pivot on) is stable.
+    for (const seed of [...APPROVED_LISTED_SEED, UNVERIFIED_SEED, RESTRICTED_SEED]) {
+      await seedDoctor(seed);
+    }
 
     // READ-ONLY snapshot of real, currently-approved-and-listed doctors to
     // drive assertions against actual data rather than assumed fixtures.
@@ -110,13 +176,14 @@ describe("Doctor Discovery integration (real MongoDB, read-only)", () => {
     if (approvedListed.length === 0) {
       throw new Error(
         "No approved+listed doctors found in the database — DOC-001..007 cannot run. " +
-          "This is a read-only test; it will not create data to fix this.",
+          "The seeded dataset in beforeAll should have created them.",
       );
     }
   });
 
   afterAll(async () => {
     await mongoose.disconnect();
+    await mongod?.stop();
   });
 
   // ---------------------------------------------------------------------
@@ -343,20 +410,24 @@ describe("Doctor Discovery integration (real MongoDB, read-only)", () => {
   // DOC-006 — Empty search
   // ---------------------------------------------------------------------
   describe("DOC-006 — Empty search", () => {
-    test("no search params at all -> defaults to city=Lahore, 200, no crash", async () => {
+    // Since listings went Pakistan-wide (commit 9883132), a missing or empty
+    // city means "all cities" rather than defaulting to Lahore.
+    test("no search params at all -> every approved+listed doctor across all cities", async () => {
       const { GET } = await import("@/app/api/v1/consult/doctors/route");
       const res = await GET(new NextRequest(new URL(ROUTE)));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
+      const ids = (body.data as DiscoveryDoctor[]).map((d) => d.doctorId).sort();
+      expect(ids).toEqual(approvedListed.map((d) => d._id).sort());
     });
 
-    test("empty-string city ('') is taken literally (not defaulted) and returns an empty list, not a 500", async () => {
+    test("empty-string city ('') is treated like no city (all cities), not a 500", async () => {
       const { res, body } = await callDiscovery({ city: "" });
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(body.data).toEqual([]);
+      const ids = (body.data as DiscoveryDoctor[]).map((d) => d.doctorId).sort();
+      expect(ids).toEqual(approvedListed.map((d) => d._id).sort());
     });
 
     test("whitespace-only city is taken literally and returns an empty list, not a 500", async () => {
@@ -474,14 +545,14 @@ describe("Doctor Discovery integration (real MongoDB, read-only)", () => {
       // Identify the seeded unverified doctor by its actual DB state
       // (verificationStatus != approved), not by a hardcoded id.
       const doc = await DoctorProfileModel.findOne({
-        verificationStatus: { $ne: VerificationStatuses.APPROVED },
+        verificationStatus: VerificationStatuses.PENDING,
       })
         .populate("userId", "name")
         .lean();
 
       if (!doc) {
         throw new Error(
-          "DOC-008: no doctorprofiles record with verificationStatus != approved exists. " +
+          "DOC-008: no doctorprofiles record with verificationStatus=pending exists. " +
             "Expected the seeded 'TEST-STRESS Unverified Doctor' fixture to be present.",
         );
       }
@@ -573,7 +644,8 @@ describe("Doctor Discovery integration (real MongoDB, read-only)", () => {
 
     beforeAll(async () => {
       const doc = await DoctorProfileModel.findOne({
-        $or: [{ verificationStatus: VerificationStatuses.RESTRICTED }, { isListed: false }],
+        verificationStatus: VerificationStatuses.RESTRICTED,
+        isListed: false,
       })
         .populate("userId", "name")
         .lean();
