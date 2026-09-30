@@ -18,6 +18,7 @@ import {
   Bell,
   Banknote,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   HeartPulse,
   Home,
@@ -263,6 +264,8 @@ type AdminSidebarProps = {
 export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const [counts, setCounts] = useState<AdminNavCounts | null>(null);
+  /** Explicit open/closed per group; unset groups default to open when a child page is active. */
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const loadCounts = useCallback(async () => {
     const res = await fetch("/api/v1/admin/nav-counts");
@@ -332,6 +335,8 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   }
 
   function renderNavItem(item: AdminNavItem) {
+    if (item.children) return renderNavGroup(item);
+
     const active = isActive(item);
     const Icon = item.icon;
     const count = itemCount(item);
@@ -387,16 +392,109 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
             )}
           />
         </Link>
-        {item.children && (
-          <div className="mt-0.5 ml-[1.625rem] space-y-0.5 border-l border-white/10 pl-2.5">
-            {item.children.map(renderSubNavItem)}
-          </div>
-        )}
       </div>
     );
   }
 
-  function renderSubNavItem(item: AdminNavItem) {
+  /** Parent row toggles its sub-pages open/closed instead of navigating. */
+  function renderNavGroup(item: AdminNavItem) {
+    const children = item.children ?? [];
+    const childActive = children.some(isActive);
+    const open = openGroups[item.href] ?? childActive;
+    const Icon = item.icon;
+    const count = itemCount(item);
+    const panelId = `admin-nav-group-${item.href.replace(/\W+/g, "-")}`;
+
+    return (
+      <div key={item.href}>
+        <button
+          type="button"
+          onClick={() => setOpenGroups((prev) => ({ ...prev, [item.href]: !open }))}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className={cn(
+            "group relative flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 text-left transition-all duration-200",
+            childActive && !open
+              ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
+              : open
+                ? "bg-white/[0.04] text-white"
+                : "text-slate-300 hover:bg-white/6 hover:text-white",
+          )}
+        >
+          {childActive && (
+            <span
+              className={cn(
+                "absolute inset-y-2 left-0 w-0.5 rounded-full",
+                open ? "bg-brand" : "bg-white/70",
+              )}
+              aria-hidden
+            />
+          )}
+          <span
+            className={cn(
+              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+              childActive && !open
+                ? "bg-white/15 text-white"
+                : open
+                  ? "bg-brand/20 text-brand"
+                  : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1 py-0.5">
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-medium leading-none">{item.label}</span>
+              {!open && <NavCountBadge count={count} active={childActive} />}
+            </span>
+            <span
+              className={cn(
+                "mt-1 block text-[11px] leading-snug",
+                childActive && !open ? "text-white/75" : "text-slate-500 group-hover:text-slate-400",
+              )}
+            >
+              {item.description}
+            </span>
+          </span>
+          <ChevronDown
+            className={cn(
+              "mt-2 h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out",
+              open ? "rotate-180 text-slate-300" : "text-slate-500 group-hover:text-slate-300",
+              childActive && !open && "text-white/70",
+            )}
+          />
+        </button>
+
+        <div
+          id={panelId}
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+          )}
+          aria-hidden={!open}
+        >
+          <div className="overflow-hidden">
+            <div className="mt-1 ml-[1.625rem] space-y-0.5 border-l border-white/10 pl-2.5">
+              {children.map((child, index) => (
+                <div
+                  key={child.href}
+                  className={cn(
+                    "transition-all duration-300 ease-out",
+                    open ? "translate-y-0 opacity-100" : "-translate-y-1.5 opacity-0",
+                  )}
+                  style={{ transitionDelay: open ? `${60 + index * 50}ms` : "0ms" }}
+                >
+                  {renderSubNavItem(child, !open)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSubNavItem(item: AdminNavItem, hidden = false) {
     const active = isActive(item);
     const Icon = item.icon;
 
@@ -405,6 +503,7 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
         key={item.href}
         href={item.href}
         onClick={onMobileClose}
+        tabIndex={hidden ? -1 : undefined}
         aria-current={active ? "page" : undefined}
         className={cn(
           "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition-colors",
