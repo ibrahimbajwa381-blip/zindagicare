@@ -4,33 +4,55 @@ import { useEffect, useRef, useState } from "react";
 import {
   CircleHelp,
   Clock,
+  Globe,
+  Home,
   LayoutDashboard,
   UserPlus,
   Video,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { useHideOnScroll } from "@/components/layout/use-hide-on-scroll";
 
-const TOC = [
+type TocItem = { href: string; id: string; label: string; short: string; icon: LucideIcon };
+
+const DOCTOR_TOC: readonly TocItem[] = [
   { href: "#demo", id: "demo", label: "Demo video", short: "Demo", icon: Video },
   { href: "#earnings", id: "earnings", label: "Earnings", short: "Earnings", icon: Wallet },
   { href: "#join", id: "join", label: "How to join", short: "Join", icon: UserPlus },
   { href: "#workspace", id: "workspace", label: "How to use", short: "Use", icon: LayoutDashboard },
   { href: "#attendance", id: "attendance", label: "Attendance", short: "Attend", icon: Clock },
   { href: "#faq", id: "faq", label: "FAQ", short: "FAQ", icon: CircleHelp },
-] as const;
+];
+
+const PHYSIOTHERAPIST_TOC: readonly TocItem[] = [
+  { href: "#earnings", id: "earnings", label: "Earnings", short: "Earnings", icon: Wallet },
+  { href: "#portfolio", id: "portfolio", label: "Your website", short: "Website", icon: Globe },
+  { href: "#join", id: "join", label: "How to join", short: "Join", icon: UserPlus },
+  { href: "#visits", id: "visits", label: "Home visits", short: "Visits", icon: Home },
+  { href: "#workspace", id: "workspace", label: "How to use", short: "Use", icon: LayoutDashboard },
+  { href: "#faq", id: "faq", label: "FAQ", short: "FAQ", icon: CircleHelp },
+];
 
 const MOBILE_HEADER_OFFSET_PX = "64px";
 
 export function DoctorGuideToc() {
+  return <GuideToc toc={DOCTOR_TOC} />;
+}
+
+export function PhysiotherapistGuideToc() {
+  return <GuideToc toc={PHYSIOTHERAPIST_TOC} />;
+}
+
+function GuideToc({ toc }: { toc: readonly TocItem[] }) {
   const headerHidden = useHideOnScroll();
-  const [activeId, setActiveId] = useState<string>("demo");
+  const [activeId, setActiveId] = useState<string>(toc[0]?.id ?? "");
   const [mobilePinned, setMobilePinned] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const sections = TOC.map((item) => document.getElementById(item.id)).filter(
+    const sections = toc.map((item) => document.getElementById(item.id)).filter(
       (el): el is HTMLElement => Boolean(el),
     );
     if (sections.length === 0) return;
@@ -47,7 +69,7 @@ export function DoctorGuideToc() {
 
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, []);
+  }, [toc]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -98,7 +120,7 @@ export function DoctorGuideToc() {
         )}
       >
         <ul className="mx-auto flex max-w-[100rem] items-stretch justify-between gap-0.5 overflow-x-auto px-1 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden">
-          {TOC.map((item) => {
+          {toc.map((item) => {
             const Icon = item.icon;
             const active = activeId === item.id;
 
@@ -133,7 +155,7 @@ export function DoctorGuideToc() {
         </ul>
 
         <div className="mx-auto hidden max-w-[100rem] gap-2 overflow-x-auto px-4 py-3 sm:flex sm:px-8 lg:px-14">
-          {TOC.map((item) => {
+          {toc.map((item) => {
             const active = activeId === item.id;
             return (
               <a

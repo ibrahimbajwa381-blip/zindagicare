@@ -43,6 +43,7 @@ export const en = {
     telemedicineConsent: "Telemedicine consent",
     forDoctors: "For doctors",
     doctorGuide: "Doctor guide",
+    physioGuide: "Physiotherapist guide",
     forNurses: "For nurses",
     forPhysiotherapists: "For physiotherapists",
     getApp: "Get the app",
@@ -2062,6 +2063,7 @@ export const en = {
         "Create your physiotherapist account and complete verification — home sessions unlock after admin approval.",
       primaryCta: "Register as physiotherapist",
       secondaryCta: "Log in",
+      guideCta: "Read the physiotherapist guide",
     },
   },
   payment: {

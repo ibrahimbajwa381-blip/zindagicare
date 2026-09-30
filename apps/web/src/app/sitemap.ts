@@ -18,6 +18,7 @@ const MARKETING_ROUTES = [
   "/for-doctors/guide",
   "/for-nurses",
   "/for-physiotherapists",
+  "/for-physiotherapists/guide",
   "/get-app",
   "/reviews",
   "/privacy",

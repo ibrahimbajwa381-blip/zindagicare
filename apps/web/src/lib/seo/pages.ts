@@ -55,6 +55,11 @@ export const marketingPageSeo = {
     description:
       "Verified physiotherapists across Pakistan: offer home physiotherapy sessions on ZindagiCare. Rehabilitation, pain relief, and post-injury recovery at patients' homes.",
   },
+  forPhysiotherapistsGuide: {
+    title: "Physiotherapist Guide — Earnings, Portfolio & How to Join ZindagiCare",
+    description:
+      "Complete ZindagiCare physiotherapist guide: keep 70% of every home visit, set your own fee, get paid every Sunday, and get a free portfolio website that patients book you from.",
+  },
   homeCareRequest: {
     title: "Book In-House Medical Visit — Doctor or Nurse at Home Pakistan",
     description:

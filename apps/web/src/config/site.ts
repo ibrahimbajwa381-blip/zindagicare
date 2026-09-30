@@ -63,6 +63,7 @@ export const siteConfig = {
     forDoctorsGuide: "/for-doctors/guide",
     forNurses: "/for-nurses",
     forPhysiotherapists: "/for-physiotherapists",
+    forPhysiotherapistsGuide: "/for-physiotherapists/guide",
     privacy: "/privacy",
     terms: "/terms",
     refundPolicy: "/refund-policy",

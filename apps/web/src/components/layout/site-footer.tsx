@@ -120,6 +120,7 @@ export function SiteFooter() {
     { href: siteConfig.links.forDoctorsGuide, label: t.breadcrumbs.doctorGuide, icon: BookOpen },
     { href: siteConfig.links.forNurses, label: t.providerOnboarding.nurse.eyebrow, icon: HeartPulse },
     { href: siteConfig.links.forPhysiotherapists, label: t.providerOnboarding.physiotherapist.eyebrow, icon: HeartPulse },
+    { href: siteConfig.links.forPhysiotherapistsGuide, label: t.breadcrumbs.physioGuide, icon: BookOpen },
     { href: siteConfig.links.registerDoctor, label: t.auth.registerDoctor, icon: UserPlus },
     { href: siteConfig.links.registerNurse, label: t.auth.registerNurse, icon: UserPlus },
   ];

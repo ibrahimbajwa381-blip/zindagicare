@@ -44,6 +44,7 @@ export const ur: Dictionary = {
     telemedicineConsent: "آن لائن علاج کی اجازت",
     forDoctors: "ڈاکٹرز کے لیے",
     doctorGuide: "ڈاکٹر گائیڈ",
+    physioGuide: "فزیو تھراپسٹ گائیڈ",
     forNurses: "نرسز کے لیے",
     forPhysiotherapists: "فزیو تھراپسٹس کے لیے",
     getApp: "ایپ انسٹال کریں",
@@ -2030,6 +2031,7 @@ export const ur: Dictionary = {
         "اپنا فزیو تھراپسٹ اکاؤنٹ بنائیں اور تصدیق مکمل کریں — ایڈمن منظور ہونے کے بعد سیشن کھل جائیں گے۔",
       primaryCta: "فزیو تھراپسٹ کے طور پر رجسٹر",
       secondaryCta: "لاگ ان",
+      guideCta: "مکمل فزیو تھراپسٹ گائیڈ",
     },
   },
   payment: {
