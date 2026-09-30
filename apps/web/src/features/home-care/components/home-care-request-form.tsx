@@ -22,6 +22,7 @@ import {
   PhysiotherapistPicker,
   type PhysiotherapistChoice,
 } from "./physiotherapist-picker";
+import { VisitTimePicker } from "./visit-time-picker";
 import { Syringe, Droplets, Bandage, Stethoscope, UserRound, Activity } from "lucide-react";
 
 const SERVICE_META: Record<
@@ -38,17 +39,6 @@ const SERVICE_META: Record<
   [HomeVisitServiceTypes.INJECTION]: { icon: Syringe, labelKey: "injection" },
   [HomeVisitServiceTypes.WOUND_CARE]: { icon: Bandage, labelKey: "woundCare" },
 };
-
-function toDateTimeLocalValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function minScheduledAt(): string {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + 60, 0, 0);
-  return toDateTimeLocalValue(d);
-}
 
 function resolveInitialService(param: string | null): string {
   if (
@@ -75,12 +65,6 @@ export function HomeCareRequestForm() {
   const t = useTranslations();
   const h = t.homeCare;
   const loginUrl = useMemo(() => buildLoginUrl(searchParams), [searchParams]);
-  // Computed client-side only, after mount — "now" differs between server render and
-  // hydration, which would otherwise mismatch the input's `min` attribute.
-  const [minSchedule, setMinSchedule] = useState("");
-  useEffect(() => {
-    setMinSchedule(minScheduledAt());
-  }, []);
 
   const initialPhysioId = searchParams.get("physio");
   // Physiotherapy is only booked with a physio chosen from the directory.
@@ -254,16 +238,7 @@ export function HomeCareRequestForm() {
 
           <div>
             <Label htmlFor="scheduled">{h.scheduledAt} *</Label>
-            <Input
-              id="scheduled"
-              name="scheduledAt"
-              type="datetime-local"
-              value={scheduledAt}
-              min={minSchedule}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              required
-              className="mt-1.5"
-            />
+            <VisitTimePicker id="scheduled" value={scheduledAt} onChange={setScheduledAt} />
           </div>
 
           <div>
