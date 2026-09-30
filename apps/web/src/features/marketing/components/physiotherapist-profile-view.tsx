@@ -51,7 +51,7 @@ export function PhysiotherapistProfileView({ physio }: { physio: PublicPhysiothe
   const takesHomeVisits = physio.homeVisitEnabled && physio.isAvailable;
   const bookHref = takesHomeVisits
     ? physiotherapistHomeVisitHref(physio.id)
-    : `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.PHYSIOTHERAPY}`;
+    : siteConfig.links.physiotherapists;
   const location = [physio.area, physio.city].filter(Boolean).join(", ");
   const firstName = physio.name.split(" ")[0];
 

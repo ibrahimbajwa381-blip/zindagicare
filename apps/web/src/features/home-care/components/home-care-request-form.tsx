@@ -10,6 +10,7 @@ import {
   HomeVisitServiceTypes,
   nearestCity,
 } from "@zindagi/shared";
+import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError, Input, Label } from "@/components/ui/input";
@@ -81,14 +82,23 @@ export function HomeCareRequestForm() {
     setMinSchedule(minScheduledAt());
   }, []);
 
+  const initialPhysioId = searchParams.get("physio");
+  // Physiotherapy is only booked with a physio chosen from the directory.
+  const physioWithoutChoice =
+    searchParams.get("service") === HomeVisitServiceTypes.PHYSIOTHERAPY && !initialPhysioId;
+  useEffect(() => {
+    if (physioWithoutChoice) router.replace(siteConfig.links.physiotherapists);
+  }, [physioWithoutChoice, router]);
+
   const [serviceType, setServiceType] = useState<string>(() =>
-    resolveInitialService(searchParams.get("service")),
+    physioWithoutChoice
+      ? HomeVisitServiceTypes.IV_DRIP
+      : resolveInitialService(searchParams.get("service")),
   );
   const [addressLine, setAddressLine] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [patientNotes, setPatientNotes] = useState("");
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
-  const initialPhysioId = searchParams.get("physio");
   const [physioChoice, setPhysioChoice] = useState<PhysiotherapistChoice>(
     () => initialPhysioId || "nearest",
   );
@@ -188,7 +198,11 @@ export function HomeCareRequestForm() {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setServiceType(type)}
+                    onClick={() =>
+                      type === HomeVisitServiceTypes.PHYSIOTHERAPY && !initialPhysioId
+                        ? router.push(siteConfig.links.physiotherapists)
+                        : setServiceType(type)
+                    }
                     className={`flex flex-col items-start rounded-xl border p-4 text-left transition ${
                       selected
                         ? "border-brand bg-brand-muted/50 ring-2 ring-brand/20"
