@@ -18,7 +18,10 @@ type Props = {
   onChange: (value: PhysiotherapistChoice) => void;
   /** Physio pre-selected from a profile page (?physio=<userId>). */
   initialPhysioId?: string | null;
-  /** Reports the chosen physio's fee (null for "nearest", which uses the platform rate). */
+  /**
+   * Reports the chosen physio's fee. For "nearest" it's the nearest listed physio's fee — the
+   * visit is charged at whoever is actually assigned (null until physios have loaded).
+   */
   onFeeChange?: (fee: number | null) => void;
 };
 
@@ -75,7 +78,7 @@ export function PhysiotherapistPicker({
 
   const selectedFee =
     value === "nearest"
-      ? null
+      ? (nearby[0]?.homeVisitFee ?? null)
       : ([...nearby, ...(preselectedRow ? [preselectedRow] : [])].find((p) => p.id === value)
           ?.homeVisitFee ?? null);
   useEffect(() => {
@@ -143,7 +146,8 @@ export function PhysiotherapistPicker({
         <span>
           <span className="block text-sm font-semibold">Nearest available (recommended)</span>
           <span className="block text-xs text-slate-500">
-            We&apos;ll assign the closest verified physiotherapist who is free at your time.
+            We&apos;ll assign the closest verified physiotherapist who is free at your time. You
+            pay that physiotherapist&apos;s own fee.
           </span>
         </span>
       </button>

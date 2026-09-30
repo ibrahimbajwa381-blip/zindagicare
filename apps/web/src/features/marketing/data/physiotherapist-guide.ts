@@ -32,7 +32,7 @@ export const PHYSIO_GUIDE_FAQ = [
   },
   {
     q: "Can I set my own fee?",
-    a: `Yes. Set your fee per home visit in Profile, anywhere from ${formatRs(PHYSIO_HOME_VISIT_FEE_MIN)} to ${formatRs(PHYSIO_HOME_VISIT_FEE_MAX)}. If you leave it empty, the platform rate of ${formatRs(SPLIT.patientPays)} is used. Patients who book you from your profile pay your fee; patients who choose "nearest available" pay the platform rate.`,
+    a: `Yes. Set your fee per home visit in Profile, anywhere from ${formatRs(PHYSIO_HOME_VISIT_FEE_MIN)} to ${formatRs(PHYSIO_HOME_VISIT_FEE_MAX)}. If you leave it empty, the platform rate of ${formatRs(SPLIT.patientPays)} is used. Patients always pay your own fee, whether they book you from your profile or choose "nearest available" and are matched with you.`,
   },
   {
     q: "When do I get paid?",

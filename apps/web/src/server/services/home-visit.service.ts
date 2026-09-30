@@ -674,6 +674,19 @@ export class HomeVisitService {
         400,
       );
     }
+    // "Nearest available" physiotherapy is priced at the assigned physio's own
+    // fee, which isn't known until someone is matched.
+    if (
+      isPhysiotherapyHomeVisitService(visit.serviceType) &&
+      !visit.assignedStaffId &&
+      !visit.preferredStaffId
+    ) {
+      throw new AppError(
+        "We're still matching you with a physiotherapist. You can pay once one is assigned — you'll pay their own fee.",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
 
     if (visit.paymentId) {
       const existing = await PaymentModel.findById(visit.paymentId).lean();
@@ -1173,7 +1186,8 @@ export class HomeVisitService {
       .populate("userId", "name phone")
       .lean();
 
-    let best: { userId: string; distanceKm: number; name: string } | null = null;
+    let best: { userId: string; distanceKm: number; name: string; homeVisitFee?: number } | null =
+      null;
     const defaultName = staffType === Roles.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
 
     for (const staff of staffProfiles) {
@@ -1193,6 +1207,7 @@ export class HomeVisitService {
             userId: user._id.toString(),
             distanceKm: dist,
             name: user.name ?? defaultName,
+            homeVisitFee: staff.homeVisitFee ?? undefined,
           };
         }
       }
@@ -1297,6 +1312,11 @@ export class HomeVisitService {
    * testing (10/25/50-way concurrent, same staff, same slot) shows this
    * reduces double-booking from "always" (proven: up to 50/50 concurrent
    * requests all won) to none observed.
+   *
+   * `physioFee` (physiotherapy visits only) re-prices the visit to the
+   * assigned physio's own fee — a patient who picked "nearest available" pays
+   * whoever is actually assigned, never a flat platform rate. A visit that is
+   * already paid keeps the amount the patient paid.
    */
   private static async commitAssignment(
     visitId: string,
@@ -1304,7 +1324,24 @@ export class HomeVisitService {
     staffId: string,
     scheduledAt: Date,
     distanceKm: number | null,
+    physioFee?: number,
   ): Promise<HydratedDocument<HomeVisitDocument>> {
+    let pricingSet: Record<string, number> = {};
+    if (physioFee !== undefined) {
+      const current = await HomeVisitModel.findById(visitId).select("paymentId pricing").lean();
+      const paid = current?.paymentId
+        ? await PaymentModel.exists(
+            mongoFilter({ _id: current.paymentId, status: PaymentStatuses.PAID }),
+          )
+        : null;
+      if (!paid) {
+        pricingSet = {
+          "pricing.base": physioFee,
+          "pricing.total": physioFee + (current?.pricing?.surge ?? 0),
+        };
+      }
+    }
+
     const updated = (await HomeVisitModel.findOneAndUpdate(
       mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
       {
@@ -1314,6 +1351,7 @@ export class HomeVisitService {
           ...(distanceKm !== null
             ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
             : {}),
+          ...pricingSet,
         },
       },
       { new: true },
@@ -1358,6 +1396,14 @@ export class HomeVisitService {
         "Selected provider was just assigned to another visit at this time — please try again",
         ErrorCodes.CONFLICT,
         409,
+      );
+    }
+
+    // A checkout opened before assignment must charge the re-priced amount.
+    if (updated.paymentId && updated.pricing && "pricing.total" in pricingSet) {
+      await PaymentModel.updateOne(
+        mongoFilter({ _id: updated.paymentId, status: PaymentStatuses.PENDING }),
+        { $set: { amount: updated.pricing.total } },
       );
     }
 
@@ -1441,6 +1487,9 @@ export class HomeVisitService {
       match.userId,
       visit.scheduledAt,
       match.distanceKm,
+      isPhysiotherapyHomeVisitService(visit.serviceType)
+        ? resolvePhysioHomeVisitFee(match.homeVisitFee)
+        : undefined,
     );
 
     const populated = await HomeVisitModel.findById(visit._id)
@@ -1485,6 +1534,7 @@ export class HomeVisitService {
     }
 
     const visitCity = visit.address?.city ?? LAUNCH_CITY;
+    let physioFee: number | undefined;
 
     const staff = await UserModel.findById(input.staffId);
     if (!staff) {
@@ -1542,6 +1592,7 @@ export class HomeVisitService {
           400,
         );
       }
+      physioFee = resolvePhysioHomeVisitFee(profile.homeVisitFee);
     } else if (!staff.roles?.includes(Roles.NURSE)) {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
     } else {
@@ -1602,6 +1653,7 @@ export class HomeVisitService {
       input.staffId,
       visit.scheduledAt,
       distanceKm,
+      physioFee,
     );
 
     const populated = await HomeVisitModel.findById(visit._id)

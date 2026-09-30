@@ -211,9 +211,8 @@ function EarningsSection() {
           </div>
 
           <p className="mt-4 text-xs leading-relaxed text-slate-500">
-            Patients who book you from your profile pay your fee. Patients who choose
-            &ldquo;nearest available&rdquo; pay the platform rate of {formatRs(F.defaultFee)}.
-            Earnings are credited when a visit is marked completed.
+            Patients always pay your own fee — whether they book you from your profile or
+            choose &ldquo;nearest available&rdquo; and are matched with you. Earnings are credited when a visit is marked completed.
           </p>
         </div>
       </div>

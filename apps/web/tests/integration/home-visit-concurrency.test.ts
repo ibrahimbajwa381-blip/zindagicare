@@ -374,6 +374,74 @@ describe("Home Visits — P0 functional + concurrency audit (real local MongoDB)
   });
 
   // ===========================================================================
+  // HOME-007c — "nearest available" physiotherapy is charged at the assigned
+  // physio's own fee, never the flat platform rate.
+  // ===========================================================================
+  async function createPhysio(homeVisitFee?: number) {
+    counter += 1;
+    const user = await UserModel.create({
+      name: `HV Jest Physio ${counter}`,
+      email: `hv-jest-physio-${counter}-${Date.now()}@example.com`,
+      phone: makePhone("2", counter),
+      roles: [Roles.PHYSIOTHERAPIST],
+      isActive: true,
+    });
+    await StaffProfileModel.create({
+      userId: user._id,
+      staffType: Roles.PHYSIOTHERAPIST,
+      homeVisitEnabled: true,
+      isAvailable: true,
+      verificationStatus: "approved",
+      ...(homeVisitFee ? { homeVisitFee } : {}),
+      serviceAreas: [
+        { city: "Lahore", area: "DHA", geo: { type: "Point", coordinates: [74.3587, 31.5204] }, radiusKm: 15 },
+      ],
+    });
+    return user;
+  }
+
+  test("HOME-007c: nearest-available physiotherapy is priced at the assigned physio's own fee", async () => {
+    const patient = await createPatient();
+    const physio = await createPhysio(4500);
+    const visit = await HomeVisitService.createRequest(
+      patient._id.toString(),
+      bookingInput(HomeVisitServiceTypes.PHYSIOTHERAPY, nextSlot(), { autoAssign: true }),
+    );
+
+    const doc = await HomeVisitModel.findById(visit.id).lean();
+    expect(doc?.assignedStaffId?.toString()).toBe(physio._id.toString());
+    expect(doc?.pricing?.base).toBe(4500);
+    expect(doc?.pricing?.total).toBe(4500);
+
+    const checkout = await HomeVisitService.initiateCheckout(visit.id, patient._id.toString());
+    expect(checkout.amount).toBe(4500);
+  });
+
+  test("HOME-007d: unmatched nearest-available physiotherapy can't be paid until assigned; a pending payment follows the re-price", async () => {
+    const patient = await createPatient();
+    const visit = await HomeVisitService.createRequest(
+      patient._id.toString(),
+      bookingInput(HomeVisitServiceTypes.PHYSIOTHERAPY, nextSlot(), { autoAssign: true }),
+    );
+    await expect(
+      HomeVisitService.initiateCheckout(visit.id, patient._id.toString()),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    // A checkout opened on an earlier assignment is re-priced when an admin reassigns.
+    const first = await createPhysio(3000);
+    await HomeVisitService.assignStaff(visit.id, { staffId: first._id.toString(), override: false });
+    const checkout = await HomeVisitService.initiateCheckout(visit.id, patient._id.toString());
+    expect(checkout.amount).toBe(3000);
+
+    const second = await createPhysio(5200);
+    await HomeVisitService.assignStaff(visit.id, { staffId: second._id.toString(), override: false });
+    const doc = await HomeVisitModel.findById(visit.id).lean();
+    expect(doc?.pricing?.total).toBe(5200);
+    const payment = await PaymentModel.findById(checkout.paymentId).lean();
+    expect(payment?.amount).toBe(5200);
+  });
+
+  // ===========================================================================
   // HOME-008 — payment required / payment workflow
   // ===========================================================================
   test("HOME-008: checkout creates a pending payment; manual receipt marks it paid; visit reflects paid state", async () => {
