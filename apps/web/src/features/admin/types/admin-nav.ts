@@ -6,5 +6,8 @@ export type AdminNavCounts = {
   reviews: number;
   sundayConsult: number;
   urgentCare: number;
-  homeVisits: number;
+  /** Open home visits (requested or assigned), one count per provider queue. */
+  homeVisitsDoctor: number;
+  homeVisitsPhysiotherapist: number;
+  homeVisitsNurse: number;
 };

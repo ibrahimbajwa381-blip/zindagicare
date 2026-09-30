@@ -10,12 +10,14 @@ export const GET = withApiHandler(
     const query = listHomeVisitsQuerySchema.parse({
       status: searchParams.get("status") ?? undefined,
       scope: searchParams.get("scope") ?? "mine",
+      provider: searchParams.get("provider") ?? undefined,
     });
     return HomeVisitService.listVisits(
       session!.user.id,
       session!.user.roles ?? [],
       query.scope,
       query.status,
+      query.provider,
     );
   },
   { auth: true },

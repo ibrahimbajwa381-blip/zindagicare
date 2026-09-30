@@ -1,4 +1,4 @@
-import { HomeVisitServiceTypes } from "../types/enums";
+import { HomeVisitServiceTypes, type HomeVisitServiceType } from "../types/enums";
 
 /** Lahore city center — fallback when patient geo is unavailable. */
 export const LAHORE_GEO = {
@@ -58,12 +58,63 @@ export const HOME_CARE_PHYSIOTHERAPY_SERVICES = [
   HomeVisitServiceTypes.PHYSIOTHERAPY,
 ] as const;
 
+/** The kind of provider dispatched to a home visit. Values match the staff role names. */
+export const HomeVisitProviderKinds = {
+  DOCTOR: "doctor",
+  PHYSIOTHERAPIST: "physiotherapist",
+  NURSE: "nurse",
+} as const;
+
+export type HomeVisitProviderKind =
+  (typeof HomeVisitProviderKinds)[keyof typeof HomeVisitProviderKinds];
+
+export const HOME_VISIT_PROVIDER_KINDS = Object.values(
+  HomeVisitProviderKinds,
+) as readonly HomeVisitProviderKind[];
+
+/**
+ * Single source of truth for which provider serves each service type.
+ * Exhaustive on purpose: adding a service type fails to compile until it is
+ * placed here, so it can never silently fall out of every admin queue.
+ */
+const HOME_VISIT_SERVICE_PROVIDER: Record<HomeVisitServiceType, HomeVisitProviderKind> = {
+  [HomeVisitServiceTypes.DOCTOR_VISIT]: HomeVisitProviderKinds.DOCTOR,
+  [HomeVisitServiceTypes.PHYSIOTHERAPY]: HomeVisitProviderKinds.PHYSIOTHERAPIST,
+  [HomeVisitServiceTypes.NURSE]: HomeVisitProviderKinds.NURSE,
+  [HomeVisitServiceTypes.IV_DRIP]: HomeVisitProviderKinds.NURSE,
+  [HomeVisitServiceTypes.INJECTION]: HomeVisitProviderKinds.NURSE,
+  [HomeVisitServiceTypes.WOUND_CARE]: HomeVisitProviderKinds.NURSE,
+  [HomeVisitServiceTypes.SAMPLE_COLLECTION]: HomeVisitProviderKinds.NURSE,
+  [HomeVisitServiceTypes.EMERGENCY]: HomeVisitProviderKinds.NURSE,
+};
+
+export function isHomeVisitProviderKind(value: unknown): value is HomeVisitProviderKind {
+  return (HOME_VISIT_PROVIDER_KINDS as readonly unknown[]).includes(value);
+}
+
+/** Provider kind for a service type; unknown (legacy) values fall back to nurse dispatch. */
+export function homeVisitProviderKind(serviceType: string): HomeVisitProviderKind {
+  return (
+    HOME_VISIT_SERVICE_PROVIDER[serviceType as HomeVisitServiceType] ??
+    HomeVisitProviderKinds.NURSE
+  );
+}
+
+/** Every service type dispatched to the given provider kind. */
+export function homeVisitServiceTypesFor(
+  kind: HomeVisitProviderKind,
+): HomeVisitServiceType[] {
+  return (Object.keys(HOME_VISIT_SERVICE_PROVIDER) as HomeVisitServiceType[]).filter(
+    (serviceType) => HOME_VISIT_SERVICE_PROVIDER[serviceType] === kind,
+  );
+}
+
 export function isDoctorHomeVisitService(serviceType: string): boolean {
-  return serviceType === HomeVisitServiceTypes.DOCTOR_VISIT;
+  return homeVisitProviderKind(serviceType) === HomeVisitProviderKinds.DOCTOR;
 }
 
 export function isPhysiotherapyHomeVisitService(serviceType: string): boolean {
-  return serviceType === HomeVisitServiceTypes.PHYSIOTHERAPY;
+  return homeVisitProviderKind(serviceType) === HomeVisitProviderKinds.PHYSIOTHERAPIST;
 }
 
 /** Max distance (km) a nurse can be auto-matched from the visit address. */

@@ -22,6 +22,7 @@ import {
   VerificationStatuses,
 } from "@zindagi/shared";
 import { getSystemSettings } from "./system-settings.service";
+import { HomeVisitService } from "./home-visit.service";
 import {
   formatSundayDateKey,
   getActiveOrNextSundayDate,
@@ -87,9 +88,7 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
         $in: [UrgentCareRequestStatuses.REQUESTED, UrgentCareRequestStatuses.ASSIGNED],
       },
     }),
-    HomeVisitModel.countDocuments({
-      status: { $in: [HomeVisitStatuses.REQUESTED, HomeVisitStatuses.ASSIGNED] },
-    }),
+    HomeVisitService.countOpenVisitsByProvider(),
   ]);
 
   return {
@@ -99,7 +98,9 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
     reviews,
     sundayConsult,
     urgentCare,
-    homeVisits,
+    homeVisitsDoctor: homeVisits.doctor,
+    homeVisitsPhysiotherapist: homeVisits.physiotherapist,
+    homeVisitsNurse: homeVisits.nurse,
   };
 }
 

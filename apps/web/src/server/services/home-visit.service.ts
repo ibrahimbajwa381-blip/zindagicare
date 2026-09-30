@@ -29,6 +29,11 @@ import {
   resolvePhysioHomeVisitFee,
   isDoctorHomeVisitService,
   isPhysiotherapyHomeVisitService,
+  HOME_VISIT_PROVIDER_KINDS,
+  HomeVisitProviderKinds,
+  homeVisitProviderKind,
+  homeVisitServiceTypesFor,
+  type HomeVisitProviderKind,
   type HomeVisitServiceType,
   type HomeVisitStatus,
 } from "@zindagi/shared";
@@ -431,6 +436,113 @@ export type HomeCareStaffOption = {
   specialties?: string[];
   homeVisitFee?: number;
 };
+
+export type VisitStaffCandidate = HomeCareStaffOption & { unavailable?: boolean };
+
+export type VisitStaffCandidates = {
+  providerKind: HomeVisitProviderKind;
+  patientLocation: { lng: number; lat: number };
+  radiusKm: number;
+  nearby: VisitStaffCandidate[];
+  all: VisitStaffCandidate[];
+};
+
+function byDistance(a: VisitStaffCandidate, b: VisitStaffCandidate) {
+  return (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
+}
+
+/** Verified, available nurses or physiotherapists (StaffProfile-backed providers). */
+async function listStaffProfileCandidates(
+  kind: Exclude<HomeVisitProviderKind, typeof HomeVisitProviderKinds.DOCTOR>,
+  lng: number,
+  lat: number,
+  city: string,
+  busyIds: string[],
+): Promise<VisitStaffCandidate[]> {
+  const staffType =
+    kind === HomeVisitProviderKinds.PHYSIOTHERAPIST ? Roles.PHYSIOTHERAPIST : Roles.NURSE;
+  const defaultName =
+    kind === HomeVisitProviderKinds.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
+
+  const profiles = await StaffProfileModel.find({
+    staffType,
+    isAvailable: true,
+    homeVisitEnabled: true,
+    verificationStatus: "approved",
+    deletedAt: { $exists: false },
+  })
+    .populate("userId", "name phone")
+    .lean();
+
+  return profiles
+    .map((p) => {
+      const user = p.userId as {
+        _id?: { toString(): string };
+        name?: string;
+        phone?: string;
+      };
+      const area =
+        p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
+        p.serviceAreas?.[0];
+      const points = nurseGeoPoints(p);
+      const userId = user?._id?.toString() ?? "";
+      return {
+        id: userId,
+        name: user?.name ?? defaultName,
+        phone: user?.phone,
+        serviceArea: [area?.area, area?.city ?? LAUNCH_CITY].filter(Boolean).join(", "),
+        distanceKm: points.length ? nearestGeoDistanceKm(lng, lat, points) : undefined,
+        unavailable: userId ? busyIds.includes(userId) : undefined,
+      };
+    })
+    .filter((c) => c.id)
+    .sort(byDistance);
+}
+
+/** Listed doctors with in-house visits enabled who cover the visit city. */
+async function listDoctorCandidates(
+  lng: number,
+  lat: number,
+  city: string,
+  busyIds: string[],
+): Promise<VisitStaffCandidate[]> {
+  const profiles = await DoctorProfileModel.find({
+    verificationStatus: VerificationStatuses.APPROVED,
+    homeVisitEnabled: true,
+    isListed: true,
+    ...mongoCoverageCityFilter(city),
+    deletedAt: { $exists: false },
+  })
+    .populate("userId", "name phone isActive")
+    .lean();
+
+  return profiles
+    .filter((p) => {
+      const user = p.userId as { isActive?: boolean; _id?: { toString(): string } };
+      return user?.isActive !== false && user?._id;
+    })
+    .map((p) => {
+      const user = p.userId as {
+        _id?: { toString(): string };
+        name?: string;
+        phone?: string;
+      };
+      const userId = user?._id?.toString() ?? "";
+      const points = doctorGeoPoints(p);
+      return {
+        id: userId,
+        name: user?.name ?? "Doctor",
+        phone: user?.phone,
+        specialties: p.specialties ?? [],
+        serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
+        homeVisitFee:
+          p.homeVisitFee ?? HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
+        distanceKm: points.length ? nearestGeoDistanceKm(lng, lat, points) : undefined,
+        unavailable: busyIds.includes(userId),
+      };
+    })
+    .sort(byDistance);
+}
 
 function nurseGeoPoints(nurse: unknown, city?: string): { lng: number; lat: number }[] {
   const profile = nurse as {
@@ -1007,6 +1119,8 @@ export class HomeVisitService {
     roles: string[],
     scope?: string,
     status?: string,
+    /** Admin scopes only — other scopes already pin their own service types. */
+    provider?: HomeVisitProviderKind,
   ) {
     await HomeVisitService.ensureConnected();
 
@@ -1018,6 +1132,9 @@ export class HomeVisitService {
     if (isAdmin(roles as never) && (scope === "all" || scope === "pending")) {
       if (scope === "pending") {
         filter.status = HomeVisitStatuses.REQUESTED;
+      }
+      if (provider) {
+        filter.serviceType = { $in: homeVisitServiceTypesFor(provider) };
       }
     } else if (
       roles.includes(Roles.PHYSIOTHERAPIST) &&
@@ -1078,6 +1195,45 @@ export class HomeVisitService {
         HomeVisitService.serializeVisitDoc(v as Record<string, unknown>),
       ),
     );
+  }
+
+  /**
+   * Visits still needing admin attention (awaiting assignment or assigned but
+   * not yet under way), bucketed by provider kind for the admin queues.
+   */
+  static async countOpenVisitsByProvider(): Promise<Record<HomeVisitProviderKind, number>> {
+    await HomeVisitService.ensureConnected();
+
+    const rows = await HomeVisitModel.aggregate<{ _id: string; count: number }>([
+      {
+        $match: {
+          deletedAt: { $exists: false },
+          status: { $in: [HomeVisitStatuses.REQUESTED, HomeVisitStatuses.ASSIGNED] },
+        },
+      },
+      { $group: { _id: "$serviceType", count: { $sum: 1 } } },
+    ]);
+
+    const counts = Object.fromEntries(
+      HOME_VISIT_PROVIDER_KINDS.map((kind) => [kind, 0]),
+    ) as Record<HomeVisitProviderKind, number>;
+    for (const row of rows) {
+      counts[homeVisitProviderKind(row._id)] += row.count;
+    }
+    return counts;
+  }
+
+  /** Provider kind a visit is dispatched to, or null when the visit doesn't exist. */
+  static async getVisitProviderKind(visitId: string): Promise<HomeVisitProviderKind | null> {
+    if (!Types.ObjectId.isValid(visitId)) return null;
+    await HomeVisitService.ensureConnected();
+
+    const visit = await HomeVisitModel.findOne(
+      mongoFilter({ _id: visitId, deletedAt: { $exists: false } }),
+    )
+      .select("serviceType")
+      .lean();
+    return visit ? homeVisitProviderKind(String(visit.serviceType)) : null;
   }
 
   static async getById(
@@ -1864,7 +2020,12 @@ export class HomeVisitService {
     return nearestGeoDistanceKm(patientLng, patientLat, points);
   }
 
-  static async listStaffForVisit(visitId: string) {
+  /**
+   * Candidate providers for one visit — only the kind that serves its service
+   * type (doctors, physiotherapists or nurses), nearest first. `nearby` is the
+   * free-at-that-time subset within the match radius; `all` ignores distance.
+   */
+  static async listStaffForVisit(visitId: string): Promise<VisitStaffCandidates> {
     await HomeVisitService.ensureConnected();
     assertValidObjectId(visitId, "Visit not found");
 
@@ -1875,121 +2036,27 @@ export class HomeVisitService {
 
     const [lng, lat] = visitPatientCoords(visit);
     const city = visit.address?.city ?? LAUNCH_CITY;
-    const physioVisit = isPhysiotherapyHomeVisitService(
-      visit.serviceType as HomeVisitServiceType,
-    );
-    const staffType = physioVisit ? Roles.PHYSIOTHERAPIST : Roles.NURSE;
-    const defaultStaffName = physioVisit ? "Physiotherapist" : "Nurse";
+    const providerKind = homeVisitProviderKind(String(visit.serviceType));
     const busyIds = await getBusyStaffIds(visit.scheduledAt as Date, visitId);
 
-    const staffProfiles = await StaffProfileModel.find({
-      staffType,
-      isAvailable: true,
-      homeVisitEnabled: true,
-      verificationStatus: "approved",
-      deletedAt: { $exists: false },
-    })
-      .populate("userId", "name phone")
-      .lean();
+    const all =
+      providerKind === HomeVisitProviderKinds.DOCTOR
+        ? await listDoctorCandidates(lng, lat, city, busyIds)
+        : await listStaffProfileCandidates(providerKind, lng, lat, city, busyIds);
 
-    const staffWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
-      staffProfiles
-        .map((p) => {
-          const user = p.userId as {
-            _id?: { toString(): string };
-            name?: string;
-            phone?: string;
-          };
-          const area =
-            p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
-            p.serviceAreas?.[0];
-          const points = nurseGeoPoints(p);
-          const distanceKm = points.length
-            ? nearestGeoDistanceKm(lng, lat, points)
-            : undefined;
-          return {
-            id: user?._id?.toString() ?? "",
-            name: user?.name ?? defaultStaffName,
-            phone: user?.phone,
-            serviceArea: [area?.area, area?.city ?? LAUNCH_CITY]
-              .filter(Boolean)
-              .join(", "),
-            distanceKm,
-            unavailable: user?._id ? busyIds.includes(user._id.toString()) : undefined,
-          };
-        })
-        .filter((n) => n.id)
-        .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
-
-    const nursesWithDistance = staffWithDistance;
-
-    const doctorProfiles = await DoctorProfileModel.find({
-      verificationStatus: VerificationStatuses.APPROVED,
-      homeVisitEnabled: true,
-      isListed: true,
-      ...mongoCoverageCityFilter(city),
-      deletedAt: { $exists: false },
-    })
-      .populate("userId", "name phone isActive")
-      .lean();
-
-    const doctorsWithDistance: (HomeCareStaffOption & {
-      unavailable?: boolean;
-    })[] = doctorProfiles
-      .filter((p) => {
-        const user = p.userId as { isActive?: boolean; _id?: { toString(): string } };
-        return user?.isActive !== false && user?._id;
-      })
-      .map((p) => {
-        const user = p.userId as {
-          _id?: { toString(): string };
-          name?: string;
-          phone?: string;
-        };
-        const userId = user?._id?.toString() ?? "";
-        const points = doctorGeoPoints(p);
-        const distanceKm = points.length
-          ? nearestGeoDistanceKm(lng, lat, points)
-          : undefined;
-        return {
-          id: userId,
-          name: user?.name ?? "Doctor",
-          phone: user?.phone,
-          specialties: p.specialties ?? [],
-          serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
-          homeVisitFee:
-            p.homeVisitFee ??
-            HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
-          distanceKm,
-          unavailable: busyIds.includes(userId),
-        };
-      })
-      .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
-
-    const nearbyNurses = nursesWithDistance.filter(
-      (n) =>
-        !n.unavailable &&
-        n.distanceKm !== undefined &&
-        n.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
-    );
-    const nearbyDoctors = doctorsWithDistance.filter(
-      (d) =>
-        !d.unavailable &&
-        d.distanceKm !== undefined &&
-        d.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+    const nearby = all.filter(
+      (p) =>
+        !p.unavailable &&
+        p.distanceKm !== undefined &&
+        p.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
     );
 
     return {
+      providerKind,
       patientLocation: { lng, lat },
       radiusKm: HOME_CARE_MATCH_RADIUS_KM,
-      nearby: {
-        nurses: nearbyNurses,
-        doctors: nearbyDoctors,
-      },
-      all: {
-        nurses: nursesWithDistance,
-        doctors: doctorsWithDistance,
-      },
+      nearby,
+      all,
     };
   }
 

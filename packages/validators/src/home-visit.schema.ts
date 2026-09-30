@@ -1,4 +1,9 @@
-import { HomeVisitServiceTypes, HomeVisitStatuses, RefundMethods } from "@zindagi/shared";
+import {
+  HomeVisitProviderKinds,
+  HomeVisitServiceTypes,
+  HomeVisitStatuses,
+  RefundMethods,
+} from "@zindagi/shared";
 import { z } from "zod";
 
 const geoSchema = z.object({
@@ -52,6 +57,14 @@ export const updateHomeVisitStatusSchema = z.object({
 export const listHomeVisitsQuerySchema = z.object({
   status: z.string().optional(),
   scope: z.enum(["mine", "assigned", "assigned-history", "pending", "all"]).optional(),
+  /** Admin scopes only: restrict to visits dispatched to this provider kind. */
+  provider: z
+    .enum([
+      HomeVisitProviderKinds.DOCTOR,
+      HomeVisitProviderKinds.PHYSIOTHERAPIST,
+      HomeVisitProviderKinds.NURSE,
+    ])
+    .optional(),
 });
 
 export type CreateHomeVisitInput = z.infer<typeof createHomeVisitSchema>;
