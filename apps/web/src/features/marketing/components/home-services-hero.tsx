@@ -87,7 +87,11 @@ export async function HomeServicesHero() {
               {t.homeServices.picker.scenarios.map((scenario) => (
                 <Link
                   key={scenario.key}
-                  href={`#service-${SCENARIO_SERVICE[scenario.key as keyof typeof SCENARIO_SERVICE]}`}
+                  href={
+                    scenario.key === "physiotherapy"
+                      ? siteConfig.links.physiotherapists
+                      : `#service-${SCENARIO_SERVICE[scenario.key as keyof typeof SCENARIO_SERVICE]}`
+                  }
                   className="shrink-0 rounded-full border border-brand/15 bg-brand-muted/60 px-3.5 py-1.5 text-xs font-medium text-brand-dark transition hover:border-brand/35 hover:bg-brand-muted sm:text-sm"
                 >
                   {scenario.label}

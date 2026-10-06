@@ -1,5 +1,5 @@
 import { loginSchema } from "@zindagi/validators";
-import { AppError } from "@zindagi/shared";
+import { AppError, highestRole } from "@zindagi/shared";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { signMobileAccessToken, signMobileRefreshToken } from "@/server/api/mobile-jwt";
 import { verifyCredentialsLogin } from "@/server/services/auth.service";
@@ -25,7 +25,7 @@ export const POST = withApiHandler(
 
     await logActivity({
       userId: payload.id,
-      userRole: payload.roles?.[0],
+      userRole: highestRole(payload.roles),
       action: "auth.login",
       platform: "mobile",
     });

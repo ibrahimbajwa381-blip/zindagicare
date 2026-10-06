@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   cn,
   HOME_CARE_MATCH_RADIUS_KM,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIO_HOME_VISIT_FEE_MAX,
+  PHYSIO_HOME_VISIT_FEE_MIN,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
+  resolvePhysioHomeVisitFee,
 } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
@@ -15,6 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import type { PhysiotherapistProfileDto } from "@/server/services/physiotherapist.service";
+import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
+import { PhysiotherapistProfilePhotoUpload } from "./physiotherapist-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 const VERIFICATION_BADGE: Record<string, { label: string; className: string }> = {
@@ -51,6 +57,11 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
   const [specialties, setSpecialties] = useState<string[]>(
     profile.verification.specialties ?? [],
   );
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(profile.user.avatarUrl);
+  const publicPath =
+    profile.staff.verificationStatus === "approved" && profile.publicProfile.slug
+      ? physiotherapistProfilePath(profile.publicProfile.slug, profile.user.id)
+      : null;
 
   const badge =
     VERIFICATION_BADGE[profile.staff.verificationStatus] ??
@@ -70,6 +81,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
 
     const form = new FormData(e.currentTarget);
     const radiusRaw = form.get("radiusKm");
+    const feeRaw = String(form.get("homeVisitFee") ?? "").trim();
     const body = {
       name: String(form.get("name") ?? "").trim(),
       phone: String(form.get("phone") ?? "").trim() || undefined,
@@ -77,8 +89,10 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
       area: String(form.get("area") ?? "").trim(),
       radiusKm: radiusRaw ? Number(radiusRaw) : undefined,
       homeVisitEnabled,
+      homeVisitFee: feeRaw ? Number(feeRaw) : undefined,
       geo: geo ?? undefined,
       specialties,
+      avatarUrl: avatarUrl !== profile.user.avatarUrl ? avatarUrl : undefined,
     };
 
     try {
@@ -109,6 +123,12 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
+            <PhysiotherapistProfilePhotoUpload
+              name={profile.user.name}
+              value={avatarUrl}
+              onUploaded={setAvatarUrl}
+            />
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="name">Full name</Label>
@@ -183,6 +203,19 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
               </p>
             </div>
 
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-600">
+                Your bio, languages, experience, education and training now live in your
+                portfolio.
+              </p>
+              <Link
+                href="/physiotherapist/portfolio"
+                className="shrink-0 text-sm font-medium text-brand hover:underline"
+              >
+                Edit portfolio →
+              </Link>
+            </div>
+
             <div className="space-y-3 rounded-lg border border-brand-light/30 bg-brand-light/5 p-4">
               <label className="flex items-start gap-3">
                 <input
@@ -196,10 +229,31 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                     Available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km
                   </p>
                   <p className="text-xs text-slate-600">
-                    Admin dispatch uses your saved location to match nearby visits.
+                    Patients near your saved location can book you directly, and admin dispatch
+                    uses it to match nearby visits.
                   </p>
                 </div>
               </label>
+
+              <div>
+                <Label htmlFor="homeVisitFee">Your fee per home visit (Rs.)</Label>
+                <Input
+                  id="homeVisitFee"
+                  name="homeVisitFee"
+                  type="number"
+                  inputMode="numeric"
+                  min={PHYSIO_HOME_VISIT_FEE_MIN}
+                  max={PHYSIO_HOME_VISIT_FEE_MAX}
+                  step={50}
+                  defaultValue={resolvePhysioHomeVisitFee(profile.staff.homeVisitFee)}
+                  required
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Patients who book you directly pay this amount. Between Rs.{" "}
+                  {PHYSIO_HOME_VISIT_FEE_MIN.toLocaleString("en-PK")} and Rs.{" "}
+                  {PHYSIO_HOME_VISIT_FEE_MAX.toLocaleString("en-PK")}.
+                </p>
+              </div>
 
               {homeVisitEnabled && (
                 <GeoLocationPicker
@@ -240,6 +294,22 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
             >
               {badge.label}
             </span>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Public profile
+            </p>
+            {publicPath ? (
+              <Link
+                href={publicPath}
+                target="_blank"
+                className="mt-1 inline-block break-all font-medium text-brand hover:underline"
+              >
+                {publicPath}
+              </Link>
+            ) : (
+              <p className="mt-1 text-slate-500">Visible to patients once you&apos;re verified.</p>
+            )}
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">

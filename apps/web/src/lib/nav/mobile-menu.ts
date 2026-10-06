@@ -1,6 +1,7 @@
 import { Roles, type Role } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { resolveDashboardMenuLinks } from "@/lib/nav/header-actions";
+import { providerDirectoryLinks, type ProviderDirectoryLabels } from "@/lib/nav/provider-directories";
 import type { MobileNavLink, MobileNavSection } from "@/components/layout/mobile-nav";
 
 type AccountSectionLabels = {
@@ -75,7 +76,8 @@ export function buildMarketingMobileNav(
     signOut: string;
     login: string;
     createAccount: string;
-  },
+    findProvider: string;
+  } & ProviderDirectoryLabels,
 ): { links: MobileNavLink[]; sections: MobileNavSection[] } {
   const links: MobileNavLink[] = [
     { href: siteConfig.links.homeServices, label: labels.homeServices },
@@ -108,8 +110,13 @@ export function buildMarketingMobileNav(
     createAccount: labels.createAccount,
   });
 
+  const providerSection: MobileNavSection = {
+    title: labels.findProvider,
+    links: providerDirectoryLinks(labels),
+  };
+
   return {
     links,
-    sections: accountSection ? [accountSection] : [],
+    sections: accountSection ? [providerSection, accountSection] : [providerSection],
   };
 }

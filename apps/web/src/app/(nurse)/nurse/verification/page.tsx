@@ -2,24 +2,27 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
 import { redirect } from "next/navigation";
-import { VerificationStatuses } from "@zindagi/shared";
+import { VerificationStatuses, Roles } from "@zindagi/shared";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NursePageHeader } from "@/features/nurse/components/nurse-page-header";
 import { NurseVerificationForm } from "@/features/nurse/components/nurse-verification-form";
 import { getNurseProfile } from "@/server/services/nurse.service";
+import { getOwnNurseBankAccount } from "@/server/services/nurse-finance.service";
 
 export const metadata = { title: "Verification | Nurse" };
 
 export default async function NurseVerificationPage() {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/nurse/verification");
-  if (!session.user.roles?.includes("nurse")) redirect(AUTH_ROUTES.registerNurse);
+  if (!session.user.roles?.includes(Roles.NURSE)) redirect(AUTH_ROUTES.registerNurse);
 
   const profile = await getNurseProfile(session.user.id);
   if (profile.verification.status === VerificationStatuses.APPROVED) {
     redirect("/nurse");
   }
+  // Prefill a resubmission with the payout account given last time.
+  const bankAccount = await getOwnNurseBankAccount(session.user.id);
 
   const isRejected = profile.verification.status === VerificationStatuses.REJECTED;
   const isPendingReview =
@@ -47,9 +50,18 @@ export default async function NurseVerificationPage() {
             documents. You&apos;ll be able to receive in-house visit assignments once
             an admin approves your profile.
           </p>
-          <Button asChild variant="outline" className="mt-6">
-            <Link href="/nurse">Back to overview</Link>
-          </Button>
+          <p className="mx-auto mt-4 max-w-md text-sm text-sky-900/80">
+            While you wait, build your portfolio — experience, training and photos — so your
+            public profile is ready the moment you&apos;re approved.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link href="/nurse/portfolio">Build my portfolio</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/nurse">Back to overview</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -60,7 +72,7 @@ export default async function NurseVerificationPage() {
       <NursePageHeader
         eyebrow="Verification"
         title={isRejected ? "Resubmit your application" : "Verify your credentials"}
-        description="Submit your nursing license, service area, and identity documents. An admin will review your application before you can receive in-house visit assignments."
+        description="Submit your profile photo, nursing license, service area, and identity documents. An admin will review your application before you can receive in-house visit assignments."
       />
 
       {isRejected && profile.verification.rejectionReason && (
@@ -75,12 +87,15 @@ export default async function NurseVerificationPage() {
 
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <NurseVerificationForm
+          name={profile.user.name}
           defaults={{
+            avatarUrl: profile.user.avatarUrl,
             licenseNumber: profile.verification.licenseNumber,
             qualification: profile.verification.qualification,
             experienceYears: profile.verification.experienceYears,
             city: profile.staff.serviceArea.city,
             area: profile.staff.serviceArea.area,
+            bankAccount: bankAccount ?? undefined,
           }}
         />
       </div>

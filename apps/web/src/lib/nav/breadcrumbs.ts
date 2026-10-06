@@ -1,3 +1,7 @@
+import {
+  ADMIN_REVIEWS_ROOT,
+  adminReviewCategoryBySlug,
+} from "@/features/admin/lib/admin-review-categories";
 import { allSpecialties, conditionBrowse } from "@/features/marketing/data/browse-catalog";
 import type { BreadcrumbItem } from "@/lib/seo/schema";
 
@@ -77,8 +81,13 @@ const SEGMENT_LABELS: Record<string, { name: string; labelKey?: string }> = {
 
 const FULL_PATH_LABELS: Record<string, { name: string; labelKey?: string }> = {
   "/for-doctors/guide": { name: "Doctor guide", labelKey: "breadcrumbs.doctorGuide" },
+  "/for-physiotherapists/guide": {
+    name: "Physiotherapist guide",
+    labelKey: "breadcrumbs.physioGuide",
+  },
   "/dashboard": { name: "My dashboard", labelKey: "breadcrumbs.dashboard" },
   "/admin": { name: "Overview", labelKey: "breadcrumbs.overview" },
+  [ADMIN_REVIEWS_ROOT]: { name: "Reviews", labelKey: "breadcrumbs.reviews" },
   "/doctor/profile": { name: "Overview", labelKey: "breadcrumbs.overview" },
   "/nurse": { name: "Overview", labelKey: "breadcrumbs.overview" },
   "/physiotherapist": { name: "Overview", labelKey: "breadcrumbs.overview" },
@@ -134,6 +143,11 @@ function resolveDynamicLabel(
   if (prevSegment === "condition") {
     const condition = conditionBrowse.find((item) => item.slug === segment);
     if (condition) return { name: condition.label };
+  }
+
+  if (segments[0] === "admin" && prevSegment === "reviews" && index === 2) {
+    const category = adminReviewCategoryBySlug(segment);
+    if (category) return { name: category.navLabel };
   }
 
   if (MONGO_ID.test(segment)) {

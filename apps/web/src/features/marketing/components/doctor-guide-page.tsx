@@ -92,7 +92,7 @@ function Hero() {
             { label: "Your share", value: "70%", hint: "of every paid consult" },
             { label: "Payouts", value: "Monthly", hint: "to your bank account" },
             { label: "Online care", value: "Pakistan-wide", hint: "video, urgent, Sunday" },
-            { label: "Home visits", value: "Lahore", hint: "Phase 1 in-house only" },
+            { label: "Home visits", value: "Pakistan-wide", hint: "in-house visits" },
           ].map((item) => (
             <div key={item.label} className={`px-4 py-4 text-start ${surfaceCard}`}>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -208,8 +208,8 @@ function EarningsSection() {
               <MapPin className="h-5 w-5 text-brand" />
               <p className="mt-3 font-display text-base font-semibold">Where you can practice</p>
               <p className="mt-1 text-sm text-slate-600">
-                Video, urgent, and Sunday: Pakistan-wide. In-house doctor visits:
-                Lahore only in Phase 1.
+                Video, urgent, Sunday, and in-house doctor visits: available
+                across Pakistan.
               </p>
             </div>
           </div>
@@ -245,7 +245,7 @@ function JoinSection() {
     {
       icon: CalendarCheck,
       title: "Go live",
-      desc: "Once approved, set your fee, weekly hours, and locations. Patients can book online consults; admin can assign urgent care and Lahore home visits.",
+      desc: "Once approved, set your fee, weekly hours, and locations. Patients can book online consults; admin can assign urgent care and home visits.",
     },
   ] as const;
 
@@ -284,7 +284,7 @@ function PatientDemandSection() {
     {
       icon: Home,
       title: "Home healthcare",
-      desc: "Patients request a doctor, nurse, IV drip, injection, or wound care at home. Admin assigns the most suitable professional — currently in Lahore for in-house visits.",
+      desc: "Patients request a doctor, nurse, IV drip, injection, or wound care at home. Admin assigns the most suitable professional near the patient.",
     },
     {
       icon: Video,
@@ -404,10 +404,10 @@ function WorkspaceSection() {
           shot={DOCTOR_GUIDE_SCREENSHOTS.sunday}
         />
         <GuideBlock
-          title="7. Home visits (Lahore, Phase 1)"
+          title="7. Home visits"
           body="In-house doctor visits are assigned by admin. Update status as you travel so the patient and admin see live progress: requested → assigned → en route → arrived → completed."
           howTo={[
-            "Accept only visits you can reach in Lahore.",
+            "Accept only visits you can reach in your city.",
             "Move the stepper as you leave, arrive, and finish — do not skip statuses.",
             "Call or message from the visit card if you need the patient on the way.",
           ]}
@@ -525,7 +525,7 @@ function CtaSection() {
         </h2>
         <p className="mt-3 text-base text-slate-600 sm:text-lg">
           Register, complete PMDC verification, and start seeing patients online
-          across Pakistan — with home visits in Lahore.
+          and at home across Pakistan.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Button size="lg" className="h-12 rounded-xl shadow-premium" asChild>

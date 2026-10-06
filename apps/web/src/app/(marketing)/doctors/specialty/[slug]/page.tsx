@@ -56,7 +56,7 @@ export default async function SpecialtyDoctorsPage({ params }: PageProps) {
       />
       <PageSection variant="soft" spacing="default" innerClassName="!py-12 sm:!py-16">
         <PageTitle
-          title={`${specialty.label} in Lahore`}
+          title={`${specialty.label} in Pakistan`}
           description={specialtySeoDescription(specialty.label)}
         />
       </PageSection>

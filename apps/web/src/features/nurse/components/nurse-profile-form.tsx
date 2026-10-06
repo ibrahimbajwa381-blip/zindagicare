@@ -1,14 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { cn, HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import {
+  cn,
+  HOME_CARE_MATCH_RADIUS_KM,
+  MAX_NURSING_SPECIALTIES,
+  NURSE_HOME_VISIT_FEE_MAX,
+  NURSE_HOME_VISIT_FEE_MIN,
+  NURSING_SPECIALTIES_ALPHABETICAL,
+  resolveNurseHomeVisitFee,
+} from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import type { NurseProfileDto } from "@/server/services/nurse.service";
+import { nurseProfilePath } from "@/lib/nurses/profile-path";
+import { NurseProfilePhotoUpload } from "./nurse-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 const VERIFICATION_BADGE: Record<string, { label: string; className: string }> = {
@@ -42,6 +54,14 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
   const [geo, setGeo] = useState<GeoCoordinates | null>(
     profile.staff.serviceArea.geo ?? null,
   );
+  const [specialties, setSpecialties] = useState<string[]>(
+    profile.verification.specialties ?? [],
+  );
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(profile.user.avatarUrl);
+  const publicPath =
+    profile.staff.verificationStatus === "approved" && profile.publicProfile.slug
+      ? nurseProfilePath(profile.publicProfile.slug, profile.user.id)
+      : null;
 
   const badge =
     VERIFICATION_BADGE[profile.staff.verificationStatus] ??
@@ -61,6 +81,7 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
 
     const form = new FormData(e.currentTarget);
     const radiusRaw = form.get("radiusKm");
+    const feeRaw = String(form.get("homeVisitFee") ?? "").trim();
     const body = {
       name: String(form.get("name") ?? "").trim(),
       phone: String(form.get("phone") ?? "").trim() || undefined,
@@ -68,7 +89,10 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
       area: String(form.get("area") ?? "").trim(),
       radiusKm: radiusRaw ? Number(radiusRaw) : undefined,
       homeVisitEnabled,
+      homeVisitFee: feeRaw ? Number(feeRaw) : undefined,
       geo: geo ?? undefined,
+      specialties,
+      avatarUrl: avatarUrl !== profile.user.avatarUrl ? avatarUrl : undefined,
     };
 
     try {
@@ -99,6 +123,12 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
+            <NurseProfilePhotoUpload
+              name={profile.user.name}
+              value={avatarUrl}
+              onUploaded={setAvatarUrl}
+            />
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="name">Full name</Label>
@@ -158,6 +188,34 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
               />
             </div>
 
+            <div>
+              <Label htmlFor="specialties">Specialties</Label>
+              <SpecialtyMultiSelect
+                id="specialties"
+                values={specialties}
+                onChange={setSpecialties}
+                max={MAX_NURSING_SPECIALTIES}
+                options={NURSING_SPECIALTIES_ALPHABETICAL}
+                placeholder="Add your nursing specialties"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Up to {MAX_NURSING_SPECIALTIES} areas of nursing you specialize in.
+              </p>
+            </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-600">
+                Your bio, languages, experience, education and training now live in your
+                portfolio.
+              </p>
+              <Link
+                href="/nurse/portfolio"
+                className="shrink-0 text-sm font-medium text-brand hover:underline"
+              >
+                Edit portfolio →
+              </Link>
+            </div>
+
             <div className="space-y-3 rounded-lg border border-brand-light/30 bg-brand-light/5 p-4">
               <label className="flex items-start gap-3">
                 <input
@@ -171,10 +229,32 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
                     Available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km
                   </p>
                   <p className="text-xs text-slate-600">
-                    Admin dispatch uses your saved location to match nearby visits.
+                    Patients near your saved location can book you directly, and admin dispatch
+                    uses it to match nearby visits.
                   </p>
                 </div>
               </label>
+
+              <div>
+                <Label htmlFor="homeVisitFee">Your fee per general nursing visit (Rs.)</Label>
+                <Input
+                  id="homeVisitFee"
+                  name="homeVisitFee"
+                  type="number"
+                  inputMode="numeric"
+                  min={NURSE_HOME_VISIT_FEE_MIN}
+                  max={NURSE_HOME_VISIT_FEE_MAX}
+                  step={50}
+                  defaultValue={resolveNurseHomeVisitFee(profile.staff.homeVisitFee)}
+                  required
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Patients who book you directly for a nursing visit pay this amount (IV drips,
+                  injections and wound care use standard rates). Between Rs.{" "}
+                  {NURSE_HOME_VISIT_FEE_MIN.toLocaleString("en-PK")} and Rs.{" "}
+                  {NURSE_HOME_VISIT_FEE_MAX.toLocaleString("en-PK")}.
+                </p>
+              </div>
 
               {homeVisitEnabled && (
                 <GeoLocationPicker
@@ -215,6 +295,22 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
             >
               {badge.label}
             </span>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Public profile
+            </p>
+            {publicPath ? (
+              <Link
+                href={publicPath}
+                target="_blank"
+                className="mt-1 inline-block break-all font-medium text-brand hover:underline"
+              >
+                {publicPath}
+              </Link>
+            ) : (
+              <p className="mt-1 text-slate-500">Visible to patients once you&apos;re verified.</p>
+            )}
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">

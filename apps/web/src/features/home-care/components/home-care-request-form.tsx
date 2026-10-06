@@ -7,8 +7,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   HOME_CARE_MVP_SERVICES,
   HOME_CARE_PRICING,
+  HomeVisitProviderKinds,
   HomeVisitServiceTypes,
+  homeVisitProviderKind,
+  nearestCity,
 } from "@zindagi/shared";
+import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError, Input, Label } from "@/components/ui/input";
@@ -16,6 +20,12 @@ import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { useTranslations } from "@/i18n/locale-provider";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { surfaceCard } from "@/lib/ui/surfaces";
+import {
+  PhysiotherapistPicker,
+  type PhysiotherapistChoice,
+} from "./physiotherapist-picker";
+import { NursePicker, type NurseChoice } from "./nurse-picker";
+import { VisitTimePicker } from "./visit-time-picker";
 import { Syringe, Droplets, Bandage, Stethoscope, UserRound, Activity } from "lucide-react";
 
 const SERVICE_META: Record<
@@ -32,17 +42,6 @@ const SERVICE_META: Record<
   [HomeVisitServiceTypes.INJECTION]: { icon: Syringe, labelKey: "injection" },
   [HomeVisitServiceTypes.WOUND_CARE]: { icon: Bandage, labelKey: "woundCare" },
 };
-
-function toDateTimeLocalValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function minScheduledAt(): string {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + 60, 0, 0);
-  return toDateTimeLocalValue(d);
-}
 
 function resolveInitialService(param: string | null): string {
   if (
@@ -69,25 +68,44 @@ export function HomeCareRequestForm() {
   const t = useTranslations();
   const h = t.homeCare;
   const loginUrl = useMemo(() => buildLoginUrl(searchParams), [searchParams]);
-  // Computed client-side only, after mount — "now" differs between server render and
-  // hydration, which would otherwise mismatch the input's `min` attribute.
-  const [minSchedule, setMinSchedule] = useState("");
+
+  const initialPhysioId = searchParams.get("physio");
+  // Physiotherapy is only booked with a physio chosen from the directory.
+  const physioWithoutChoice =
+    searchParams.get("service") === HomeVisitServiceTypes.PHYSIOTHERAPY && !initialPhysioId;
   useEffect(() => {
-    setMinSchedule(minScheduledAt());
-  }, []);
+    if (physioWithoutChoice) router.replace(siteConfig.links.physiotherapists);
+  }, [physioWithoutChoice, router]);
 
   const [serviceType, setServiceType] = useState<string>(() =>
-    resolveInitialService(searchParams.get("service")),
+    physioWithoutChoice
+      ? HomeVisitServiceTypes.IV_DRIP
+      : resolveInitialService(searchParams.get("service")),
   );
   const [addressLine, setAddressLine] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [patientNotes, setPatientNotes] = useState("");
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
+  const [physioChoice, setPhysioChoice] = useState<PhysiotherapistChoice>(
+    () => initialPhysioId || "nearest",
+  );
+  const isPhysio = serviceType === HomeVisitServiceTypes.PHYSIOTHERAPY;
+  const initialNurseId = searchParams.get("nurse");
+  const [nurseChoice, setNurseChoice] = useState<NurseChoice>(() => initialNurseId || "nearest");
+  const isNurseService = homeVisitProviderKind(serviceType) === HomeVisitProviderKinds.NURSE;
+  // Only a general nursing visit is priced at the chosen nurse's own fee.
+  const usesNurseFee = serviceType === HomeVisitServiceTypes.NURSE;
+  const [nurseFee, setNurseFee] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
+  const [physioFee, setPhysioFee] = useState<number | null>(null);
+
   const price =
-    HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ?? 2000;
+    (isPhysio ? physioFee : null) ??
+    (usesNurseFee ? nurseFee : null) ??
+    HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ??
+    2000;
   const isAuthenticated = status === "authenticated";
   const isLoadingSession = status === "loading";
 
@@ -134,10 +152,16 @@ export function HomeCareRequestForm() {
           serviceType,
           addressLine: trimmedAddress,
           scheduledAt: scheduled.toISOString(),
-          city: "Lahore",
+          city: nearestCity(geo.lng, geo.lat),
           geo,
           patientNotes: patientNotes.trim() || undefined,
-          autoAssign: false,
+          autoAssign: isPhysio && physioChoice === "nearest",
+          preferredStaffId:
+            isPhysio && physioChoice !== "nearest"
+              ? physioChoice
+              : isNurseService && nurseChoice !== "nearest"
+                ? nurseChoice
+                : undefined,
         }),
       });
       const json = await res.json();
@@ -172,7 +196,11 @@ export function HomeCareRequestForm() {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setServiceType(type)}
+                    onClick={() =>
+                      type === HomeVisitServiceTypes.PHYSIOTHERAPY && !initialPhysioId
+                        ? router.push(siteConfig.links.physiotherapists)
+                        : setServiceType(type)
+                    }
                     className={`flex flex-col items-start rounded-xl border p-4 text-left transition ${
                       selected
                         ? "border-brand bg-brand-muted/50 ring-2 ring-brand/20"
@@ -209,20 +237,33 @@ export function HomeCareRequestForm() {
             value={geo}
             onChange={setGeo}
             required
+            description={`Tap "Use my current location", or paste a Google Maps link / coordinates of your home. We match the nearest available provider to this location.`}
           />
+
+          {isPhysio && (
+            <PhysiotherapistPicker
+              geo={geo}
+              value={physioChoice}
+              onChange={setPhysioChoice}
+              initialPhysioId={initialPhysioId}
+              onFeeChange={setPhysioFee}
+            />
+          )}
+
+          {isNurseService && (
+            <NursePicker
+              geo={geo}
+              value={nurseChoice}
+              onChange={setNurseChoice}
+              initialNurseId={initialNurseId}
+              usesNurseFee={usesNurseFee}
+              onFeeChange={setNurseFee}
+            />
+          )}
 
           <div>
             <Label htmlFor="scheduled">{h.scheduledAt} *</Label>
-            <Input
-              id="scheduled"
-              name="scheduledAt"
-              type="datetime-local"
-              value={scheduledAt}
-              min={minSchedule}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              required
-              className="mt-1.5"
-            />
+            <VisitTimePicker id="scheduled" value={scheduledAt} onChange={setScheduledAt} />
           </div>
 
           <div>

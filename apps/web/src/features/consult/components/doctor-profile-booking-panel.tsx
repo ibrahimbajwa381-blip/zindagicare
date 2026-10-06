@@ -209,7 +209,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
         onPay={startCheckout}
       />
 
-      <Card className={`sticky top-24 ${surfaceCardInteractive}`}>
+      <Card className={`lg:sticky lg:top-[var(--profile-sticky-top,9rem)] lg:transition-[top] lg:duration-300 lg:ease-in-out ${surfaceCardInteractive}`}>
         <CardHeader>
           <CardTitle className="text-base">Book video consultation</CardTitle>
         </CardHeader>

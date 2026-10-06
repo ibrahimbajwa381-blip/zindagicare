@@ -4,7 +4,7 @@ export const SUNDAY_FREE_CONSULT_HERO_IMAGE = "/hero/freeconsultation.webp";
 export const HOME_SERVICES_HERO_IMAGE = "/hero/home-care-pakistan.webp";
 export const HOME_PHYSIO_HERO_IMAGE = "/hero/home-physio-male-pakistan.webp";
 /** Doctor on a phone / video consult — used for urgent care hero & banners */
-export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.jpg";
+export const URGENT_CARE_HERO_IMAGE = "/hero/online-consult.webp";
 export const ONLINE_CONSULT_HERO_IMAGE = "/hero/dr-usama-riyaz.webp";
 
 export type HeroService = {
@@ -37,7 +37,7 @@ export const heroServices: HeroService[] = [
       title: "A doctor at",
       titleHighlight: "your home",
       description:
-        "Verified doctors and nurses visit you at home in Lahore.",
+        "Verified doctors and nurses visit you at home.",
       highlights: ["Verified doctors, nurses & physios", "Transparent pricing"],
       badge: "Doctor, nurse & physio home visits",
       ctaLabel: "Book in-house care",
@@ -52,18 +52,18 @@ export const heroServices: HeroService[] = [
     id: "home-physiotherapy",
     image: HOME_PHYSIO_HERO_IMAGE,
     imageAlt:
-      "Male Pakistani physiotherapist providing professional home rehabilitation care in Lahore",
+      "Male Pakistani physiotherapist providing professional home rehabilitation care in Pakistan",
     carousel: {
       eyebrow: "Home physiotherapy",
       title: "Physiotherapy at",
       titleHighlight: "your home",
       description:
-        "Verified male or female physiotherapists visit you in Lahore — tell us your preference when you book. Rehab, mobility, and pain relief from Rs. 2,800.",
+        "Verified male or female physiotherapists visit you at home — tell us your preference when you book. Rehab, mobility, and pain relief from Rs. 2,800.",
       highlights: [
         "Male or female physio on request",
         "Rs. 2,800 per session",
       ],
-      badge: "Male & female physios · Lahore",
+      badge: "Male & female physios · Across Pakistan",
       ctaLabel: "Book home physiotherapy",
       href: siteConfig.links.homePhysiotherapy,
     },
@@ -102,7 +102,7 @@ export const heroServices: HeroService[] = [
       title: "Talk to PMDC doctors via",
       titleHighlight: "secure video",
       description:
-        "Book a video slot with PMDC-verified doctors in Lahore.",
+        "Book a video slot with PMDC-verified doctors across Pakistan.",
       highlights: ["PMDC verified specialists", "E-prescriptions included"],
       badge: "PMDC verified · Secure video call",
       ctaLabel: "Book online consultation",

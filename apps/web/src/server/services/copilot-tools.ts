@@ -59,7 +59,8 @@ export type CopilotToolState = {
 type ConsultDoctor = Awaited<ReturnType<typeof OnlineConsultService.listConsultDoctors>>[number];
 
 async function resolveDoctorsForRequest(
-  city: string,
+  /** Online consults are nationwide — pass a city only to narrow results. */
+  city: string | undefined,
   resolvedSpecialty?: string,
   doctorName?: string,
   doctorId?: string,
@@ -92,7 +93,7 @@ async function resolveDoctorsForRequest(
 }
 
 async function findDoctorsWithMatchingSlots(
-  city: string,
+  city: string | undefined,
   preference: SlotPreference,
   resolvedSpecialty?: string,
   doctorName?: string,
@@ -148,7 +149,7 @@ async function findDoctorsWithMatchingSlots(
 }
 
 async function findBestSlot(
-  city: string,
+  city: string | undefined,
   specialtyHint?: string,
   preference: SlotPreference = {},
   doctorName?: string,
@@ -239,7 +240,7 @@ export const COPILOT_TOOLS: LlmTool[] = [
     type: "function",
     function: {
       name: "search_doctors",
-      description: "Search available ZindagiCare doctors for online video consultation in Lahore.",
+      description: "Search available ZindagiCare doctors for online video consultation in Pakistan.",
       parameters: {
         type: "object",
         properties: {
@@ -426,7 +427,7 @@ export async function executeCopilotTool(
       const resolved = resolveSpecialtyFromText(specialtyInput) ?? specialtyInput;
       const preference = slotPreferenceFromToolArgs(args);
       const matches = await findDoctorsWithMatchingSlots(
-        ctx.city,
+        undefined,
         preference,
         resolved,
         undefined,
@@ -439,7 +440,7 @@ export async function executeCopilotTool(
       );
 
       if (!referrals.length) {
-        const doctors = await resolveDoctorsForRequest(ctx.city, resolved);
+        const doctors = await resolveDoctorsForRequest(undefined, resolved);
         referrals = doctors.slice(0, 5).map(doctorToReferral);
       }
 
@@ -486,7 +487,7 @@ export async function executeCopilotTool(
       const specialty = specialtyRaw
         ? resolveSpecialtyFromText(specialtyRaw) ?? specialtyRaw
         : undefined;
-      const doctors = await OnlineConsultService.listConsultDoctors(ctx.city, specialty);
+      const doctors = await OnlineConsultService.listConsultDoctors(undefined, specialty);
       const available = doctors.filter((d) => !d.isFull).slice(0, 8);
       return JSON.stringify({
         doctors: available.map((d) => ({
@@ -513,7 +514,7 @@ export async function executeCopilotTool(
     case "suggest_booking": {
       const doctorId = String(args.doctorId ?? "");
       const slotId = String(args.slotId ?? "");
-      const doctors = await OnlineConsultService.listConsultDoctors(ctx.city);
+      const doctors = await OnlineConsultService.listConsultDoctors();
       const doctor = doctors.find((d) => d.doctorId === doctorId);
       if (!doctor) {
         return JSON.stringify({ error: "Doctor not found" });
@@ -561,7 +562,7 @@ export async function executeCopilotTool(
       let patientNotes = String(args.patientNotes ?? "").trim();
 
       if (!doctorId && doctorName) {
-        doctorId = await CopilotPatientDataService.resolveDoctorIdByName(ctx.city, doctorName);
+        doctorId = await CopilotPatientDataService.resolveDoctorIdByName(undefined, doctorName);
       }
 
       if (!patientNotes) {
@@ -576,7 +577,7 @@ export async function executeCopilotTool(
 
       const preference = slotPreferenceFromToolArgs(args);
       const match = await findBestSlot(
-        ctx.city,
+        undefined,
         resolvedSpecialty ?? resolveSpecialtyFromText(patientNotes),
         preference,
         doctorName,

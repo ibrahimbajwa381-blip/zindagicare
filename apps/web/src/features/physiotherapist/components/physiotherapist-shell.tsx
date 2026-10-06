@@ -12,9 +12,11 @@ import { UnifiedHeader } from "@/components/layout/unified-header";
 import {
   ChevronRight,
   Home,
+  IdCard,
   LayoutDashboard,
   ShieldCheck,
   UserCog,
+  Wallet,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -45,10 +47,22 @@ const Physiotherapist_APPROVED_NAV_ITEMS: PhysiotherapistNavItem[] = [
     showActiveBadge: true,
   },
   {
+    href: "/physiotherapist/earnings",
+    label: "Earnings",
+    description: "Your 70% share, Sunday payouts & bank account",
+    icon: Wallet,
+  },
+  {
     href: "/physiotherapist/profile",
     label: "Profile",
     description: "Availability, service area & contact",
     icon: UserCog,
+  },
+  {
+    href: "/physiotherapist/portfolio",
+    label: "Portfolio",
+    description: "Your public profile & experience",
+    icon: IdCard,
   },
 ];
 
@@ -71,6 +85,12 @@ const Physiotherapist_ONBOARDING_NAV_ITEMS: PhysiotherapistNavItem[] = [
     label: "Profile",
     description: "Service area & contact details",
     icon: UserCog,
+  },
+  {
+    href: "/physiotherapist/portfolio",
+    label: "Portfolio",
+    description: "Your public profile & experience",
+    icon: IdCard,
   },
 ];
 

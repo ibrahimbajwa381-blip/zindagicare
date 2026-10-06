@@ -1,6 +1,7 @@
-import { redirect } from "next/navigation";
-import { AUTH_ROUTES } from "@/lib/auth/routes";
+import { RoleRegisterPage } from "@/features/auth/components/role-register-page";
+
+export const metadata = { title: "Doctor registration" };
 
 export default function DoctorRegisterPage() {
-  redirect(AUTH_ROUTES.register);
+  return <RoleRegisterPage role="doctor" />;
 }

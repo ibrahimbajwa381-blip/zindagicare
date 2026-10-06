@@ -11,9 +11,10 @@ import {
   AppError,
   Roles,
   VerificationStatuses,
-  LAHORE_GEO,
+  cityCenter,
   type Role,
   emailLookupHash,
+  highestRole,
   phoneLookupHash,
 } from "@zindagi/shared";
 import type { AccountType } from "@zindagi/validators";
@@ -23,6 +24,7 @@ import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { logActivity } from "@/server/services/activity-log.service";
 import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
+import { readVisitorId } from "@/server/lib/visitor-id";
 import { sendEmail } from "@/server/services/email.service";
 import { welcomeEmail } from "@/server/lib/email-templates";
 
@@ -84,7 +86,7 @@ async function ensureNurseProfile(userId: { toString(): string }, city: string) 
             city,
             geo: {
               type: "Point",
-              coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat],
+              coordinates: [cityCenter(city).lng, cityCenter(city).lat],
             },
             radiusKm: 15,
           },
@@ -108,7 +110,7 @@ async function ensurePhysiotherapistProfile(userId: { toString(): string }, city
             city,
             geo: {
               type: "Point",
-              coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat],
+              coordinates: [cityCenter(city).lng, cityCenter(city).lat],
             },
             radiusKm: 15,
           },
@@ -316,7 +318,7 @@ export async function registerWithCredentials(
 
   await logActivity({
     userId: user._id.toString(),
-    userRole: roleByAccountType[accountType][0],
+    userRole: highestRole(roleByAccountType[accountType]),
     visitorId,
     action: "user.signup",
     entityType: "user",
@@ -356,6 +358,15 @@ export async function findOrCreatePhoneUser(
       onboardingCompleted: false,
     });
     await ensurePatientProfile(user._id, referredByDoctorId);
+    await logActivity({
+      userId: user._id.toString(),
+      userRole: Roles.PATIENT,
+      visitorId: await readVisitorId(),
+      action: "user.signup",
+      entityType: "user",
+      entityId: user._id.toString(),
+      metadata: { accountType: "patient", method: "phone" },
+    });
   } else {
     user.phoneVerified = new Date();
     if (!user.authProviders.includes("phone")) {

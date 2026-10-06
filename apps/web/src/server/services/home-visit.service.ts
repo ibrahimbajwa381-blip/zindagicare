@@ -3,6 +3,7 @@ import {
   connectDatabase,
   DoctorProfileModel,
   HomeVisitModel,
+  HomeVisitReviewModel,
   PaymentModel,
   StaffProfileModel,
   UserModel,
@@ -20,13 +21,22 @@ import {
   HOME_CARE_MATCH_RADIUS_KM,
   LAHORE_GEO,
   LAUNCH_CITY,
+  nearestCity,
   PaymentProviders,
   PaymentStatuses,
   Roles,
   VerificationStatuses,
+  VISIT_SUMMARY_MIN_LENGTH,
   isAdmin,
+  resolveNurseHomeVisitFee,
+  resolvePhysioHomeVisitFee,
   isDoctorHomeVisitService,
   isPhysiotherapyHomeVisitService,
+  HOME_VISIT_PROVIDER_KINDS,
+  HomeVisitProviderKinds,
+  homeVisitProviderKind,
+  homeVisitServiceTypesFor,
+  type HomeVisitProviderKind,
   type HomeVisitServiceType,
   type HomeVisitStatus,
 } from "@zindagi/shared";
@@ -40,7 +50,6 @@ import {
   citiesMatch,
   doctorCoversCity,
   mongoCoverageCityFilter,
-  nurseCoversCity,
 } from "@/lib/geo/city-match";
 import {
   notifyAdminsHomeVisitRequested,
@@ -154,6 +163,13 @@ export type HomeVisitDto = {
     currency: string;
   };
   paymentStatus?: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+  paymentId?: string;
+  /** Present once the patient uploaded a transfer receipt — the image is served by /api/v1/payments/:id/receipt. */
+  paymentReceipt?: {
+    hasImage: boolean;
+    transactionId?: string;
+    uploadedAt?: string;
+  };
   cancellationRequestStatus?: "none" | "pending" | "approved" | "denied";
   refundMethod?: string;
   refundAccountTitle?: string;
@@ -161,6 +177,8 @@ export type HomeVisitDto = {
   refundBankName?: string;
   patientNotes?: string;
   patient?: { id: string; name: string; phone?: string };
+  /** Provider the patient picked when booking (physiotherapy or nursing). */
+  preferredStaff?: { id: string; name: string };
   assignedStaff?: {
     id: string;
     name: string;
@@ -173,6 +191,17 @@ export type HomeVisitDto = {
     originalName: string;
     mimeType: string;
     uploadedAt: string;
+  };
+  /** Provider's written session report — admin and the assigned provider only. */
+  visitSummary?: {
+    text: string;
+    submittedAt: string;
+  };
+  /** Patient's rating of the visit — attached on admin listings only. */
+  patientReview?: {
+    rating: number;
+    comment?: string;
+    createdAt: string;
   };
   completedAt?: string;
   createdAt: string;
@@ -245,6 +274,9 @@ function serializeVisit(
   const staff = doc.assignedStaffId as
     | { _id?: { toString(): string }; name?: string; phone?: string }
     | undefined;
+  const preferred = doc.preferredStaffId as
+    | { _id?: { toString(): string }; name?: string }
+    | undefined;
   const address = doc.address as {
     line: string;
     city: string;
@@ -258,7 +290,19 @@ function serializeVisit(
         uploadedAt: Date;
       }
     | undefined;
-  const payment = doc.paymentId as { status?: string } | undefined;
+  const summary = doc.visitSummary as
+    | { text?: string; submittedAt?: Date }
+    | undefined;
+  const payment = doc.paymentId as
+    | {
+        _id?: { toString(): string };
+        status?: string;
+        metadata?: {
+          receipt?: { storageKey?: string; transactionId?: string; uploadedAt?: string };
+        };
+      }
+    | undefined;
+  const receipt = payment?.metadata?.receipt;
 
   return {
     id: (doc._id as { toString(): string }).toString(),
@@ -275,6 +319,14 @@ function serializeVisit(
     },
     pricing: doc.pricing as HomeVisitDto["pricing"],
     paymentStatus: payment?.status as HomeVisitDto["paymentStatus"],
+    paymentId: payment?._id?.toString(),
+    paymentReceipt: receipt
+      ? {
+          hasImage: Boolean(receipt.storageKey),
+          transactionId: receipt.transactionId,
+          uploadedAt: receipt.uploadedAt,
+        }
+      : undefined,
     cancellationRequestStatus: doc.cancellationRequestStatus as HomeVisitDto["cancellationRequestStatus"],
     refundMethod: doc.refundMethod as string | undefined,
     refundAccountTitle: doc.refundAccountTitle as string | undefined,
@@ -285,14 +337,20 @@ function serializeVisit(
       ? {
           id: patient._id.toString(),
           name: patient.name ?? "Patient",
-          phone: patient.phone,
+          phone: safeDisplayText(patient.phone),
+        }
+      : undefined,
+    preferredStaff: preferred?._id
+      ? {
+          id: preferred._id.toString(),
+          name: safeDisplayText(preferred.name) ?? "Provider",
         }
       : undefined,
     assignedStaff: staff?._id
       ? {
           id: staff._id.toString(),
           name: staff.name ?? "Staff",
-          phone: staff.phone,
+          phone: safeDisplayText(staff.phone),
           role: assigneeMeta?.role,
           specialties: assigneeMeta?.specialties,
         }
@@ -305,6 +363,13 @@ function serializeVisit(
           uploadedAt: report.uploadedAt.toISOString(),
         }
       : undefined,
+    visitSummary:
+      summary?.text && summary.submittedAt
+        ? {
+            text: summary.text,
+            submittedAt: summary.submittedAt.toISOString(),
+          }
+        : undefined,
     completedAt: doc.completedAt
       ? (doc.completedAt as Date).toISOString()
       : undefined,
@@ -318,6 +383,40 @@ function refId(ref: unknown): string | undefined {
     return (ref as { _id: { toString(): string } })._id.toString();
   }
   return (ref as { toString(): string }).toString();
+}
+
+/** Strips provider-to-admin fields from a visit shown to someone other than admin or the assigned provider. */
+function redactForViewer(dto: HomeVisitDto, userId: string, roles: string[]): HomeVisitDto {
+  if (isAdmin(roles as never) || dto.assignedStaff?.id === userId) return dto;
+  return { ...dto, visitSummary: undefined };
+}
+
+/** Attaches each visit's patient review (visible or not) for the admin board. */
+async function attachPatientReviews(dtos: HomeVisitDto[]): Promise<HomeVisitDto[]> {
+  const completedIds = dtos
+    .filter((v) => v.status === HomeVisitStatuses.COMPLETED)
+    .map((v) => v.id);
+  if (!completedIds.length) return dtos;
+
+  const reviews = await HomeVisitReviewModel.find(
+    mongoFilter({ homeVisitId: { $in: completedIds }, deletedAt: { $exists: false } }),
+  )
+    .select("homeVisitId rating comment createdAt")
+    .lean();
+  const byVisit = new Map(reviews.map((r) => [r.homeVisitId.toString(), r]));
+
+  return dtos.map((dto) => {
+    const review = byVisit.get(dto.id);
+    if (!review) return dto;
+    return {
+      ...dto,
+      patientReview: {
+        rating: review.rating,
+        comment: review.comment ?? undefined,
+        createdAt: (review.createdAt as Date).toISOString(),
+      },
+    };
+  });
 }
 
 async function getAssigneeMeta(
@@ -395,6 +494,113 @@ export type HomeCareStaffOption = {
   specialties?: string[];
   homeVisitFee?: number;
 };
+
+export type VisitStaffCandidate = HomeCareStaffOption & { unavailable?: boolean };
+
+export type VisitStaffCandidates = {
+  providerKind: HomeVisitProviderKind;
+  patientLocation: { lng: number; lat: number };
+  radiusKm: number;
+  nearby: VisitStaffCandidate[];
+  all: VisitStaffCandidate[];
+};
+
+function byDistance(a: VisitStaffCandidate, b: VisitStaffCandidate) {
+  return (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
+}
+
+/** Verified, available nurses or physiotherapists (StaffProfile-backed providers). */
+async function listStaffProfileCandidates(
+  kind: Exclude<HomeVisitProviderKind, typeof HomeVisitProviderKinds.DOCTOR>,
+  lng: number,
+  lat: number,
+  city: string,
+  busyIds: string[],
+): Promise<VisitStaffCandidate[]> {
+  const staffType =
+    kind === HomeVisitProviderKinds.PHYSIOTHERAPIST ? Roles.PHYSIOTHERAPIST : Roles.NURSE;
+  const defaultName =
+    kind === HomeVisitProviderKinds.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
+
+  const profiles = await StaffProfileModel.find({
+    staffType,
+    isAvailable: true,
+    homeVisitEnabled: true,
+    verificationStatus: "approved",
+    deletedAt: { $exists: false },
+  })
+    .populate("userId", "name phone")
+    .lean();
+
+  return profiles
+    .map((p) => {
+      const user = p.userId as {
+        _id?: { toString(): string };
+        name?: string;
+        phone?: string;
+      };
+      const area =
+        p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
+        p.serviceAreas?.[0];
+      const points = nurseGeoPoints(p);
+      const userId = user?._id?.toString() ?? "";
+      return {
+        id: userId,
+        name: user?.name ?? defaultName,
+        phone: user?.phone,
+        serviceArea: [area?.area, area?.city ?? LAUNCH_CITY].filter(Boolean).join(", "),
+        distanceKm: points.length ? nearestGeoDistanceKm(lng, lat, points) : undefined,
+        unavailable: userId ? busyIds.includes(userId) : undefined,
+      };
+    })
+    .filter((c) => c.id)
+    .sort(byDistance);
+}
+
+/** Listed doctors with in-house visits enabled who cover the visit city. */
+async function listDoctorCandidates(
+  lng: number,
+  lat: number,
+  city: string,
+  busyIds: string[],
+): Promise<VisitStaffCandidate[]> {
+  const profiles = await DoctorProfileModel.find({
+    verificationStatus: VerificationStatuses.APPROVED,
+    homeVisitEnabled: true,
+    isListed: true,
+    ...mongoCoverageCityFilter(city),
+    deletedAt: { $exists: false },
+  })
+    .populate("userId", "name phone isActive")
+    .lean();
+
+  return profiles
+    .filter((p) => {
+      const user = p.userId as { isActive?: boolean; _id?: { toString(): string } };
+      return user?.isActive !== false && user?._id;
+    })
+    .map((p) => {
+      const user = p.userId as {
+        _id?: { toString(): string };
+        name?: string;
+        phone?: string;
+      };
+      const userId = user?._id?.toString() ?? "";
+      const points = doctorGeoPoints(p);
+      return {
+        id: userId,
+        name: user?.name ?? "Doctor",
+        phone: user?.phone,
+        specialties: p.specialties ?? [],
+        serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
+        homeVisitFee:
+          p.homeVisitFee ?? HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
+        distanceKm: points.length ? nearestGeoDistanceKm(lng, lat, points) : undefined,
+        unavailable: busyIds.includes(userId),
+      };
+    })
+    .sort(byDistance);
+}
 
 function nurseGeoPoints(nurse: unknown, city?: string): { lng: number; lat: number }[] {
   const profile = nurse as {
@@ -474,7 +680,35 @@ export class HomeVisitService {
 
     const lng = input.geo.lng;
     const lat = input.geo.lat;
-    const base = getBasePrice(input.serviceType);
+    let base = getBasePrice(input.serviceType);
+    // The map pin is the source of truth for where the visit is — a client-sent
+    // city can be stale or defaulted, which would reject providers in other cities.
+    const visitCity = nearestCity(lng, lat);
+
+    // Physiotherapy and nurse-dispatched services support picking a specific provider.
+    const isPhysio = isPhysiotherapyHomeVisitService(input.serviceType);
+    const isNurseService =
+      homeVisitProviderKind(input.serviceType) === HomeVisitProviderKinds.NURSE;
+    const preferredStaffId = isPhysio || isNurseService ? input.preferredStaffId : undefined;
+    if (preferredStaffId && isPhysio) {
+      // A patient who picks a physio pays that physio's own fee.
+      ({ homeVisitFee: base } = await HomeVisitService.assertPhysiotherapistBookable(
+        preferredStaffId,
+        lng,
+        lat,
+        scheduledAt,
+      ));
+    } else if (preferredStaffId) {
+      const { homeVisitFee } = await HomeVisitService.assertNurseBookable(
+        preferredStaffId,
+        lng,
+        lat,
+        scheduledAt,
+      );
+      // Only a general nursing visit is priced at the nurse's own fee; procedures keep the
+      // standard rate.
+      if (input.serviceType === HomeVisitServiceTypes.NURSE) base = homeVisitFee;
+    }
 
     const visit = await HomeVisitModel.create({
       patientId,
@@ -483,7 +717,7 @@ export class HomeVisitService {
       scheduledAt,
       address: {
         line: input.addressLine,
-        city: input.city || LAUNCH_CITY,
+        city: visitCity,
         geo: toGeoPoint(lng, lat),
       },
       pricing: {
@@ -494,6 +728,7 @@ export class HomeVisitService {
         currency: "PKR",
       },
       patientNotes: input.patientNotes,
+      ...(preferredStaffId ? { preferredStaffId } : {}),
     });
 
     const patient = await UserModel.findById(patientId).select("name").lean();
@@ -506,7 +741,19 @@ export class HomeVisitService {
       console.error("[home-visit] admin notification failed", err);
     });
 
-    if (input.autoAssign) {
+    if (preferredStaffId) {
+      try {
+        await HomeVisitService.assignStaff(visit._id.toString(), {
+          staffId: preferredStaffId,
+          override: false,
+        });
+      } catch (err) {
+        // Pre-checked above, so this only fails on a race (e.g. the provider was
+        // booked a moment ago). Leave as requested with preferredStaffId set so
+        // admin sees the patient's choice and can assign.
+        console.error("[home-visit] preferred provider assignment failed", err);
+      }
+    } else if (input.autoAssign) {
       try {
         await HomeVisitService.autoAssignStaff(visit._id.toString());
       } catch {
@@ -517,6 +764,103 @@ export class HomeVisitService {
     return HomeVisitService.getById(visit._id.toString(), patientId, [
       Roles.PATIENT,
     ]);
+  }
+
+  /** Patient-facing check before a physiotherapy visit is booked with a chosen physio. */
+  static async assertPhysiotherapistBookable(
+    staffUserId: string,
+    lng: number,
+    lat: number,
+    scheduledAt: Date,
+  ) {
+    const profile = await HomeVisitService.assertStaffBookable(
+      staffUserId,
+      Roles.PHYSIOTHERAPIST,
+      lng,
+      lat,
+      scheduledAt,
+    );
+    return { homeVisitFee: resolvePhysioHomeVisitFee(profile.homeVisitFee) };
+  }
+
+  /** Patient-facing check before a nursing visit is booked with a chosen nurse. */
+  static async assertNurseBookable(
+    staffUserId: string,
+    lng: number,
+    lat: number,
+    scheduledAt: Date,
+  ) {
+    const profile = await HomeVisitService.assertStaffBookable(
+      staffUserId,
+      Roles.NURSE,
+      lng,
+      lat,
+      scheduledAt,
+    );
+    return { homeVisitFee: resolveNurseHomeVisitFee(profile.homeVisitFee) };
+  }
+
+  /**
+   * Patient-facing check before a visit is booked with a chosen nurse or
+   * physiotherapist — same rules admin manual assignment enforces (verified,
+   * taking home visits, within radius, free at that time), but with
+   * patient-readable errors so they can pick someone else or another time.
+   */
+  private static async assertStaffBookable(
+    staffUserId: string,
+    staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
+    lng: number,
+    lat: number,
+    scheduledAt: Date,
+  ) {
+    const label = staffType === Roles.PHYSIOTHERAPIST ? "physiotherapist" : "nurse";
+    const profile = await StaffProfileModel.findOne(
+      mongoFilter({ userId: staffUserId, staffType }),
+    ).lean();
+    if (
+      !profile ||
+      profile.deletedAt ||
+      profile.verificationStatus !== VerificationStatuses.APPROVED ||
+      !profile.homeVisitEnabled ||
+      profile.isAvailable === false ||
+      !(await UserModel.exists(
+        mongoFilter({ _id: staffUserId, isActive: { $ne: false }, deletedAt: { $exists: false } }),
+      ))
+    ) {
+      throw new AppError(
+        `This ${label} isn't taking home visits right now. Please choose another.`,
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+    // Distance from the patient's pin decides coverage — city names are free
+    // text (or missing on older areas) and would wrongly reject nearby providers.
+    const distanceKm = await HomeVisitService.getStaffDistanceKm(
+      staffUserId,
+      false,
+      lng,
+      lat,
+      undefined,
+      staffType,
+    );
+    if (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM) {
+      throw new AppError(
+        `This ${label} is more than ${HOME_CARE_MATCH_RADIUS_KM} km from your location. Please choose someone nearer.`,
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    const busyIds = await getBusyStaffIds(scheduledAt);
+    if (busyIds.includes(staffUserId)) {
+      throw new AppError(
+        `This ${label} already has a visit at that time. Please pick another time or ${label}.`,
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
+    return profile;
   }
 
   /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */
@@ -539,6 +883,19 @@ export class HomeVisitService {
         "This visit can no longer accept payment",
         ErrorCodes.VALIDATION,
         400,
+      );
+    }
+    // "Nearest available" physiotherapy is priced at the assigned physio's own
+    // fee, which isn't known until someone is matched.
+    if (
+      isPhysiotherapyHomeVisitService(visit.serviceType) &&
+      !visit.assignedStaffId &&
+      !visit.preferredStaffId
+    ) {
+      throw new AppError(
+        "We're still matching you with a physiotherapist. You can pay once one is assigned — you'll pay their own fee.",
+        ErrorCodes.CONFLICT,
+        409,
       );
     }
 
@@ -867,6 +1224,8 @@ export class HomeVisitService {
     roles: string[],
     scope?: string,
     status?: string,
+    /** Admin scopes only — other scopes already pin their own service types. */
+    provider?: HomeVisitProviderKind,
   ) {
     await HomeVisitService.ensureConnected();
 
@@ -878,6 +1237,9 @@ export class HomeVisitService {
     if (isAdmin(roles as never) && (scope === "all" || scope === "pending")) {
       if (scope === "pending") {
         filter.status = HomeVisitStatuses.REQUESTED;
+      }
+      if (provider) {
+        filter.serviceType = { $in: homeVisitServiceTypesFor(provider) };
       }
     } else if (
       roles.includes(Roles.PHYSIOTHERAPIST) &&
@@ -929,14 +1291,58 @@ export class HomeVisitService {
       .sort(sort)
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
-      .populate("paymentId", "status")
+      .populate("paymentId", "status metadata.receipt")
+      .populate("preferredStaffId", "name")
       .lean();
 
-    return Promise.all(
-      visits.map((v) =>
-        HomeVisitService.serializeVisitDoc(v as Record<string, unknown>),
-      ),
-    );
+    const dtos = (
+      await Promise.all(
+        visits.map((v) =>
+          HomeVisitService.serializeVisitDoc(v as Record<string, unknown>),
+        ),
+      )
+    ).map((dto) => redactForViewer(dto, userId, roles));
+
+    return isAdmin(roles as never) ? attachPatientReviews(dtos) : dtos;
+  }
+
+  /**
+   * Visits still needing admin attention (awaiting assignment or assigned but
+   * not yet under way), bucketed by provider kind for the admin queues.
+   */
+  static async countOpenVisitsByProvider(): Promise<Record<HomeVisitProviderKind, number>> {
+    await HomeVisitService.ensureConnected();
+
+    const rows = await HomeVisitModel.aggregate<{ _id: string; count: number }>([
+      {
+        $match: {
+          deletedAt: { $exists: false },
+          status: { $in: [HomeVisitStatuses.REQUESTED, HomeVisitStatuses.ASSIGNED] },
+        },
+      },
+      { $group: { _id: "$serviceType", count: { $sum: 1 } } },
+    ]);
+
+    const counts = Object.fromEntries(
+      HOME_VISIT_PROVIDER_KINDS.map((kind) => [kind, 0]),
+    ) as Record<HomeVisitProviderKind, number>;
+    for (const row of rows) {
+      counts[homeVisitProviderKind(row._id)] += row.count;
+    }
+    return counts;
+  }
+
+  /** Provider kind a visit is dispatched to, or null when the visit doesn't exist. */
+  static async getVisitProviderKind(visitId: string): Promise<HomeVisitProviderKind | null> {
+    if (!Types.ObjectId.isValid(visitId)) return null;
+    await HomeVisitService.ensureConnected();
+
+    const visit = await HomeVisitModel.findOne(
+      mongoFilter({ _id: visitId, deletedAt: { $exists: false } }),
+    )
+      .select("serviceType")
+      .lean();
+    return visit ? homeVisitProviderKind(String(visit.serviceType)) : null;
   }
 
   static async getById(
@@ -955,7 +1361,8 @@ export class HomeVisitService {
     )
       .populate("patientId", "name phone")
       .populate("assignedStaffId", "name phone")
-      .populate("paymentId", "status")
+      .populate("paymentId", "status metadata.receipt")
+      .populate("preferredStaffId", "name")
       .lean();
 
     if (!visit) {
@@ -964,7 +1371,12 @@ export class HomeVisitService {
 
     HomeVisitService.assertCanAccess(visit as HomeVisitDocument, userId, roles);
 
-    return HomeVisitService.serializeVisitDoc(visit as Record<string, unknown>);
+    const dto = redactForViewer(
+      await HomeVisitService.serializeVisitDoc(visit as Record<string, unknown>),
+      userId,
+      roles,
+    );
+    return isAdmin(roles as never) ? (await attachPatientReviews([dto]))[0] : dto;
   }
 
   static assertCanAccess(
@@ -985,16 +1397,10 @@ export class HomeVisitService {
     }
   }
 
-  static async findNearestAvailableStaff(
-    lng: number,
-    lat: number,
-    city: string,
-    scheduledAt: Date,
-  ) {
+  static async findNearestAvailableStaff(lng: number, lat: number, scheduledAt: Date) {
     return HomeVisitService.findNearestAvailableStaffByType(
       lng,
       lat,
-      city,
       Roles.NURSE,
       scheduledAt,
     );
@@ -1003,22 +1409,20 @@ export class HomeVisitService {
   static async findNearestAvailablePhysiotherapist(
     lng: number,
     lat: number,
-    city: string,
     scheduledAt: Date,
   ) {
     return HomeVisitService.findNearestAvailableStaffByType(
       lng,
       lat,
-      city,
       Roles.PHYSIOTHERAPIST,
       scheduledAt,
     );
   }
 
+  /** Nearest free nurse/physio whose service-area pin is within its radius — in any city. */
   private static async findNearestAvailableStaffByType(
     lng: number,
     lat: number,
-    city: string,
     staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
     scheduledAt: Date,
   ) {
@@ -1038,12 +1442,11 @@ export class HomeVisitService {
       .populate("userId", "name phone")
       .lean();
 
-    let best: { userId: string; distanceKm: number; name: string } | null = null;
+    let best: { userId: string; distanceKm: number; name: string; homeVisitFee?: number } | null =
+      null;
     const defaultName = staffType === Roles.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
 
     for (const staff of staffProfiles) {
-      if (!nurseCoversCity(staff, city, LAUNCH_CITY)) continue;
-
       const user = staff.userId as { _id?: { toString(): string }; name?: string };
       if (!user?._id || busyIds.includes(user._id.toString())) continue;
 
@@ -1058,6 +1461,7 @@ export class HomeVisitService {
             userId: user._id.toString(),
             distanceKm: dist,
             name: user.name ?? defaultName,
+            homeVisitFee: staff.homeVisitFee ?? undefined,
           };
         }
       }
@@ -1162,6 +1566,11 @@ export class HomeVisitService {
    * testing (10/25/50-way concurrent, same staff, same slot) shows this
    * reduces double-booking from "always" (proven: up to 50/50 concurrent
    * requests all won) to none observed.
+   *
+   * `physioFee` (physiotherapy visits only) re-prices the visit to the
+   * assigned physio's own fee — a patient who picked "nearest available" pays
+   * whoever is actually assigned, never a flat platform rate. A visit that is
+   * already paid keeps the amount the patient paid.
    */
   private static async commitAssignment(
     visitId: string,
@@ -1169,7 +1578,24 @@ export class HomeVisitService {
     staffId: string,
     scheduledAt: Date,
     distanceKm: number | null,
+    physioFee?: number,
   ): Promise<HydratedDocument<HomeVisitDocument>> {
+    let pricingSet: Record<string, number> = {};
+    if (physioFee !== undefined) {
+      const current = await HomeVisitModel.findById(visitId).select("paymentId pricing").lean();
+      const paid = current?.paymentId
+        ? await PaymentModel.exists(
+            mongoFilter({ _id: current.paymentId, status: PaymentStatuses.PAID }),
+          )
+        : null;
+      if (!paid) {
+        pricingSet = {
+          "pricing.base": physioFee,
+          "pricing.total": physioFee + (current?.pricing?.surge ?? 0),
+        };
+      }
+    }
+
     const updated = (await HomeVisitModel.findOneAndUpdate(
       mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
       {
@@ -1179,6 +1605,7 @@ export class HomeVisitService {
           ...(distanceKm !== null
             ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
             : {}),
+          ...pricingSet,
         },
       },
       { new: true },
@@ -1223,6 +1650,14 @@ export class HomeVisitService {
         "Selected provider was just assigned to another visit at this time — please try again",
         ErrorCodes.CONFLICT,
         409,
+      );
+    }
+
+    // A checkout opened before assignment must charge the re-priced amount.
+    if (updated.paymentId && updated.pricing && "pricing.total" in pricingSet) {
+      await PaymentModel.updateOne(
+        mongoFilter({ _id: updated.paymentId, status: PaymentStatuses.PENDING }),
+        { $set: { amount: updated.pricing.total } },
       );
     }
 
@@ -1287,8 +1722,8 @@ export class HomeVisitService {
     }
 
     const match = isPhysiotherapyHomeVisitService(visit.serviceType)
-      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, city, visit.scheduledAt)
-      : await HomeVisitService.findNearestAvailableStaff(lng, lat, city, visit.scheduledAt);
+      ? await HomeVisitService.findNearestAvailablePhysiotherapist(lng, lat, visit.scheduledAt)
+      : await HomeVisitService.findNearestAvailableStaff(lng, lat, visit.scheduledAt);
 
     if (!match) {
       throw new AppError(
@@ -1306,6 +1741,9 @@ export class HomeVisitService {
       match.userId,
       visit.scheduledAt,
       match.distanceKm,
+      isPhysiotherapyHomeVisitService(visit.serviceType)
+        ? resolvePhysioHomeVisitFee(match.homeVisitFee)
+        : undefined,
     );
 
     const populated = await HomeVisitModel.findById(visit._id)
@@ -1350,6 +1788,7 @@ export class HomeVisitService {
     }
 
     const visitCity = visit.address?.city ?? LAUNCH_CITY;
+    let physioFee: number | undefined;
 
     const staff = await UserModel.findById(input.staffId);
     if (!staff) {
@@ -1400,22 +1839,16 @@ export class HomeVisitService {
           400,
         );
       }
-      if (!nurseCoversCity(profile, visitCity, LAUNCH_CITY)) {
-        throw new AppError(
-          `Physiotherapist is not listed for home visits in ${visitCity}`,
-          ErrorCodes.VALIDATION,
-          400,
-        );
-      }
+      physioFee = resolvePhysioHomeVisitFee(profile.homeVisitFee);
     } else if (!staff.roles?.includes(Roles.NURSE)) {
       throw new AppError("Invalid nurse", ErrorCodes.VALIDATION, 400);
     } else {
       const nurseProfile = await StaffProfileModel.findOne(
         mongoFilter({ userId: staff._id, staffType: Roles.NURSE }),
       ).lean();
-      if (!nurseProfile || !nurseCoversCity(nurseProfile, visitCity, LAUNCH_CITY)) {
+      if (!nurseProfile) {
         throw new AppError(
-          `Nurse is not listed for home visits in ${visitCity}`,
+          "Nurse is not set up for home visits",
           ErrorCodes.VALIDATION,
           400,
         );
@@ -1467,6 +1900,7 @@ export class HomeVisitService {
       input.staffId,
       visit.scheduledAt,
       distanceKm,
+      physioFee,
     );
 
     const populated = await HomeVisitModel.findById(visit._id)
@@ -1572,6 +2006,27 @@ export class HomeVisitService {
       if (nextIdx <= currentIdx) {
         throw new AppError("Invalid status transition", ErrorCodes.VALIDATION, 400);
       }
+      const summaryText = input.visitSummary?.trim();
+      if (input.status === HomeVisitStatuses.COMPLETED) {
+        if (
+          !admin &&
+          !isDoctorHomeVisitService(visit.serviceType) &&
+          (summaryText?.length ?? 0) < VISIT_SUMMARY_MIN_LENGTH
+        ) {
+          throw new AppError(
+            `Please write a session report (at least ${VISIT_SUMMARY_MIN_LENGTH} characters) before completing the visit`,
+            ErrorCodes.VALIDATION,
+            400,
+          );
+        }
+        if (summaryText) {
+          visit.visitSummary = {
+            text: summaryText,
+            submittedAt: new Date(),
+            submittedBy: userId as never,
+          };
+        }
+      }
       visit.status = input.status;
       if (input.status === HomeVisitStatuses.COMPLETED) {
         visit.completedAt = new Date();
@@ -1648,7 +2103,12 @@ export class HomeVisitService {
       uploadedBy: userId as never,
     };
 
-    if (visit.status === HomeVisitStatuses.ARRIVED) {
+    // Nurse and physiotherapy visits complete only through the status endpoint,
+    // which requires the written session report — a file upload alone can't close them.
+    if (
+      visit.status === HomeVisitStatuses.ARRIVED &&
+      isDoctorHomeVisitService(visit.serviceType)
+    ) {
       visit.status = HomeVisitStatuses.COMPLETED;
       visit.completedAt = new Date();
     }
@@ -1694,12 +2154,18 @@ export class HomeVisitService {
       mongoFilter({ userId: staffUserId, staffType }),
     ).lean();
     if (!profile) return null;
-    const points = nurseGeoPoints(profile, visitCity);
+    // Nurses/physios are matched by distance to any of their areas, whatever city it's labelled.
+    const points = nurseGeoPoints(profile);
     if (!points.length) return null;
     return nearestGeoDistanceKm(patientLng, patientLat, points);
   }
 
-  static async listStaffForVisit(visitId: string) {
+  /**
+   * Candidate providers for one visit — only the kind that serves its service
+   * type (doctors, physiotherapists or nurses), nearest first. `nearby` is the
+   * free-at-that-time subset within the match radius; `all` ignores distance.
+   */
+  static async listStaffForVisit(visitId: string): Promise<VisitStaffCandidates> {
     await HomeVisitService.ensureConnected();
     assertValidObjectId(visitId, "Visit not found");
 
@@ -1710,122 +2176,27 @@ export class HomeVisitService {
 
     const [lng, lat] = visitPatientCoords(visit);
     const city = visit.address?.city ?? LAUNCH_CITY;
-    const physioVisit = isPhysiotherapyHomeVisitService(
-      visit.serviceType as HomeVisitServiceType,
-    );
-    const staffType = physioVisit ? Roles.PHYSIOTHERAPIST : Roles.NURSE;
-    const defaultStaffName = physioVisit ? "Physiotherapist" : "Nurse";
+    const providerKind = homeVisitProviderKind(String(visit.serviceType));
     const busyIds = await getBusyStaffIds(visit.scheduledAt as Date, visitId);
 
-    const staffProfiles = await StaffProfileModel.find({
-      staffType,
-      isAvailable: true,
-      homeVisitEnabled: true,
-      verificationStatus: "approved",
-      deletedAt: { $exists: false },
-    })
-      .populate("userId", "name phone")
-      .lean();
+    const all =
+      providerKind === HomeVisitProviderKinds.DOCTOR
+        ? await listDoctorCandidates(lng, lat, city, busyIds)
+        : await listStaffProfileCandidates(providerKind, lng, lat, city, busyIds);
 
-    const staffWithDistance: (HomeCareStaffOption & { unavailable?: boolean })[] =
-      staffProfiles
-        .filter((p) => nurseCoversCity(p, city, LAUNCH_CITY))
-        .map((p) => {
-          const user = p.userId as {
-            _id?: { toString(): string };
-            name?: string;
-            phone?: string;
-          };
-          const area =
-            p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
-            p.serviceAreas?.[0];
-          const points = nurseGeoPoints(p, city);
-          const distanceKm = points.length
-            ? nearestGeoDistanceKm(lng, lat, points)
-            : undefined;
-          return {
-            id: user?._id?.toString() ?? "",
-            name: user?.name ?? defaultStaffName,
-            phone: user?.phone,
-            serviceArea: [area?.area, area?.city ?? LAUNCH_CITY]
-              .filter(Boolean)
-              .join(", "),
-            distanceKm,
-            unavailable: user?._id ? busyIds.includes(user._id.toString()) : undefined,
-          };
-        })
-        .filter((n) => n.id)
-        .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
-
-    const nursesWithDistance = staffWithDistance;
-
-    const doctorProfiles = await DoctorProfileModel.find({
-      verificationStatus: VerificationStatuses.APPROVED,
-      homeVisitEnabled: true,
-      isListed: true,
-      ...mongoCoverageCityFilter(city),
-      deletedAt: { $exists: false },
-    })
-      .populate("userId", "name phone isActive")
-      .lean();
-
-    const doctorsWithDistance: (HomeCareStaffOption & {
-      unavailable?: boolean;
-    })[] = doctorProfiles
-      .filter((p) => {
-        const user = p.userId as { isActive?: boolean; _id?: { toString(): string } };
-        return user?.isActive !== false && user?._id;
-      })
-      .map((p) => {
-        const user = p.userId as {
-          _id?: { toString(): string };
-          name?: string;
-          phone?: string;
-        };
-        const userId = user?._id?.toString() ?? "";
-        const points = doctorGeoPoints(p);
-        const distanceKm = points.length
-          ? nearestGeoDistanceKm(lng, lat, points)
-          : undefined;
-        return {
-          id: userId,
-          name: user?.name ?? "Doctor",
-          phone: user?.phone,
-          specialties: p.specialties ?? [],
-          serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
-          homeVisitFee:
-            p.homeVisitFee ??
-            HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
-          distanceKm,
-          unavailable: busyIds.includes(userId),
-        };
-      })
-      .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
-
-    const nearbyNurses = nursesWithDistance.filter(
-      (n) =>
-        !n.unavailable &&
-        n.distanceKm !== undefined &&
-        n.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
-    );
-    const nearbyDoctors = doctorsWithDistance.filter(
-      (d) =>
-        !d.unavailable &&
-        d.distanceKm !== undefined &&
-        d.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+    const nearby = all.filter(
+      (p) =>
+        !p.unavailable &&
+        p.distanceKm !== undefined &&
+        p.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
     );
 
     return {
+      providerKind,
       patientLocation: { lng, lat },
       radiusKm: HOME_CARE_MATCH_RADIUS_KM,
-      nearby: {
-        nurses: nearbyNurses,
-        doctors: nearbyDoctors,
-      },
-      all: {
-        nurses: nursesWithDistance,
-        doctors: doctorsWithDistance,
-      },
+      nearby,
+      all,
     };
   }
 

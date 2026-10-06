@@ -3,6 +3,14 @@ export function normalizeCityName(city: string): string {
   return city.trim().toLowerCase();
 }
 
+/** Display form of a free-text city name: "  SHORKOT city " → "Shorkot City". */
+export function formatCityName(city: string): string {
+  return normalizeCityName(city)
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function citiesMatch(a: string, b: string): boolean {
   return normalizeCityName(a) === normalizeCityName(b);
 }

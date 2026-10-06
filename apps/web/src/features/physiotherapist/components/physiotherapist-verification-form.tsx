@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   HOME_CARE_MATCH_RADIUS_KM,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  PHYSIOTHERAPY_HOME_VISIT_SPLIT as SPLIT,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
 } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
@@ -13,24 +14,37 @@ import { Input, Label } from "@/components/ui/input";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
+import { PhysiotherapistProfilePhotoUpload } from "@/features/physiotherapist/components/physiotherapist-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 type PhysiotherapistVerificationFormProps = {
+  name: string;
   defaults?: {
+    avatarUrl?: string;
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
     city?: string;
     area?: string;
+    bankAccount?: {
+      accountTitle?: string;
+      bankName?: string;
+      accountNumber?: string;
+      iban?: string;
+    };
   };
 };
 
-export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVerificationFormProps) {
+export function PhysiotherapistVerificationForm({
+  name,
+  defaults,
+}: PhysiotherapistVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(defaults?.avatarUrl);
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -42,7 +56,13 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
     setError(undefined);
     const form = new FormData(e.currentTarget);
 
-    const requiredDocs = ["licenseCertificate", "cnicFront", "cnicBack"] as const;
+    if (!avatarUrl) {
+      setError("Please upload a profile photo.");
+      setPending(false);
+      return;
+    }
+
+    const requiredDocs = ["degreeCertificate", "cnicFront", "cnicBack"] as const;
     for (const key of requiredDocs) {
       if (!documents[key]) {
         setError("Please upload all required documents.");
@@ -70,11 +90,12 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
     }
 
     const body = {
-      licenseNumber: form.get("licenseNumber"),
+      licenseNumber: String(form.get("licenseNumber") ?? "").trim() || undefined,
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
       specialties,
+      avatarUrl,
       serviceArea: {
         city: form.get("city"),
         area: form.get("area"),
@@ -82,9 +103,16 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
         geo: geo ?? undefined,
       },
       documentUrls: {
+        degreeCertificate: documents.degreeCertificate,
         licenseCertificate: documents.licenseCertificate,
         cnicFront: documents.cnicFront,
         cnicBack: documents.cnicBack,
+      },
+      bankAccount: {
+        accountTitle: String(form.get("bankAccountTitle") ?? "").trim(),
+        bankName: String(form.get("bankName") ?? "").trim(),
+        accountNumber: String(form.get("bankAccountNumber") ?? "").trim(),
+        iban: String(form.get("bankIban") ?? "").trim() || undefined,
       },
       acceptedProviderAgreement: acceptedAgreement,
     };
@@ -125,17 +153,25 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      <PhysiotherapistProfilePhotoUpload
+        name={name}
+        value={avatarUrl}
+        onUploaded={setAvatarUrl}
+        required
+      />
+
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Identity & registration</h2>
         <div>
           <Label htmlFor="licenseNumber">
-            Physiotherapy license / PPTA registration number
+            Physiotherapy license / PPTA registration number (optional)
           </Label>
           <Input
             id="licenseNumber"
             name="licenseNumber"
             defaultValue={defaults?.licenseNumber}
-            required
+            minLength={3}
+            maxLength={40}
           />
         </div>
         <div>
@@ -250,7 +286,16 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
           </p>
         </div>
         <VerificationDocumentUpload
-          label="Physiotherapy license / PPTA certificate"
+          label="Degree certificate (e.g. DPT, BS Physical Therapy)"
+          docKey="degreeCertificate"
+          value={documents.degreeCertificate}
+          fileName={documentNames.degreeCertificate}
+          uploadUrl="/api/v1/physiotherapist/verification/upload"
+          onUploaded={(url, name) => setDocument("degreeCertificate", url, name)}
+          onClear={() => clearDocument("degreeCertificate")}
+        />
+        <VerificationDocumentUpload
+          label="Physiotherapy license / PPTA certificate (optional)"
           docKey="licenseCertificate"
           value={documents.licenseCertificate}
           fileName={documentNames.licenseCertificate}
@@ -276,6 +321,64 @@ export function PhysiotherapistVerificationForm({ defaults }: PhysiotherapistVer
           onUploaded={(url, name) => setDocument("cnicBack", url, name)}
           onClear={() => clearDocument("cnicBack")}
         />
+      </section>
+
+      <section className="space-y-4 rounded-lg border border-emerald-200/70 bg-emerald-50/40 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Payout account</h2>
+          <p className="mt-0.5 text-xs text-slate-600">
+            You keep {SPLIT.physiotherapistPercent}% of every visit fee and ZindagiCare keeps{" "}
+            {SPLIT.platformPercent}%. Your earnings are sent to this account every Sunday.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="bankAccountTitle">Account title</Label>
+            <Input
+              id="bankAccountTitle"
+              name="bankAccountTitle"
+              defaultValue={defaults?.bankAccount?.accountTitle}
+              placeholder="Name on the account"
+              required
+              minLength={2}
+              maxLength={120}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bankName">Bank / wallet name</Label>
+            <Input
+              id="bankName"
+              name="bankName"
+              defaultValue={defaults?.bankAccount?.bankName}
+              placeholder="e.g. Meezan Bank, JazzCash"
+              required
+              minLength={2}
+              maxLength={120}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bankAccountNumber">Account number</Label>
+            <Input
+              id="bankAccountNumber"
+              name="bankAccountNumber"
+              defaultValue={defaults?.bankAccount?.accountNumber}
+              inputMode="numeric"
+              required
+              minLength={4}
+              maxLength={40}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bankIban">IBAN (optional)</Label>
+            <Input
+              id="bankIban"
+              name="bankIban"
+              defaultValue={defaults?.bankAccount?.iban}
+              placeholder="PK36SCBL0000001123456702"
+              maxLength={40}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="space-y-3 rounded-lg border border-amber-200/60 bg-amber-50/40 p-4">

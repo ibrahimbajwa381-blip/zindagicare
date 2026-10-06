@@ -7,7 +7,6 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import {
 
 const highlightIcons = [Users, ShieldCheck, Wallet] as const;
 
-const bookHref = `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.PHYSIOTHERAPY}`;
+const bookHref = siteConfig.links.physiotherapists;
 
 export async function HomePhysioHero() {
   const { t } = await getServerTranslations();

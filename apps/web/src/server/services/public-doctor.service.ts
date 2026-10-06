@@ -9,6 +9,7 @@ import type {
   PublicDoctorProfile,
 } from "@/features/marketing/types/doctor-public";
 import { resolveDoctorSlug } from "@/lib/doctors/profile-path";
+import { mapDoctorPortfolio, toPublicDoctorPortfolio } from "@/lib/doctors/portfolio";
 import { mongoFilter } from "@/lib/mongo/query";
 import {
   ensureCanonicalDoctorSlug,
@@ -69,6 +70,25 @@ async function mapProfileDoc(
     availableSlots: availability?.availableSlots ?? 0,
     isFull: availability?.isFull ?? true,
     videoConsultEnabled: (doc.videoConsultEnabled as boolean | undefined) ?? false,
+    weeklyAvailability: (
+      (doc.weeklyAvailability as
+        | { dayOfWeek?: number; startTimeLocal?: string; endTimeLocal?: string }[]
+        | undefined) ?? []
+    )
+      .filter(
+        (w): w is { dayOfWeek: number; startTimeLocal: string; endTimeLocal: string } =>
+          typeof w.dayOfWeek === "number" &&
+          typeof w.startTimeLocal === "string" &&
+          typeof w.endTimeLocal === "string",
+      )
+      .map((w) => ({
+        dayOfWeek: w.dayOfWeek,
+        startTimeLocal: w.startTimeLocal,
+        endTimeLocal: w.endTimeLocal,
+      })),
+    portfolio: toPublicDoctorPortfolio(
+      mapDoctorPortfolio(doc as Parameters<typeof mapDoctorPortfolio>[0]),
+    ),
   };
 }
 

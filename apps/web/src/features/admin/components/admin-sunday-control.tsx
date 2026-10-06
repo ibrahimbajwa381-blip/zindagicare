@@ -8,13 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
-import { formatKarachiDateTime } from "@/lib/format/datetime";
+import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime";
 import { SundayAffordabilityChoices, SundayFreeRequestStatuses, SUNDAY_CONSULT_CONFIG, withDoctorTitle } from "@zindagi/shared";
-import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
-import type {
-  SundayAdminRequestDto,
-  SundayTeamDoctorOption,
-} from "@/features/sunday-consult/types";
+import type { SundayAdminRequestDto } from "@/features/sunday-consult/types";
 import { PaymentProofModal } from "./payment-proof-modal";
 
 type SundayOverview = {
@@ -64,11 +60,8 @@ function SundayReceiptButton({
 export function AdminSundayControl() {
   const [data, setData] = useState<SundayOverview | null>(null);
   const [requests, setRequests] = useState<SundayAdminRequestDto[]>([]);
-  const [teamDoctors, setTeamDoctors] = useState<SundayTeamDoctorOption[]>([]);
-  const [selectedDoctor, setSelectedDoctor] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
-  const [assigning, setAssigning] = useState<string | null>(null);
   const [maxSlots, setMaxSlots] = useState(10);
   const [duration, setDuration] = useState(10);
   const [activeProofPaymentId, setActiveProofPaymentId] = useState<string | null>(null);
@@ -89,7 +82,6 @@ export function AdminSundayControl() {
     }
     if (requestsJson.success) {
       setRequests(requestsJson.data?.requests ?? []);
-      setTeamDoctors(requestsJson.data?.doctors ?? []);
     }
     hasLoadedRef.current = true;
     setLoading(false);
@@ -98,28 +90,6 @@ export function AdminSundayControl() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const assignDoctor = async (requestId: string) => {
-    const doctorId = selectedDoctor[requestId];
-    if (!doctorId) {
-      alert("Select a doctor first");
-      return;
-    }
-    setAssigning(requestId);
-    const res = await fetch(`/api/v1/admin/sunday/requests/${requestId}/assign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ doctorId }),
-    });
-    setAssigning(null);
-    if (!res.ok) {
-      const json = await res.json().catch(() => null);
-      alert(json?.error?.message ?? "Failed to assign doctor");
-      return;
-    }
-    dispatchAdminNavCountsRefresh();
-    await load();
-  };
 
   const saveSettings = async (patch: Record<string, unknown>) => {
     setPending(true);
@@ -163,8 +133,12 @@ export function AdminSundayControl() {
       <Card className={surfaceCard}>
         <CardHeader>
           <CardTitle className="text-base">
-            Patient requests (assign within {SUNDAY_CONSULT_CONFIG.matchWithinMinutes} min)
+            Patient requests — progress
           </CardTitle>
+          <p className="text-sm text-slate-500">
+            Doctors pick patients from their open-requests board and choose a time. This view is
+            read-only.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {requests.map((request) => {
@@ -185,7 +159,10 @@ export function AdminSundayControl() {
                     ) : null}
                     <p className="mt-1 text-xs text-slate-500">
                       Requested {formatKarachiDateTime(request.createdAt)}
-                      {request.doctor ? ` · ${withDoctorTitle(request.doctor.name)}` : ""}
+                      {request.doctor ? ` · Picked by ${withDoctorTitle(request.doctor.name)}` : ""}
+                      {request.doctor && request.scheduledStart
+                        ? ` for ${formatKarachiTime(request.scheduledStart)}`
+                        : ""}
                     </p>
                     {request.status === SundayFreeRequestStatuses.ASSIGNED && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -235,7 +212,7 @@ export function AdminSundayControl() {
                           : "Cannot afford (free)"}
                       </Badge>
                       <Badge variant={awaiting ? "default" : "outline"}>
-                        {awaiting ? "Awaiting assignment" : "Doctor assigned"}
+                        {awaiting ? "Waiting for a doctor" : "Doctor picked"}
                       </Badge>
                     </div>
                     {request.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE &&
@@ -247,35 +224,6 @@ export function AdminSundayControl() {
                       )}
                   </div>
                 </div>
-                {awaiting && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <select
-                      className="min-w-[12rem] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                      value={selectedDoctor[request.requestId] ?? ""}
-                      onChange={(e) =>
-                        setSelectedDoctor((prev) => ({
-                          ...prev,
-                          [request.requestId]: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value="">Select Sunday doctor…</option>
-                      {teamDoctors.map((doc) => (
-                        <option key={doc.doctorId} value={doc.doctorId}>
-                          {doc.name}
-                          {doc.specialties[0] ? ` · ${doc.specialties[0]}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      size="sm"
-                      disabled={assigning === request.requestId}
-                      onClick={() => assignDoctor(request.requestId)}
-                    >
-                      {assigning === request.requestId ? "Assigning…" : "Assign doctor"}
-                    </Button>
-                  </div>
-                )}
               </div>
             );
           })}

@@ -7,32 +7,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
+import type {
+  AdminModerationReview,
+  AdminReviewModerationAction,
+  AdminReviewVisibility,
+} from "@/features/admin/types/admin-reviews";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { surfaceCard, surfaceInset } from "@/lib/ui/surfaces";
 
-type AdminReviewRow = {
-  id: string;
-  appointmentId?: string;
-  doctorId: string;
-  rating: number;
-  comment?: string;
-  isVisible: boolean;
-  isModerated: boolean;
-  createdAt: string;
-  patientName: string;
-  doctorName: string;
-  source?: "patient" | "admin";
-};
-
-const FILTERS = [
+const FILTERS: { value: AdminReviewVisibility; label: string }[] = [
   { value: "pending", label: "Needs review" },
   { value: "all", label: "All" },
   { value: "visible", label: "Public" },
   { value: "hidden", label: "Hidden" },
-] as const;
-
-type FilterValue = (typeof FILTERS)[number]["value"];
-type ModerateAction = "approve" | "hide" | "show" | "delete";
+];
 
 function RatingStars({ rating }: { rating: number }) {
   return (
@@ -50,10 +38,15 @@ function RatingStars({ rating }: { rating: number }) {
   );
 }
 
-export function AdminReviewModeration() {
-  const [filter, setFilter] = useState<FilterValue>("pending");
+type AdminReviewModerationProps = {
+  /** Moderation API base: GET lists, POST `/moderate` and `/approve-all` act. */
+  apiBase: string;
+};
+
+export function AdminReviewModeration({ apiBase }: AdminReviewModerationProps) {
+  const [filter, setFilter] = useState<AdminReviewVisibility>("pending");
   const [reloadKey, setReloadKey] = useState(0);
-  const [reviews, setReviews] = useState<AdminReviewRow[]>([]);
+  const [reviews, setReviews] = useState<AdminModerationReview[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -69,7 +62,7 @@ export function AdminReviewModeration() {
     let cancelled = false;
     if (!hasLoadedRef.current) setLoading(true);
     const qs = filter === "all" ? "" : `?visibility=${filter}`;
-    fetch(`/api/v1/admin/reviews${qs}`)
+    fetch(`${apiBase}${qs}`)
       .then((res) => res.json())
       .then((json) => {
         if (cancelled) return;
@@ -93,19 +86,19 @@ export function AdminReviewModeration() {
     return () => {
       cancelled = true;
     };
-  }, [filter, reloadKey]);
+  }, [apiBase, filter, reloadKey]);
 
-  async function moderate(review: AdminReviewRow, action: ModerateAction) {
+  async function moderate(review: AdminModerationReview, action: AdminReviewModerationAction) {
     if (action === "delete") {
       const confirmed = window.confirm(
-        `Permanently remove this review from ${review.patientName}? Doctor ratings will be recalculated.`,
+        `Permanently remove this review from ${review.patientName}? ${review.providerName}'s rating will be recalculated.`,
       );
       if (!confirmed) return;
     }
 
     setPendingId(review.id);
     try {
-      const res = await fetch("/api/v1/admin/reviews/moderate", {
+      const res = await fetch(`${apiBase}/moderate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewId: review.id, action }),
@@ -131,7 +124,7 @@ export function AdminReviewModeration() {
 
     setApprovingAll(true);
     try {
-      const res = await fetch("/api/v1/admin/reviews/approve-all", {
+      const res = await fetch(`${apiBase}/approve-all`, {
         method: "POST",
       });
       const json = await res.json();
@@ -248,7 +241,7 @@ export function AdminReviewModeration() {
                   <p className="mt-2 text-sm text-slate-700">
                     <span className="font-medium">{review.patientName}</span>
                     <span className="text-slate-400"> → </span>
-                    <span className="font-medium">{review.doctorName}</span>
+                    <span className="font-medium">{review.providerName}</span>
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
                     {formatKarachiDateTime(review.createdAt)}

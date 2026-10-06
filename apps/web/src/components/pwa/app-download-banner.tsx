@@ -82,7 +82,7 @@ export function AppDownloadBanner() {
           >
             <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl">
               <Image
-                src="/icons/android.png"
+                src="/icons/android.webp"
                 alt=""
                 width={44}
                 height={44}

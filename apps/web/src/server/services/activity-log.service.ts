@@ -1,6 +1,8 @@
 import { ActivityEventModel, connectDatabase, UserModel } from "@zindagi/database";
+import { highestRole, type Role } from "@zindagi/shared";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
+import { getRequestGeo } from "@/server/lib/request-geo";
 
 const UNKNOWN = "Unknown";
 
@@ -23,7 +25,7 @@ export type LogActivityInput = {
  */
 export async function logActivity(input: LogActivityInput): Promise<void> {
   try {
-    await connectDatabase();
+    const [geo] = await Promise.all([getRequestGeo(), connectDatabase()]);
     await ActivityEventModel.create({
       userId: input.userId || undefined,
       userRole: input.userRole || undefined,
@@ -35,6 +37,10 @@ export async function logActivity(input: LogActivityInput): Promise<void> {
       metadata: input.metadata,
       platform: input.platform,
       path: input.path,
+      ip: geo.ip,
+      city: geo.city,
+      region: geo.region,
+      country: geo.country,
     });
   } catch (err) {
     console.error("logActivity failed", err);
@@ -43,7 +49,10 @@ export async function logActivity(input: LogActivityInput): Promise<void> {
 
 export type ActivityFeedRow = {
   id: string;
+  /** Stable per-person key — `u:<userId>`, `v:<visitorId>` for guests, or `anon`. */
+  actorKey: string;
   userId: string | null;
+  visitorId: string | null;
   userName: string;
   userRole: string;
   action: string;
@@ -52,6 +61,10 @@ export type ActivityFeedRow = {
   metadata: Record<string, unknown> | null;
   platform: string | null;
   path: string | null;
+  ip: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
   createdAt: string;
 };
 
@@ -67,6 +80,7 @@ export async function listActivityForAdmin(params: {
   role?: string;
   status?: string;
   userId?: string;
+  visitorId?: string;
   page?: number;
   pageSize?: number;
 }): Promise<ActivityFeedResult> {
@@ -84,6 +98,7 @@ export async function listActivityForAdmin(params: {
   }
   if (params.status) filter.status = params.status;
   if (params.userId) filter.userId = params.userId;
+  if (params.visitorId) filter.visitorId = params.visitorId;
 
   const [rows, total] = await Promise.all([
     ActivityEventModel.find(filter)
@@ -96,23 +111,44 @@ export async function listActivityForAdmin(params: {
 
   const userIds = [...new Set(rows.map((r) => r.userId?.toString()).filter(Boolean))] as string[];
   const users = userIds.length
-    ? await UserModel.find(mongoFilter({ _id: { $in: mongoObjectIds(userIds) } })).select("name").lean()
+    ? await UserModel.find(mongoFilter({ _id: { $in: mongoObjectIds(userIds) } }))
+        .select("name roles")
+        .lean()
     : [];
   const nameById = new Map(
     users.map((u) => [u._id.toString(), safeDisplayText(u.name) ?? UNKNOWN]),
   );
+  // Show the user's current highest role (e.g. a patient who later became a
+  // doctor shows as doctor), not whatever role was stamped on older events.
+  const roleById = new Map(
+    users.map((u) => [u._id.toString(), highestRole(u.roles as Role[] | undefined)]),
+  );
 
   const events: ActivityFeedRow[] = rows.map((row) => ({
     id: row._id.toString(),
+    actorKey: row.userId
+      ? `u:${row.userId.toString()}`
+      : row.visitorId
+        ? `v:${row.visitorId}`
+        : "anon",
     userId: row.userId?.toString() ?? null,
-    userName: row.userId ? nameById.get(row.userId.toString()) ?? UNKNOWN : "Guest",
-    userRole: row.userRole ?? UNKNOWN,
+    visitorId: row.visitorId ?? null,
+    userName: row.userId
+      ? nameById.get(row.userId.toString()) ?? UNKNOWN
+      : row.visitorId
+        ? `Guest ${row.visitorId.slice(0, 4).toUpperCase()}`
+        : "Guest",
+    userRole: (row.userId && roleById.get(row.userId.toString())) || row.userRole || UNKNOWN,
     action: row.action,
     status: (row.status as "success" | "error") ?? "success",
     entityType: row.entityType ?? null,
     metadata: (row.metadata as Record<string, unknown>) ?? null,
     platform: row.platform ?? null,
     path: row.path ?? null,
+    ip: row.ip ?? null,
+    city: row.city ?? null,
+    region: row.region ?? null,
+    country: row.country ?? null,
     createdAt: row.createdAt?.toISOString() ?? new Date(0).toISOString(),
   }));
 
@@ -126,13 +162,17 @@ export type ActivitySummary = {
   topActions: { action: string; count: number }[];
   topErrorActions: { action: string; count: number }[];
   byRole: { role: string; count: number }[];
+  topCities: { city: string; count: number }[];
   signups7d: number;
   visitors7d: number;
   visitorsNotConverted7d: number;
+  androidInstallsTotal: number;
+  androidInstalls7d: number;
 };
 
 const PAGE_VIEW_ACTION = "page.view";
 const SIGNUP_ACTION = "user.signup";
+const PWA_INSTALL_ACTION = "pwa.install";
 
 export async function getActivitySummary(): Promise<ActivitySummary> {
   await connectDatabase();
@@ -141,12 +181,20 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
   const last24hStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const last7dStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalEvents, last24h, window7d, signups7d, visitorIds7d, signupVisitorIds7d] =
-    await Promise.all([
+  const [
+    totalEvents,
+    last24h,
+    window7d,
+    signups7d,
+    visitorIds7d,
+    signupVisitorIds7d,
+    androidInstallsTotal,
+    androidInstalls7d,
+  ] = await Promise.all([
       ActivityEventModel.countDocuments({}),
       ActivityEventModel.countDocuments({ createdAt: { $gte: last24hStart } }),
       ActivityEventModel.find({ createdAt: { $gte: last7dStart } })
-        .select("action status userRole")
+        .select("action status userRole city country")
         .lean(),
       ActivityEventModel.countDocuments({
         action: SIGNUP_ACTION,
@@ -163,11 +211,21 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
         visitorId: { $exists: true },
         createdAt: { $gte: last7dStart },
       }),
+      ActivityEventModel.countDocuments({
+        action: PWA_INSTALL_ACTION,
+        "metadata.platform": "android",
+      }),
+      ActivityEventModel.countDocuments({
+        action: PWA_INSTALL_ACTION,
+        "metadata.platform": "android",
+        createdAt: { $gte: last7dStart },
+      }),
     ]);
 
   const actionCounts = new Map<string, number>();
   const errorActionCounts = new Map<string, number>();
   const roleCounts = new Map<string, number>();
+  const cityCounts = new Map<string, number>();
   let errors = 0;
 
   for (const row of window7d) {
@@ -178,6 +236,10 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     }
     const role = row.userRole ?? "guest";
     roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+    const city = row.city
+      ? [row.city, row.country].filter(Boolean).join(", ")
+      : row.country ?? "Unknown";
+    cityCounts.set(city, (cityCounts.get(city) ?? 0) + 1);
   }
 
   const topActions = [...actionCounts.entries()]
@@ -194,6 +256,11 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     .map(([role, count]) => ({ role, count }))
     .sort((a, b) => b.count - a.count);
 
+  const topCities = [...cityCounts.entries()]
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
   const convertedVisitorIds = new Set(signupVisitorIds7d as string[]);
   const visitorsNotConverted7d = (visitorIds7d as string[]).filter(
     (id) => !convertedVisitorIds.has(id),
@@ -206,8 +273,11 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     topActions,
     topErrorActions,
     byRole,
+    topCities,
     signups7d,
     visitors7d: (visitorIds7d as string[]).length,
     visitorsNotConverted7d,
+    androidInstallsTotal,
+    androidInstalls7d,
   };
 }

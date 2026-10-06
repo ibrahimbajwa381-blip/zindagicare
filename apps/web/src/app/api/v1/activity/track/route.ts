@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { highestRole } from "@zindagi/shared";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { logActivity } from "@/server/services/activity-log.service";
-
-const VISITOR_COOKIE = "zc_visitor";
+import { VISITOR_COOKIE } from "@/server/lib/visitor-id";
 
 const trackSchema = z.object({
   action: z.string().min(1).max(80),
@@ -25,7 +25,7 @@ export const POST = withApiHandler(
     await logActivity({
       ...body,
       userId: session?.user?.id,
-      userRole: session?.user?.roles?.[0],
+      userRole: session?.user?.roles ? highestRole(session.user.roles) : undefined,
       visitorId,
     });
 

@@ -1,3 +1,6 @@
+import { HomeVisitServiceTypes } from "../types/enums";
+import { HOME_CARE_PRICING } from "./home-care";
+
 /** Platform revenue share for doctors and nurses (staff keeps this % of gross). */
 export const STAFF_COMMISSION_CONFIG = {
   defaultDoctorOnlinePercent: 70,
@@ -26,6 +29,71 @@ export function calculateStaffNetEarnings(
     Math.max(STAFF_COMMISSION_CONFIG.minPercent, commissionPercent),
   );
   return Math.round((grossAmount * clamped) / 100);
+}
+
+/**
+ * Standard physiotherapy home-visit split: the physiotherapist keeps 70% of the visit fee and
+ * ZindagiCare keeps 30%. The rupee amounts are for the default visit fee; physiotherapists who
+ * set their own fee get the same percentage of that fee.
+ */
+export const PHYSIOTHERAPY_HOME_VISIT_SPLIT = (() => {
+  const physiotherapistPercent = STAFF_COMMISSION_CONFIG.defaultPhysiotherapistPercent;
+  const patientPays = HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY];
+  const physiotherapistEarns = calculateStaffNetEarnings(patientPays, physiotherapistPercent);
+  return {
+    physiotherapistPercent,
+    platformPercent: 100 - physiotherapistPercent,
+    patientPays,
+    physiotherapistEarns,
+    platformFee: patientPays - physiotherapistEarns,
+  } as const;
+})();
+
+/**
+ * A physiotherapist's share of one completed visit: 70% of the fee, unless admin has set a
+ * per-physiotherapist override percentage.
+ */
+export function calculatePhysiotherapistVisitEarnings(
+  grossAmount: number,
+  commissionOverride?: number | null,
+): number {
+  const percent =
+    commissionOverride != null && !Number.isNaN(commissionOverride)
+      ? commissionOverride
+      : PHYSIOTHERAPY_HOME_VISIT_SPLIT.physiotherapistPercent;
+  return calculateStaffNetEarnings(grossAmount, percent);
+}
+
+/**
+ * Standard nursing home-visit split: the nurse keeps 70% of the visit fee and ZindagiCare keeps
+ * 30%. The rupee amounts are for the default general nursing visit fee.
+ */
+export const NURSING_HOME_VISIT_SPLIT = (() => {
+  const nursePercent = STAFF_COMMISSION_CONFIG.defaultNursePercent;
+  const patientPays = HOME_CARE_PRICING[HomeVisitServiceTypes.NURSE];
+  const nurseEarns = calculateStaffNetEarnings(patientPays, nursePercent);
+  return {
+    nursePercent,
+    platformPercent: 100 - nursePercent,
+    patientPays,
+    nurseEarns,
+    platformFee: patientPays - nurseEarns,
+  } as const;
+})();
+
+/**
+ * A nurse's share of one completed visit: 70% of the fee, unless admin has set a per-nurse
+ * override percentage.
+ */
+export function calculateNurseVisitEarnings(
+  grossAmount: number,
+  commissionOverride?: number | null,
+): number {
+  const percent =
+    commissionOverride != null && !Number.isNaN(commissionOverride)
+      ? commissionOverride
+      : NURSING_HOME_VISIT_SPLIT.nursePercent;
+  return calculateStaffNetEarnings(grossAmount, percent);
 }
 
 /** Adds the referral bonus to a doctor's base commission % when the patient was referred by them. */

@@ -7,11 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { dispatchAdminNavCountsRefresh } from "@/features/admin/lib/nav-counts-events";
 import type { AdminNurseDetailDto } from "@/features/admin/types/nurse-admin";
+import { AdminNursePortfolioPanel } from "@/features/admin/components/admin-nurse-portfolio-panel";
+import { nurseProfilePath } from "@/lib/nurses/profile-path";
+import { NurseAvatar } from "@/features/nurse/components/nurse-avatar";
 import {
   ExternalLink,
   FileText,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   Save,
   UserCheck,
@@ -51,8 +55,17 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DocumentCard({ label, url }: { label: string; url?: string }) {
-  const isImage = url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+function DocumentCard({
+  label,
+  url,
+  image = false,
+}: {
+  label: string;
+  url?: string;
+  /** Always render as an image (avatar URLs don't always carry a file extension). */
+  image?: boolean;
+}) {
+  const isImage = url && (image || /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url));
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -66,7 +79,11 @@ function DocumentCard({ label, url }: { label: string; url?: string }) {
             <img
               src={url}
               alt={label}
-              className="max-h-40 w-full rounded-lg border border-slate-100 bg-slate-50 object-contain"
+              className={
+                image
+                  ? "h-56 w-full rounded-lg border border-slate-100 bg-slate-50 object-contain"
+                  : "max-h-40 w-full rounded-lg border border-slate-100 bg-slate-50 object-contain"
+              }
             />
           )}
           <a
@@ -76,13 +93,19 @@ function DocumentCard({ label, url }: { label: string; url?: string }) {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
           >
             <FileText className="h-4 w-4" />
-            Open document
+            {image ? "Open full size" : "Open document"}
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
       )}
     </div>
   );
+}
+
+/** wa.me wants international digits only: 0300… → 92300… */
+function whatsAppNumber(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.startsWith("0") ? `92${digits.slice(1)}` : digits;
 }
 
 function formatCurrency(amount: number, currency = "PKR") {
@@ -178,62 +201,119 @@ export function AdminNurseApplicationReview({ profile }: Props) {
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold text-slate-900">{profile.user.name}</h2>
-              {isPending && hasSubmitted && (
-                <Badge variant="secondary">Pending review</Badge>
-              )}
-              {isPending && !hasSubmitted && (
-                <Badge variant="outline">Documents not submitted</Badge>
-              )}
-              {isApproved && <Badge>Approved</Badge>}
-              {isRejected && <Badge variant="outline">Rejected</Badge>}
-            </div>
-            <p className="mt-1 text-sm text-slate-600">
-              {profile.licenseNumber ?? "No license on file"} ·{" "}
-              {profile.qualification ?? "—"}
-              {profile.experienceYears !== undefined
-                ? ` · ${profile.experienceYears} yrs experience`
-                : ""}
-            </p>
-            {profile.verificationSubmittedAt && (
-              <p className="mt-1 text-xs text-slate-500">
-                Submitted{" "}
-                {new Date(profile.verificationSubmittedAt).toLocaleString("en-PK", {
-                  dateStyle: "full",
-                  timeStyle: "short",
-                })}
-              </p>
+          <div className="flex min-w-0 items-start gap-4">
+            {profile.user.avatarUrl ? (
+              <a
+                href={profile.user.avatarUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open full-size photo"
+                className="shrink-0"
+              >
+                <NurseAvatar
+                  name={profile.user.name}
+                  avatarUrl={profile.user.avatarUrl}
+                  size="xl"
+                />
+              </a>
+            ) : (
+              <NurseAvatar name={profile.user.name} size="xl" />
             )}
-            <p className="mt-1 text-xs text-slate-500">
-              Provider agreement:{" "}
-              {profile.platformAgreementAcceptedAt ? (
-                <span className="font-medium text-emerald-700">
-                  Accepted{" "}
-                  {new Date(profile.platformAgreementAcceptedAt).toLocaleDateString("en-PK")}
-                </span>
-              ) : (
-                <span className="font-medium text-red-600">Not accepted</span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900">{profile.user.name}</h2>
+                {isPending && hasSubmitted && (
+                  <Badge variant="secondary">Pending review</Badge>
+                )}
+                {isPending && !hasSubmitted && (
+                  <Badge variant="outline">Documents not submitted</Badge>
+                )}
+                {isApproved && <Badge>Approved</Badge>}
+                {isRejected && <Badge variant="outline">Rejected</Badge>}
+              </div>
+              <p className="mt-1 text-sm text-slate-600">
+                {profile.licenseNumber ?? "No license on file"} ·{" "}
+                {profile.qualification ?? "—"}
+                {profile.experienceYears !== undefined
+                  ? ` · ${profile.experienceYears} yrs experience`
+                  : ""}
+              </p>
+              {profile.verificationSubmittedAt && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Submitted{" "}
+                  {new Date(profile.verificationSubmittedAt).toLocaleString("en-PK", {
+                    dateStyle: "full",
+                    timeStyle: "short",
+                  })}
+                </p>
               )}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {profile.user.phone && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`tel:${profile.user.phone}`}>
-                    <Phone className="h-4 w-4" />
-                    {profile.user.phone}
-                  </a>
-                </Button>
-              )}
-              {profile.user.email && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`mailto:${profile.user.email}`}>
-                    <Mail className="h-4 w-4" />
-                    {profile.user.email}
-                  </a>
-                </Button>
-              )}
+              <p className="mt-1 text-xs text-slate-500">
+                Provider agreement:{" "}
+                {profile.platformAgreementAcceptedAt ? (
+                  <span className="font-medium text-emerald-700">
+                    Accepted{" "}
+                    {new Date(profile.platformAgreementAcceptedAt).toLocaleDateString("en-PK")}
+                  </span>
+                ) : (
+                  <span className="font-medium text-red-600">Not accepted</span>
+                )}
+              </p>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <Phone className="h-3.5 w-3.5" />
+                    Phone
+                  </dt>
+                  {profile.user.phone ? (
+                    <dd className="mt-1">
+                      <a
+                        href={`tel:${profile.user.phone}`}
+                        className="text-base font-semibold tabular-nums text-slate-900 hover:text-brand"
+                      >
+                        {profile.user.phone}
+                      </a>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={`tel:${profile.user.phone}`}>
+                            <Phone className="h-4 w-4" />
+                            Call
+                          </a>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={`https://wa.me/${whatsAppNumber(profile.user.phone)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                      </div>
+                    </dd>
+                  ) : (
+                    <dd className="mt-1 text-sm text-slate-500">Not provided</dd>
+                  )}
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </dt>
+                  {profile.user.email ? (
+                    <dd className="mt-1">
+                      <a
+                        href={`mailto:${profile.user.email}`}
+                        className="break-all text-base font-semibold text-slate-900 hover:text-brand"
+                      >
+                        {profile.user.email}
+                      </a>
+                    </dd>
+                  ) : (
+                    <dd className="mt-1 text-sm text-slate-500">Not provided</dd>
+                  )}
+                </div>
+              </dl>
             </div>
           </div>
 
@@ -262,7 +342,7 @@ export function AdminNurseApplicationReview({ profile }: Props) {
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>Review credentials and documents below.</li>
             <li>
-              Conduct the verification interview with the nurse{" "}
+              Conduct the verification interview with the Nurse{" "}
               <strong>outside this platform</strong> (phone, video, or in person).
             </li>
             <li>Record your interview notes in the section below.</li>
@@ -275,7 +355,7 @@ export function AdminNurseApplicationReview({ profile }: Props) {
         <h2 className="text-lg font-semibold text-slate-900">Admin notes</h2>
         <p className="text-sm text-slate-600">
           Private notes for your team — interview observations, follow-ups, or internal
-          comments. Not visible to the nurse.
+          comments. Not visible to the Nurse.
         </p>
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
           <textarea
@@ -330,6 +410,10 @@ export function AdminNurseApplicationReview({ profile }: Props) {
             label="In-house visits"
             value={profile.homeVisitEnabled ? "Enabled" : "Not enabled"}
           />
+          <InfoBlock
+            label="Specialties"
+            value={profile.specialties?.length ? profile.specialties.join(", ") : "—"}
+          />
         </div>
       </section>
 
@@ -352,14 +436,30 @@ export function AdminNurseApplicationReview({ profile }: Props) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900">Verification documents</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {profile.documents.length > 0 ? (
-            profile.documents.map((doc) => (
-              <DocumentCard key={doc.label} label={doc.label} url={doc.url} />
-            ))
-          ) : (
-            <p className="text-sm text-slate-500">No documents uploaded yet.</p>
-          )}
+          <DocumentCard label="Profile photo" url={profile.user.avatarUrl} image />
+          {profile.documents.map((doc) => (
+            <DocumentCard key={doc.label} label={doc.label} url={doc.url} />
+          ))}
         </div>
+        {profile.documents.length === 0 && (
+          <p className="text-sm text-slate-500">No verification documents uploaded yet.</p>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Public portfolio</h2>
+        <p className="text-sm text-slate-600">
+          What patients will see on this nurse&apos;s public profile once approved.
+        </p>
+        <AdminNursePortfolioPanel
+          portfolio={profile.portfolio}
+          avatarUrl={profile.user.avatarUrl}
+          publicPath={
+            isApproved && profile.slug
+              ? nurseProfilePath(profile.slug, profile.user.id)
+              : null
+          }
+        />
       </section>
 
       {(isApproved || profile.stats.completedTotal > 0) && (
@@ -485,7 +585,7 @@ export function AdminNurseApplicationReview({ profile }: Props) {
               className="mt-1 h-4 w-4 rounded border-slate-300"
             />
             <span>
-              I have reviewed this nurse&apos;s profile and documents, completed the
+              I have reviewed this Nurse&apos;s profile and documents, completed the
               verification interview, and recorded any notes. I am ready to approve or
               reject this application.
             </span>
@@ -499,7 +599,7 @@ export function AdminNurseApplicationReview({ profile }: Props) {
               onClick={() => decide("approve")}
             >
               <UserCheck className="h-4 w-4" />
-              {actionPending ? "Processing…" : "Approve nurse"}
+              {actionPending ? "Processing…" : "Approve Nurse"}
             </Button>
             <Button
               variant="outline"
@@ -516,7 +616,7 @@ export function AdminNurseApplicationReview({ profile }: Props) {
       {isApproved && (
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-600">
-            This nurse is approved and can receive in-house visit assignments.
+            This Nurse is approved and can receive in-house visit assignments.
           </p>
           <Button
             variant="outline"
@@ -534,9 +634,9 @@ export function AdminNurseApplicationReview({ profile }: Props) {
 
       {isPending && !hasSubmitted && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-medium">Waiting for nurse to submit documents</p>
+          <p className="font-medium">Waiting for Nurse to submit documents</p>
           <p className="mt-1">
-            This nurse has registered but has not yet submitted their verification form.
+            This Nurse has registered but has not yet submitted their verification form.
           </p>
         </div>
       )}

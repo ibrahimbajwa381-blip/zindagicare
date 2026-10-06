@@ -22,6 +22,15 @@ import { colors, fonts, cardShadow } from "@/lib/theme";
 import { formatKarachi } from "@/lib/format-date";
 import { resolveMediaUrl } from "@/lib/config";
 
+/** Mirrors PAID_ONLINE_INTAKE_QUESTION_KEYS / getPaidOnlineIntakeQuestions in @zindagi/shared. */
+const HISTORY_QUESTIONS = [
+  { key: "chief_complaint", text: "What is the main health concern you would like to discuss with the doctor?" },
+  { key: "current_medications", text: "Are you currently taking any medicines, supplements, or home remedies? If yes, please list them." },
+  { key: "allergies", text: "Do you have any allergies (medicines, foods, or anything else)? If yes, please describe." },
+  { key: "chronic_conditions", text: "Do you have any ongoing medical conditions (e.g. diabetes, blood pressure, asthma, heart disease)?" },
+  { key: "additional_info", text: "Is there anything else you would like the doctor to know before your consultation?" },
+] as const;
+
 const POLL_MS = 15000;
 
 type PendingCheckout = {
@@ -42,7 +51,7 @@ export default function SundayConsultScreen() {
   const [checkout, setCheckout] = useState<PendingCheckout | null>(null);
 
   const [phone, setPhone] = useState("");
-  const [notes, setNotes] = useState("");
+  const [history, setHistory] = useState<Record<string, string>>({});
   const [affordability, setAffordability] = useState<SundayAffordabilityChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +106,10 @@ export default function SundayConsultScreen() {
       setError("Enter a phone number so we can reach you.");
       return;
     }
+    if (HISTORY_QUESTIONS.some((q) => !(history[q.key] ?? "").trim())) {
+      setError('Please answer every medical history question (write "None" if it does not apply).');
+      return;
+    }
     if (!affordability) {
       setError("Choose whether you can contribute a small fee.");
       return;
@@ -108,7 +121,8 @@ export default function SundayConsultScreen() {
     try {
       const result = await submitSundayRequest({
         patientPhone: trimmedPhone,
-        patientNotes: notes.trim() || undefined,
+        history: HISTORY_QUESTIONS.map((q) => ({ key: q.key, answer: (history[q.key] ?? "").trim() })),
+        locale: "en",
         affordabilityChoice: affordability,
       });
 
@@ -293,8 +307,8 @@ export default function SundayConsultScreen() {
           <View style={styles.card}>
             <Text style={styles.matchingTitle}>Free 10-minute video consult</Text>
             <Text style={styles.hint}>
-              Every Sunday we match patients with an available doctor free of charge. No doctor picker — just
-              request and we'll connect you.
+              Every Sunday verified doctors pick patients for a free consult. No doctor picker — share your
+              history and an available doctor will pick your request.
             </Text>
 
             <Text style={styles.label}>Phone number</Text>
@@ -308,16 +322,28 @@ export default function SundayConsultScreen() {
               accessibilityLabel="Phone number"
             />
 
-            <Text style={styles.label}>Notes for the doctor (optional)</Text>
-            <TextInput
-              style={styles.notesInput}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              placeholder="Describe your symptoms or reason for the visit"
-              placeholderTextColor="#9AA5B1"
-              accessibilityLabel="Notes for the doctor (optional)"
-            />
+            <Text style={styles.label}>Your medical history</Text>
+            <Text style={styles.hint}>
+              Answer every question — write &quot;None&quot; if it does not apply. Doctors read this before picking your
+              request.
+            </Text>
+            {HISTORY_QUESTIONS.map((q, index) => (
+              <View key={q.key}>
+                <Text style={styles.label}>
+                  {index + 1}. {q.text}
+                </Text>
+                <TextInput
+                  style={styles.notesInput}
+                  value={history[q.key] ?? ""}
+                  onChangeText={(value) => setHistory((prev) => ({ ...prev, [q.key]: value }))}
+                  multiline
+                  maxLength={2000}
+                  placeholder="Type your answer"
+                  placeholderTextColor="#9AA5B1"
+                  accessibilityLabel={q.text}
+                />
+              </View>
+            ))}
 
             <Text style={styles.label}>Can you contribute a small fee?</Text>
             <Pressable

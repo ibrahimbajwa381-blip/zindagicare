@@ -44,6 +44,9 @@ export function resolveNotificationHref(
         ? `/admin/sunday-consult?requestId=${encodeURIComponent(requestId)}`
         : "/admin/sunday-consult";
 
+    case "sunday_free_open_request":
+      return isDoctor ? "/doctor/sunday-consult" : null;
+
     case "online_consult_requested":
     case "online_consult_paid":
       if (!isStaffAdmin) return null;
@@ -101,6 +104,7 @@ export function resolveNotificationHref(
     case "online_consult_confirmed":
     case "urgent_consult_confirmed":
     case "sunday_booking_confirmed":
+    case "sunday_free_released":
     case "patient_doctor_missed":
       return "/dashboard";
 

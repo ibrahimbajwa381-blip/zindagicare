@@ -3,8 +3,14 @@ export type AdminNavCounts = {
   doctors: number;
   nurses: number;
   physiotherapists: number;
-  reviews: number;
   sundayConsult: number;
   urgentCare: number;
-  homeVisits: number;
+  /** Open home visits (requested or assigned), one count per provider queue. */
+  homeVisitsDoctor: number;
+  homeVisitsPhysiotherapist: number;
+  homeVisitsNurse: number;
+  /** Reviews waiting for moderation, one count per review category. */
+  reviewsDoctor: number;
+  reviewsPhysiotherapist: number;
+  reviewsNurse: number;
 };

@@ -1,3 +1,5 @@
+import type { DoctorPortfolio } from "@/lib/doctors/portfolio";
+
 export type WeeklyAvailabilityDto = {
   dayOfWeek: number;
   startTimeLocal: string;
@@ -44,6 +46,8 @@ export type DoctorProfileDto = {
   specialties: string[];
   bio?: string;
   languages: string[];
+  /** Doctor-authored public portfolio (headline, services, experience, …). */
+  portfolio: DoctorPortfolio;
   hospitals: Array<{ name: string; city: string; address?: string }>;
   consultationFee: number;
   weeklyAvailability: WeeklyAvailabilityDto[];

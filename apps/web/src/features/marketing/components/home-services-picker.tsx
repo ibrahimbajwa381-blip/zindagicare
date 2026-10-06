@@ -97,6 +97,13 @@ const SCENARIO_SERVICE: Record<
   woundCare: HomeVisitServiceTypes.WOUND_CARE,
 };
 
+/** Physiotherapy is booked by choosing a physio from the directory. */
+function serviceHref(service: string): string {
+  return service === HomeVisitServiceTypes.PHYSIOTHERAPY
+    ? siteConfig.links.physiotherapists
+    : `${siteConfig.links.homeCareRequest}?service=${service}`;
+}
+
 export function HomeServicesPicker() {
   const t = useTranslations();
   const p = t.homeServices.picker;
@@ -133,7 +140,7 @@ export function HomeServicesPicker() {
             return (
               <Link
                 key={scenario.key}
-                href={`${siteConfig.links.homeCareRequest}?service=${service}`}
+                href={serviceHref(service)}
                 onMouseEnter={() => setHighlighted(service)}
                 onMouseLeave={() => setHighlighted(null)}
                 onFocus={() => setHighlighted(service)}
@@ -157,7 +164,7 @@ export function HomeServicesPicker() {
           const item = getItemCopy(itemKey);
           const price = HOME_CARE_PRICING[type];
           const isHighlighted = highlighted === type;
-          const bookHref = `${siteConfig.links.homeCareRequest}?service=${type}`;
+          const bookHref = serviceHref(type);
 
           return (
             <article

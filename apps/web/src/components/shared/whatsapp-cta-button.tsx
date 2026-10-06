@@ -25,7 +25,7 @@ type WhatsAppCtaButtonProps = Pick<ButtonProps, "size" | "className"> & {
   label?: string;
 };
 
-/** Reusable "consult on WhatsApp" call-to-action, styled in WhatsApp's brand green. */
+/** Reusable "consult on WhatsApp" call-to-action, styled in the site's brand palette. */
 export function WhatsAppCtaButton({
   size = "lg",
   className,
@@ -39,8 +39,9 @@ export function WhatsAppCtaButton({
     <Button
       asChild
       size={size}
+      variant="outline"
       className={cn(
-        "border border-[#25D366] bg-[#25D366] text-white hover:bg-[#1ebe5a]",
+        "border-brand/30 text-brand-dark hover:border-brand hover:bg-brand-muted",
         className,
       )}
     >

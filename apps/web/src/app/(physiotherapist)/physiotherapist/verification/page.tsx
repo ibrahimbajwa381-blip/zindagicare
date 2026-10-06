@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
 import { PhysiotherapistVerificationForm } from "@/features/physiotherapist/components/physiotherapist-verification-form";
 import { getPhysiotherapistProfile } from "@/server/services/physiotherapist.service";
+import { getOwnPhysiotherapistBankAccount } from "@/server/services/physiotherapist-finance.service";
 
 export const metadata = { title: "Verification | Physiotherapist" };
 
@@ -20,6 +21,8 @@ export default async function PhysiotherapistVerificationPage() {
   if (profile.verification.status === VerificationStatuses.APPROVED) {
     redirect("/physiotherapist");
   }
+  // Prefill a resubmission with the payout account given last time.
+  const bankAccount = await getOwnPhysiotherapistBankAccount(session.user.id);
 
   const isRejected = profile.verification.status === VerificationStatuses.REJECTED;
   const isPendingReview =
@@ -47,9 +50,18 @@ export default async function PhysiotherapistVerificationPage() {
             documents. You&apos;ll be able to receive in-house visit assignments once
             an admin approves your profile.
           </p>
-          <Button asChild variant="outline" className="mt-6">
-            <Link href="/physiotherapist">Back to overview</Link>
-          </Button>
+          <p className="mx-auto mt-4 max-w-md text-sm text-sky-900/80">
+            While you wait, build your portfolio — experience, training and photos — so your
+            public profile is ready the moment you&apos;re approved.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link href="/physiotherapist/portfolio">Build my portfolio</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/physiotherapist">Back to overview</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -60,7 +72,7 @@ export default async function PhysiotherapistVerificationPage() {
       <PhysiotherapistPageHeader
         eyebrow="Verification"
         title={isRejected ? "Resubmit your application" : "Verify your credentials"}
-        description="Submit your physiotherapy license, service area, and identity documents. An admin will review your application before you can receive in-house visit assignments."
+        description="Submit your profile photo, physiotherapy license, service area, and identity documents. An admin will review your application before you can receive in-house visit assignments."
       />
 
       {isRejected && profile.verification.rejectionReason && (
@@ -75,12 +87,15 @@ export default async function PhysiotherapistVerificationPage() {
 
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <PhysiotherapistVerificationForm
+          name={profile.user.name}
           defaults={{
+            avatarUrl: profile.user.avatarUrl,
             licenseNumber: profile.verification.licenseNumber,
             qualification: profile.verification.qualification,
             experienceYears: profile.verification.experienceYears,
             city: profile.staff.serviceArea.city,
             area: profile.staff.serviceArea.area,
+            bankAccount: bankAccount ?? undefined,
           }}
         />
       </div>

@@ -16,17 +16,20 @@ import {
   VideoSessionStatuses,
   AppError,
 } from "@zindagi/shared";
+import type {
+  AdminModerationReview,
+  AdminModerationReviewList,
+  AdminReviewModerationAction,
+  AdminReviewVisibility,
+} from "@/features/admin/types/admin-reviews";
 import type { DoctorReviewDto } from "@/features/marketing/types/doctor-public";
 import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
 import { mongoFilter } from "@/lib/mongo/query";
 import { PrescriptionService } from "@/server/services/prescription.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
-function maskPatientName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "Patient";
-  if (parts.length === 1) return `${parts[0][0]?.toUpperCase() ?? "P"}.`;
-  return `${parts[0]} ${parts[parts.length - 1][0]?.toUpperCase() ?? ""}.`;
+function formatPatientName(name: string) {
+  return name.trim().replace(/\s+/g, " ") || "Patient";
 }
 
 export type PatientReviewDto = {
@@ -44,18 +47,9 @@ export type PatientReviewState = {
   prescription?: AppointmentPrescriptionLink;
 };
 
-export type AdminReviewRow = {
-  id: string;
+export type AdminReviewRow = AdminModerationReview & {
   appointmentId?: string;
   doctorId: string;
-  rating: number;
-  comment?: string;
-  isVisible: boolean;
-  isModerated: boolean;
-  createdAt: string;
-  patientName: string;
-  doctorName: string;
-  source: "patient" | "admin";
 };
 
 type AppointmentReviewContext = {
@@ -185,7 +179,7 @@ export class ReviewService {
       id: row._id.toString(),
       rating: row.rating,
       comment: row.comment ?? undefined,
-      patientName: maskPatientName(
+      patientName: formatPatientName(
         row.patientId ? nameById.get(row.patientId.toString()) ?? "Patient" : row.patientName ?? "Patient",
       ),
       createdAt: row.createdAt.toISOString(),
@@ -430,7 +424,7 @@ export class ReviewService {
   ): Promise<AdminReviewRow> {
     await ReviewService.ensureConnected();
 
-    const doctor = await DoctorProfileModel.findById(doctorId).lean();
+    const doctor = await DoctorProfileModel.findById(doctorId).populate("userId", "name").lean();
     if (!doctor) {
       throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
     }
@@ -458,7 +452,7 @@ export class ReviewService {
       isModerated: review.isModerated ?? true,
       createdAt: review.createdAt.toISOString(),
       patientName: review.patientName ?? input.patientName,
-      doctorName: "",
+      providerName: (doctor.userId as { name?: string } | null)?.name ?? "Doctor",
       source: "admin",
     };
   }
@@ -492,10 +486,8 @@ export class ReviewService {
   }
 
   static async listAdminReviews(
-    options: {
-      visibility?: "visible" | "hidden" | "all" | "pending";
-    } = {},
-  ): Promise<{ reviews: AdminReviewRow[]; total: number }> {
+    options: { visibility?: AdminReviewVisibility } = {},
+  ): Promise<AdminModerationReviewList & { reviews: AdminReviewRow[] }> {
     await ReviewService.ensureConnected();
 
     const visibility = options.visibility ?? "all";
@@ -546,7 +538,7 @@ export class ReviewService {
       patientName: row.patientId
         ? patientNameById.get(row.patientId.toString()) ?? "Patient"
         : row.patientName ?? "Patient",
-      doctorName: doctorNameById.get(row.doctorId.toString()) ?? "Doctor",
+      providerName: doctorNameById.get(row.doctorId.toString()) ?? "Doctor",
       source: (row.source as "patient" | "admin") ?? "patient",
     }));
 
@@ -557,7 +549,7 @@ export class ReviewService {
   static async moderateReview(
     adminUserId: string,
     reviewId: string,
-    action: "approve" | "hide" | "show" | "delete",
+    action: AdminReviewModerationAction,
   ) {
     await ReviewService.ensureConnected();
 

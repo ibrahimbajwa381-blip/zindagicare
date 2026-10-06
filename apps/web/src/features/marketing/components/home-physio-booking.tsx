@@ -9,7 +9,7 @@ import { surfaceCard } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
 import { getServerTranslations } from "@/i18n/server";
 
-const bookHref = `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.PHYSIOTHERAPY}`;
+const bookHref = siteConfig.links.physiotherapists;
 const price = HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY];
 
 export async function HomePhysioBooking() {

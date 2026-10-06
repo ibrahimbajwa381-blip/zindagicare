@@ -86,6 +86,15 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
         : physiotherapistBenefitIcons;
   const RoleIcon = roleIcons[role];
   const heroImage = getProviderHeroImage(role);
+  const guide =
+    role === "doctor"
+      ? { href: siteConfig.links.forDoctorsGuide, label: t.providerOnboarding.doctor.guideCta }
+      : role === "physiotherapist"
+        ? {
+            href: siteConfig.links.forPhysiotherapistsGuide,
+            label: t.providerOnboarding.physiotherapist.guideCta,
+          }
+        : null;
 
   return (
     <>
@@ -114,11 +123,9 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
-              {role === "doctor" ? (
+              {guide ? (
                 <Button size="lg" variant="outline" className="h-12 rounded-xl sm:h-14" asChild>
-                  <Link href={siteConfig.links.forDoctorsGuide}>
-                    {t.providerOnboarding.doctor.guideCta}
-                  </Link>
+                  <Link href={guide.href}>{guide.label}</Link>
                 </Button>
               ) : (
                 <Button size="lg" variant="outline" className="h-12 rounded-xl sm:h-14" asChild>
@@ -213,11 +220,9 @@ export async function ProviderOnboardingIntro({ role }: ProviderOnboardingIntroP
                 <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
-            {role === "doctor" ? (
+            {guide ? (
               <Button size="lg" variant="outline" className="h-12 rounded-xl" asChild>
-                <Link href={siteConfig.links.forDoctorsGuide}>
-                  {t.providerOnboarding.doctor.guideCta}
-                </Link>
+                <Link href={guide.href}>{guide.label}</Link>
               </Button>
             ) : null}
             <Button size="lg" variant="outline" className="h-12 rounded-xl" asChild>

@@ -8,9 +8,18 @@ import { Schema, type InferSchemaType, type Model, type Types } from "mongoose";
 import { applyFieldEncryption } from "../lib/field-encryption-plugin";
 import { registerModel } from "../lib/register-model";
 
+const historyAnswerSchema = new Schema(
+  {
+    key: { type: String, required: true },
+    text: { type: String, required: true, maxlength: 300 },
+    answer: { type: String, required: true, maxlength: 2000 },
+  },
+  { _id: false },
+);
+
 /**
  * Sunday free consult request — patient asks for a free video consult;
- * ops assigns an available doctor within the SLA window (no patient-side doctor picker).
+ * any verified doctor picks it and chooses a time (no patient-side doctor picker).
  * Optional Rs contribution (`pay_fee`) uses the same JazzCash transfer flow as paid booking.
  */
 const sundayFreeRequestSchema = new Schema(
@@ -22,7 +31,11 @@ const sundayFreeRequestSchema = new Schema(
       index: true,
     },
     patientPhone: { type: String, required: true, trim: true },
+    /** Legacy free-text notes (requests made before history was required). */
     patientNotes: { type: String, maxlength: 1000 },
+    /** Medical history — same questions as the paid online consult intake. */
+    history: { type: [historyAnswerSchema], default: [] },
+    historyLocale: { type: String, enum: ["en", "ur"], default: "en" },
     affordabilityChoice: {
       type: String,
       enum: Object.values(SundayAffordabilityChoices),
@@ -76,6 +89,7 @@ applyFieldEncryption(sundayFreeRequestSchema, {
     { path: "patientNotes", kind: "string" },
     { path: "adminNotes", kind: "string" },
     { path: "cancellationReason", kind: "string" },
+    { path: "history", kind: "nestedArray", subFields: ["text", "answer"] },
   ],
 });
 

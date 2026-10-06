@@ -18,6 +18,8 @@ type GeoLocationPickerProps = {
   onChange: (geo: GeoCoordinates | null) => void;
   required?: boolean;
   id?: string;
+  /** Overrides the default provider-oriented help text (e.g. for patient-facing forms). */
+  description?: string;
 };
 
 export function GeoLocationPicker({
@@ -25,6 +27,7 @@ export function GeoLocationPicker({
   onChange,
   required = false,
   id = "geo-location",
+  description,
 }: GeoLocationPickerProps) {
   const mountedRef = useIsMountedRef();
   const [mapsInput, setMapsInput] = useState("");
@@ -111,28 +114,14 @@ export function GeoLocationPicker({
             Google Maps location{required ? " *" : ""}
           </Label>
           <p className="mt-0.5 text-xs text-slate-500">
-            Open Google Maps, share your clinic or home base location, and paste the link
-            below. We use this to match you with in-house visits within{" "}
-            {HOME_CARE_MATCH_RADIUS_KM} km.
+            {description ?? (
+              <>
+                Open Google Maps, share your clinic or home base location, and paste the link
+                below. We use this to match you with in-house visits within{" "}
+                {HOME_CARE_MATCH_RADIUS_KM} km.
+              </>
+            )}
           </p>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <Input
-              id={`${id}-maps-link`}
-              value={mapsInput}
-              onChange={(e) => setMapsInput(e.target.value)}
-              placeholder="https://maps.google.com/… or 31.5204, 74.3587"
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={applyParsedLink}
-              disabled={resolving}
-            >
-              {resolving ? "Resolving…" : "Apply link"}
-            </Button>
-          </div>
-          {parseError && <p className="mt-1.5 text-xs text-red-600">{parseError}</p>}
         </div>
       )}
 
@@ -153,6 +142,32 @@ export function GeoLocationPicker({
           </Button>
         )}
       </div>
+
+      {!useGpsMode && (
+        <div>
+          <p className="text-xs font-medium text-slate-500">
+            Or paste a Google Maps link / coordinates
+          </p>
+          <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+            <Input
+              id={`${id}-maps-link`}
+              value={mapsInput}
+              onChange={(e) => setMapsInput(e.target.value)}
+              placeholder="https://maps.google.com/… or 31.5204, 74.3587"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={applyParsedLink}
+              disabled={resolving}
+            >
+              {resolving ? "Resolving…" : "Apply link"}
+            </Button>
+          </div>
+          {parseError && <p className="mt-1.5 text-xs text-red-600">{parseError}</p>}
+        </div>
+      )}
 
       {useGpsMode && parseError && (
         <p className="text-xs text-red-600">{parseError}</p>

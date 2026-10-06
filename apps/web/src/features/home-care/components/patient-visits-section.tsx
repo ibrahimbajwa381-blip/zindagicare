@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RefreshCw } from "lucide-react";
 import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,17 +41,45 @@ export function PatientVisitsSection() {
   const [visits, setVisits] = useState<HomeVisitDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/v1/home-visits?scope=mine");
-    const json = await res.json();
-    if (json.success) setVisits(json.data ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/v1/home-visits?scope=mine", { cache: "no-store" });
+      const json = await res.json();
+      if (json.success) setVisits(json.data ?? []);
+    } catch {
+      // Keep showing the last known visits if a background refresh fails.
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Poll every minute so status changes (e.g. provider marks "en route") show up
+  // without a full page reload. Skip while the tab is hidden; refresh on return.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
+
+  const refreshVisit = async (visitId: string) => {
+    setRefreshing(visitId);
+    await load();
+    setRefreshing(null);
+  };
 
   const cancelUnpaidVisit = async (visitId: string) => {
     if (!window.confirm("Cancel this request?")) return;
@@ -93,9 +122,23 @@ export function PatientVisitsSection() {
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <CardTitle className="text-base">{serviceName}</CardTitle>
-                <span className="text-sm font-medium text-brand-dark">
-                  Rs. {visit.pricing.total.toLocaleString()}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-brand-dark">
+                    Rs. {visit.pricing.total.toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => refreshVisit(visit.id)}
+                    disabled={refreshing !== null}
+                    aria-label="Refresh visit status"
+                    title="Refresh status"
+                    className="rounded-full p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-brand-dark disabled:opacity-60"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${refreshing === visit.id ? "animate-spin" : ""}`}
+                    />
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-slate-500">
                 {formatKarachiDateTime(visit.scheduledAt)}

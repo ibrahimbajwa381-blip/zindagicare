@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { VerificationStatuses, Roles } from "@zindagi/shared";
+import { PhysiotherapistEarningsSplitCard } from "@/features/physiotherapist/components/physiotherapist-earnings-split-card";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
 import { PhysiotherapistVisitsDashboard } from "@/features/home-care/components/physiotherapist-visits-dashboard";
 import { getPhysiotherapistProfile } from "@/server/services/physiotherapist.service";
@@ -30,6 +31,9 @@ export default async function PhysiotherapistVisitsPage() {
         title={t.homeCare.physiotherapistDashboardTitle}
         description={t.homeCare.physiotherapistDashboardDesc}
       />
+      <div className="mb-6">
+        <PhysiotherapistEarningsSplitCard />
+      </div>
       <PhysiotherapistVisitsDashboard />
     </>
   );

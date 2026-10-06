@@ -1,4 +1,10 @@
-import { HomeVisitServiceTypes, HomeVisitStatuses, RefundMethods } from "@zindagi/shared";
+import {
+  HomeVisitProviderKinds,
+  HomeVisitServiceTypes,
+  HomeVisitStatuses,
+  RefundMethods,
+  VISIT_SUMMARY_MAX_LENGTH,
+} from "@zindagi/shared";
 import { z } from "zod";
 
 const geoSchema = z.object({
@@ -21,6 +27,8 @@ export const createHomeVisitSchema = z.object({
   geo: geoSchema,
   patientNotes: z.string().max(1000).optional(),
   autoAssign: z.boolean().default(false),
+  /** Physiotherapy only: the physiotherapist (User id) the patient chose. */
+  preferredStaffId: z.string().regex(/^[a-f0-9]{24}$/i, "Invalid provider").optional(),
 });
 
 export const assignHomeVisitSchema = z.object({
@@ -39,6 +47,8 @@ export const updateHomeVisitStatusSchema = z.object({
     HomeVisitStatuses.CANCELLED,
   ]),
   staffNotes: z.string().max(2000).optional(),
+  /** Session report sent with the "completed" transition; mandatory for nurse and physiotherapy visits. */
+  visitSummary: z.string().trim().max(VISIT_SUMMARY_MAX_LENGTH).optional(),
   cancellationReason: z.string().max(500).optional(),
   /** Required when a patient cancels a visit that's already been paid for. */
   refundMethod: z.enum([RefundMethods.BANK, RefundMethods.JAZZCASH, RefundMethods.EASYPAISA]).optional(),
@@ -50,6 +60,14 @@ export const updateHomeVisitStatusSchema = z.object({
 export const listHomeVisitsQuerySchema = z.object({
   status: z.string().optional(),
   scope: z.enum(["mine", "assigned", "assigned-history", "pending", "all"]).optional(),
+  /** Admin scopes only: restrict to visits dispatched to this provider kind. */
+  provider: z
+    .enum([
+      HomeVisitProviderKinds.DOCTOR,
+      HomeVisitProviderKinds.PHYSIOTHERAPIST,
+      HomeVisitProviderKinds.NURSE,
+    ])
+    .optional(),
 });
 
 export type CreateHomeVisitInput = z.infer<typeof createHomeVisitSchema>;

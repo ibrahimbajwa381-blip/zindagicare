@@ -89,9 +89,7 @@ export function SpecialtyMultiSelect({
     if (atLimit || selectedSet.has(item) || excludeSet.has(item)) return;
     onChange([...values, item]);
     setQuery("");
-    if (values.length + 1 >= max) {
-      setOpen(false);
-    }
+    setOpen(false);
   }
 
   function removeSpecialty(item: string) {

@@ -21,7 +21,7 @@ export default async function DoctorSundayPage() {
       <DoctorPageHeader
         eyebrow="Programs"
         title="Sunday free consult"
-        description="Manage your Sunday consult queue, slot settings, and patient bookings."
+        description="Pick patients waiting for a free consult, choose a time, and grow your reviews."
       />
       <DoctorSundayDashboard />
     </>

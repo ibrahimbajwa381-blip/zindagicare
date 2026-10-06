@@ -20,6 +20,7 @@ export const AUTH_ROUTES = {
   onboarding: "/onboarding",
   doctorVerification: "/doctor/verification",
   doctorProfile: "/doctor/profile",
+  doctorPortfolio: "/doctor/portfolio",
   patientDashboard: "/dashboard",
   adminDoctors: "/admin/doctors",
   adminDashboard: "/admin",
@@ -29,9 +30,11 @@ export const AUTH_ROUTES = {
   nurseDashboard: "/nurse",
   nurseVerification: "/nurse/verification",
   nurseVisits: "/nurse/visits",
+  nursePortfolio: "/nurse/portfolio",
   physiotherapistDashboard: "/physiotherapist",
   physiotherapistVerification: "/physiotherapist/verification",
   physiotherapistVisits: "/physiotherapist/visits",
+  physiotherapistPortfolio: "/physiotherapist/portfolio",
   herbalistDashboard: "/herbalist",
   herbalistVerification: "/herbalist/verification",
   herbalistProfile: "/herbalist/profile",
@@ -55,6 +58,10 @@ export const PUBLIC_PATH_PREFIXES = [
   "/for-doctors",
   "/for-nurses",
   "/for-physiotherapists",
+  "/physiotherapists",
+  "/nurses",
+  "/herbalists",
+  "/nutritionists",
   "/for-herbalists",
   "/for-nutritionists",
   "/home-care/request",
@@ -139,24 +146,33 @@ export const DOCTOR_VERIFICATION_EXEMPT_PREFIXES = [
   "/consult",
   "/api/v1/doctor/verification",
   "/api/v1/doctor/profile",
+  // Doctors can build their public portfolio while the application is under review.
+  AUTH_ROUTES.doctorPortfolio,
+  "/api/v1/doctor/portfolio",
 ] as const;
 
 /** Nurse verification pending — can access these paths. */
 export const NURSE_VERIFICATION_EXEMPT_PREFIXES = [
   AUTH_ROUTES.nurseVerification,
   "/nurse/profile",
+  // Nurses can build their public portfolio while the application is under review.
+  AUTH_ROUTES.nursePortfolio,
   AUTH_ROUTES.nurseDashboard,
   "/api/v1/nurse/verification",
   "/api/v1/nurse/profile",
+  "/api/v1/nurse/portfolio",
 ] as const;
 
 /** Physiotherapist verification pending — can access these paths. */
 export const PHYSIOTHERAPIST_VERIFICATION_EXEMPT_PREFIXES = [
   AUTH_ROUTES.physiotherapistVerification,
   "/physiotherapist/profile",
+  // Physios can build their public portfolio while the application is under review.
+  AUTH_ROUTES.physiotherapistPortfolio,
   AUTH_ROUTES.physiotherapistDashboard,
   "/api/v1/physiotherapist/verification",
   "/api/v1/physiotherapist/profile",
+  "/api/v1/physiotherapist/portfolio",
 ] as const;
 
 /** Herbalist verification pending — can access these paths. */

@@ -63,7 +63,7 @@ function promoSlides(t: MobileDictionary): {
       subtitle: t.home.freeConsultation.subtitle,
       action: t.home.freeConsultation.action,
       href: "/sunday-consult",
-      image: "/hero/freeconsultation.png",
+      image: "/hero/freeconsultation.webp",
     },
     {
       key: "home-care",
@@ -72,7 +72,7 @@ function promoSlides(t: MobileDictionary): {
       subtitle: t.home.promoCarousel.homeCare.subtitle,
       action: t.home.promoCarousel.homeCare.action,
       href: "/home-visit/request",
-      image: "/hero/home-care-pakistan.jpg",
+      image: "/hero/home-care-pakistan.webp",
     },
     {
       key: "find-doctor",
@@ -81,7 +81,7 @@ function promoSlides(t: MobileDictionary): {
       subtitle: t.home.promoCarousel.findDoctor.subtitle,
       action: t.home.promoCarousel.findDoctor.action,
       href: "/(tabs)/doctors",
-      image: "/hero/online-consult.jpg",
+      image: "/hero/online-consult.webp",
     },
   ];
 }
@@ -129,7 +129,7 @@ export default function HomeScreen() {
       getOnlineBooking(),
       listMyHomeVisits(),
       listPrescriptions(),
-      listConsultDoctors({ city: "Lahore" }),
+      listConsultDoctors(),
     ]);
 
     if (bookingResult.status === "fulfilled") {

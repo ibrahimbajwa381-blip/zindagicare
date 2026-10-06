@@ -7,6 +7,7 @@ import {
 } from "@zindagi/database";
 import {
   AppError,
+  calculatePhysiotherapistVisitEarnings,
   HomeVisitStatuses,
   LAHORE_GEO,
   LAUNCH_CITY,
@@ -19,10 +20,15 @@ import {
   normalizePhoneDigits,
   toPakistaniLocalPhone,
   type PhysiotherapistVerificationInput,
+  type UpdatePhysiotherapistPortfolioInput,
   type UpdatePhysiotherapistProfileInput,
 } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
+import {
+  mapPhysiotherapistPortfolio,
+  type PhysiotherapistPortfolio,
+} from "@/lib/physiotherapists/portfolio";
 import { formatPhoneForDisplay, mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { recordAdminActivity } from "@/server/services/admin-activity.service";
 import type {
@@ -30,14 +36,28 @@ import type {
   AdminPhysiotherapistVisitRow,
 } from "@/features/admin/types/physiotherapist-admin";
 import { cnicLast4, hashCnic } from "./auth.service";
-import {
-  calculateStaffNetEarnings,
-  getPhysiotherapistCommissionPercentByUserId,
-} from "./commission.service";
+import { getPhysiotherapistCommissionPercentByUserId } from "./commission.service";
 import {
   deletePhysiotherapistDocument,
   physiotherapistDocumentStorageKeyFromUrl,
 } from "./physiotherapist-documents.storage";
+import {
+  deletePhysiotherapistAvatar,
+  isPhysiotherapistAvatarUrlForUser,
+  physiotherapistAvatarStorageKeyFromUrl,
+} from "./physiotherapist-avatar.storage";
+import { ensureCanonicalPhysiotherapistSlug } from "./physiotherapist-slug.service";
+
+async function deleteReplacedPhysiotherapistAvatar(previousAvatarUrl: string | undefined) {
+  if (!previousAvatarUrl) return;
+  const previousKey = physiotherapistAvatarStorageKeyFromUrl(previousAvatarUrl);
+  if (!previousKey) return;
+  try {
+    await deletePhysiotherapistAvatar(previousKey);
+  } catch {
+    // best-effort cleanup; ignore failures (e.g., file already removed)
+  }
+}
 
 async function deleteReplacedPhysiotherapistDocuments(
   previous: Record<string, string | null | undefined> | undefined,
@@ -70,7 +90,14 @@ export type PhysiotherapistProfileDto = {
     phone?: string;
     city: string;
     memberSince: string;
+    avatarUrl?: string;
   };
+  publicProfile: {
+    slug?: string;
+    bio?: string;
+    languages: string[];
+  };
+  portfolio: PhysiotherapistPortfolio;
   staff: {
     employeeCode?: string;
     isAvailable: boolean;
@@ -82,6 +109,8 @@ export type PhysiotherapistProfileDto = {
       geo?: { lng: number; lat: number };
     };
     homeVisitEnabled: boolean;
+    /** Fee the physio set themselves; undefined means the platform rate applies. */
+    homeVisitFee?: number;
   };
   verification: {
     status: string;
@@ -100,6 +129,9 @@ export type PhysiotherapistDashboardSummary = {
   upcomingToday: number;
   completedTotal: number;
   completedThisMonth: number;
+  /** Net earnings (physiotherapist's share) from completed visits. */
+  earningsTotal: number;
+  earningsThisMonth: number;
   isAvailable: boolean;
 };
 
@@ -153,7 +185,14 @@ export async function getPhysiotherapistProfile(userId: string): Promise<Physiot
       phone: pii.phone,
       city: user.metadata?.city ?? area?.city ?? LAUNCH_CITY,
       memberSince: user.createdAt?.toISOString() ?? new Date().toISOString(),
+      avatarUrl: user.avatarUrl ?? undefined,
     },
+    publicProfile: {
+      slug: staff.slug ?? undefined,
+      bio: staff.bio ?? undefined,
+      languages: staff.languages?.length ? staff.languages : ["English", "Urdu"],
+    },
+    portfolio: mapPhysiotherapistPortfolio(staff),
     staff: {
       employeeCode: staff.employeeCode ?? undefined,
       isAvailable: staff.isAvailable ?? true,
@@ -171,6 +210,7 @@ export async function getPhysiotherapistProfile(userId: string): Promise<Physiot
             : undefined,
       },
       homeVisitEnabled: staff.homeVisitEnabled ?? false,
+      homeVisitFee: staff.homeVisitFee ?? undefined,
     },
     verification: {
       status: staff.verificationStatus ?? VerificationStatuses.PENDING,
@@ -222,7 +262,27 @@ export async function updatePhysiotherapistProfile(
     };
   }
 
+  let previousAvatarUrl: string | undefined;
+  if (data.avatarUrl !== undefined) {
+    if (!isPhysiotherapistAvatarUrlForUser(userId, data.avatarUrl)) {
+      throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+    }
+    if (user.avatarUrl && user.avatarUrl !== data.avatarUrl) {
+      previousAvatarUrl = user.avatarUrl;
+    }
+    user.avatarUrl = data.avatarUrl;
+  }
+
   await user.save();
+  await deleteReplacedPhysiotherapistAvatar(previousAvatarUrl);
+
+  if (data.bio !== undefined) {
+    staff.bio = data.bio || undefined;
+  }
+
+  if (data.languages !== undefined) {
+    staff.languages = data.languages;
+  }
 
   if (data.isAvailable !== undefined) {
     staff.isAvailable = data.isAvailable;
@@ -265,9 +325,59 @@ export async function updatePhysiotherapistProfile(
     staff.homeVisitEnabled = data.homeVisitEnabled;
   }
 
+  if (data.homeVisitFee !== undefined) {
+    staff.homeVisitFee = data.homeVisitFee;
+  }
+
   await staff.save();
+  const displayName = safeDisplayText(user.name);
+  if (displayName) {
+    await ensureCanonicalPhysiotherapistSlug(staff._id.toString(), displayName, staff.slug);
+  }
 
   return getPhysiotherapistProfile(userId);
+}
+
+/** Saves the sections present in `input` (each editor card saves independently). */
+export async function updatePhysiotherapistPortfolio(
+  userId: string,
+  input: UpdatePhysiotherapistPortfolioInput,
+): Promise<PhysiotherapistPortfolio> {
+  const user = await loadPhysiotherapistUser(userId);
+  const staff = await ensureStaffProfile(user);
+
+  const current = staff.portfolio ?? {};
+  const next: Record<string, unknown> = {
+    headline: current.headline,
+    conditionsTreated: current.conditionsTreated,
+    techniques: current.techniques,
+    memberships: current.memberships,
+    education: current.education,
+    experience: current.experience,
+    certifications: current.certifications,
+    awards: current.awards,
+  };
+
+  if (input.headline !== undefined) next.headline = input.headline || undefined;
+  for (const key of [
+    "conditionsTreated",
+    "techniques",
+    "memberships",
+    "education",
+    "experience",
+    "certifications",
+    "awards",
+  ] as const) {
+    if (input[key] !== undefined) next[key] = input[key];
+  }
+  next.updatedAt = new Date();
+
+  staff.set("portfolio", next);
+  if (input.bio !== undefined) staff.bio = input.bio || undefined;
+  if (input.languages !== undefined) staff.languages = input.languages;
+
+  await staff.save();
+  return mapPhysiotherapistPortfolio(staff);
 }
 
 export async function getPhysiotherapistDashboardSummary(
@@ -287,7 +397,7 @@ export async function getPhysiotherapistDashboardSummary(
     deletedAt: { $exists: false },
   };
 
-  const [activeVisits, upcomingToday, completedTotal, completedThisMonth] =
+  const [activeVisits, upcomingToday, completedTotal, completedThisMonth, completedVisits] =
     await Promise.all([
       HomeVisitModel.countDocuments(
         mongoFilter({ ...baseFilter, status: { $in: ACTIVE_VISIT_STATUSES } }),
@@ -309,13 +419,31 @@ export async function getPhysiotherapistDashboardSummary(
           completedAt: { $gte: startOfMonth },
         }),
       ),
+      HomeVisitModel.find(
+        mongoFilter({ ...baseFilter, status: HomeVisitStatuses.COMPLETED }),
+      )
+        .select("pricing.total completedAt")
+        .lean(),
     ]);
+
+  let earningsTotal = 0;
+  let earningsThisMonth = 0;
+  for (const visit of completedVisits) {
+    const net = calculatePhysiotherapistVisitEarnings(
+      visit.pricing?.total ?? 0,
+      staff.commissionPercent,
+    );
+    earningsTotal += net;
+    if (visit.completedAt && visit.completedAt >= startOfMonth) earningsThisMonth += net;
+  }
 
   return {
     activeVisits,
     upcomingToday,
     completedTotal,
     completedThisMonth,
+    earningsTotal,
+    earningsThisMonth,
     isAvailable: staff.isAvailable ?? true,
   };
 }
@@ -332,6 +460,13 @@ export async function submitPhysiotherapistVerification(
     throw new AppError("Already verified", "CONFLICT", 409);
   }
 
+  if (!isPhysiotherapistAvatarUrlForUser(userId, input.avatarUrl)) {
+    throw new AppError("Invalid profile photo", "VALIDATION_ERROR", 400);
+  }
+  const previousAvatarUrl =
+    user.avatarUrl && user.avatarUrl !== input.avatarUrl ? user.avatarUrl : undefined;
+  user.avatarUrl = input.avatarUrl;
+
   staff.licenseNumber = input.licenseNumber;
   staff.cnicHash = hashCnic(input.cnic);
   staff.cnicLast4 = cnicLast4(input.cnic);
@@ -347,6 +482,12 @@ export async function submitPhysiotherapistVerification(
   staff.platformAgreementVersion = PROVIDER_AGREEMENT_VERSION;
   staff.verificationStatus = VerificationStatuses.PENDING;
   staff.rejectionReason = undefined;
+  staff.bankAccount = {
+    accountTitle: input.bankAccount.accountTitle,
+    bankName: input.bankAccount.bankName,
+    accountNumber: input.bankAccount.accountNumber,
+    iban: input.bankAccount.iban,
+  };
 
   const { serviceArea } = input;
   staff.homeVisitEnabled = serviceArea.homeVisitEnabled;
@@ -370,11 +511,12 @@ export async function submitPhysiotherapistVerification(
       locale: user.metadata?.locale ?? "en",
       city: serviceArea.city,
     };
-    await user.save();
   }
+  await user.save();
 
   await staff.save();
   await deleteReplacedPhysiotherapistDocuments(previousDocuments, input.documentUrls);
+  await deleteReplacedPhysiotherapistAvatar(previousAvatarUrl);
 
   return getPhysiotherapistProfile(userId);
 }
@@ -400,7 +542,8 @@ export type AdminPhysiotherapistRow = {
 };
 
 const DOCUMENT_LABELS: Record<string, string> = {
-  licenseCertificate: "License / PNC certificate",
+  degreeCertificate: "Degree certificate",
+  licenseCertificate: "License / PPTA certificate",
   cnicFront: "CNIC front",
   cnicBack: "CNIC back",
 };
@@ -492,6 +635,14 @@ export async function decidePhysiotherapistVerification(
   }
 
   await staff.save();
+
+  if (action === "approve") {
+    const approvedUser = await UserModel.findById(staff.userId).select("name").lean();
+    const displayName = safeDisplayText(approvedUser?.name);
+    if (displayName) {
+      await ensureCanonicalPhysiotherapistSlug(staff._id.toString(), displayName, staff.slug);
+    }
+  }
 
   await recordAdminActivity({
     actor: adminUserId,
@@ -667,7 +818,7 @@ export async function getPhysiotherapistProfileForAdmin(
   const commissionPercent = await getPhysiotherapistCommissionPercentByUserId(userId);
   for (const visit of completedVisits) {
     const gross = visit.pricing?.total ?? 0;
-    const total = calculateStaffNetEarnings(gross, commissionPercent);
+    const total = calculatePhysiotherapistVisitEarnings(gross, staff.commissionPercent);
     totalEarnings += total;
     if (visit.completedAt && visit.completedAt >= startOfMonth) {
       earningsThisMonth += total;
@@ -712,7 +863,15 @@ export async function getPhysiotherapistProfileForAdmin(
       phone: pii.phone,
       city: area?.city ?? user.metadata?.city ?? LAUNCH_CITY,
       memberSince: user.createdAt?.toISOString() ?? new Date().toISOString(),
+      avatarUrl: user.avatarUrl ?? undefined,
+      isActive: user.isActive !== false,
     },
+    slug: staff.slug ?? undefined,
+    bio: staff.bio ?? undefined,
+    languages: staff.languages ?? [],
+    portfolio: mapPhysiotherapistPortfolio(staff),
+    commissionPercent,
+    commissionOverride: staff.commissionPercent ?? null,
     verificationStatus: staff.verificationStatus ?? VerificationStatuses.PENDING,
     verificationSubmittedAt: staff.verificationSubmittedAt?.toISOString(),
     platformAgreementAcceptedAt: staff.platformAgreementAcceptedAt?.toISOString(),

@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Activity, ArrowRight } from "lucide-react";
-import { HomeVisitServiceTypes } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { Button } from "@/components/ui/button";
 import { getServerTranslations } from "@/i18n/server";
 
-const bookHref = `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.PHYSIOTHERAPY}`;
+const bookHref = siteConfig.links.physiotherapists;
 
 export async function HomePhysioCta() {
   const { t } = await getServerTranslations();

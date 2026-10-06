@@ -46,12 +46,18 @@ export default async function LoginPage({ searchParams }: Props) {
         </p>
         <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
           <p className="font-medium text-slate-800">{t.auth.staffSignupTitle}</p>
-          <div className="mt-3 flex flex-wrap justify-center gap-3">
+          <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-2">
             <Link href={AUTH_ROUTES.registerDoctor} className="font-medium text-brand">
               {t.auth.registerDoctor}
             </Link>
             <Link href={AUTH_ROUTES.registerNurse} className="font-medium text-brand">
               {t.auth.registerNurse}
+            </Link>
+            <Link href={AUTH_ROUTES.registerPhysiotherapist} className="font-medium text-brand">
+              {t.auth.registerPhysiotherapist}
+            </Link>
+            <Link href={AUTH_ROUTES.registerHerbalist} className="font-medium text-brand">
+              {t.auth.registerHerbalist}
             </Link>
           </div>
         </div>

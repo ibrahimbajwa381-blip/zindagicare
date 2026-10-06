@@ -2,7 +2,9 @@ import sharp from "sharp";
 import { AppError } from "@zindagi/shared";
 
 const MAX_AVATAR_DIMENSION = 800;
-const AVATAR_WEBP_QUALITY = 85;
+const AVATAR_WEBP_QUALITY = 80;
+/** ~50 MP covers any phone camera; anything larger is treated as a decompression bomb. */
+const MAX_INPUT_PIXELS = 50_000_000;
 
 export type CompressedImage = {
   buffer: Buffer;
@@ -15,6 +17,12 @@ export type CompressedImage = {
  * on the longest edge. Mirrors the compression already applied to apps/web/public
  * marketing images (scripts/optimize-images.cjs) so avatars don't ship as raw
  * multi-MB camera photos to the app.
+ *
+ * - `rotate()` bakes in the EXIF orientation so phone portraits aren't sideways.
+ * - Output is sRGB with all metadata (EXIF GPS, camera serials) stripped — sharp's
+ *   default when `withMetadata()` is not called — so no location leaks from selfies.
+ * - `effort: 6` + `smartSubsample` trade a little CPU for noticeably smaller files
+ *   on a one-off upload; animated inputs are flattened to their first frame.
  */
 export async function compressAvatarImage(buffer: Buffer): Promise<CompressedImage> {
   if (buffer.length === 0) {
@@ -23,7 +31,11 @@ export async function compressAvatarImage(buffer: Buffer): Promise<CompressedIma
 
   let compressed: Buffer;
   try {
-    compressed = await sharp(buffer)
+    compressed = await sharp(buffer, {
+      limitInputPixels: MAX_INPUT_PIXELS,
+      // Phone JPEGs are occasionally slightly truncated; only reject truly broken files.
+      failOn: "error",
+    })
       .rotate()
       .resize({
         width: MAX_AVATAR_DIMENSION,
@@ -31,7 +43,7 @@ export async function compressAvatarImage(buffer: Buffer): Promise<CompressedIma
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: AVATAR_WEBP_QUALITY })
+      .webp({ quality: AVATAR_WEBP_QUALITY, effort: 6, smartSubsample: true })
       .toBuffer();
   } catch {
     // sharp throws a plain Error on empty/corrupt/non-image bytes even when the

@@ -35,6 +35,8 @@ const homeVisitSchema = new Schema(
       index: true,
     },
     assignedStaffId: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    /** Provider the patient picked when booking; assigned directly when eligible, otherwise left for admin. */
+    preferredStaffId: { type: Schema.Types.ObjectId, ref: "User" },
     scheduledAt: { type: Date, required: true, index: true },
     address: {
       line: { type: String, required: true },
@@ -81,6 +83,12 @@ const homeVisitSchema = new Schema(
       uploadedAt: Date,
       uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
     },
+    /** Written session report the provider submits when marking the visit completed. */
+    visitSummary: {
+      text: { type: String, maxlength: 3000 },
+      submittedAt: Date,
+      submittedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    },
     deletedAt: { type: Date },
   },
   { timestamps: true },
@@ -96,6 +104,7 @@ applyFieldEncryption(homeVisitSchema, {
     { path: "refundAccountNumber", kind: "string" },
     { path: "refundBankName", kind: "string" },
     { path: "visitReport.originalName", kind: "string" },
+    { path: "visitSummary.text", kind: "string" },
   ],
 });
 

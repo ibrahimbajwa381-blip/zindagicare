@@ -13,10 +13,17 @@ import {
 type Props = {
   card: Omit<DoctorShareCardProps, "qrDataUrl">;
   triggerLabel?: string;
+  /** Message sent alongside the image in the native share sheet. */
+  shareText?: string;
   className?: string;
 };
 
-export function DoctorShareCardDialog({ card, triggerLabel = "Get shareable card", className }: Props) {
+export function DoctorShareCardDialog({
+  card,
+  triggerLabel = "Get shareable card",
+  shareText = `Book an appointment with ${card.name} on ZindagiCare`,
+  className,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,7 +90,7 @@ export function DoctorShareCardDialog({ card, triggerLabel = "Get shareable card
         await navigator.share({
           files: [file],
           title: card.name,
-          text: `Book an appointment with ${card.name} on ZindagiCare`,
+          text: shareText,
         });
       } else {
         await handleDownload();

@@ -9,7 +9,7 @@ export default function AdminNursesPage() {
       <AdminPageHeader
         eyebrow="Provider onboarding"
         title="Nurse verifications"
-        description="Review nurse license documents and identity, then approve or reject. Only approved nurses receive in-house visit assignments."
+        description="Review Nurse license documents and identity, then approve or reject. Only approved Nurses receive in-house visit assignments."
       />
       <AdminNurseQueue />
     </>

@@ -14,6 +14,7 @@ import {
   MessageCircle,
   RotateCcw,
   Scale,
+  Search,
   Shield,
   Smartphone,
   Stethoscope,
@@ -25,8 +26,8 @@ import {
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
+import { providerDirectoryLinks } from "@/lib/nav/provider-directories";
 import { AppDownloadBanner } from "@/components/pwa/app-download-banner";
-import { formatMessage } from "@/i18n/messages";
 import { useTranslations } from "@/i18n/locale-provider";
 
 type FooterLinkItem = {
@@ -121,9 +122,15 @@ export function SiteFooter() {
     { href: siteConfig.links.forDoctorsGuide, label: t.breadcrumbs.doctorGuide, icon: BookOpen },
     { href: siteConfig.links.forNurses, label: t.providerOnboarding.nurse.eyebrow, icon: HeartPulse },
     { href: siteConfig.links.forPhysiotherapists, label: t.providerOnboarding.physiotherapist.eyebrow, icon: HeartPulse },
+    { href: siteConfig.links.forPhysiotherapistsGuide, label: t.breadcrumbs.physioGuide, icon: BookOpen },
     { href: siteConfig.links.registerDoctor, label: t.auth.registerDoctor, icon: UserPlus },
     { href: siteConfig.links.registerNurse, label: t.auth.registerNurse, icon: UserPlus },
   ];
+
+  const findProviderLinks: FooterLinkItem[] = providerDirectoryLinks(t.nav).map((link) => ({
+    ...link,
+    icon: Search,
+  }));
 
   const accountLinks: FooterLinkItem[] = [
     { href: siteConfig.links.login, label: t.auth.login, icon: LogIn },
@@ -179,7 +186,7 @@ export function SiteFooter() {
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#062a5c] px-3 py-1.5 text-xs font-medium text-slate-200">
                 <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-lighter" aria-hidden />
-                {formatMessage(t.site.launchNote, { city: siteConfig.launchCity })}
+                {t.site.launchNote}
               </span>
             </div>
 
@@ -236,8 +243,9 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-5 lg:gap-6">
+          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-3 lg:gap-6 2xl:grid-cols-6">
             <FooterColumn title={t.footer.services} links={serviceLinks} />
+            <FooterColumn title={t.nav.findProvider} links={findProviderLinks} />
             <FooterColumn title={t.footer.providers} links={providerLinks} />
             <FooterColumn title={t.footer.account} links={accountLinks} />
             <FooterColumn title={t.footer.getApp} links={getAppLinks} />

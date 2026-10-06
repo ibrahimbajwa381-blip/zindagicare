@@ -5,19 +5,28 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
+import {
+  ADMIN_REVIEWS_ROOT,
+  ADMIN_REVIEW_CATEGORY_LIST,
+} from "@/features/admin/lib/admin-review-categories";
 import { ADMIN_NAV_COUNTS_EVENT } from "@/features/admin/lib/nav-counts-events";
 import type { AdminNavCounts } from "@/features/admin/types/admin-nav";
+import {
+  ADMIN_HOME_VISITS_ROOT,
+  ADMIN_HOME_VISIT_PROVIDER_LIST,
+} from "@/features/home-care/lib/admin-home-visit-providers";
+import { HomeVisitProviderKinds, type HomeVisitProviderKind } from "@zindagi/shared";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   Bell,
   Banknote,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   HeartPulse,
   Home,
   LayoutDashboard,
-  MessageSquareQuote,
   ShieldCheck,
   Stethoscope,
   Star,
@@ -38,6 +47,14 @@ type AdminNavItem = {
   icon: LucideIcon;
   exact?: boolean;
   countKey?: AdminNavCountKey;
+  /** Sub-pages listed beneath this item; its badge shows their combined count. */
+  children?: AdminNavItem[];
+};
+
+const HOME_VISIT_PROVIDER_ICONS: Record<HomeVisitProviderKind, LucideIcon> = {
+  [HomeVisitProviderKinds.DOCTOR]: Stethoscope,
+  [HomeVisitProviderKinds.PHYSIOTHERAPIST]: Activity,
+  [HomeVisitProviderKinds.NURSE]: HeartPulse,
 };
 
 type AdminNavSection = {
@@ -83,11 +100,17 @@ const NAV_SECTIONS: AdminNavSection[] = [
         countKey: "urgentCare",
       },
       {
-        href: "/admin/home-visits",
-        label: "Home care",
+        href: ADMIN_HOME_VISITS_ROOT,
+        label: "Home visits",
         description: "In-home visit requests",
         icon: Home,
-        countKey: "homeVisits",
+        children: ADMIN_HOME_VISIT_PROVIDER_LIST.map((provider) => ({
+          href: provider.href,
+          label: provider.navLabel,
+          description: provider.navDescription,
+          icon: HOME_VISIT_PROVIDER_ICONS[provider.kind],
+          countKey: provider.navCountKey,
+        })),
       },
       {
         href: "/admin/notifications",
@@ -180,6 +203,18 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: Stethoscope,
       },
       {
+        href: "/admin/nurses/manage",
+        label: "Nurse management",
+        description: "Manage approved nurses",
+        icon: HeartPulse,
+      },
+      {
+        href: "/admin/physiotherapists/manage",
+        label: "Physiotherapist management",
+        description: "Manage approved physiotherapists",
+        icon: Activity,
+      },
+      {
         href: "/admin/patients",
         label: "Patients",
         description: "Patient accounts and activity",
@@ -192,17 +227,17 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: ShieldCheck,
       },
       {
-        href: "/admin/reviews",
-        label: "Patient reviews",
-        description: "Moderate submitted reviews",
+        href: ADMIN_REVIEWS_ROOT,
+        label: "Reviews",
+        description: "Moderate patient and platform reviews",
         icon: Star,
-        countKey: "reviews",
-      },
-      {
-        href: "/admin/testimonials",
-        label: "Testimonials",
-        description: "Manage homepage testimonials",
-        icon: MessageSquareQuote,
+        children: ADMIN_REVIEW_CATEGORY_LIST.map((category) => ({
+          href: category.href,
+          label: category.navLabel,
+          description: category.navDescription,
+          icon: category.icon,
+          countKey: category.navCountKey,
+        })),
       },
     ],
   },
@@ -238,6 +273,8 @@ type AdminSidebarProps = {
 export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const [counts, setCounts] = useState<AdminNavCounts | null>(null);
+  /** Explicit open/closed per group; unset groups default to open when a child page is active. */
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const loadCounts = useCallback(async () => {
     const res = await fetch("/api/v1/admin/nav-counts");
@@ -272,12 +309,29 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
     void loadCounts();
   }, [pathname, loadCounts]);
 
-  function isActive(item: AdminNavItem) {
+  function itemCount(item: AdminNavItem): number {
+    if (!counts) return 0;
+    if (item.children) {
+      return item.children.reduce((sum, child) => sum + itemCount(child), 0);
+    }
+    return item.countKey ? counts[item.countKey] : 0;
+  }
+
+  function isActive(item: AdminNavItem): boolean {
     if (item.exact) return pathname === item.href;
     if (item.href === "/admin/doctors") {
       return (
         pathname === "/admin/doctors" ||
         pathname.startsWith("/admin/doctors/review")
+      );
+    }
+    if (item.href === "/admin/nurses") {
+      return pathname === "/admin/nurses" || pathname.startsWith("/admin/nurses/review");
+    }
+    if (item.href === "/admin/physiotherapists") {
+      return (
+        pathname === "/admin/physiotherapists" ||
+        pathname.startsWith("/admin/physiotherapists/review")
       );
     }
     if (item.href === "/admin/doctors/manage") {
@@ -290,6 +344,191 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
       return pathname === item.href || pathname.startsWith(`${item.href}/`);
     }
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  }
+
+  function renderNavItem(item: AdminNavItem) {
+    if (item.children) return renderNavGroup(item);
+
+    const active = isActive(item);
+    const Icon = item.icon;
+    const count = itemCount(item);
+
+    return (
+      <div key={item.href}>
+        <Link
+          href={item.href}
+          onClick={onMobileClose}
+          className={cn(
+            "group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200",
+            active
+              ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
+              : "text-slate-300 hover:bg-white/6 hover:text-white",
+          )}
+        >
+          {active && (
+            <span
+              className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-white/70"
+              aria-hidden
+            />
+          )}
+          <span
+            className={cn(
+              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+              active
+                ? "bg-white/15 text-white"
+                : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1 py-0.5">
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-medium leading-none">{item.label}</span>
+              <NavCountBadge count={count} active={active} />
+            </span>
+            <span
+              className={cn(
+                "mt-1 block text-[11px] leading-snug",
+                active ? "text-white/75" : "text-slate-500 group-hover:text-slate-400",
+              )}
+            >
+              {item.description}
+            </span>
+          </span>
+          <ChevronRight
+            className={cn(
+              "mt-2 h-3.5 w-3.5 shrink-0 transition-all duration-200",
+              active
+                ? "text-white/70"
+                : "text-slate-600 opacity-0 group-hover:translate-x-0.5 group-hover:text-slate-400 group-hover:opacity-100",
+            )}
+          />
+        </Link>
+      </div>
+    );
+  }
+
+  /** Parent row toggles its sub-pages open/closed instead of navigating. */
+  function renderNavGroup(item: AdminNavItem) {
+    const children = item.children ?? [];
+    const childActive = children.some(isActive);
+    const open = openGroups[item.href] ?? childActive;
+    const Icon = item.icon;
+    const count = itemCount(item);
+    const panelId = `admin-nav-group-${item.href.replace(/\W+/g, "-")}`;
+
+    return (
+      <div key={item.href}>
+        <button
+          type="button"
+          onClick={() => setOpenGroups((prev) => ({ ...prev, [item.href]: !open }))}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className={cn(
+            "group relative flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 text-left transition-all duration-200",
+            childActive && !open
+              ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
+              : open
+                ? "bg-white/[0.04] text-white"
+                : "text-slate-300 hover:bg-white/6 hover:text-white",
+          )}
+        >
+          {childActive && (
+            <span
+              className={cn(
+                "absolute inset-y-2 left-0 w-0.5 rounded-full",
+                open ? "bg-brand" : "bg-white/70",
+              )}
+              aria-hidden
+            />
+          )}
+          <span
+            className={cn(
+              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+              childActive && !open
+                ? "bg-white/15 text-white"
+                : open
+                  ? "bg-brand/20 text-brand"
+                  : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1 py-0.5">
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-medium leading-none">{item.label}</span>
+              {!open && <NavCountBadge count={count} active={childActive} />}
+            </span>
+            <span
+              className={cn(
+                "mt-1 block text-[11px] leading-snug",
+                childActive && !open ? "text-white/75" : "text-slate-500 group-hover:text-slate-400",
+              )}
+            >
+              {item.description}
+            </span>
+          </span>
+          <ChevronDown
+            className={cn(
+              "mt-2 h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out",
+              open ? "rotate-180 text-slate-300" : "text-slate-500 group-hover:text-slate-300",
+              childActive && !open && "text-white/70",
+            )}
+          />
+        </button>
+
+        <div
+          id={panelId}
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+          )}
+          aria-hidden={!open}
+        >
+          <div className="overflow-hidden">
+            <div className="mt-1 ml-[1.625rem] space-y-0.5 border-l border-white/10 pl-2.5">
+              {children.map((child, index) => (
+                <div
+                  key={child.href}
+                  className={cn(
+                    "transition-all duration-300 ease-out",
+                    open ? "translate-y-0 opacity-100" : "-translate-y-1.5 opacity-0",
+                  )}
+                  style={{ transitionDelay: open ? `${60 + index * 50}ms` : "0ms" }}
+                >
+                  {renderSubNavItem(child, !open)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSubNavItem(item: AdminNavItem, hidden = false) {
+    const active = isActive(item);
+    const Icon = item.icon;
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onMobileClose}
+        tabIndex={hidden ? -1 : undefined}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition-colors",
+          active
+            ? "bg-white/10 font-medium text-white"
+            : "text-slate-400 hover:bg-white/6 hover:text-white",
+        )}
+      >
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-brand" : "text-slate-500")} />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        <NavCountBadge count={itemCount(item)} active={false} />
+      </Link>
+    );
   }
 
   const navContent = (
@@ -328,69 +567,7 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
                 <span className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
               </p>
               <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const active = isActive(item);
-                  const Icon = item.icon;
-                  const count =
-                    item.countKey && counts ? counts[item.countKey] : 0;
-
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={onMobileClose}
-                      className={cn(
-                        "group relative flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200",
-                        active
-                          ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/20"
-                          : "text-slate-300 hover:bg-white/6 hover:text-white",
-                      )}
-                    >
-                      {active && (
-                        <span
-                          className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-white/70"
-                          aria-hidden
-                        />
-                      )}
-                      <span
-                        className={cn(
-                          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                          active
-                            ? "bg-white/15 text-white"
-                            : "bg-white/5 text-slate-400 group-hover:bg-white/10 group-hover:text-white",
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0 flex-1 py-0.5">
-                        <span className="flex items-center gap-2">
-                          <span className="text-sm font-medium leading-none">
-                            {item.label}
-                          </span>
-                          <NavCountBadge count={count} active={active} />
-                        </span>
-                        <span
-                          className={cn(
-                            "mt-1 block text-[11px] leading-snug",
-                            active
-                              ? "text-white/75"
-                              : "text-slate-500 group-hover:text-slate-400",
-                          )}
-                        >
-                          {item.description}
-                        </span>
-                      </span>
-                      <ChevronRight
-                        className={cn(
-                          "mt-2 h-3.5 w-3.5 shrink-0 transition-all duration-200",
-                          active
-                            ? "text-white/70"
-                            : "text-slate-600 opacity-0 group-hover:translate-x-0.5 group-hover:text-slate-400 group-hover:opacity-100",
-                        )}
-                      />
-                    </Link>
-                  );
-                })}
+                {section.items.map((item) => renderNavItem(item))}
               </div>
             </div>
           ))}

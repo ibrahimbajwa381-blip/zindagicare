@@ -41,7 +41,7 @@ const CORE_SERVICES = [
   {
     name: "Home Physiotherapy",
     description: marketingPageSeo.homePhysiotherapy.description,
-    path: "/home-physiotherapy",
+    path: "/physiotherapists",
   },
   {
     name: "Urgent Care",
@@ -75,10 +75,7 @@ export function SiteJsonLd() {
       addressLocality: siteConfig.launchCity,
       addressCountry: "PK",
     },
-    areaServed: [
-      { "@type": "Country", name: "Pakistan" },
-      { "@type": "City", name: siteConfig.launchCity },
-    ],
+    areaServed: [{ "@type": "Country", name: "Pakistan" }],
     sameAs: [...siteConfig.seo.sameAs],
     knowsAbout: [
       "Telemedicine",

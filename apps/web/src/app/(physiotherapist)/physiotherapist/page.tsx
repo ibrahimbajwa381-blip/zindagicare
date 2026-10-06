@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { VerificationStatuses, Roles } from "@zindagi/shared";
+import { resolvePhysioHomeVisitFee, VerificationStatuses, Roles } from "@zindagi/shared";
 import {
   CalendarClock,
   CheckCircle2,
@@ -11,8 +11,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { siteConfig } from "@/config/site";
+import { DoctorShareCardDialog } from "@/features/doctor/components/doctor-share-card-dialog";
 import { PhysiotherapistPageHeader } from "@/features/physiotherapist/components/physiotherapist-page-header";
+import { PhysiotherapistEarningsSplitCard } from "@/features/physiotherapist/components/physiotherapist-earnings-split-card";
 import { PhysiotherapistAvailabilityToggle } from "@/features/physiotherapist/components/physiotherapist-availability-toggle";
+import { PortfolioDashboardCard } from "@/features/physiotherapist/components/portfolio/portfolio-dashboard-card";
+import { ProfileReviewList, RatingSummary } from "@/features/marketing/components/profile-reviews";
+import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
+import { HomeVisitReviewService } from "@/server/services/home-visit-review.service";
 import {
   getPhysiotherapistDashboardSummary,
   getPhysiotherapistProfile,
@@ -28,15 +35,23 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
   if (!session.user.roles?.includes(Roles.PHYSIOTHERAPIST)) redirect("/onboarding");
 
   const { submitted } = await searchParams;
-  const [profile, summary] = await Promise.all([
+  const [profile, summary, reviews] = await Promise.all([
     getPhysiotherapistProfile(session.user.id),
     getPhysiotherapistDashboardSummary(session.user.id),
+    HomeVisitReviewService.listStaffReviews(session.user.id, { limit: 5 }),
   ]);
 
   const verification = profile.verification;
   const isApproved = verification.status === VerificationStatuses.APPROVED;
   const isRejected = verification.status === VerificationStatuses.REJECTED;
   const hasSubmitted = Boolean(verification.submittedAt);
+  const publicPath =
+    isApproved && profile.publicProfile.slug
+      ? physiotherapistProfilePath(profile.publicProfile.slug, profile.user.id)
+      : null;
+  const serviceLocation = [profile.staff.serviceArea.area, profile.staff.serviceArea.city]
+    .filter(Boolean)
+    .join(", ");
 
   const stats = [
     {
@@ -149,6 +164,66 @@ export default async function PhysiotherapistOverviewPage({ searchParams }: Prop
           );
         })}
       </div>
+
+      <div className="mt-6">
+        <PhysiotherapistEarningsSplitCard
+          earnings={
+            isApproved
+              ? { thisMonth: summary.earningsThisMonth, total: summary.earningsTotal }
+              : undefined
+          }
+        />
+      </div>
+
+      <div className="mt-6">
+        <PortfolioDashboardCard
+          name={profile.user.name}
+          avatarUrl={profile.user.avatarUrl}
+          specialties={verification.specialties ?? []}
+          portfolio={profile.portfolio}
+          publicPath={publicPath}
+          shareAction={
+            publicPath ? (
+              <DoctorShareCardDialog
+                triggerLabel="Share profile card"
+                shareText={`Book a home physiotherapy visit with ${profile.user.name} on ${siteConfig.name}`}
+                card={{
+                  name: profile.user.name,
+                  avatarUrl: profile.user.avatarUrl,
+                  specialty: verification.specialties?.join(" · ") || "Physiotherapist",
+                  qualifications: verification.qualification ? [verification.qualification] : [],
+                  location: serviceLocation ? `Home visits in ${serviceLocation}` : undefined,
+                  experienceYears: verification.experienceYears,
+                  consultationFee: resolvePhysioHomeVisitFee(profile.staff.homeVisitFee),
+                  feeLabel: "per home visit",
+                  pmdcVerified: true,
+                  profileUrl: `${siteConfig.url}${publicPath}`,
+                }}
+              />
+            ) : undefined
+          }
+        />
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
+          <CardTitle className="text-base">Patient reviews</CardTitle>
+          {reviews.total > 0 && (
+            <RatingSummary ratingAvg={reviews.ratingAvg} total={reviews.total} />
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ProfileReviewList
+            reviews={reviews.reviews}
+            emptyText="No reviews yet. Patients can rate you after a completed home visit."
+          />
+          {publicPath && reviews.total > reviews.reviews.length && (
+            <Button variant="outline" asChild>
+              <Link href={`${publicPath}#reviews`}>See all reviews</Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>

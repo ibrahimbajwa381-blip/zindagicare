@@ -1,3 +1,5 @@
+import type { DoctorPortfolio } from "@/lib/doctors/portfolio";
+
 export type PublicDoctorHospital = {
   name: string;
   city: string;
@@ -25,6 +27,16 @@ export type PublicDoctorProfile = {
   availableSlots: number;
   isFull: boolean;
   videoConsultEnabled: boolean;
+  /** Weekly consultation hours (Asia/Karachi, day 0 = Sunday). */
+  weeklyAvailability: PublicDoctorWeeklyWindow[];
+  /** Doctor-authored portfolio with hidden sections already removed. */
+  portfolio: DoctorPortfolio;
+};
+
+export type PublicDoctorWeeklyWindow = {
+  dayOfWeek: number;
+  startTimeLocal: string;
+  endTimeLocal: string;
 };
 
 export type DoctorReviewDto = {

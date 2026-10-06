@@ -14,7 +14,7 @@ export const siteConfig = {
   icon: "/icon-192.png",
   tagline: "At-home medical care, online consults, urgent care & free Sunday care",
   description:
-    "Pakistan's at-home medical care — verified doctors, nurses, and physiotherapists visit you in Lahore with geo-tracked, transparent-priced visits. Plus secure online video consultations, urgent care in 10 minutes, and free Sunday consults (Rs. 0).",
+    "Pakistan's at-home medical care — verified doctors, nurses, and physiotherapists visit you at home with geo-tracked, transparent-priced visits. Plus secure online video consultations, urgent care in 10 minutes, and free Sunday consults (Rs. 0).",
   seo: {
     defaultTitle: marketingPageSeo.home.title,
     defaultDescription: marketingPageSeo.home.description,
@@ -49,7 +49,12 @@ export const siteConfig = {
     sundayConsult: "/sunday-consult",
     urgentCare: "/urgent-care",
     homeServices: "/home-services",
-    homePhysiotherapy: "/home-physiotherapy",
+    /** Home physiotherapy is booked from the physiotherapist directory (old /home-physiotherapy redirects there). */
+    homePhysiotherapy: "/physiotherapists",
+    physiotherapists: "/physiotherapists",
+    nurses: "/nurses",
+    herbalists: "/herbalists",
+    nutritionists: "/nutritionists",
     homeCareRequest: "/home-care/request",
     homeCareVisits: "/home-care/visits",
     login: "/login",
@@ -61,6 +66,7 @@ export const siteConfig = {
     forDoctorsGuide: "/for-doctors/guide",
     forNurses: "/for-nurses",
     forPhysiotherapists: "/for-physiotherapists",
+    forPhysiotherapistsGuide: "/for-physiotherapists/guide",
     privacy: "/privacy",
     terms: "/terms",
     refundPolicy: "/refund-policy",
@@ -72,6 +78,7 @@ export const siteConfig = {
     assistant: "/assistant",
     doctorMessages: "/doctor/messages",
     shareReview: "/share-review",
+    reviews: "/reviews",
     getApp: "/get-app",
     getAppAndroid: "/get-app?platform=android",
     getAppIos: "/get-app?platform=ios",

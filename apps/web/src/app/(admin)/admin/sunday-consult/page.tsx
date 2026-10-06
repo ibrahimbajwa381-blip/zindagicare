@@ -9,7 +9,7 @@ export default function AdminSundayConsultPage() {
       <AdminPageHeader
         eyebrow="Programs"
         title="Sunday free consult"
-        description="Enable or disable the program, configure slots, view the queue, and reset weekly availability."
+        description="Enable or disable the program, configure slots, and follow request progress. Doctors pick patients themselves."
       />
       <AdminSundayControl />
     </>

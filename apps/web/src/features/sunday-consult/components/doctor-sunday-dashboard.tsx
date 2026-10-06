@@ -12,6 +12,7 @@ import { FileText } from "lucide-react";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
+import { DoctorSundayRequests } from "./doctor-sunday-requests";
 
 type QueueAppointment = {
   _id: string;
@@ -82,7 +83,7 @@ export function DoctorSundayDashboard() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle
           title="Sunday Free Consult"
-          description="Manage your weekly free consult slots and patient queue."
+          description="Pick waiting patients, choose a time, and run your free Sunday consults."
         />
         <Button
           variant="outline"
@@ -92,6 +93,8 @@ export function DoctorSundayDashboard() {
           {enabled ? "Disable" : "Enable"} Sunday consults
         </Button>
       </div>
+
+      <DoctorSundayRequests onChange={loadQueue} />
 
       <Card className={`mt-8 ${surfaceCardInteractive}`}>
         <CardHeader>
