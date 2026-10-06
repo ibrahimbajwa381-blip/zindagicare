@@ -14,6 +14,7 @@ import {
   MessageCircle,
   RotateCcw,
   Scale,
+  Search,
   Shield,
   Smartphone,
   Stethoscope,
@@ -25,6 +26,7 @@ import {
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
+import { providerDirectoryLinks } from "@/lib/nav/provider-directories";
 import { AppDownloadBanner } from "@/components/pwa/app-download-banner";
 import { useTranslations } from "@/i18n/locale-provider";
 
@@ -124,6 +126,11 @@ export function SiteFooter() {
     { href: siteConfig.links.registerDoctor, label: t.auth.registerDoctor, icon: UserPlus },
     { href: siteConfig.links.registerNurse, label: t.auth.registerNurse, icon: UserPlus },
   ];
+
+  const findProviderLinks: FooterLinkItem[] = providerDirectoryLinks(t.nav).map((link) => ({
+    ...link,
+    icon: Search,
+  }));
 
   const accountLinks: FooterLinkItem[] = [
     { href: siteConfig.links.login, label: t.auth.login, icon: LogIn },
@@ -236,8 +243,9 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-5 lg:gap-6">
+          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-3 lg:gap-6 2xl:grid-cols-6">
             <FooterColumn title={t.footer.services} links={serviceLinks} />
+            <FooterColumn title={t.nav.findProvider} links={findProviderLinks} />
             <FooterColumn title={t.footer.providers} links={providerLinks} />
             <FooterColumn title={t.footer.account} links={accountLinks} />
             <FooterColumn title={t.footer.getApp} links={getAppLinks} />

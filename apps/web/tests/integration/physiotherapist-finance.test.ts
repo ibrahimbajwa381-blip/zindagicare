@@ -141,7 +141,7 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
       specialties: [shared.PHYSIOTHERAPY_SPECIALTIES[0] as string],
       avatarUrl: "/api/v1/physiotherapist/avatar/x.webp",
       serviceArea: { city: "Lahore", area: "DHA", homeVisitEnabled: false },
-      documentUrls: { licenseCertificate: "a", cnicFront: "b", cnicBack: "c" },
+      documentUrls: { degreeCertificate: "d", licenseCertificate: "a", cnicFront: "b", cnicBack: "c" },
       acceptedProviderAgreement: true,
     };
     const missing = validators.physiotherapistVerificationSchema.safeParse(base);
@@ -158,6 +158,31 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
         bankAccount: { ...bank, accountNumber: "" },
       }).success,
     ).toBe(false);
+  });
+
+  it("requires a degree certificate but not a license on the verification form", () => {
+    const base = {
+      cnic: "35202-1234567-1",
+      qualification: "DPT",
+      experienceYears: 3,
+      specialties: [shared.PHYSIOTHERAPY_SPECIALTIES[0] as string],
+      avatarUrl: "/api/v1/physiotherapist/avatar/x.webp",
+      serviceArea: { city: "Lahore", area: "DHA", homeVisitEnabled: false },
+      documentUrls: { degreeCertificate: "d", cnicFront: "b", cnicBack: "c" },
+      bankAccount: bank,
+      acceptedProviderAgreement: true,
+    };
+    expect(validators.physiotherapistVerificationSchema.safeParse(base).success).toBe(true);
+    expect(
+      validators.physiotherapistVerificationSchema.safeParse({ ...base, licenseNumber: "" })
+        .success,
+    ).toBe(true);
+    const noDegree = validators.physiotherapistVerificationSchema.safeParse({
+      ...base,
+      documentUrls: { cnicFront: "b", cnicBack: "c" },
+    });
+    expect(noDegree.success).toBe(false);
+    expect(noDegree.error?.issues[0]?.path).toEqual(["documentUrls", "degreeCertificate"]);
   });
 
   it("credits 70% of completed visits only", async () => {

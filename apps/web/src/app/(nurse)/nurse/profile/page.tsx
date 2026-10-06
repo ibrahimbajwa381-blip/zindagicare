@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { VerificationStatuses } from "@zindagi/shared";
+import { VerificationStatuses, Roles } from "@zindagi/shared";
 import { NursePageHeader } from "@/features/nurse/components/nurse-page-header";
 import { NurseAvailabilityToggle } from "@/features/nurse/components/nurse-availability-toggle";
 import { NurseProfileForm } from "@/features/nurse/components/nurse-profile-form";
@@ -11,7 +11,7 @@ export const metadata = { title: "My profile | Nurse" };
 export default async function NurseProfilePage() {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/nurse/profile");
-  if (!session.user.roles?.includes("nurse")) redirect("/onboarding");
+  if (!session.user.roles?.includes(Roles.NURSE)) redirect("/onboarding");
 
   const profile = await getNurseProfile(session.user.id);
   const isApproved =

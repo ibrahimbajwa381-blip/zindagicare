@@ -2,12 +2,17 @@ import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import type { PortfolioChecklistItem } from "@/lib/physiotherapists/portfolio";
+import { STAFF_PORTFOLIO_ROLES, type StaffPortfolioRole } from "./portfolio-roles";
 
-export const PORTFOLIO_PATH = "/physiotherapist/portfolio";
+export const PORTFOLIO_PATH = STAFF_PORTFOLIO_ROLES.physiotherapist.portfolioPath;
 
 /** Where each checklist item is edited — the photo lives on the profile page. */
-export function portfolioItemHref(id: PortfolioChecklistItem["id"]): string {
-  return id === "photo" ? "/physiotherapist/profile" : `${PORTFOLIO_PATH}#portfolio-${id}`;
+export function portfolioItemHref(
+  id: PortfolioChecklistItem["id"],
+  role: StaffPortfolioRole = "physiotherapist",
+): string {
+  const config = STAFF_PORTFOLIO_ROLES[role];
+  return id === "photo" ? config.profilePath : `${config.portfolioPath}#portfolio-${id}`;
 }
 
 export function PortfolioProgressBar({ percent }: { percent: number }) {

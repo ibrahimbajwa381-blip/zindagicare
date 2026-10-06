@@ -52,6 +52,9 @@ export const siteConfig = {
     /** Home physiotherapy is booked from the physiotherapist directory (old /home-physiotherapy redirects there). */
     homePhysiotherapy: "/physiotherapists",
     physiotherapists: "/physiotherapists",
+    nurses: "/nurses",
+    herbalists: "/herbalists",
+    nutritionists: "/nutritionists",
     homeCareRequest: "/home-care/request",
     homeCareVisits: "/home-care/visits",
     login: "/login",

@@ -20,6 +20,12 @@ export const ur: Dictionary = {
     freeBadge: "مفت",
     urgentCare: "فوری دیکھ بھال",
     urgentBadge: "فوری",
+    findProvider: "ماہر تلاش کریں",
+    doctors: "ڈاکٹرز",
+    nurses: "نرسز",
+    physiotherapists: "فزیو تھراپسٹ",
+    herbalists: "حکماء",
+    nutritionists: "ماہرینِ غذائیت",
   },
   breadcrumbs: {
     dashboard: "میرا ڈیش بورڈ",
@@ -1253,6 +1259,16 @@ export const ur: Dictionary = {
       optional: "اختیاری",
       cancel: "منسوخ",
     },
+  },
+  careTeam: {
+    eyebrow: "ہماری نگہداشت ٹیم",
+    title: "تصدیق شدہ نرسز، فزیو تھراپسٹ اور ماہرین سے ملیں",
+    description:
+      "ہر ماہر زندگی کیئر سے تصدیق شدہ ہے۔ پروفائلز دیکھیں، تجربہ اور ریویوز کا موازنہ کریں، اور اپنی پسند کا ماہر بک کریں۔",
+    viewAll: "تمام {role} دیکھیں",
+    verified: "تصدیق شدہ",
+    homeVisitsIn: "گھر پر وزٹ · {place}",
+    onlineConsultsIn: "آن لائن مشورہ · {place}",
   },
   doctors: {
     eyebrow: "آن لائن مشورہ",

@@ -24,6 +24,8 @@ type DoctorCardProps = {
   slotsOpenLabel?: string;
   noSlotsLabel?: string;
   bookLabel?: string;
+  /** Prefix "Dr." to the name — off for nurses, physiotherapists and other providers. */
+  withDoctorTitle?: boolean;
 };
 
 function initials(name: string) {
@@ -51,11 +53,12 @@ export function DoctorCard({
   slotsOpenLabel,
   noSlotsLabel,
   bookLabel,
+  withDoctorTitle = true,
 }: DoctorCardProps) {
   const showSlots = slotsOpenLabel !== undefined || noSlotsLabel !== undefined;
   const showRating = reviews > 0 && rating > 0;
   const shownCredentials = credentials.filter(Boolean);
-  const displayName = formatDoctorDisplayName(name);
+  const displayName = withDoctorTitle ? formatDoctorDisplayName(name) : name.trim();
 
   const card = (
     <article

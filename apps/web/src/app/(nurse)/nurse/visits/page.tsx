@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { VerificationStatuses } from "@zindagi/shared";
+import { VerificationStatuses, Roles } from "@zindagi/shared";
+import { NurseEarningsSplitCard } from "@/features/nurse/components/nurse-earnings-split-card";
 import { NursePageHeader } from "@/features/nurse/components/nurse-page-header";
 import { NurseVisitsDashboard } from "@/features/home-care/components/nurse-visits-dashboard";
 import { getNurseProfile } from "@/server/services/nurse.service";
@@ -14,7 +15,7 @@ export async function generateMetadata() {
 export default async function NurseVisitsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/nurse/visits");
-  if (!session.user.roles?.includes("nurse")) redirect("/onboarding");
+  if (!session.user.roles?.includes(Roles.NURSE)) redirect("/onboarding");
 
   const profile = await getNurseProfile(session.user.id);
   if (profile.verification.status !== VerificationStatuses.APPROVED) {
@@ -30,6 +31,9 @@ export default async function NurseVisitsPage() {
         title={t.homeCare.nurseDashboardTitle}
         description={t.homeCare.nurseDashboardDesc}
       />
+      <div className="mb-6">
+        <NurseEarningsSplitCard />
+      </div>
       <NurseVisitsDashboard />
     </>
   );

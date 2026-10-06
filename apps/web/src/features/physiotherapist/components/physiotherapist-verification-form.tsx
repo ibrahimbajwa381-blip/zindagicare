@@ -62,7 +62,7 @@ export function PhysiotherapistVerificationForm({
       return;
     }
 
-    const requiredDocs = ["licenseCertificate", "cnicFront", "cnicBack"] as const;
+    const requiredDocs = ["degreeCertificate", "cnicFront", "cnicBack"] as const;
     for (const key of requiredDocs) {
       if (!documents[key]) {
         setError("Please upload all required documents.");
@@ -90,7 +90,7 @@ export function PhysiotherapistVerificationForm({
     }
 
     const body = {
-      licenseNumber: form.get("licenseNumber"),
+      licenseNumber: String(form.get("licenseNumber") ?? "").trim() || undefined,
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
@@ -103,6 +103,7 @@ export function PhysiotherapistVerificationForm({
         geo: geo ?? undefined,
       },
       documentUrls: {
+        degreeCertificate: documents.degreeCertificate,
         licenseCertificate: documents.licenseCertificate,
         cnicFront: documents.cnicFront,
         cnicBack: documents.cnicBack,
@@ -163,13 +164,14 @@ export function PhysiotherapistVerificationForm({
         <h2 className="text-sm font-semibold text-slate-900">Identity & registration</h2>
         <div>
           <Label htmlFor="licenseNumber">
-            Physiotherapy license / PPTA registration number
+            Physiotherapy license / PPTA registration number (optional)
           </Label>
           <Input
             id="licenseNumber"
             name="licenseNumber"
             defaultValue={defaults?.licenseNumber}
-            required
+            minLength={3}
+            maxLength={40}
           />
         </div>
         <div>
@@ -284,7 +286,16 @@ export function PhysiotherapistVerificationForm({
           </p>
         </div>
         <VerificationDocumentUpload
-          label="Physiotherapy license / PPTA certificate"
+          label="Degree certificate (e.g. DPT, BS Physical Therapy)"
+          docKey="degreeCertificate"
+          value={documents.degreeCertificate}
+          fileName={documentNames.degreeCertificate}
+          uploadUrl="/api/v1/physiotherapist/verification/upload"
+          onUploaded={(url, name) => setDocument("degreeCertificate", url, name)}
+          onClear={() => clearDocument("degreeCertificate")}
+        />
+        <VerificationDocumentUpload
+          label="Physiotherapy license / PPTA certificate (optional)"
           docKey="licenseCertificate"
           value={documents.licenseCertificate}
           fileName={documentNames.licenseCertificate}

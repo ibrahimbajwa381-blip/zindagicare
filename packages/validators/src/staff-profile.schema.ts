@@ -1,6 +1,9 @@
 import { z } from "zod";
 import {
+  MAX_NURSING_SPECIALTIES,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
+  NURSE_HOME_VISIT_FEE_MAX,
+  NURSE_HOME_VISIT_FEE_MIN,
   PHYSIO_HOME_VISIT_FEE_MAX,
   PHYSIO_HOME_VISIT_FEE_MIN,
   PHYSIOTHERAPIST_PORTFOLIO_LIMITS,
@@ -9,7 +12,8 @@ import {
 import { geoPointInputSchema } from "./geo.schema";
 import { pakistaniPhoneSchema } from "./auth.schema";
 
-export const updateNurseProfileSchema = z.object({
+/** Profile fields every home-visit staff role (nurse, physiotherapist) can edit. */
+const baseStaffProfileSchema = z.object({
   name: z.string().min(2, "Name is required").optional(),
   phone: pakistaniPhoneSchema.optional(),
   city: z.string().min(2, "City is required").optional(),
@@ -24,9 +28,7 @@ export const updateNurseProfileSchema = z.object({
   isAvailable: z.boolean().optional(),
 });
 
-export type UpdateNurseProfileInput = z.infer<typeof updateNurseProfileSchema>;
-
-const nurseServiceAreaSchema = z
+const staffServiceAreaSchema = z
   .object({
     city: z.string().min(2, "City is required"),
     area: z.string().min(2, "Area / neighborhood is required"),
@@ -43,7 +45,7 @@ const nurseServiceAreaSchema = z
     }
   });
 
-export const nurseVerificationSchema = z.object({
+const baseStaffVerificationSchema = z.object({
   licenseNumber: z
     .string()
     .min(3, "License / registration number is required")
@@ -56,7 +58,7 @@ export const nurseVerificationSchema = z.object({
     .min(2, "Qualification is required")
     .max(120, "Qualification is too long"),
   experienceYears: z.coerce.number().min(0).max(60),
-  serviceArea: nurseServiceAreaSchema,
+  serviceArea: staffServiceAreaSchema,
   documentUrls: z.object({
     licenseCertificate: z.string().min(1, "License certificate required"),
     cnicFront: z.string().min(1, "CNIC front image required"),
@@ -66,8 +68,6 @@ export const nurseVerificationSchema = z.object({
     message: "You must accept the ZindagiCare Provider Agreement",
   }),
 });
-
-export type NurseVerificationInput = z.infer<typeof nurseVerificationSchema>;
 
 export const adminNurseDecisionSchema = z.object({
   staffProfileId: z.string().min(1),
@@ -87,7 +87,7 @@ const physiotherapySpecialtiesSchema = z
   .array(z.string().min(1))
   .max(MAX_PHYSIOTHERAPY_SPECIALTIES, `Select up to ${MAX_PHYSIOTHERAPY_SPECIALTIES} specialties`);
 
-export const updatePhysiotherapistProfileSchema = updateNurseProfileSchema.extend({
+export const updatePhysiotherapistProfileSchema = baseStaffProfileSchema.extend({
   specialties: physiotherapySpecialtiesSchema.optional(),
   bio: z.string().trim().max(2000, "Bio is too long").optional(),
   languages: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
@@ -103,8 +103,8 @@ export type UpdatePhysiotherapistProfileInput = z.infer<
   typeof updatePhysiotherapistProfileSchema
 >;
 
-/** Where a physiotherapist's Sunday payouts are sent. */
-export const physiotherapistBankAccountSchema = z.object({
+/** Where a nurse's or physiotherapist's Sunday payouts are sent. */
+const staffBankAccountSchema = z.object({
   accountTitle: z
     .string()
     .trim()
@@ -127,21 +127,44 @@ export const physiotherapistBankAccountSchema = z.object({
     .optional()
     .transform((value) => value || undefined),
 });
+
+export const physiotherapistBankAccountSchema = staffBankAccountSchema;
 export type PhysiotherapistBankAccountInput = z.infer<
   typeof physiotherapistBankAccountSchema
 >;
 
-export const physiotherapistVerificationSchema = nurseVerificationSchema.extend({
+// A form opened before the bank section shipped sends no bankAccount at all — tell the
+// provider how to get the section instead of a raw "expected object" error.
+const verificationBankAccountSchema = z.object(staffBankAccountSchema.shape, {
+  error: (issue) =>
+    issue.input === undefined
+      ? "Please add your payout bank account. Refresh this page to see the bank account section."
+      : undefined,
+});
+
+export const physiotherapistVerificationSchema = baseStaffVerificationSchema.extend({
+  // Physiotherapists may not hold a PPTA license yet — the degree is the mandatory credential.
+  licenseNumber: z
+    .string()
+    .trim()
+    .max(40, "License number is too long")
+    .optional()
+    .transform((value) => value || undefined)
+    .refine((value) => value === undefined || value.length >= 3, {
+      message: "License / registration number must be at least 3 characters",
+    }),
+  documentUrls: z.object({
+    degreeCertificate: z.string().min(1, "Degree certificate required"),
+    licenseCertificate: z
+      .string()
+      .optional()
+      .transform((value) => value || undefined),
+    cnicFront: z.string().min(1, "CNIC front image required"),
+    cnicBack: z.string().min(1, "CNIC back image required"),
+  }),
   specialties: physiotherapySpecialtiesSchema.min(1, "Select at least one specialty"),
   avatarUrl: z.string().min(1, "Profile photo is required").max(500),
-  // A form opened before the bank section shipped sends no bankAccount at all — tell the
-  // physio how to get the section instead of a raw "expected object" error.
-  bankAccount: z.object(physiotherapistBankAccountSchema.shape, {
-    error: (issue) =>
-      issue.input === undefined
-        ? "Please add your payout bank account. Refresh this page to see the bank account section."
-        : undefined,
-  }),
+  bankAccount: verificationBankAccountSchema,
 });
 export type PhysiotherapistVerificationInput = z.infer<
   typeof physiotherapistVerificationSchema
@@ -318,3 +341,47 @@ export const updatePhysiotherapistPortfolioSchema = z
 export type UpdatePhysiotherapistPortfolioInput = z.infer<
   typeof updatePhysiotherapistPortfolioSchema
 >;
+
+const nursingSpecialtiesSchema = z
+  .array(z.string().min(1))
+  .max(MAX_NURSING_SPECIALTIES, `Select up to ${MAX_NURSING_SPECIALTIES} specialties`);
+
+export const updateNurseProfileSchema = baseStaffProfileSchema.extend({
+  specialties: nursingSpecialtiesSchema.optional(),
+  bio: z.string().trim().max(2000, "Bio is too long").optional(),
+  languages: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
+  avatarUrl: z.string().min(1).max(500).optional(),
+  homeVisitFee: z.coerce
+    .number()
+    .int("Fee must be a whole number")
+    .min(NURSE_HOME_VISIT_FEE_MIN, `Fee must be at least Rs. ${NURSE_HOME_VISIT_FEE_MIN}`)
+    .max(NURSE_HOME_VISIT_FEE_MAX, `Fee can be at most Rs. ${NURSE_HOME_VISIT_FEE_MAX}`)
+    .optional(),
+});
+export type UpdateNurseProfileInput = z.infer<typeof updateNurseProfileSchema>;
+
+export const nurseBankAccountSchema = staffBankAccountSchema;
+export type NurseBankAccountInput = z.infer<typeof nurseBankAccountSchema>;
+
+export const nurseVerificationSchema = baseStaffVerificationSchema.extend({
+  specialties: nursingSpecialtiesSchema.min(1, "Select at least one specialty"),
+  avatarUrl: z.string().min(1, "Profile photo is required").max(500),
+  bankAccount: verificationBankAccountSchema,
+});
+export type NurseVerificationInput = z.infer<typeof nurseVerificationSchema>;
+
+/** Admin: add an approved nurse directly (skips self-onboarding). */
+export const adminCreateNurseSchema = adminCreatePhysiotherapistSchema.extend({
+  specialties: nursingSpecialtiesSchema.min(1, "Select at least one specialty"),
+});
+export type AdminCreateNurseInput = z.infer<typeof adminCreateNurseSchema>;
+
+/** Admin: manage an existing nurse — status, service toggles, and profile corrections. */
+export const adminUpdateNurseSchema = adminUpdatePhysiotherapistSchema.safeExtend({
+  specialties: nursingSpecialtiesSchema.optional(),
+});
+export type AdminUpdateNurseInput = z.infer<typeof adminUpdateNurseSchema>;
+
+/** Nurses share the physiotherapist portfolio shape (both live on StaffProfile.portfolio). */
+export const updateNursePortfolioSchema = updatePhysiotherapistPortfolioSchema;
+export type UpdateNursePortfolioInput = UpdatePhysiotherapistPortfolioInput;

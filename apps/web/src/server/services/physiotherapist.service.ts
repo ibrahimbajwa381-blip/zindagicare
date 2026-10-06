@@ -542,7 +542,8 @@ export type AdminPhysiotherapistRow = {
 };
 
 const DOCUMENT_LABELS: Record<string, string> = {
-  licenseCertificate: "License / PNC certificate",
+  degreeCertificate: "Degree certificate",
+  licenseCertificate: "License / PPTA certificate",
   cnicFront: "CNIC front",
   cnicBack: "CNIC back",
 };

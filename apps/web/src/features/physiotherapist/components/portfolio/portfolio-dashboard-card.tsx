@@ -9,7 +9,8 @@ import {
   portfolioCompleteness,
   type PhysiotherapistPortfolio,
 } from "@/lib/physiotherapists/portfolio";
-import { PORTFOLIO_PATH, PortfolioChecklist, PortfolioProgressBar } from "./portfolio-progress";
+import { PortfolioChecklist, PortfolioProgressBar, portfolioItemHref } from "./portfolio-progress";
+import { STAFF_PORTFOLIO_ROLES, type StaffPortfolioRole } from "./portfolio-roles";
 
 type Props = {
   name: string;
@@ -19,6 +20,7 @@ type Props = {
   publicPath: string | null;
   /** Extra action (e.g. the shareable profile card) shown beside "View live". */
   shareAction?: ReactNode;
+  role?: StaffPortfolioRole;
 };
 
 /** Overview-page summary: a mini preview of the public profile plus the next steps to finish it. */
@@ -29,15 +31,17 @@ export function PortfolioDashboardCard({
   portfolio,
   publicPath,
   shareAction,
+  role = "physiotherapist",
 }: Props) {
-  const checklist = portfolioChecklist(portfolio, avatarUrl);
+  const config = STAFF_PORTFOLIO_ROLES[role];
+  const checklist = portfolioChecklist(portfolio, avatarUrl, role);
   const percent = portfolioCompleteness(checklist);
   const complete = percent === 100;
 
   const highlights = [
     { value: portfolio.experience.length, label: "positions" },
     { value: portfolio.certifications.length, label: "certifications" },
-    { value: portfolio.conditionsTreated.length, label: "conditions" },
+    { value: portfolio.conditionsTreated.length, label: config.conditionsStatLabel },
     { value: portfolio.education.length, label: "degrees" },
   ];
 
@@ -71,7 +75,7 @@ export function PortfolioDashboardCard({
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Button asChild size="sm">
-              <Link href={PORTFOLIO_PATH}>
+              <Link href={config.portfolioPath}>
                 <Pencil className="h-4 w-4" />
                 Edit portfolio
               </Link>
@@ -103,7 +107,12 @@ export function PortfolioDashboardCard({
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Next steps
               </p>
-              <PortfolioChecklist items={checklist} showDone={false} limit={3} />
+              <PortfolioChecklist
+                items={checklist}
+                showDone={false}
+                limit={3}
+                itemHref={(id) => portfolioItemHref(id, role)}
+              />
             </div>
           )}
           {!publicPath && (

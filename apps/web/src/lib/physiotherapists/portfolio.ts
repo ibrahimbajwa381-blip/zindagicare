@@ -1,5 +1,5 @@
 /**
- * Physiotherapist portfolio shape + completeness scoring. Pure (no server imports) so the
+ * Physiotherapist / nurse portfolio shape + completeness scoring. Pure (no server imports) so the
  * workspace editor, dashboard card, and public profile all score and render identically.
  */
 
@@ -122,6 +122,28 @@ export type PortfolioChecklistItem = {
 
 const MIN_BIO_CHARS = 100;
 
+/** Home-visit staff roles that share this portfolio shape (StaffProfile.portfolio). */
+export type StaffPortfolioRole = "physiotherapist" | "nurse";
+
+/** Checklist copy that differs by role; everything else is shared. */
+const CHECKLIST_HINTS: Record<
+  StaffPortfolioRole,
+  { focusLabel: string; focus: string; education: string; certifications: string }
+> = {
+  physiotherapist: {
+    focusLabel: "Conditions & techniques",
+    focus: "Patients search by problem — list at least 3 conditions you treat.",
+    education: "Your DPT / BSPT and any post-graduate degrees.",
+    certifications: "Courses like dry needling, manual therapy or taping.",
+  },
+  nurse: {
+    focusLabel: "Care & clinical skills",
+    focus: "Families search by need — list at least 3 kinds of care you provide.",
+    education: "Your BSN / nursing diploma and any post-graduate study.",
+    certifications: "Courses like BLS, ACLS, IV therapy or wound care.",
+  },
+};
+
 /**
  * Ordered by patient impact — the dashboard surfaces the first few missing items as
  * "next steps". Awards/memberships are a bonus and not required for 100%.
@@ -129,7 +151,9 @@ const MIN_BIO_CHARS = 100;
 export function portfolioChecklist(
   portfolio: PhysiotherapistPortfolio,
   avatarUrl?: string,
+  role: StaffPortfolioRole = "physiotherapist",
 ): PortfolioChecklistItem[] {
+  const hints = CHECKLIST_HINTS[role];
   return [
     {
       id: "photo",
@@ -145,8 +169,8 @@ export function portfolioChecklist(
     },
     {
       id: "focus",
-      label: "Conditions & techniques",
-      hint: "Patients search by problem — list at least 3 conditions you treat.",
+      label: hints.focusLabel,
+      hint: hints.focus,
       done: portfolio.conditionsTreated.length >= 3 && portfolio.techniques.length > 0,
     },
     {
@@ -158,13 +182,13 @@ export function portfolioChecklist(
     {
       id: "education",
       label: "Education",
-      hint: "Your DPT / BSPT and any post-graduate degrees.",
+      hint: hints.education,
       done: portfolio.education.length > 0,
     },
     {
       id: "certifications",
       label: "Certifications & training",
-      hint: "Courses like dry needling, manual therapy or taping.",
+      hint: hints.certifications,
       done: portfolio.certifications.length > 0,
     },
   ];

@@ -203,6 +203,12 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: Stethoscope,
       },
       {
+        href: "/admin/nurses/manage",
+        label: "Nurse management",
+        description: "Manage approved nurses",
+        icon: HeartPulse,
+      },
+      {
         href: "/admin/physiotherapists/manage",
         label: "Physiotherapist management",
         description: "Manage approved physiotherapists",
@@ -318,6 +324,9 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
         pathname === "/admin/doctors" ||
         pathname.startsWith("/admin/doctors/review")
       );
+    }
+    if (item.href === "/admin/nurses") {
+      return pathname === "/admin/nurses" || pathname.startsWith("/admin/nurses/review");
     }
     if (item.href === "/admin/physiotherapists") {
       return (

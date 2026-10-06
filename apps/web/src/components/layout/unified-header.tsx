@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useSession } from "next-auth/react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
@@ -17,12 +18,15 @@ import { useHeaderBadges } from "@/components/layout/use-header-badges";
 import { useHideOnScroll } from "@/components/layout/use-hide-on-scroll";
 import { appHeaderInner, appHeaderShell } from "@/lib/ui/surfaces";
 import { buildMarketingMobileNav } from "@/lib/nav/mobile-menu";
+import { providerDirectoryLinks } from "@/lib/nav/provider-directories";
 import { useTranslations } from "@/i18n/locale-provider";
 
 export type UnifiedNavLink = {
   href: string;
   label: string;
   badge?: string;
+  /** Desktop dropdown items; the parent link stays clickable. */
+  children?: readonly UnifiedNavLink[];
 };
 
 type UnifiedHeaderProps = {
@@ -77,9 +81,20 @@ export function UnifiedHeader({
     signOut: t.dashboard.header.signOut,
     login: t.auth.login,
     createAccount: t.auth.createAccount,
+    findProvider: t.nav.findProvider,
+    doctors: t.nav.doctors,
+    nurses: t.nav.nurses,
+    physiotherapists: t.nav.physiotherapists,
+    herbalists: t.nav.herbalists,
+    nutritionists: t.nav.nutritionists,
   });
 
   const defaultNavLinks: readonly UnifiedNavLink[] = [
+    {
+      label: t.nav.findProvider,
+      href: siteConfig.links.doctors,
+      children: providerDirectoryLinks(t.nav),
+    },
     { label: t.nav.homeServices, href: siteConfig.links.homeServices },
     {
       label: t.nav.homePhysio,
@@ -136,20 +151,45 @@ export function UnifiedHeader({
             className="hidden min-w-0 flex-1 items-center justify-center gap-0 px-0.5 text-xs font-medium text-slate-600 lg:flex xl:gap-0.5 xl:px-1 xl:text-[13px] 2xl:gap-1 2xl:px-2 2xl:text-sm"
             aria-label="Main"
           >
-            {resolvedNavLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 transition-colors hover:bg-brand-muted hover:text-brand-dark xl:px-2 2xl:gap-1.5 2xl:px-3"
-              >
-                {item.label}
-                {item.badge ? (
-                  <span className="rounded-md bg-brand px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white xl:px-1.5 xl:text-[10px]">
-                    {item.badge}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
+            {resolvedNavLinks.map((item) => {
+              const link = (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-haspopup={item.children ? "true" : undefined}
+                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 transition-colors hover:bg-brand-muted hover:text-brand-dark xl:px-2 2xl:gap-1.5 2xl:px-3"
+                >
+                  {item.label}
+                  {item.children ? <ChevronDown className="h-3 w-3" aria-hidden /> : null}
+                  {item.badge ? (
+                    <span className="rounded-md bg-brand px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white xl:px-1.5 xl:text-[10px]">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+              if (!item.children) return link;
+              // Opens on hover and on keyboard focus (focus-within), no JS state needed.
+              return (
+                <div key={item.href} className="group relative">
+                  {link}
+                  <div className="invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                    <ul className="min-w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                      {item.children.map((child) => (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            className="block whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-brand-muted hover:text-brand-dark"
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })}
           </nav>
         ) : (
           <div className="hidden flex-1 lg:block" aria-hidden />

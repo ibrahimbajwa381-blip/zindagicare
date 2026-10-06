@@ -2,32 +2,52 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import {
+  HOME_CARE_MATCH_RADIUS_KM,
+  MAX_NURSING_SPECIALTIES,
+  NURSING_HOME_VISIT_SPLIT as SPLIT,
+  NURSING_SPECIALTIES_ALPHABETICAL,
+} from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
+import { NurseProfilePhotoUpload } from "@/features/nurse/components/nurse-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 type NurseVerificationFormProps = {
+  name: string;
   defaults?: {
+    avatarUrl?: string;
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
     city?: string;
     area?: string;
+    bankAccount?: {
+      accountTitle?: string;
+      bankName?: string;
+      accountNumber?: string;
+      iban?: string;
+    };
   };
 };
 
-export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) {
+export function NurseVerificationForm({
+  name,
+  defaults,
+}: NurseVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(defaults?.avatarUrl);
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
+  const [specialties, setSpecialties] = useState<string[]>([]);
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -35,6 +55,12 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
     setPending(true);
     setError(undefined);
     const form = new FormData(e.currentTarget);
+
+    if (!avatarUrl) {
+      setError("Please upload a profile photo.");
+      setPending(false);
+      return;
+    }
 
     const requiredDocs = ["licenseCertificate", "cnicFront", "cnicBack"] as const;
     for (const key of requiredDocs) {
@@ -51,6 +77,12 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
       return;
     }
 
+    if (!specialties.length) {
+      setError("Select at least one nursing specialty.");
+      setPending(false);
+      return;
+    }
+
     if (!acceptedAgreement) {
       setError("You must accept the ZindagiCare Provider Agreement to submit.");
       setPending(false);
@@ -62,6 +94,8 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
+      specialties,
+      avatarUrl,
       serviceArea: {
         city: form.get("city"),
         area: form.get("area"),
@@ -72,6 +106,12 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
         licenseCertificate: documents.licenseCertificate,
         cnicFront: documents.cnicFront,
         cnicBack: documents.cnicBack,
+      },
+      bankAccount: {
+        accountTitle: String(form.get("bankAccountTitle") ?? "").trim(),
+        bankName: String(form.get("bankName") ?? "").trim(),
+        accountNumber: String(form.get("bankAccountNumber") ?? "").trim(),
+        iban: String(form.get("bankIban") ?? "").trim() || undefined,
       },
       acceptedProviderAgreement: acceptedAgreement,
     };
@@ -112,6 +152,13 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
+      <NurseProfilePhotoUpload
+        name={name}
+        value={avatarUrl}
+        onUploaded={setAvatarUrl}
+        required
+      />
+
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-900">Identity & registration</h2>
         <div>
@@ -155,6 +202,21 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
             defaultValue={defaults?.experienceYears ?? 0}
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="specialties">Specialties</Label>
+          <SpecialtyMultiSelect
+            id="specialties"
+            values={specialties}
+            onChange={setSpecialties}
+            max={MAX_NURSING_SPECIALTIES}
+            options={NURSING_SPECIALTIES_ALPHABETICAL}
+            placeholder="Add your nursing specialties"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Required. Select up to {MAX_NURSING_SPECIALTIES} areas of nursing you
+            specialize in.
+          </p>
         </div>
       </section>
 
@@ -248,6 +310,64 @@ export function NurseVerificationForm({ defaults }: NurseVerificationFormProps) 
           onUploaded={(url, name) => setDocument("cnicBack", url, name)}
           onClear={() => clearDocument("cnicBack")}
         />
+      </section>
+
+      <section className="space-y-4 rounded-lg border border-emerald-200/70 bg-emerald-50/40 p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Payout account</h2>
+          <p className="mt-0.5 text-xs text-slate-600">
+            You keep {SPLIT.nursePercent}% of every visit fee and ZindagiCare keeps{" "}
+            {SPLIT.platformPercent}%. Your earnings are sent to this account every Sunday.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="bankAccountTitle">Account title</Label>
+            <Input
+              id="bankAccountTitle"
+              name="bankAccountTitle"
+              defaultValue={defaults?.bankAccount?.accountTitle}
+              placeholder="Name on the account"
+              required
+              minLength={2}
+              maxLength={120}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bankName">Bank / wallet name</Label>
+            <Input
+              id="bankName"
+              name="bankName"
+              defaultValue={defaults?.bankAccount?.bankName}
+              placeholder="e.g. Meezan Bank, JazzCash"
+              required
+              minLength={2}
+              maxLength={120}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bankAccountNumber">Account number</Label>
+            <Input
+              id="bankAccountNumber"
+              name="bankAccountNumber"
+              defaultValue={defaults?.bankAccount?.accountNumber}
+              inputMode="numeric"
+              required
+              minLength={4}
+              maxLength={40}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bankIban">IBAN (optional)</Label>
+            <Input
+              id="bankIban"
+              name="bankIban"
+              defaultValue={defaults?.bankAccount?.iban}
+              placeholder="PK36SCBL0000001123456702"
+              maxLength={40}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="space-y-3 rounded-lg border border-amber-200/60 bg-amber-50/40 p-4">

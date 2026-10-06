@@ -1,9 +1,9 @@
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 
-export function TopDoctorsSectionSkeleton() {
+export function TopDoctorsSectionSkeleton({ label = "Loading doctors" }: { label?: string }) {
   return (
-    <PageSection variant="brand" spacing="lg" flipBlur aria-busy="true" aria-label="Loading doctors">
+    <PageSection variant="brand" spacing="lg" flipBlur aria-busy="true" aria-label={label}>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end sm:gap-6">
         <div className="space-y-3">
           <div className="h-4 w-24 animate-pulse rounded bg-brand-light/40" />

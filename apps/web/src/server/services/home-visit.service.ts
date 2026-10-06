@@ -28,6 +28,7 @@ import {
   VerificationStatuses,
   VISIT_SUMMARY_MIN_LENGTH,
   isAdmin,
+  resolveNurseHomeVisitFee,
   resolvePhysioHomeVisitFee,
   isDoctorHomeVisitService,
   isPhysiotherapyHomeVisitService,
@@ -176,7 +177,7 @@ export type HomeVisitDto = {
   refundBankName?: string;
   patientNotes?: string;
   patient?: { id: string; name: string; phone?: string };
-  /** Provider the patient picked when booking (physiotherapy). */
+  /** Provider the patient picked when booking (physiotherapy or nursing). */
   preferredStaff?: { id: string; name: string };
   assignedStaff?: {
     id: string;
@@ -342,7 +343,7 @@ function serializeVisit(
     preferredStaff: preferred?._id
       ? {
           id: preferred._id.toString(),
-          name: safeDisplayText(preferred.name) ?? "Physiotherapist",
+          name: safeDisplayText(preferred.name) ?? "Provider",
         }
       : undefined,
     assignedStaff: staff?._id
@@ -684,11 +685,12 @@ export class HomeVisitService {
     // city can be stale or defaulted, which would reject providers in other cities.
     const visitCity = nearestCity(lng, lat);
 
-    // Only physiotherapy supports picking a specific provider for now.
-    const preferredStaffId = isPhysiotherapyHomeVisitService(input.serviceType)
-      ? input.preferredStaffId
-      : undefined;
-    if (preferredStaffId) {
+    // Physiotherapy and nurse-dispatched services support picking a specific provider.
+    const isPhysio = isPhysiotherapyHomeVisitService(input.serviceType);
+    const isNurseService =
+      homeVisitProviderKind(input.serviceType) === HomeVisitProviderKinds.NURSE;
+    const preferredStaffId = isPhysio || isNurseService ? input.preferredStaffId : undefined;
+    if (preferredStaffId && isPhysio) {
       // A patient who picks a physio pays that physio's own fee.
       ({ homeVisitFee: base } = await HomeVisitService.assertPhysiotherapistBookable(
         preferredStaffId,
@@ -696,6 +698,16 @@ export class HomeVisitService {
         lat,
         scheduledAt,
       ));
+    } else if (preferredStaffId) {
+      const { homeVisitFee } = await HomeVisitService.assertNurseBookable(
+        preferredStaffId,
+        lng,
+        lat,
+        scheduledAt,
+      );
+      // Only a general nursing visit is priced at the nurse's own fee; procedures keep the
+      // standard rate.
+      if (input.serviceType === HomeVisitServiceTypes.NURSE) base = homeVisitFee;
     }
 
     const visit = await HomeVisitModel.create({
@@ -736,10 +748,10 @@ export class HomeVisitService {
           override: false,
         });
       } catch (err) {
-        // Pre-checked above, so this only fails on a race (e.g. the physio was
+        // Pre-checked above, so this only fails on a race (e.g. the provider was
         // booked a moment ago). Leave as requested with preferredStaffId set so
         // admin sees the patient's choice and can assign.
-        console.error("[home-visit] preferred physiotherapist assignment failed", err);
+        console.error("[home-visit] preferred provider assignment failed", err);
       }
     } else if (input.autoAssign) {
       try {
@@ -754,20 +766,56 @@ export class HomeVisitService {
     ]);
   }
 
-  /**
-   * Patient-facing check before a physiotherapy visit is booked with a chosen
-   * provider — same rules admin manual assignment enforces (verified, taking
-   * home visits, within radius, free at that time), but with patient-readable
-   * errors so they can pick someone else or another time.
-   */
+  /** Patient-facing check before a physiotherapy visit is booked with a chosen physio. */
   static async assertPhysiotherapistBookable(
     staffUserId: string,
     lng: number,
     lat: number,
     scheduledAt: Date,
   ) {
+    const profile = await HomeVisitService.assertStaffBookable(
+      staffUserId,
+      Roles.PHYSIOTHERAPIST,
+      lng,
+      lat,
+      scheduledAt,
+    );
+    return { homeVisitFee: resolvePhysioHomeVisitFee(profile.homeVisitFee) };
+  }
+
+  /** Patient-facing check before a nursing visit is booked with a chosen nurse. */
+  static async assertNurseBookable(
+    staffUserId: string,
+    lng: number,
+    lat: number,
+    scheduledAt: Date,
+  ) {
+    const profile = await HomeVisitService.assertStaffBookable(
+      staffUserId,
+      Roles.NURSE,
+      lng,
+      lat,
+      scheduledAt,
+    );
+    return { homeVisitFee: resolveNurseHomeVisitFee(profile.homeVisitFee) };
+  }
+
+  /**
+   * Patient-facing check before a visit is booked with a chosen nurse or
+   * physiotherapist — same rules admin manual assignment enforces (verified,
+   * taking home visits, within radius, free at that time), but with
+   * patient-readable errors so they can pick someone else or another time.
+   */
+  private static async assertStaffBookable(
+    staffUserId: string,
+    staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
+    lng: number,
+    lat: number,
+    scheduledAt: Date,
+  ) {
+    const label = staffType === Roles.PHYSIOTHERAPIST ? "physiotherapist" : "nurse";
     const profile = await StaffProfileModel.findOne(
-      mongoFilter({ userId: staffUserId, staffType: Roles.PHYSIOTHERAPIST }),
+      mongoFilter({ userId: staffUserId, staffType }),
     ).lean();
     if (
       !profile ||
@@ -780,24 +828,24 @@ export class HomeVisitService {
       ))
     ) {
       throw new AppError(
-        "This physiotherapist isn't taking home visits right now. Please choose another.",
+        `This ${label} isn't taking home visits right now. Please choose another.`,
         ErrorCodes.VALIDATION,
         400,
       );
     }
     // Distance from the patient's pin decides coverage — city names are free
-    // text (or missing on older areas) and would wrongly reject nearby physios.
+    // text (or missing on older areas) and would wrongly reject nearby providers.
     const distanceKm = await HomeVisitService.getStaffDistanceKm(
       staffUserId,
       false,
       lng,
       lat,
       undefined,
-      Roles.PHYSIOTHERAPIST,
+      staffType,
     );
     if (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM) {
       throw new AppError(
-        `This physiotherapist is more than ${HOME_CARE_MATCH_RADIUS_KM} km from your location. Please choose someone nearer.`,
+        `This ${label} is more than ${HOME_CARE_MATCH_RADIUS_KM} km from your location. Please choose someone nearer.`,
         ErrorCodes.VALIDATION,
         400,
       );
@@ -806,13 +854,13 @@ export class HomeVisitService {
     const busyIds = await getBusyStaffIds(scheduledAt);
     if (busyIds.includes(staffUserId)) {
       throw new AppError(
-        "This physiotherapist already has a visit at that time. Please pick another time or physiotherapist.",
+        `This ${label} already has a visit at that time. Please pick another time or ${label}.`,
         ErrorCodes.CONFLICT,
         409,
       );
     }
 
-    return { homeVisitFee: resolvePhysioHomeVisitFee(profile.homeVisitFee) };
+    return profile;
   }
 
   /** Opens as soon as the visit is requested — the total is already known (base + surge) at that point. */

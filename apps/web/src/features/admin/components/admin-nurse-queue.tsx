@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,10 +45,8 @@ export function AdminNurseQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
-  const hasLoadedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
-    if (!hasLoadedRef.current) setLoading(true);
     const qs = filter ? `?status=${filter}` : "";
     fetch(`/api/v1/admin/nurses${qs}`)
       .then((res) => res.json())
@@ -60,13 +58,11 @@ export function AdminNurseQueue() {
         } else {
           setError(json?.error?.message ?? "Failed to load nurses");
         }
-        hasLoadedRef.current = true;
         setLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
         setError("Failed to load nurses");
-        hasLoadedRef.current = true;
         setLoading(false);
       });
     return () => {
@@ -81,7 +77,10 @@ export function AdminNurseQueue() {
           <button
             key={f.value}
             type="button"
-            onClick={() => setFilter(f.value)}
+            onClick={() => {
+              setLoading(true);
+              setFilter(f.value);
+            }}
             className={cn(
               "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
               filter === f.value
@@ -96,7 +95,7 @@ export function AdminNurseQueue() {
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <LoadingScreen message="Loading nurses…" size="md" />
+          <LoadingScreen message="Loading Nurses…" size="md" />
         </div>
       ) : error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
@@ -107,25 +106,25 @@ export function AdminNurseQueue() {
           <p className="font-medium text-slate-900">No nurses in this list</p>
           <p className="mt-2 text-sm text-slate-500">
             Nurses appear in the pending queue after onboarding and submitting their
-            license documents.
+            registration documents.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {nurses.map((nurse) => {
+          {nurses.map((row) => {
             const badge =
-              STATUS_BADGE[nurse.verificationStatus] ?? STATUS_BADGE.pending;
-            const hasSubmitted = Boolean(nurse.verificationSubmittedAt);
+              STATUS_BADGE[row.verificationStatus] ?? STATUS_BADGE.pending;
+            const hasSubmitted = Boolean(row.verificationSubmittedAt);
 
             return (
               <div
-                key={nurse.id}
+                key={row.id}
                 className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-slate-300"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-slate-900">{nurse.name}</p>
+                      <p className="font-semibold text-slate-900">{row.name}</p>
                       <span
                         className={cn(
                           "rounded-full px-2.5 py-0.5 text-xs font-semibold",
@@ -134,7 +133,7 @@ export function AdminNurseQueue() {
                       >
                         {badge.label}
                       </span>
-                      {!hasSubmitted && nurse.verificationStatus === "pending" && (
+                      {!hasSubmitted && row.verificationStatus === "pending" && (
                         <Badge variant="outline" className="text-xs">
                           Documents not submitted
                         </Badge>
@@ -142,16 +141,16 @@ export function AdminNurseQueue() {
                     </div>
 
                     <p className="text-sm text-slate-500">
-                      {nurse.email ?? "—"} · {nurse.phone ?? "—"} · {nurse.city}
+                      {row.email ?? "—"} · {row.phone ?? "—"} · {row.city}
                     </p>
 
                     <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                       <div>
                         <dt className="text-xs uppercase tracking-wide text-slate-400">
-                          License / PNC
+                          Registration
                         </dt>
                         <dd className="font-mono text-xs text-slate-800">
-                          {nurse.licenseNumber ?? "—"}
+                          {row.licenseNumber ?? "—"}
                         </dd>
                       </div>
                       <div>
@@ -159,9 +158,9 @@ export function AdminNurseQueue() {
                           Qualification
                         </dt>
                         <dd className="text-slate-800">
-                          {nurse.qualification ?? "—"}
-                          {nurse.experienceYears !== undefined
-                            ? ` · ${nurse.experienceYears} yrs`
+                          {row.qualification ?? "—"}
+                          {row.experienceYears !== undefined
+                            ? ` · ${row.experienceYears} yrs`
                             : ""}
                         </dd>
                       </div>
@@ -170,7 +169,7 @@ export function AdminNurseQueue() {
                           CNIC
                         </dt>
                         <dd className="text-slate-800">
-                          {nurse.cnicLast4 ? `•••••-•••••${nurse.cnicLast4}` : "—"}
+                          {row.cnicLast4 ? `•••••-•••••${row.cnicLast4}` : "—"}
                         </dd>
                       </div>
                       <div>
@@ -178,8 +177,8 @@ export function AdminNurseQueue() {
                           Submitted
                         </dt>
                         <dd className="text-slate-800">
-                          {nurse.verificationSubmittedAt
-                            ? new Date(nurse.verificationSubmittedAt).toLocaleDateString(
+                          {row.verificationSubmittedAt
+                            ? new Date(row.verificationSubmittedAt).toLocaleDateString(
                                 "en-PK",
                                 { dateStyle: "medium" },
                               )
@@ -188,17 +187,17 @@ export function AdminNurseQueue() {
                       </div>
                     </dl>
 
-                    {nurse.verificationStatus === "rejected" &&
-                      nurse.rejectionReason && (
+                    {row.verificationStatus === "rejected" &&
+                      row.rejectionReason && (
                         <p className="text-sm text-red-700">
-                          Rejection reason: {nurse.rejectionReason}
+                          Rejection reason: {row.rejectionReason}
                         </p>
                       )}
                   </div>
 
                   <div className="flex shrink-0">
                     <Button size="sm" asChild>
-                      <Link href={`/admin/nurses/review/${nurse.id}`}>
+                      <Link href={`/admin/nurses/review/${row.id}`}>
                         <Eye className="h-4 w-4" />
                         View application
                       </Link>

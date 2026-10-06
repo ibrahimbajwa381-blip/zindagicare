@@ -30,6 +30,7 @@ export const AUTH_ROUTES = {
   nurseDashboard: "/nurse",
   nurseVerification: "/nurse/verification",
   nurseVisits: "/nurse/visits",
+  nursePortfolio: "/nurse/portfolio",
   physiotherapistDashboard: "/physiotherapist",
   physiotherapistVerification: "/physiotherapist/verification",
   physiotherapistVisits: "/physiotherapist/visits",
@@ -58,6 +59,9 @@ export const PUBLIC_PATH_PREFIXES = [
   "/for-nurses",
   "/for-physiotherapists",
   "/physiotherapists",
+  "/nurses",
+  "/herbalists",
+  "/nutritionists",
   "/for-herbalists",
   "/for-nutritionists",
   "/home-care/request",
@@ -151,9 +155,12 @@ export const DOCTOR_VERIFICATION_EXEMPT_PREFIXES = [
 export const NURSE_VERIFICATION_EXEMPT_PREFIXES = [
   AUTH_ROUTES.nurseVerification,
   "/nurse/profile",
+  // Nurses can build their public portfolio while the application is under review.
+  AUTH_ROUTES.nursePortfolio,
   AUTH_ROUTES.nurseDashboard,
   "/api/v1/nurse/verification",
   "/api/v1/nurse/profile",
+  "/api/v1/nurse/portfolio",
 ] as const;
 
 /** Physiotherapist verification pending — can access these paths. */

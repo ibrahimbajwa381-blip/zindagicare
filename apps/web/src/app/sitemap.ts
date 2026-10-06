@@ -3,6 +3,8 @@ import { getSiteUrl } from "@/lib/seo/metadata";
 import { getAllConditionSlugs, conditionDoctorPath } from "@/lib/seo/conditions";
 import { getAllSpecialtySlugs, specialtyDoctorPath } from "@/lib/seo/specialties";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
+import { PublicConsultProviderService } from "@/server/services/public-consult-provider.service";
+import { PublicNurseService } from "@/server/services/public-nurse.service";
 import { PublicPhysiotherapistService } from "@/server/services/public-physiotherapist.service";
 
 const MARKETING_ROUTES = [
@@ -13,6 +15,9 @@ const MARKETING_ROUTES = [
   "/urgent-care",
   "/home-services",
   "/physiotherapists",
+  "/nurses",
+  "/herbalists",
+  "/nutritionists",
   "/home-care/request",
   "/for-doctors",
   "/for-doctors/guide",
@@ -77,11 +82,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sitemap still works without DB.
   }
 
+  // Nurse, herbalist and nutritionist profiles — same shape as the physiotherapist entries.
+  const providerSlugSources: { prefix: string; load: () => Promise<string[]> }[] = [
+    {
+      prefix: "/nurses",
+      load: async () => (await PublicNurseService.list()).map((n) => n.slug),
+    },
+    { prefix: "/herbalists", load: () => PublicConsultProviderService.listSlugs("herbalist") },
+    {
+      prefix: "/nutritionists",
+      load: () => PublicConsultProviderService.listSlugs("nutritionist"),
+    },
+  ];
+  const providerEntries: MetadataRoute.Sitemap = (
+    await Promise.all(
+      providerSlugSources.map(async ({ prefix, load }) => {
+        try {
+          return (await load()).map((slug) => ({
+            url: getSiteUrl(`${prefix}/${slug}`),
+            lastModified,
+            changeFrequency: "weekly" as const,
+            priority: 0.6,
+          }));
+        } catch {
+          return []; // Sitemap still works without DB.
+        }
+      }),
+    )
+  ).flat();
+
   return [
     ...staticEntries,
     ...specialtyEntries,
     ...conditionEntries,
     ...doctorEntries,
     ...physiotherapistEntries,
+    ...providerEntries,
   ];
 }

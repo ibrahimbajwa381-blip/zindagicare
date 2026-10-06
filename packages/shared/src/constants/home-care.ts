@@ -37,6 +37,18 @@ export function resolvePhysioHomeVisitFee(fee?: number | null): number {
   return fee && fee > 0 ? fee : HOME_CARE_PRICING[HomeVisitServiceTypes.PHYSIOTHERAPY];
 }
 
+/** Bounds (PKR) for the per-visit fee a nurse sets on their own profile. */
+export const NURSE_HOME_VISIT_FEE_MIN = 500;
+export const NURSE_HOME_VISIT_FEE_MAX = 20000;
+
+/**
+ * A nurse's own fee for a general nursing visit, or the platform rate when they haven't set
+ * one. Procedure visits (IV drip, injection, wound care) always use the platform rate.
+ */
+export function resolveNurseHomeVisitFee(fee?: number | null): number {
+  return fee && fee > 0 ? fee : HOME_CARE_PRICING[HomeVisitServiceTypes.NURSE];
+}
+
 /** Lahore MVP — services patients can request from the booking form. */
 export const HOME_CARE_MVP_SERVICES = [
   HomeVisitServiceTypes.DOCTOR_VISIT,

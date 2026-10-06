@@ -19,6 +19,12 @@ export const en = {
     freeBadge: "Free",
     urgentCare: "Urgent Care",
     urgentBadge: "Fast",
+    findProvider: "Find a provider",
+    doctors: "Doctors",
+    nurses: "Nurses",
+    physiotherapists: "Physiotherapists",
+    herbalists: "Herbalists",
+    nutritionists: "Nutritionists",
   },
   breadcrumbs: {
     dashboard: "My dashboard",
@@ -1260,6 +1266,16 @@ export const en = {
       optional: "optional",
       cancel: "Cancel",
     },
+  },
+  careTeam: {
+    eyebrow: "Our care team",
+    title: "Meet verified nurses, physios & specialists",
+    description:
+      "Every provider is verified by ZindagiCare. Browse profiles, compare experience and reviews, and book the one that suits you.",
+    viewAll: "View all {role}",
+    verified: "Verified",
+    homeVisitsIn: "Home visits · {place}",
+    onlineConsultsIn: "Online consults · {place}",
   },
   doctors: {
     eyebrow: "Online consultation",

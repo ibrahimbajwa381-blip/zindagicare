@@ -13,7 +13,12 @@ import { Roles } from "@zindagi/shared";
 const BAD_PREFIX = "/api/v1/Physiotherapist/verification/documents/";
 const GOOD_PREFIX = "/api/v1/physiotherapist/verification/documents/";
 
-const DOCUMENT_KEYS = ["licenseCertificate", "cnicFront", "cnicBack"] as const;
+const DOCUMENT_KEYS = [
+  "degreeCertificate",
+  "licenseCertificate",
+  "cnicFront",
+  "cnicBack",
+] as const;
 
 async function migrate() {
   await connectDatabase();

@@ -14,12 +14,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
-import {
-  PHYSIOTHERAPIST_PORTFOLIO_LIMITS as LIMITS,
-  PHYSIOTHERAPY_CONDITION_SUGGESTIONS,
-  PHYSIOTHERAPY_MEMBERSHIP_SUGGESTIONS,
-  PHYSIOTHERAPY_TECHNIQUE_SUGGESTIONS,
-} from "@zindagi/shared";
+import { PHYSIOTHERAPIST_PORTFOLIO_LIMITS as LIMITS } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { TagInput } from "@/components/forms/tag-input";
@@ -39,7 +34,12 @@ import {
   type DraftRow,
   type ListFieldDef,
 } from "./portfolio-list-editor";
-import { PortfolioChecklist, PortfolioProgressBar } from "./portfolio-progress";
+import { PortfolioChecklist, PortfolioProgressBar, portfolioItemHref } from "./portfolio-progress";
+import {
+  STAFF_PORTFOLIO_ROLES,
+  type StaffPortfolioRole,
+  type StaffPortfolioRoleConfig,
+} from "./portfolio-roles";
 import {
   PortfolioAwardList,
   PortfolioCertificationList,
@@ -63,8 +63,8 @@ const LANGUAGE_SUGGESTIONS = [
   "Arabic",
 ];
 
-const EXPERIENCE_FIELDS: ListFieldDef[] = [
-  { key: "role", label: "Role", kind: "text", required: true, maxLength: 100, placeholder: "e.g. Senior Physiotherapist" },
+const experienceFields = (config: StaffPortfolioRoleConfig): ListFieldDef[] => [
+  { key: "role", label: "Role", kind: "text", required: true, maxLength: 100, placeholder: config.experienceRolePlaceholder },
   { key: "organization", label: "Hospital / clinic", kind: "text", required: true, maxLength: 160, placeholder: "e.g. Services Hospital" },
   { key: "city", label: "City", kind: "text", maxLength: 80, placeholder: "e.g. Lahore" },
   { key: "startYear", label: "Start year", kind: "year" },
@@ -80,15 +80,15 @@ const EXPERIENCE_FIELDS: ListFieldDef[] = [
   },
 ];
 
-const EDUCATION_FIELDS: ListFieldDef[] = [
-  { key: "degree", label: "Degree", kind: "text", required: true, maxLength: 120, placeholder: "e.g. Doctor of Physical Therapy (DPT)" },
+const educationFields = (config: StaffPortfolioRoleConfig): ListFieldDef[] => [
+  { key: "degree", label: "Degree", kind: "text", required: true, maxLength: 120, placeholder: config.degreePlaceholder },
   { key: "institute", label: "Institute", kind: "text", required: true, maxLength: 160, placeholder: "e.g. University of Lahore" },
   { key: "year", label: "Graduation year", kind: "year" },
 ];
 
-const CERTIFICATION_FIELDS: ListFieldDef[] = [
-  { key: "title", label: "Certification / course", kind: "text", required: true, maxLength: 160, placeholder: "e.g. Certified Dry Needling Practitioner" },
-  { key: "issuer", label: "Issued by", kind: "text", maxLength: 160, placeholder: "e.g. PPTA" },
+const certificationFields = (config: StaffPortfolioRoleConfig): ListFieldDef[] => [
+  { key: "title", label: "Certification / course", kind: "text", required: true, maxLength: 160, placeholder: config.certificationPlaceholder },
+  { key: "issuer", label: "Issued by", kind: "text", maxLength: 160, placeholder: config.certificationIssuerPlaceholder },
   { key: "year", label: "Year", kind: "year" },
   {
     key: "url",
@@ -108,21 +108,24 @@ type PhysiotherapistPortfolioEditorProps = {
   initialPortfolio: PhysiotherapistPortfolio;
   avatarUrl?: string;
   publicPath: string | null;
+  role?: StaffPortfolioRole;
 };
 
 export function PhysiotherapistPortfolioEditor({
   initialPortfolio,
   avatarUrl,
   publicPath,
+  role = "physiotherapist",
 }: PhysiotherapistPortfolioEditorProps) {
   const { refresh } = useSafeRouter();
+  const config = STAFF_PORTFOLIO_ROLES[role];
   const [portfolio, setPortfolio] = useState(initialPortfolio);
-  const checklist = portfolioChecklist(portfolio, avatarUrl);
+  const checklist = portfolioChecklist(portfolio, avatarUrl, role);
   const percent = portfolioCompleteness(checklist);
 
   const save: SaveFn = async (patch) => {
     try {
-      const res = await fetch("/api/v1/physiotherapist/portfolio", {
+      const res = await fetch(config.apiPath, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
@@ -143,7 +146,7 @@ export function PhysiotherapistPortfolioEditor({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <aside className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:sticky lg:top-24 lg:order-2">
         <PortfolioProgressBar percent={percent} />
-        <PortfolioChecklist items={checklist} />
+        <PortfolioChecklist items={checklist} itemHref={(id) => portfolioItemHref(id, role)} />
         <div className="border-t border-slate-100 pt-4">
           {publicPath ? (
             <Button asChild variant="outline" className="w-full">
@@ -197,22 +200,24 @@ export function PhysiotherapistPortfolioEditor({
               )}
             </div>
           }
-          renderEditor={(done) => <AboutEditor portfolio={portfolio} onSave={save} onDone={done} />}
+          renderEditor={(done) => (
+            <AboutEditor portfolio={portfolio} config={config} onSave={save} onDone={done} />
+          )}
         />
 
         <PortfolioSection
           id="focus"
           icon={Stethoscope}
-          title="Conditions & techniques"
-          description="What you treat and how — patients search by their problem."
+          title={config.focusTitle}
+          description={config.focusDescription}
           isEmpty={!portfolio.conditionsTreated.length && !portfolio.techniques.length}
-          emptyText="List the conditions you treat and the techniques you use."
+          emptyText={config.focusEmpty}
           view={
             <div className="space-y-4">
               {portfolio.conditionsTreated.length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Conditions treated
+                    {config.conditionsHeading}
                   </p>
                   <PortfolioTagList tags={portfolio.conditionsTreated} />
                 </div>
@@ -220,14 +225,16 @@ export function PhysiotherapistPortfolioEditor({
               {portfolio.techniques.length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Techniques
+                    {config.techniquesHeading}
                   </p>
                   <PortfolioTagList tags={portfolio.techniques} />
                 </div>
               )}
             </div>
           }
-          renderEditor={(done) => <FocusEditor portfolio={portfolio} onSave={save} onDone={done} />}
+          renderEditor={(done) => (
+            <FocusEditor portfolio={portfolio} config={config} onSave={save} onDone={done} />
+          )}
         />
 
         <PortfolioSection
@@ -236,13 +243,13 @@ export function PhysiotherapistPortfolioEditor({
           title="Work experience"
           description="Hospitals, clinics and teams you've worked with."
           isEmpty={!portfolio.experience.length}
-          emptyText="Add the places you've practiced physiotherapy."
+          emptyText={config.experienceEmpty}
           view={<PortfolioExperienceTimeline items={portfolio.experience} />}
           renderEditor={(done) => (
             <ListSectionEditor
               patchKey="experience"
               items={portfolio.experience}
-              fields={EXPERIENCE_FIELDS}
+              fields={experienceFields(config)}
               itemLabel="Position"
               max={LIMITS.experience}
               emptyRow={{ role: "", organization: "", city: "", startYear: "", endYear: "", current: false, description: "" }}
@@ -265,13 +272,13 @@ export function PhysiotherapistPortfolioEditor({
           title="Education"
           description="Degrees and diplomas."
           isEmpty={!portfolio.education.length}
-          emptyText="Add your physiotherapy degree and any post-graduate study."
+          emptyText={config.educationEmpty}
           view={<PortfolioEducationList items={portfolio.education} />}
           renderEditor={(done) => (
             <ListSectionEditor
               patchKey="education"
               items={portfolio.education}
-              fields={EDUCATION_FIELDS}
+              fields={educationFields(config)}
               itemLabel="Degree"
               max={LIMITS.education}
               emptyRow={{ degree: "", institute: "", year: "" }}
@@ -287,13 +294,13 @@ export function PhysiotherapistPortfolioEditor({
           title="Certifications & training"
           description="Specialist courses and continuing education."
           isEmpty={!portfolio.certifications.length}
-          emptyText="Add courses like dry needling, manual therapy, or kinesio taping."
+          emptyText={config.certificationsEmpty}
           view={<PortfolioCertificationList items={portfolio.certifications} />}
           renderEditor={(done) => (
             <ListSectionEditor
               patchKey="certifications"
               items={portfolio.certifications}
-              fields={CERTIFICATION_FIELDS}
+              fields={certificationFields(config)}
               itemLabel="Certification"
               max={LIMITS.certifications}
               emptyRow={{ title: "", issuer: "", year: "", url: "" }}
@@ -309,7 +316,7 @@ export function PhysiotherapistPortfolioEditor({
           title="Awards & memberships"
           description="Optional — recognition and professional bodies you belong to."
           isEmpty={!portfolio.awards.length && !portfolio.memberships.length}
-          emptyText="Add awards you've received or associations like PPTA."
+          emptyText={config.recognitionEmpty}
           view={
             <div className="space-y-4">
               {portfolio.awards.length > 0 && <PortfolioAwardList items={portfolio.awards} />}
@@ -324,7 +331,7 @@ export function PhysiotherapistPortfolioEditor({
             </div>
           }
           renderEditor={(done) => (
-            <RecognitionEditor portfolio={portfolio} onSave={save} onDone={done} />
+            <RecognitionEditor portfolio={portfolio} config={config} onSave={save} onDone={done} />
           )}
         />
 
@@ -438,11 +445,12 @@ function EditorActions({
 
 type SectionEditorProps = {
   portfolio: PhysiotherapistPortfolio;
+  config: StaffPortfolioRoleConfig;
   onSave: SaveFn;
   onDone: () => void;
 };
 
-function AboutEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
+function AboutEditor({ portfolio, config, onSave, onDone }: SectionEditorProps) {
   const [headline, setHeadline] = useState(portfolio.headline ?? "");
   const [bio, setBio] = useState(portfolio.bio ?? "");
   const [languages, setLanguages] = useState(portfolio.languages);
@@ -463,7 +471,7 @@ function AboutEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
           value={headline}
           onChange={(e) => setHeadline(e.target.value)}
           maxLength={LIMITS.headline}
-          placeholder="e.g. Sports physiotherapist helping athletes return to play faster"
+          placeholder={config.headlinePlaceholder}
         />
         <p className="mt-1 text-right text-xs text-slate-400">
           {headline.length}/{LIMITS.headline}
@@ -503,7 +511,7 @@ function AboutEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
   );
 }
 
-function FocusEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
+function FocusEditor({ portfolio, config, onSave, onDone }: SectionEditorProps) {
   const [conditions, setConditions] = useState(portfolio.conditionsTreated);
   const [techniques, setTechniques] = useState(portfolio.techniques);
   const { pending, error, run } = useSectionSave(onSave, onDone);
@@ -517,27 +525,27 @@ function FocusEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
       className="space-y-5"
     >
       <div>
-        <Label htmlFor="portfolio-conditions">Conditions you treat</Label>
+        <Label htmlFor="portfolio-conditions">{config.conditionsLabel}</Label>
         <TagInput
           id="portfolio-conditions"
           values={conditions}
           onChange={setConditions}
           max={LIMITS.conditionsTreated}
           maxLength={LIMITS.tag}
-          suggestions={PHYSIOTHERAPY_CONDITION_SUGGESTIONS}
-          placeholder="e.g. Lower back pain"
+          suggestions={config.conditionSuggestions}
+          placeholder={config.conditionsPlaceholder}
         />
       </div>
       <div>
-        <Label htmlFor="portfolio-techniques">Techniques & modalities</Label>
+        <Label htmlFor="portfolio-techniques">{config.techniquesLabel}</Label>
         <TagInput
           id="portfolio-techniques"
           values={techniques}
           onChange={setTechniques}
           max={LIMITS.techniques}
           maxLength={LIMITS.tag}
-          suggestions={PHYSIOTHERAPY_TECHNIQUE_SUGGESTIONS}
-          placeholder="e.g. Dry needling"
+          suggestions={config.techniqueSuggestions}
+          placeholder={config.techniquesPlaceholder}
         />
       </div>
       <EditorActions pending={pending} error={error} onCancel={onDone} />
@@ -596,7 +604,7 @@ function ListSectionEditor<T extends object>({
   );
 }
 
-function RecognitionEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
+function RecognitionEditor({ portfolio, config, onSave, onDone }: SectionEditorProps) {
   const [rows, setRows] = useState<DraftRow[]>(() => itemsToDraftRows(portfolio.awards, AWARD_FIELDS));
   const [memberships, setMemberships] = useState(portfolio.memberships);
   const { pending, error, setError, run } = useSectionSave(onSave, onDone);
@@ -630,8 +638,8 @@ function RecognitionEditor({ portfolio, onSave, onDone }: SectionEditorProps) {
           onChange={setMemberships}
           max={LIMITS.memberships}
           maxLength={LIMITS.tag}
-          suggestions={PHYSIOTHERAPY_MEMBERSHIP_SUGGESTIONS}
-          placeholder="e.g. PPTA"
+          suggestions={config.membershipSuggestions}
+          placeholder={config.membershipsPlaceholder}
         />
       </div>
       <EditorActions pending={pending} error={error} onCancel={onDone} />

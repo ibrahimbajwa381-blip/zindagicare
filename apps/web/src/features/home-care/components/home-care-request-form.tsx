@@ -7,7 +7,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   HOME_CARE_MVP_SERVICES,
   HOME_CARE_PRICING,
+  HomeVisitProviderKinds,
   HomeVisitServiceTypes,
+  homeVisitProviderKind,
   nearestCity,
 } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
@@ -22,6 +24,7 @@ import {
   PhysiotherapistPicker,
   type PhysiotherapistChoice,
 } from "./physiotherapist-picker";
+import { NursePicker, type NurseChoice } from "./nurse-picker";
 import { VisitTimePicker } from "./visit-time-picker";
 import { Syringe, Droplets, Bandage, Stethoscope, UserRound, Activity } from "lucide-react";
 
@@ -87,6 +90,12 @@ export function HomeCareRequestForm() {
     () => initialPhysioId || "nearest",
   );
   const isPhysio = serviceType === HomeVisitServiceTypes.PHYSIOTHERAPY;
+  const initialNurseId = searchParams.get("nurse");
+  const [nurseChoice, setNurseChoice] = useState<NurseChoice>(() => initialNurseId || "nearest");
+  const isNurseService = homeVisitProviderKind(serviceType) === HomeVisitProviderKinds.NURSE;
+  // Only a general nursing visit is priced at the chosen nurse's own fee.
+  const usesNurseFee = serviceType === HomeVisitServiceTypes.NURSE;
+  const [nurseFee, setNurseFee] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -94,6 +103,7 @@ export function HomeCareRequestForm() {
 
   const price =
     (isPhysio ? physioFee : null) ??
+    (usesNurseFee ? nurseFee : null) ??
     HOME_CARE_PRICING[serviceType as keyof typeof HOME_CARE_PRICING] ??
     2000;
   const isAuthenticated = status === "authenticated";
@@ -147,7 +157,11 @@ export function HomeCareRequestForm() {
           patientNotes: patientNotes.trim() || undefined,
           autoAssign: isPhysio && physioChoice === "nearest",
           preferredStaffId:
-            isPhysio && physioChoice !== "nearest" ? physioChoice : undefined,
+            isPhysio && physioChoice !== "nearest"
+              ? physioChoice
+              : isNurseService && nurseChoice !== "nearest"
+                ? nurseChoice
+                : undefined,
         }),
       });
       const json = await res.json();
@@ -233,6 +247,17 @@ export function HomeCareRequestForm() {
               onChange={setPhysioChoice}
               initialPhysioId={initialPhysioId}
               onFeeChange={setPhysioFee}
+            />
+          )}
+
+          {isNurseService && (
+            <NursePicker
+              geo={geo}
+              value={nurseChoice}
+              onChange={setNurseChoice}
+              initialNurseId={initialNurseId}
+              usesNurseFee={usesNurseFee}
+              onFeeChange={setNurseFee}
             />
           )}
 

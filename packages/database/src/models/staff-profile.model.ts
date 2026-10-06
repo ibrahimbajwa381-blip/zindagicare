@@ -7,8 +7,9 @@ import { registerModel } from "../lib/register-model";
 const yearField = { type: Number, min: 1900, max: 2100 };
 
 /**
- * Physiotherapist public portfolio — everything beyond the verification basics that
- * builds out /physiotherapists/[slug]. `bio` and `languages` stay top-level (older field).
+ * Physiotherapist / nurse public portfolio — everything beyond the verification basics that
+ * builds out /physiotherapists/[slug] and /nurses/[slug]. `bio` and `languages` stay
+ * top-level (older field).
  */
 const portfolioSchema = new Schema(
   {
@@ -100,14 +101,16 @@ const staffProfileSchema = new Schema(
     cnicLast4: { type: String },
     qualification: { type: String },
     experienceYears: { type: Number },
-    /** Physiotherapy sub-specialties (physiotherapist only). */
+    /** Nursing / physiotherapy sub-specialties. */
     specialties: [{ type: String }],
-    /** Public profile (physiotherapist only) — shown on /physiotherapists/[slug]. */
+    /** Public profile — shown on /physiotherapists/[slug] or /nurses/[slug]. */
     slug: { type: String, unique: true, sparse: true, lowercase: true },
     bio: { type: String, maxlength: 2000 },
     languages: { type: [String], default: undefined },
     portfolio: { type: portfolioSchema, default: undefined },
     verificationDocuments: {
+      /** Degree certificate (physiotherapist only — required at onboarding). */
+      degreeCertificate: { type: String },
       licenseCertificate: { type: String },
       cnicFront: { type: String },
       cnicBack: { type: String },

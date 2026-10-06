@@ -13,6 +13,7 @@ import { SundayBanner } from "@/features/marketing/components/sunday-banner";
 import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-section";
 import { TopDoctorsSectionSkeleton } from "@/features/marketing/components/top-doctors-section-skeleton";
 import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
+import { CareTeamSection } from "@/features/marketing/components/care-team-section";
 import { ProviderOnboardingPreview } from "@/features/marketing/components/provider-onboarding-preview";
 import { TestimonialsSection } from "@/features/marketing/components/testimonials-section";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
@@ -36,6 +37,9 @@ export default async function HomePage() {
       <HomePhysioBanner />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
         <TopDoctorsSection />
+      </Suspense>
+      <Suspense fallback={<TopDoctorsSectionSkeleton label="Loading care team" />}>
+        <CareTeamSection />
       </Suspense>
       <DoctorBrowseSection />
       <SundayBanner />
