@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 import { JsonLd } from "@/components/seo/json-ld";
-import { DoctorsConsultClient } from "@/features/marketing/components/doctors-consult-client";
+import { DoctorsConsultSection } from "@/features/marketing/components/doctors-consult-section";
 import {
   conditionDoctorPath,
   conditionSeoDescription,
@@ -58,9 +57,7 @@ export default async function ConditionDoctorsPage({ params }: PageProps) {
       <PageSection variant="soft" spacing="default" innerClassName="!py-12 sm:!py-16">
         <PageTitle title={`${condition.label} — online consult`} description={description} />
       </PageSection>
-      <Suspense fallback={null}>
-        <DoctorsConsultClient initialSpecialty={condition.specialty} />
-      </Suspense>
+      <DoctorsConsultSection initialSpecialty={condition.specialty} />
     </>
   );
 }

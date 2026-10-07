@@ -34,6 +34,7 @@ import {
 } from "@/lib/consult/slot-utils";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { phoneLookupHash } from "@zindagi/shared";
 import {
@@ -400,8 +401,21 @@ export class OnlineConsultService {
   }
 
   static async listConsultDoctors(city?: string, specialty?: string) {
-    await OnlineConsultService.ensureConnected();
+    // Throttled sweep; runs outside the cache so expired holds still free up
+    // slots on cache hits (its writes invalidate the cached counts).
     await OnlineConsultService.expireStalePendingBookings();
+
+    // Slot counts here are display-only — booking re-validates the slot live
+    // (validateSlotForBooking), so a briefly stale count can't double-book.
+    return cached(
+      cacheKey("consult-doctors", city, specialty),
+      { ttl: 120, tags: [CacheTags.DOCTORS, CacheTags.DOCTOR_AVAILABILITY] },
+      () => OnlineConsultService.loadConsultDoctors(city, specialty),
+    );
+  }
+
+  private static async loadConsultDoctors(city?: string, specialty?: string) {
+    await OnlineConsultService.ensureConnected();
 
     const filter: Record<string, unknown> = {
       isListed: true,

@@ -15,6 +15,7 @@ import { ReviewService } from "@/server/services/review.service";
 import { PrescriptionService } from "@/server/services/prescription.service";
 import { VideoSessionService } from "@/server/services/video-session.service";
 import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
+import { cacheKey, cached, patientCacheTags } from "@/server/lib/cache";
 
 
 export type PatientAppointmentHistoryItem = {
@@ -109,6 +110,21 @@ function resolveHistoryFlags(
   return { isMissed: false, canJoin };
 }
 
+/** The DB-derived part of a history item; time-dependent flags are computed per request. */
+type HistoryRow = Omit<
+  PatientAppointmentHistoryItem,
+  "isMissed" | "canJoin" | "canReview" | "canRequestCancellation"
+> & {
+  rawType: string;
+  paymentStatus?: string;
+};
+
+const TERMINAL_STATUSES: string[] = [
+  AppointmentStatuses.COMPLETED,
+  AppointmentStatuses.CANCELLED,
+  AppointmentStatuses.NO_SHOW,
+];
+
 export class PatientAppointmentsService {
   static async ensureConnected() {
     await connectDatabase();
@@ -119,12 +135,73 @@ export class PatientAppointmentsService {
     patientId: string,
     options: { limit?: number; types?: string[] } = {},
   ): Promise<PatientAppointmentHistoryItem[]> {
-    await PatientAppointmentsService.ensureConnected();
-
     const limit = options.limit ?? 20;
     const types =
       options.types ??
       [AppointmentTypes.ONLINE, AppointmentTypes.SUNDAY_FREE];
+
+    const rows = await cached(
+      cacheKey("patient-history", patientId, limit, [...types].sort().join(",")),
+      { ttl: 300, tags: patientCacheTags(patientId), sensitive: true },
+      () => PatientAppointmentsService.loadHistoryRows(patientId, limit, types),
+    );
+
+    // Join/missed/review/cancel flags depend on the current time, and an
+    // attended consult is finalized lazily here — so both run on every
+    // request, never from the cache. Finalizing writes the appointment,
+    // which invalidates this patient's cached rows.
+    return Promise.all(
+      rows.map(async ({ rawType, paymentStatus, ...row }) => {
+        let status = row.status;
+        if (!TERMINAL_STATUSES.includes(status)) {
+          const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
+            row.appointmentId,
+          );
+          if (finalized) status = AppointmentStatuses.COMPLETED;
+        }
+
+        const scheduledStart = new Date(row.scheduledStart);
+        const scheduledEnd = new Date(row.scheduledEnd);
+        const { isMissed, canJoin } = resolveHistoryFlags(
+          status,
+          scheduledStart,
+          scheduledEnd,
+          row.type,
+        );
+        const canReview = ReviewService.canReviewAppointment(
+          {
+            appointmentId: row.appointmentId,
+            type: rawType,
+            status,
+            scheduledEnd,
+            paymentStatus,
+          },
+          Boolean(row.review),
+        );
+
+        return {
+          ...row,
+          status,
+          isMissed,
+          canJoin,
+          canReview,
+          canRequestCancellation:
+            row.cancellationRequestStatus !== CancellationRequestStatuses.PENDING &&
+            row.cancellationRequestStatus !== CancellationRequestStatuses.APPROVED &&
+            (status === AppointmentStatuses.PENDING ||
+              status === AppointmentStatuses.CONFIRMED) &&
+            !isMissed,
+        } satisfies PatientAppointmentHistoryItem;
+      }),
+    );
+  }
+
+  private static async loadHistoryRows(
+    patientId: string,
+    limit: number,
+    types: string[],
+  ): Promise<HistoryRow[]> {
+    await PatientAppointmentsService.ensureConnected();
 
     const appointments = await AppointmentModel.find(
       mongoFilter({
@@ -161,16 +238,9 @@ export class PatientAppointmentsService {
       PrescriptionService.getPrescriptionsForAppointments(appointmentIds),
     ]);
 
-    const items: PatientAppointmentHistoryItem[] = [];
+    const rows: HistoryRow[] = [];
 
     for (const appointment of appointments) {
-      const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
-        appointment._id.toString(),
-      );
-      if (finalized) {
-        appointment.status = AppointmentStatuses.COMPLETED;
-      }
-
       const doctor = mapDoctor(
         appointment.doctorId as Parameters<typeof mapDoctor>[0],
       );
@@ -183,47 +253,24 @@ export class PatientAppointmentsService {
           : appointment.type === AppointmentTypes.URGENT_ONLINE
             ? ("urgent_online" as const)
             : ("online" as const);
-      const { isMissed, canJoin } = resolveHistoryFlags(
-        appointment.status,
-        appointment.scheduledStart,
-        appointment.scheduledEnd,
-        type,
-      );
 
       const existingReview = reviewsByAppointment.get(appointment._id.toString());
-      const canReview = ReviewService.canReviewAppointment(
-        {
-          appointmentId: appointment._id.toString(),
-          type: appointment.type,
-          status: appointment.status,
-          scheduledEnd: appointment.scheduledEnd,
-          paymentStatus: payment?.status,
-        },
-        Boolean(existingReview),
-      );
 
-      items.push({
+      rows.push({
         appointmentId: appointment._id.toString(),
         type,
+        rawType: appointment.type,
         typeLabel: typeLabel(appointment.type),
         scheduledStart: appointment.scheduledStart.toISOString(),
         scheduledEnd: appointment.scheduledEnd.toISOString(),
         status: appointment.status,
+        paymentStatus: payment?.status,
         consultationFee:
           appointment.type === AppointmentTypes.ONLINE ||
           appointment.type === AppointmentTypes.URGENT_ONLINE
             ? payment?.amount
             : 0,
         doctor,
-        isMissed,
-        canJoin,
-        canReview,
-        canRequestCancellation:
-          appointment.cancellationRequestStatus !== CancellationRequestStatuses.PENDING &&
-          appointment.cancellationRequestStatus !== CancellationRequestStatuses.APPROVED &&
-          (appointment.status === AppointmentStatuses.PENDING ||
-            appointment.status === AppointmentStatuses.CONFIRMED) &&
-          !isMissed,
         cancellationRequestStatus:
           appointment.cancellationRequestStatus ?? CancellationRequestStatuses.NONE,
         review: existingReview
@@ -237,7 +284,7 @@ export class PatientAppointmentsService {
       });
     }
 
-    return items;
+    return rows;
   }
 
   /** Patient requests to cancel a booked appointment and be refunded; admin reviews it. */

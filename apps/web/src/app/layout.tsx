@@ -6,6 +6,7 @@ import { theme } from "@/config/theme";
 import { AppProviders } from "@/components/providers/app-providers";
 import { SiteJsonLd } from "@/components/seo/json-ld";
 import { auth } from "@/lib/auth";
+import { getDictionary } from "@/i18n";
 import { getLocale } from "@/i18n/server";
 import { buildRootMetadata } from "@/lib/seo/metadata";
 
@@ -20,7 +21,8 @@ const gulzar = Gulzar({
   variable: "--font-urdu-body",
   weight: "400",
   display: "swap",
-  preload: true,
+  // Only used under html[lang="ur"]; preloading pushed ~420KB onto every English page load.
+  preload: false,
 });
 
 /** Nastaleeq with real bold weights for headings and emphasis. */
@@ -29,7 +31,7 @@ const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
   variable: "--font-urdu-display",
   weight: ["400", "600", "700"],
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 export const metadata: Metadata = buildRootMetadata({
@@ -77,7 +79,11 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <SiteJsonLd />
-        <AppProviders session={session} initialLocale={locale}>
+        <AppProviders
+          session={session}
+          initialLocale={locale}
+          initialDictionary={getDictionary(locale)}
+        >
           {children}
         </AppProviders>
       </body>

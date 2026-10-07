@@ -154,7 +154,7 @@ export function UnifiedHeader({
             {resolvedNavLinks.map((item) => {
               const link = (
                 <Link
-                  key={item.href}
+                  key={item.label}
                   href={item.href}
                   aria-haspopup={item.children ? "true" : undefined}
                   className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 transition-colors hover:bg-brand-muted hover:text-brand-dark xl:px-2 2xl:gap-1.5 2xl:px-3"
@@ -171,7 +171,7 @@ export function UnifiedHeader({
               if (!item.children) return link;
               // Opens on hover and on keyboard focus (focus-within), no JS state needed.
               return (
-                <div key={item.href} className="group relative">
+                <div key={item.label} className="group relative">
                   {link}
                   <div className="invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                     <ul className="min-w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">

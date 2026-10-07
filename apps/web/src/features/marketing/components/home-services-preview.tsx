@@ -1,12 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowRight, Bandage, Home, HeartPulse, Syringe } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
 import { Button } from "@/components/ui/button";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 import { HomeServicesBanner } from "./home-services-banner";
 
 const serviceIcons = [Home, Syringe, Bandage, HeartPulse] as const;
@@ -22,8 +20,8 @@ type Props = {
   variant?: "catalog" | "preview";
 };
 
-export function HomeServicesPreview({ variant = "preview" }: Props) {
-  const t = useTranslations();
+export async function HomeServicesPreview({ variant = "preview" }: Props) {
+  const { t } = await getServerTranslations();
 
   if (variant === "preview") {
     return <HomeServicesBanner />;

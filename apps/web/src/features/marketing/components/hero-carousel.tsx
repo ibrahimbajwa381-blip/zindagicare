@@ -218,6 +218,7 @@ export function HeroCarousel({
                     priority={index === 0}
                     unoptimized
                     loading={index === 0 ? "eager" : "lazy"}
+                    fetchPriority={index === 0 ? "high" : undefined}
                     sizes="(max-width: 1024px) 100vw, 38vw"
                     className={cn(
                       "object-cover",

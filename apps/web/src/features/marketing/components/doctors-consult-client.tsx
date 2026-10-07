@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -23,7 +23,7 @@ import { getSpecialtyBySlug, slugifySpecialty, specialtyDoctorPath } from "@/lib
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
 
-type DoctorRow = {
+export type DoctorRow = {
   doctorId: string;
   slug?: string;
   name: string;
@@ -75,19 +75,30 @@ const PER_SPECIALTY_COUNT = 6;
 type DoctorsConsultClientProps = {
   initialSpecialty?: string;
   initialCity?: string;
+  /**
+   * Listing already loaded on the server for (`initialCity`, `initialSpecialty`).
+   * When present the list renders in the HTML and the first client fetch is skipped.
+   */
+  initialDoctors?: DoctorRow[];
 };
+
+/** Same key the server used to load `initialDoctors`. */
+function listingKey(city: string | undefined, specialty: string | undefined) {
+  return `${city ?? ""}|${specialty ?? ""}`;
+}
 
 export function DoctorsConsultClient({
   initialSpecialty,
   initialCity,
+  initialDoctors,
 }: DoctorsConsultClientProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations();
   const copy = t.doctors.page;
-  const [doctors, setDoctors] = useState<DoctorRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [doctors, setDoctors] = useState<DoctorRow[]>(initialDoctors ?? []);
+  const [loading, setLoading] = useState(initialDoctors === undefined);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -151,9 +162,20 @@ export function DoctorsConsultClient({
     }
   }, [session?.user]);
 
+  // Listing the current state needs, mirroring the params `loadDoctors` sends.
+  const fetchKey = listingKey(
+    initialCity,
+    activeSpecialty && !hasSearchQuery ? activeSpecialty : undefined,
+  );
+  const loadedKey = useRef<string | null>(
+    initialDoctors ? listingKey(initialCity, initialSpecialty) : null,
+  );
+
   useEffect(() => {
+    if (loadedKey.current === fetchKey) return;
+    loadedKey.current = fetchKey;
     loadDoctors();
-  }, [loadDoctors]);
+  }, [fetchKey, loadDoctors]);
 
   useEffect(() => {
     if (status !== "authenticated") return;

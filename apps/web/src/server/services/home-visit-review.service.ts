@@ -22,6 +22,7 @@ import type {
 } from "@/features/admin/types/admin-reviews";
 import { mongoFilter } from "@/lib/mongo/query";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
 export type HomeVisitReviewState = {
   canReview: boolean;
@@ -218,8 +219,19 @@ export class HomeVisitReviewService {
     staffUserId: string,
     options: { limit?: number } = {},
   ): Promise<StaffReviewSummary> {
-    await HomeVisitReviewService.ensureConnected();
     if (!Types.ObjectId.isValid(staffUserId)) return { reviews: [], total: 0, ratingAvg: 0 };
+    return cached(
+      cacheKey("staff-reviews", staffUserId, options.limit),
+      { ttl: 300, tags: [CacheTags.REVIEWS] },
+      () => HomeVisitReviewService.loadStaffReviews(staffUserId, options),
+    );
+  }
+
+  private static async loadStaffReviews(
+    staffUserId: string,
+    options: { limit?: number },
+  ): Promise<StaffReviewSummary> {
+    await HomeVisitReviewService.ensureConnected();
 
     const limit = Math.min(50, Math.max(1, options.limit ?? 10));
     const match = {

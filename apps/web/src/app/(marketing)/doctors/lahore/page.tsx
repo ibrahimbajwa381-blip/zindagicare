@@ -3,7 +3,7 @@ import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 import { JsonLd } from "@/components/seo/json-ld";
-import { DoctorsConsultClient } from "@/features/marketing/components/doctors-consult-client";
+import { DoctorsConsultSection } from "@/features/marketing/components/doctors-consult-section";
 import { siteConfig } from "@/config/site";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildMedicalServiceSchema } from "@/lib/seo/schema";
@@ -43,7 +43,7 @@ export default function LahoreDoctorsPage() {
           description={description}
         />
       </PageSection>
-      <DoctorsConsultClient initialCity={siteConfig.launchCity} />
+      <DoctorsConsultSection initialCity={siteConfig.launchCity} />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
-import { DoctorsConsultClient } from "@/features/marketing/components/doctors-consult-client";
+import { DoctorsConsultSection } from "@/features/marketing/components/doctors-consult-section";
 import { OnlineConsultCta } from "@/features/marketing/components/online-consult-cta";
 import { OnlineConsultFaq } from "@/features/marketing/components/online-consult-faq";
 import { OnlineConsultHero } from "@/features/marketing/components/online-consult-hero";
@@ -9,7 +9,6 @@ import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildMedicalServiceSchema } from "@/lib/seo/schema";
 import { marketingPageSeo } from "@/lib/seo/pages";
@@ -60,9 +59,7 @@ export default async function DoctorsPage({ searchParams }: PageProps) {
         })}
       />
       <OnlineConsultHero />
-      <Suspense fallback={null}>
-        <DoctorsConsultClient />
-      </Suspense>
+      <DoctorsConsultSection />
       <DoctorBrowseSection />
       <OnlineConsultHowItWorks />
       <OnlineConsultTrust />

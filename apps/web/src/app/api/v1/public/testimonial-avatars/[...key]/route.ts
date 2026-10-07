@@ -1,4 +1,5 @@
 import { apiError } from "@/server/api/response";
+import { cachedBuffer } from "@/server/lib/cache";
 import {
   contentTypeFromKey,
   validateStorageKey,
@@ -17,7 +18,10 @@ export async function GET(_req: Request, { params }: Params) {
 
     const storageKey = key.map((segment) => decodeURIComponent(segment)).join("/");
     validateStorageKey(storageKey);
-    const buffer = await readTestimonialAvatar(storageKey);
+    // Avatar keys embed a random UUID per upload, so a key's bytes never change.
+    const buffer = await cachedBuffer(`avatar:testimonial:${storageKey}`, 86400, () =>
+      readTestimonialAvatar(storageKey),
+    );
 
     return new Response(new Uint8Array(buffer), {
       headers: {

@@ -27,6 +27,7 @@ import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types
 import { mongoFilter } from "@/lib/mongo/query";
 import { PrescriptionService } from "@/server/services/prescription.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
 function formatPatientName(name: string) {
   return name.trim().replace(/\s+/g, " ") || "Patient";
@@ -145,6 +146,17 @@ export class ReviewService {
   static async listDoctorReviews(
     doctorProfileId: string,
     options: { page?: number; limit?: number } = {},
+  ): Promise<{ reviews: DoctorReviewDto[]; total: number; hasMore: boolean }> {
+    return cached(
+      cacheKey("doctor-reviews", doctorProfileId, options.page, options.limit),
+      { ttl: 300, tags: [CacheTags.REVIEWS] },
+      () => ReviewService.loadDoctorReviews(doctorProfileId, options),
+    );
+  }
+
+  private static async loadDoctorReviews(
+    doctorProfileId: string,
+    options: { page?: number; limit?: number },
   ): Promise<{ reviews: DoctorReviewDto[]; total: number; hasMore: boolean }> {
     await ReviewService.ensureConnected();
 

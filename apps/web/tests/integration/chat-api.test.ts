@@ -905,6 +905,44 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
   // =========================================================================
   // IDOR & Malformed Resource IDs
   // =========================================================================
+  describe("totalUnreadCount — header badge total", () => {
+    test("counts unread only in eligible threads, for patient and doctor viewers", async () => {
+      const patient = await createPatientUser("Badge Patient");
+      const patientId = patient._id.toString();
+      const { user: docA, profile: profA } = await createDoctorUser("Badge Doctor A");
+      const { user: docB, profile: profB } = await createDoctorUser("Badge Doctor B");
+
+      const { appointment: apptA } = await createPaidAppointment(patientId, profA._id.toString());
+      const { appointment: apptB, payment: payB } = await createPaidAppointment(
+        patientId,
+        profB._id.toString(),
+      );
+      const threadA = await ChatService.ensureAppointmentThread(apptA._id.toString());
+      const threadB = await ChatService.ensureAppointmentThread(apptB._id.toString());
+
+      await ChatService.sendMessage(threadA, docA._id.toString(), "A1");
+      await ChatService.sendMessage(threadA, docA._id.toString(), "A2");
+      await ChatService.sendMessage(threadB, docB._id.toString(), "B1");
+
+      expect(await ChatService.totalUnreadCount(patientId)).toBe(3);
+
+      // Doctor B's appointment is no longer paid → that thread stops counting.
+      await PaymentModel.updateOne(
+        { _id: payB._id },
+        { $set: { status: PaymentStatuses.PENDING } },
+      );
+      expect(await ChatService.totalUnreadCount(patientId)).toBe(2);
+
+      const threads = await ChatService.listThreads(patientId);
+      expect(threads.reduce((sum, t) => sum + t.unreadCount, 0)).toBe(2);
+
+      // Doctor viewer path: own messages never count, patient's do.
+      expect(await ChatService.totalUnreadCount(docA._id.toString())).toBe(0);
+      await ChatService.sendMessage(threadA, patientId, "reply");
+      expect(await ChatService.totalUnreadCount(docA._id.toString())).toBe(1);
+    });
+  });
+
   describe("Resource ID Manipulation & IDOR Protection", () => {
     let patientId: string;
 

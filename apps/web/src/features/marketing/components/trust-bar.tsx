@@ -1,12 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import { Gift, Lock, ShieldCheck, Star } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { PageSection } from "@/components/layout/page-section";
 import { sectionPanel, surfaceCardInteractive } from "@/lib/ui/surfaces";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 
 const itemAccents = [
   {
@@ -31,8 +29,8 @@ const itemAccents = [
   },
 ] as const;
 
-export function TrustBar() {
-  const t = useTranslations();
+export async function TrustBar() {
+  const { t } = await getServerTranslations();
 
   const items = [
     {

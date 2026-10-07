@@ -1,5 +1,6 @@
 import { connectDatabase, SystemSettingsModel } from "@zindagi/database";
 import { STAFF_COMMISSION_CONFIG, SUNDAY_CONSULT_CONFIG } from "@zindagi/shared";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
 export type PlatformCommissionSettings = {
   defaultDoctorOnlineCommissionPercent: number;
@@ -56,7 +57,8 @@ const DEFAULTS: SystemSettingsDto = {
     STAFF_COMMISSION_CONFIG.defaultNutritionistPercent,
 };
 
-const SETTINGS_CACHE_MS = 30_000;
+/** Per-instance hot copy in front of the shared Redis entry (read on most requests). */
+const SETTINGS_CACHE_MS = 10_000;
 let settingsCache: { at: number; value: SystemSettingsDto } | null = null;
 
 function mapSettingsDoc(
@@ -108,9 +110,15 @@ export async function getSystemSettings(): Promise<SystemSettingsDto> {
     return settingsCache.value;
   }
 
-  await connectDatabase();
-  const doc = await SystemSettingsModel.findOne({ key: "global" }).lean();
-  const value = mapSettingsDoc(doc);
+  const value = await cached(
+    cacheKey("system-settings"),
+    { ttl: 600, tags: [CacheTags.SETTINGS] },
+    async () => {
+      await connectDatabase();
+      const doc = await SystemSettingsModel.findOne({ key: "global" }).lean();
+      return mapSettingsDoc(doc);
+    },
+  );
 
   settingsCache = { at: now, value };
   return value;

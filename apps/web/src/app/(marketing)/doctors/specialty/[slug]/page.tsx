@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { PageSection } from "@/components/layout/page-section";
 import { PageTitle } from "@/components/layout/page-title";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 import { JsonLd } from "@/components/seo/json-ld";
-import { DoctorsConsultClient } from "@/features/marketing/components/doctors-consult-client";
+import { DoctorsConsultSection } from "@/features/marketing/components/doctors-consult-section";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildMedicalServiceSchema } from "@/lib/seo/schema";
 import {
@@ -60,9 +59,7 @@ export default async function SpecialtyDoctorsPage({ params }: PageProps) {
           description={specialtySeoDescription(specialty.label)}
         />
       </PageSection>
-      <Suspense fallback={null}>
-        <DoctorsConsultClient initialSpecialty={specialty.label} />
-      </Suspense>
+      <DoctorsConsultSection initialSpecialty={specialty.label} />
     </>
   );
 }

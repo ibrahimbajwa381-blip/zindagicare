@@ -1,14 +1,12 @@
-"use client";
-
 import { HelpCircle, MessageCircle } from "lucide-react";
 import { PageSection } from "@/components/layout/page-section";
 import { SectionHeader } from "./section-header";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { FaqAccordion } from "./faq-accordion";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 
-export function FaqSection() {
-  const t = useTranslations();
+export async function FaqSection() {
+  const { t } = await getServerTranslations();
 
   return (
     <PageSection variant="soft" spacing="lg" flipBlur>

@@ -16,6 +16,7 @@ import {
 } from "@/server/services/doctor-slug.service";
 import { OnlineConsultService } from "@/server/services/online-consult.service";
 import type { WeeklyWindow } from "@/lib/consult/slot-utils";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
 const PUBLIC_DOCTOR_FILTER = {
   isListed: true,
@@ -125,30 +126,20 @@ async function queryFeaturedDoctors(limit: number): Promise<FeaturedDoctorCard[]
   });
 }
 
-const FEATURED_CACHE_MS = 60_000;
-const featuredDoctorsCache = new Map<
-  string,
-  { at: number; data: FeaturedDoctorCard[] }
->();
-
-async function getFeaturedDoctorsCached(limit: number): Promise<FeaturedDoctorCard[]> {
-  const key = String(limit);
-  const hit = featuredDoctorsCache.get(key);
-  if (hit && Date.now() - hit.at < FEATURED_CACHE_MS) {
-    return hit.data;
-  }
-
-  const data = await queryFeaturedDoctors(limit);
-  featuredDoctorsCache.set(key, { at: Date.now(), data });
-  return data;
-}
-
 export class PublicDoctorService {
   static async ensureConnected() {
     await connectDatabase();
   }
 
   static async getPublicDoctor(slugOrId: string): Promise<PublicDoctorProfile | null> {
+    return cached(
+      cacheKey("doctor", slugOrId),
+      { ttl: 300, tags: [CacheTags.DOCTORS, CacheTags.DOCTOR_AVAILABILITY] },
+      () => PublicDoctorService.loadPublicDoctor(slugOrId),
+    );
+  }
+
+  private static async loadPublicDoctor(slugOrId: string): Promise<PublicDoctorProfile | null> {
     await PublicDoctorService.ensureConnected();
 
     const normalized = slugOrId.trim().toLowerCase();
@@ -204,13 +195,23 @@ export class PublicDoctorService {
 
   static async getFeaturedDoctors(limit = 6): Promise<FeaturedDoctorCard[]> {
     try {
-      return await getFeaturedDoctorsCached(limit);
+      return await cached(
+        cacheKey("doctors-featured", limit),
+        { ttl: 300, tags: [CacheTags.DOCTORS] },
+        () => queryFeaturedDoctors(limit),
+      );
     } catch {
       return [];
     }
   }
 
   static async listPublicDoctorSlugs(): Promise<string[]> {
+    return cached(cacheKey("doctor-slugs"), { ttl: 600, tags: [CacheTags.DOCTORS] }, () =>
+      PublicDoctorService.loadPublicDoctorSlugs(),
+    );
+  }
+
+  private static async loadPublicDoctorSlugs(): Promise<string[]> {
     await PublicDoctorService.ensureConnected();
 
     const doctors = await DoctorProfileModel.find(PUBLIC_DOCTOR_FILTER)

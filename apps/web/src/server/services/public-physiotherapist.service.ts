@@ -10,6 +10,7 @@ import { Types } from "mongoose";
 import { citiesMatch, formatCityName, normalizeCityName } from "@/lib/geo/city-match";
 import { haversineKm } from "@/lib/geo/distance";
 import { mongoFilter } from "@/lib/mongo/query";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import {
   mapPhysiotherapistPortfolio,
   type PhysiotherapistPortfolio,
@@ -145,6 +146,21 @@ export class PublicPhysiotherapistService {
     near?: { lng: number; lat: number };
     nearbyOnly?: boolean;
   } = {}): Promise<PublicPhysiotherapist[]> {
+    // Location searches are per-visitor coordinates — not worth caching.
+    if (options.near) return PublicPhysiotherapistService.load(options);
+    return cached(
+      cacheKey("physiotherapists", options.city, options.specialty),
+      { ttl: 300, tags: [CacheTags.PHYSIOTHERAPISTS] },
+      () => PublicPhysiotherapistService.load(options),
+    );
+  }
+
+  private static async load(options: {
+    city?: string;
+    specialty?: string;
+    near?: { lng: number; lat: number };
+    nearbyOnly?: boolean;
+  }): Promise<PublicPhysiotherapist[]> {
     await connectDatabase();
     const city = options.city?.trim();
     const specialty = options.specialty?.trim().toLowerCase();
@@ -201,6 +217,12 @@ export class PublicPhysiotherapistService {
    * directory would list, deduplicated case-insensitively and title-cased for display.
    */
   static async listCities(): Promise<string[]> {
+    return cached(cacheKey("physiotherapists-cities"), { ttl: 600, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
+      PublicPhysiotherapistService.loadCities(),
+    );
+  }
+
+  private static async loadCities(): Promise<string[]> {
     await connectDatabase();
     const docs = await StaffProfileModel.find(PUBLIC_FILTER)
       .select("serviceAreas.city userId")
@@ -222,6 +244,12 @@ export class PublicPhysiotherapistService {
 
   /** Look up by public slug or by User id (used by ?physio= deep links). */
   static async get(slugOrId: string): Promise<PublicPhysiotherapist | null> {
+    return cached(cacheKey("physiotherapist", slugOrId), { ttl: 300, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
+      PublicPhysiotherapistService.loadOne(slugOrId),
+    );
+  }
+
+  private static async loadOne(slugOrId: string): Promise<PublicPhysiotherapist | null> {
     await connectDatabase();
     const key = slugOrId.trim().toLowerCase();
     if (!key) return null;

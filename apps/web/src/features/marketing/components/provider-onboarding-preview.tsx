@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { Activity, ArrowRight, Stethoscope, Syringe } from "lucide-react";
@@ -8,10 +6,10 @@ import { PageSection } from "@/components/layout/page-section";
 import { surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { PROVIDER_ONBOARDING_IMAGES } from "@/features/marketing/data/provider-onboarding-images";
 import { SectionHeader } from "./section-header";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 
-export function ProviderOnboardingPreview() {
-  const t = useTranslations();
+export async function ProviderOnboardingPreview() {
+  const { t } = await getServerTranslations();
   const preview = t.providerOnboarding.preview;
 
   const cards = [

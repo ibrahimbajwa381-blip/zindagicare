@@ -1,10 +1,8 @@
-"use client";
-
 import { Headphones, Lock, ShieldCheck, Undo2 } from "lucide-react";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 
-export function RefundGuaranteeBar() {
-  const t = useTranslations();
+export async function RefundGuaranteeBar() {
+  const { t } = await getServerTranslations();
 
   const items = [
     {

@@ -44,7 +44,10 @@ export default async function HomePage() {
       <DoctorBrowseSection />
       <SundayBanner />
       <HowItWorksSection />
-      <TestimonialsSection />
+      {/* Below-the-fold DB query — must not hold the hero (LCP) behind loading.tsx. */}
+      <Suspense fallback={null}>
+        <TestimonialsSection />
+      </Suspense>
       <ProviderOnboardingPreview />
       <FaqSection />
     </>
