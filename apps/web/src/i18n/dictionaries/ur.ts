@@ -95,6 +95,7 @@ export const ur: Dictionary = {
     createAccount: "اکاؤنٹ بنائیں",
     welcomeBack: "خوش آمدید",
     signInDescription: "اپنے {name} اکاؤنٹ میں سائن ان کریں",
+    noAccountForEmail: "اس ای میل سے کوئی اکاؤنٹ نہیں ملا۔ جاری رکھنے کے لیے اکاؤنٹ بنائیں۔",
     noAccount: "اکاؤنٹ نہیں ہے؟",
     email: "ای میل",
     password: "پاس ورڈ",

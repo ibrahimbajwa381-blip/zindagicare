@@ -6,6 +6,7 @@ import { LoginForm } from "@/features/auth/components/login-form";
 
 import { resolveAuthErrorMessage } from "@/lib/auth/errors";
 import { AUTH_ROUTES } from "@/lib/auth/routes";
+import { safeCallbackUrl } from "@/lib/auth/safe-callback-url";
 
 import { formatMessage, getServerTranslations } from "@/i18n/server";
 
@@ -18,7 +19,8 @@ type Props = {
 };
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { callbackUrl, error } = await searchParams;
+  const { callbackUrl: rawCallbackUrl, error } = await searchParams;
+  const callbackUrl = safeCallbackUrl(rawCallbackUrl);
   const { t } = await getServerTranslations();
 
   const registerHref = callbackUrl

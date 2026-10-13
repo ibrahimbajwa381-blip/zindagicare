@@ -172,6 +172,18 @@ export async function findUserByEmail(email: string) {
   };
 }
 
+/**
+ * True when any account — including deactivated or deleted ones — holds this
+ * email. Mirrors the conflict check in registerWithCredentials, so "no account"
+ * here means registration with this email can actually succeed.
+ */
+export async function isEmailRegistered(email: string): Promise<boolean> {
+  await connectDatabase();
+  const normalized = email.trim().toLowerCase();
+  const exists = await UserModel.exists({ emailLookup: emailLookupHash(normalized) });
+  return Boolean(exists);
+}
+
 /** Email/password sign-in for Auth.js credentials provider. */
 export async function verifyCredentialsLogin(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();

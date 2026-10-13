@@ -20,9 +20,11 @@ type OnboardingUser = {
 type OnboardingFormProps = {
   /** Google (and other phoneless) accounts must add a WhatsApp number here. */
   needsPhone?: boolean;
+  /** Validated same-site path the patient was heading to before onboarding. */
+  callbackUrl?: string;
 };
 
-export function OnboardingForm({ needsPhone = false }: OnboardingFormProps) {
+export function OnboardingForm({ needsPhone = false, callbackUrl }: OnboardingFormProps) {
   const { push } = useSafeRouter();
   const { update } = useSession();
   const { locale } = useLocale();
@@ -104,7 +106,7 @@ export function OnboardingForm({ needsPhone = false }: OnboardingFormProps) {
     }
 
     setPending(false);
-    push(AUTH_ROUTES.patientDashboard);
+    push(callbackUrl ?? AUTH_ROUTES.patientDashboard);
   }
 
   return (

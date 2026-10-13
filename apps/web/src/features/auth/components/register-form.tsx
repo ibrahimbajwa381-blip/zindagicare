@@ -13,9 +13,14 @@ import { registerAction, type RegisterFormState } from "@/server/actions/auth.ac
 
 type RegisterFormProps = {
   accountType?: AccountType;
+  /** Where to send the user after they sign up and log in. */
+  callbackUrl?: string;
 };
 
-export function RegisterForm({ accountType: defaultAccountType = "patient" }: RegisterFormProps) {
+export function RegisterForm({
+  accountType: defaultAccountType = "patient",
+  callbackUrl,
+}: RegisterFormProps) {
   const t = useTranslations();
   const [state, action, pending] = useActionState<RegisterFormState | undefined, FormData>(
     registerAction,
@@ -200,6 +205,7 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
           required
         />
         <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
+        {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
         <FieldError message={state?.fieldErrors?.dateOfBirth} />
       </div>
       <div>

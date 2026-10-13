@@ -5,10 +5,17 @@ import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/features/auth/components/onboarding-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AUTH_ROUTES, resolvePostAuthPath } from "@/lib/auth/routes";
+import { safeCallbackUrl } from "@/lib/auth/safe-callback-url";
 
 export const metadata = { title: "Complete your profile" };
 
-export default async function OnboardingPage() {
+type Props = {
+  searchParams: Promise<{ callbackUrl?: string }>;
+};
+
+export default async function OnboardingPage({ searchParams }: Props) {
+  const { callbackUrl: rawCallbackUrl } = await searchParams;
+  const callbackUrl = safeCallbackUrl(rawCallbackUrl);
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/onboarding");
 
@@ -25,7 +32,7 @@ export default async function OnboardingPage() {
   const onboardingCompleted = Boolean(dbUser?.onboardingCompleted);
 
   if (onboardingCompleted && hasPhone) {
-    redirect(AUTH_ROUTES.patientDashboard);
+    redirect(callbackUrl ?? AUTH_ROUTES.patientDashboard);
   }
 
   const needsPhone = !hasPhone;
@@ -41,7 +48,7 @@ export default async function OnboardingPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <OnboardingForm needsPhone={needsPhone} />
+        <OnboardingForm needsPhone={needsPhone} callbackUrl={callbackUrl} />
       </CardContent>
     </Card>
   );

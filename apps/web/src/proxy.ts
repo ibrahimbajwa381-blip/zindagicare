@@ -59,7 +59,7 @@ function routeGuard(req: Parameters<Parameters<typeof auth>[0]>[0]) {
 
   if (!isLoggedIn) {
     const login = new URL(AUTH_ROUTES.login, req.nextUrl.origin);
-    login.searchParams.set("callbackUrl", pathname);
+    login.searchParams.set("callbackUrl", `${pathname}${req.nextUrl.search}`);
     return NextResponse.redirect(login);
   }
 
@@ -77,6 +77,10 @@ function routeGuard(req: Parameters<Parameters<typeof auth>[0]>[0]) {
     const destination = resolvePostAuthPath(user);
     const target = new URL(destination, req.nextUrl.origin);
     if (pathname !== target.pathname) {
+      // Remember where the patient was headed so onboarding can send them back.
+      if (destination === AUTH_ROUTES.onboarding) {
+        target.searchParams.set("callbackUrl", `${pathname}${req.nextUrl.search}`);
+      }
       return NextResponse.redirect(target);
     }
   }

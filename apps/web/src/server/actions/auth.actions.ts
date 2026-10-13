@@ -22,6 +22,7 @@ export type RegisterFormState = {
   error?: string;
 };
 import {
+  isEmailRegistered,
   loadAuthUserPayload,
   registerWithCredentials,
   signInWithPhoneOtp,
@@ -30,6 +31,7 @@ import {
 import { AppError } from "@zindagi/shared";
 import { loginSchema, otpVerifySchema, registerSchema, type AccountType } from "@zindagi/validators";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
+import { safeCallbackUrl } from "@/lib/auth/safe-callback-url";
 import {
   AUTH_ROUTES,
   resolveLoginRedirectPath,
@@ -113,7 +115,15 @@ export async function loginWithCredentialsAction(
   } catch (e) {
     if (isRedirectError(e)) throw e;
     const message = authActionErrorMessage(e);
-    if (message) return { error: message };
+    if (message) {
+      if (e instanceof CredentialsSignin && !(await isEmailRegistered(parsed.data.email))) {
+        const params = new URLSearchParams({ reason: "no-account" });
+        const destination = safeCallbackUrl(formData.get("callbackUrl"));
+        if (destination) params.set("callbackUrl", destination);
+        redirect(`${AUTH_ROUTES.register}?${params}`);
+      }
+      return { error: message };
+    }
     throw e;
   }
 }
@@ -155,7 +165,12 @@ export async function registerAction(
       cookieStore.get(REFERRAL_COOKIE_NAME)?.value,
     );
     await registerWithCredentials(parsed.data, referredByDoctorId, await readVisitorId());
-    redirect(AUTH_ROUTES.login);
+    const destination = safeCallbackUrl(formData.get("callbackUrl"));
+    redirect(
+      destination
+        ? `${AUTH_ROUTES.login}?callbackUrl=${encodeURIComponent(destination)}`
+        : AUTH_ROUTES.login,
+    );
   } catch (e) {
     if (isRedirectError(e)) throw e;
     if (e instanceof AppError && e.code === "CONFLICT" && e.field === "email") {
@@ -183,7 +198,7 @@ export async function loginWithGoogleAction(callbackUrl?: string) {
   }
 
   await signIn("google", {
-    redirectTo: callbackUrl ?? AUTH_ROUTES.patientDashboard,
+    redirectTo: safeCallbackUrl(callbackUrl) ?? AUTH_ROUTES.patientDashboard,
   });
 }
 

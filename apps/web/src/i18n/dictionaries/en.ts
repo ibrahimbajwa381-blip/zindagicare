@@ -94,6 +94,7 @@ export const en = {
     createAccount: "Create account",
     welcomeBack: "Welcome back",
     signInDescription: "Sign in to your {name} account",
+    noAccountForEmail: "No account found with this email. Create one to continue.",
     noAccount: "No account?",
     email: "Email",
     password: "Password",

@@ -5,6 +5,7 @@ import {
   VerificationStatuses,
   type Role,
 } from "@zindagi/shared";
+import { safeCallbackUrl } from "./safe-callback-url";
 
 export const AUTH_ROUTES = {
   login: "/login",
@@ -226,7 +227,7 @@ export function resolveLoginRedirectPath(
   user: PostAuthUser,
   callbackUrl?: string,
 ): string {
-  const requested = callbackUrl?.trim();
+  const requested = safeCallbackUrl(callbackUrl);
   if (requested && requested !== AUTH_ROUTES.patientDashboard) {
     return requested;
   }
