@@ -29,6 +29,7 @@ import type {
   adminUpdateDoctorSchema,
 } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -657,6 +658,7 @@ export async function adminUpdateDoctor(
     const hospitals = input.hospitals.map((h) => ({
       name: h.name.trim(),
       city: h.city.trim(),
+      area: resolveHospitalArea(h, refreshed.hospitals),
       address: h.address?.trim() || undefined,
     }));
     refreshed.set("hospitals", hospitals);

@@ -2,6 +2,7 @@ export * from "./types/enums";
 export * from "./auth";
 export * from "./constants/cities";
 export * from "./constants/pakistan-cities";
+export * from "./constants/city-areas";
 export * from "./constants/specialties";
 export * from "./constants/physiotherapy-specialties";
 export * from "./constants/physiotherapist-portfolio";

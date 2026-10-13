@@ -149,6 +149,8 @@ const doctorProfileSchema = new Schema(
       {
         name: { type: String, required: true },
         city: { type: String, required: true, index: true },
+        /** Neighbourhood within the city (asked for Lahore locations). */
+        area: String,
         address: String,
         geo: geoPointSchema,
       },

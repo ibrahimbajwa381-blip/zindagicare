@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES, hasAreaList } from "@zindagi/shared";
 import { parseQualificationsInput } from "@/lib/doctors/qualifications";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { previewSundaySlots } from "@/lib/sunday/display";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
 import { DoctorSpecialtyFields } from "@/components/forms/doctor-specialty-fields";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import {
@@ -266,8 +268,20 @@ export function DoctorVerificationForm() {
       return;
     }
 
-    if (fields.consultationFee && Number(fields.consultationFee) < 500) {
-      setError("Consultation fee must be at least PKR 500.");
+    if (!fields.hospitalCity.trim()) {
+      setError("Select the city of your practice location.");
+      setPending(false);
+      return;
+    }
+
+    if (hasAreaList(fields.hospitalCity) && !fields.hospitalArea.trim()) {
+      setError("Select the area of your practice location.");
+      setPending(false);
+      return;
+    }
+
+    if (!fields.consultationFee || Number(fields.consultationFee) < 500) {
+      setError("Enter your consultation fee (at least PKR 500).");
       setPending(false);
       return;
     }
@@ -290,11 +304,12 @@ export function DoctorVerificationForm() {
       additionalSpecialties,
       avatarUrl,
       bio: fields.bio || undefined,
-      consultationFee: fields.consultationFee || 0,
+      consultationFee: fields.consultationFee,
       hospitals: [
         {
           name: fields.hospitalName,
           city: fields.hospitalCity,
+          area: fields.hospitalArea.trim() || undefined,
           address: fields.hospitalAddress || undefined,
           geo: homeVisitEnabled && homeVisitGeo ? homeVisitGeo : undefined,
         },
@@ -488,15 +503,26 @@ export function DoctorVerificationForm() {
           </div>
           <div>
             <Label htmlFor="hospitalCity">City</Label>
-            <Input
+            <CitySelect
               id="hospitalCity"
-              name="hospitalCity"
               value={fields.hospitalCity}
-              onChange={(e) => updateField("hospitalCity", e.target.value)}
-              required
+              onChange={(city) => {
+                // A new city makes the old area meaningless, so clear it.
+                if (city !== fields.hospitalCity) updateField("hospitalArea", "");
+                updateField("hospitalCity", city);
+              }}
+              className="mt-1"
             />
           </div>
         </div>
+        {fields.hospitalCity.trim() && (
+          <CityAreaSelect
+            id="hospitalArea"
+            city={fields.hospitalCity}
+            value={fields.hospitalArea}
+            onChange={(area) => updateField("hospitalArea", area)}
+          />
+        )}
         <div>
           <Label htmlFor="hospitalAddress">Address</Label>
           <Input
@@ -515,6 +541,8 @@ export function DoctorVerificationForm() {
             min={500}
             value={fields.consultationFee}
             onChange={(e) => updateField("consultationFee", e.target.value)}
+            placeholder="e.g. 2000"
+            required
           />
         </div>
       </section>

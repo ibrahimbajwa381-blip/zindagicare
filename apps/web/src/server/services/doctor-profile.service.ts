@@ -21,6 +21,7 @@ import type {
   WeeklyAvailabilityDto,
 } from "@/features/doctor/types";
 import { formatDayOfWeek } from "@/features/doctor/types";
+import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { mongoFilter } from "@/lib/mongo/query";
@@ -105,6 +106,7 @@ function mapProfileToDto(
     hospitals: (profile.hospitals ?? []).map((h) => ({
       name: h.name,
       city: h.city,
+      area: h.area ?? undefined,
       address: h.address ?? undefined,
     })),
     consultationFee: profile.consultationFee ?? 0,
@@ -326,6 +328,7 @@ export async function updateDoctorProfile(
     const hospitals = data.hospitals.map((h) => ({
       name: h.name.trim(),
       city: h.city.trim(),
+      area: resolveHospitalArea(h, profile.hospitals),
       address: h.address?.trim() || undefined,
     }));
     profile.set("hospitals", hospitals);

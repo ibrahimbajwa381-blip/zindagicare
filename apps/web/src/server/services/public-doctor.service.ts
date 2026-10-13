@@ -25,13 +25,14 @@ const PUBLIC_DOCTOR_FILTER = {
 } as const;
 
 function mapHospitals(
-  hospitals?: { name?: string; city?: string; address?: string }[] | null,
+  hospitals?: { name?: string; city?: string; area?: string; address?: string }[] | null,
 ) {
   return (hospitals ?? [])
     .filter((h) => h.name && h.city)
     .map((h) => ({
       name: h.name!,
       city: h.city!,
+      area: h.area ?? undefined,
       address: h.address ?? undefined,
     }));
 }
@@ -62,7 +63,9 @@ async function mapProfileDoc(
     medicalCollege: (doc.medicalCollege as string | undefined) ?? undefined,
     graduationYear: (doc.graduationYear as number | undefined) ?? undefined,
     hospitals: mapHospitals(
-      doc.hospitals as { name?: string; city?: string; address?: string }[] | undefined,
+      doc.hospitals as
+        | { name?: string; city?: string; area?: string; address?: string }[]
+        | undefined,
     ),
     pmdcVerified: (doc.pmdcVerified as boolean | undefined) ?? false,
     consultationFee: (doc.consultationFee as number | undefined) ?? 0,

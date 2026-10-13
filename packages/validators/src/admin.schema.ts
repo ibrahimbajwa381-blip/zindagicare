@@ -22,6 +22,7 @@ export const adminCreateDoctorSchema = z.object({
 const adminHospitalSchema = z.object({
   name: z.string().min(2, "Hospital name is required"),
   city: z.string().min(2, "City is required"),
+  area: z.string().trim().max(100).optional(),
   address: z.string().optional(),
 });
 

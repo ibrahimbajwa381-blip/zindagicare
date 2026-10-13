@@ -16,6 +16,8 @@ import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import type { NurseProfileDto } from "@/server/services/nurse.service";
@@ -47,6 +49,8 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
   const { update } = useSession();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [city, setCity] = useState(profile.staff.serviceArea.city);
+  const [area, setArea] = useState(profile.staff.serviceArea.area ?? "");
   const [saved, setSaved] = useState(false);
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(
     profile.staff.homeVisitEnabled,
@@ -73,6 +77,18 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
     setError(undefined);
     setSaved(false);
 
+    if (!city.trim()) {
+      setError("Select your city.");
+      setPending(false);
+      return;
+    }
+
+    if (area.trim().length < 2) {
+      setError("Select or type your area.");
+      setPending(false);
+      return;
+    }
+
     if (homeVisitEnabled && !geo) {
       setError("Please add your Google Maps location for in-house visit matching.");
       setPending(false);
@@ -85,8 +101,8 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
     const body = {
       name: String(form.get("name") ?? "").trim(),
       phone: String(form.get("phone") ?? "").trim() || undefined,
-      city: String(form.get("city") ?? "").trim(),
-      area: String(form.get("area") ?? "").trim(),
+      city: city.trim(),
+      area: area.trim(),
       radiusKm: radiusRaw ? Number(radiusRaw) : undefined,
       homeVisitEnabled,
       homeVisitFee: feeRaw ? Number(feeRaw) : undefined,
@@ -155,25 +171,20 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="city">Service city</Label>
-                <Input
+                <CitySelect
                   id="city"
-                  name="city"
-                  defaultValue={profile.staff.serviceArea.city}
-                  required
-                  minLength={2}
+                  value={city}
+                  onChange={(next) => {
+                    // A new city makes the old area meaningless, so clear it.
+                    if (next !== city) setArea("");
+                    setCity(next);
+                  }}
+                  className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="area">Area / neighborhood</Label>
-                <Input
-                  id="area"
-                  name="area"
-                  defaultValue={profile.staff.serviceArea.area ?? ""}
-                  placeholder="e.g. DHA Phase 5"
-                  required
-                  minLength={2}
-                />
-              </div>
+              {city.trim() && (
+                <CityAreaSelect id="area" city={city} value={area} onChange={setArea} required />
+              )}
             </div>
 
             <div>

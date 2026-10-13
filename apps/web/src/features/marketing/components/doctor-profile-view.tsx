@@ -277,7 +277,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
                 <ul className="space-y-3">
                   {doctor.hospitals.map((hospital) => {
                     const mapQuery = encodeURIComponent(
-                      [hospital.name, hospital.address, hospital.city, "Pakistan"]
+                      [hospital.name, hospital.address, hospital.area, hospital.city, "Pakistan"]
                         .filter(Boolean)
                         .join(", "),
                     );
@@ -288,6 +288,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
                       >
                         <p className="font-medium text-slate-900">{hospital.name}</p>
                         <p className="text-slate-500">
+                          {hospital.area ? `${hospital.area}, ` : ""}
                           {hospital.city}
                           {hospital.address ? ` · ${hospital.address}` : ""}
                         </p>

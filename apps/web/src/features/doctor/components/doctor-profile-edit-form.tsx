@@ -4,12 +4,19 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { CalendarHeart, Clock, Home, Plus, Trash2 } from "lucide-react";
-import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES, VerificationStatuses } from "@zindagi/shared";
+import {
+  HOME_CARE_MATCH_RADIUS_KM,
+  SPECIALTIES,
+  VerificationStatuses,
+  hasAreaList,
+} from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
 import { DoctorSpecialtyFields } from "@/components/forms/doctor-specialty-fields";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { previewSundaySlots } from "@/lib/sunday/display";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import type { DoctorProfileDto } from "@/features/doctor/types";
@@ -34,6 +41,7 @@ type AvailabilityDay = {
 type HospitalRow = {
   name: string;
   city: string;
+  area: string;
   address: string;
 };
 
@@ -126,9 +134,10 @@ export function DoctorProfileEditForm({
       ? profile.hospitals.map((h) => ({
           name: h.name,
           city: h.city,
+          area: h.area ?? "",
           address: h.address ?? "",
         }))
-      : [{ name: "", city: "Lahore", address: "" }],
+      : [{ name: "", city: "Lahore", area: "", address: "" }],
   );
   const [availability, setAvailability] = useState(() =>
     buildAvailabilityFromProfile(profile.weeklyAvailability),
@@ -163,7 +172,7 @@ export function DoctorProfileEditForm({
   }
 
   function addHospital() {
-    setHospitals((prev) => [...prev, { name: "", city: "Lahore", address: "" }]);
+    setHospitals((prev) => [...prev, { name: "", city: "Lahore", area: "", address: "" }]);
   }
 
   function removeHospital(index: number) {
@@ -195,13 +204,27 @@ export function DoctorProfileEditForm({
       return;
     }
 
+    if (hospitals.some((h) => h.name.trim() && !h.city.trim())) {
+      setError("Select the city for each practice location.");
+      setPending(false);
+      return;
+    }
+
     const cleanedHospitals = hospitals
       .map((h) => ({
         name: h.name.trim(),
         city: h.city.trim(),
+        // Sent even when empty so clearing the area removes the saved one.
+        area: h.area.trim(),
         address: h.address.trim() || undefined,
       }))
       .filter((h) => h.name && h.city);
+
+    if (cleanedHospitals.some((h) => hasAreaList(h.city) && !h.area)) {
+      setError("Select the area for each practice location.");
+      setPending(false);
+      return;
+    }
 
     if (!cleanedHospitals.length) {
       setError("Add at least one practice location.");
@@ -510,14 +533,27 @@ export function DoctorProfileEditForm({
                 </div>
                 <div>
                   <Label htmlFor={`hospital-city-${index}`}>City</Label>
-                  <Input
+                  <CitySelect
                     id={`hospital-city-${index}`}
                     value={hospital.city}
-                    onChange={(e) => updateHospital(index, { city: e.target.value })}
-                    required
+                    onChange={(city) =>
+                      // A new city makes the old area meaningless, so clear it.
+                      updateHospital(index, city === hospital.city ? { city } : { city, area: "" })
+                    }
+                    className="mt-1"
                   />
                 </div>
               </div>
+              {hospital.city.trim() && (
+                <div className="mt-3">
+                  <CityAreaSelect
+                    id={`hospital-area-${index}`}
+                    city={hospital.city}
+                    value={hospital.area}
+                    onChange={(area) => updateHospital(index, { area })}
+                  />
+                </div>
+              )}
               <div className="mt-3">
                 <Label htmlFor={`hospital-address-${index}`}>Address</Label>
                 <Input

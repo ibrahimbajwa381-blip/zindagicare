@@ -11,6 +11,8 @@ import {
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
@@ -41,6 +43,8 @@ export function PhysiotherapistVerificationForm({
 }: PhysiotherapistVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
+  const [city, setCity] = useState(defaults?.city ?? "Lahore");
+  const [area, setArea] = useState(defaults?.area ?? "");
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
@@ -71,6 +75,18 @@ export function PhysiotherapistVerificationForm({
       }
     }
 
+    if (!city.trim()) {
+      setError("Select your city.");
+      setPending(false);
+      return;
+    }
+
+    if (area.trim().length < 2) {
+      setError("Select or type your area.");
+      setPending(false);
+      return;
+    }
+
     if (homeVisitEnabled && !geo) {
       setError("Please add your Google Maps location for in-house visit matching.");
       setPending(false);
@@ -97,8 +113,8 @@ export function PhysiotherapistVerificationForm({
       specialties,
       avatarUrl,
       serviceArea: {
-        city: form.get("city"),
-        area: form.get("area"),
+        city: city.trim(),
+        area: area.trim(),
         homeVisitEnabled,
         geo: geo ?? undefined,
       },
@@ -227,25 +243,20 @@ export function PhysiotherapistVerificationForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="city">City</Label>
-            <Input
+            <CitySelect
               id="city"
-              name="city"
-              defaultValue={defaults?.city ?? "Lahore"}
-              required
-              minLength={2}
+              value={city}
+              onChange={(next) => {
+                // A new city makes the old area meaningless, so clear it.
+                if (next !== city) setArea("");
+                setCity(next);
+              }}
+              className="mt-1"
             />
           </div>
-          <div>
-            <Label htmlFor="area">Area / neighborhood</Label>
-            <Input
-              id="area"
-              name="area"
-              defaultValue={defaults?.area}
-              placeholder="e.g. DHA Phase 5, Gulberg"
-              required
-              minLength={2}
-            />
-          </div>
+          {city.trim() && (
+            <CityAreaSelect id="area" city={city} value={area} onChange={setArea} required />
+          )}
         </div>
 
         <label className="flex items-start gap-3">
