@@ -117,7 +117,7 @@ async function queryFeaturedDoctors(limit: number): Promise<FeaturedDoctorCard[]
         primarySpecialty: doc.primarySpecialty,
         specialties: doc.specialties,
       }),
-      hospital: doc.hospitals?.[0]?.name ?? "Lahore",
+      hospital: doc.hospitals?.[0]?.name ?? "",
       rating: doc.ratingAvg ?? 0,
       reviews: doc.ratingCount ?? 0,
       fee: doc.consultationFee ?? 0,

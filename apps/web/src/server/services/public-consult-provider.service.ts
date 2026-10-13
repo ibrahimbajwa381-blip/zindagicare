@@ -16,7 +16,12 @@ import { ensureCanonicalNutritionistSlug } from "./nutritionist-slug.service";
 /** Video-consult providers that are built like doctors (own profile collection per role). */
 export type ConsultProviderRole = "herbalist" | "nutritionist";
 
-export type PublicConsultProviderClinic = { name: string; city: string; address?: string };
+export type PublicConsultProviderClinic = {
+  name: string;
+  city: string;
+  area?: string;
+  address?: string;
+};
 
 export type PublicConsultProviderWeeklyWindow = {
   dayOfWeek: number;
@@ -125,11 +130,14 @@ async function mapProfile(
     doc.slug as string | undefined,
   );
 
-  const clinics = ((doc.clinics as { name?: string; city?: string; address?: string }[]) ?? [])
+  const clinics = (
+    (doc.clinics as { name?: string; city?: string; area?: string; address?: string }[]) ?? []
+  )
     .filter((c) => c.name && c.city)
     .map((c) => ({
       name: safeDisplayText(c.name) ?? "",
       city: formatCityName(c.city!),
+      area: safeDisplayText(c.area),
       address: safeDisplayText(c.address),
     }))
     .filter((c) => c.name);
@@ -160,7 +168,7 @@ async function mapProfile(
     institute: safeDisplayText(doc.institute as string | undefined),
     graduationYear: (doc.graduationYear as number | undefined) ?? undefined,
     clinics,
-    city: clinics[0]?.city ?? coverageCities[0] ?? "Lahore",
+    city: clinics[0]?.city ?? coverageCities[0] ?? "Pakistan",
     coverageCities,
     consultationFee: (doc.consultationFee as number | undefined) ?? 0,
     videoConsultEnabled: Boolean(doc.videoConsultEnabled),

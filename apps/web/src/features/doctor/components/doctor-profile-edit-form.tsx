@@ -8,7 +8,6 @@ import {
   HOME_CARE_MATCH_RADIUS_KM,
   SPECIALTIES,
   VerificationStatuses,
-  hasAreaList,
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
@@ -21,6 +20,7 @@ import { previewSundaySlots } from "@/lib/sunday/display";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import type { DoctorProfileDto } from "@/features/doctor/types";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const DAYS = [
   { value: 1, label: "Monday" },
@@ -137,7 +137,7 @@ export function DoctorProfileEditForm({
           area: h.area ?? "",
           address: h.address ?? "",
         }))
-      : [{ name: "", city: "Lahore", area: "", address: "" }],
+      : [{ name: "", city: "", area: "", address: "" }],
   );
   const [availability, setAvailability] = useState(() =>
     buildAvailabilityFromProfile(profile.weeklyAvailability),
@@ -172,7 +172,7 @@ export function DoctorProfileEditForm({
   }
 
   function addHospital() {
-    setHospitals((prev) => [...prev, { name: "", city: "Lahore", area: "", address: "" }]);
+    setHospitals((prev) => [...prev, { name: "", city: "", area: "", address: "" }]);
   }
 
   function removeHospital(index: number) {
@@ -204,10 +204,15 @@ export function DoctorProfileEditForm({
       return;
     }
 
-    if (hospitals.some((h) => h.name.trim() && !h.city.trim())) {
-      setError("Select the city for each practice location.");
-      setPending(false);
-      return;
+    // Every named location needs both a city and an area.
+    for (const [index, h] of hospitals.entries()) {
+      if (!h.name.trim()) continue;
+      const locationError = cityAreaError(h.city, h.area, `for Location ${index + 1}`);
+      if (locationError) {
+        setError(locationError);
+        setPending(false);
+        return;
+      }
     }
 
     const cleanedHospitals = hospitals
@@ -219,12 +224,6 @@ export function DoctorProfileEditForm({
         address: h.address.trim() || undefined,
       }))
       .filter((h) => h.name && h.city);
-
-    if (cleanedHospitals.some((h) => hasAreaList(h.city) && !h.area)) {
-      setError("Select the area for each practice location.");
-      setPending(false);
-      return;
-    }
 
     if (!cleanedHospitals.length) {
       setError("Add at least one practice location.");
@@ -544,16 +543,14 @@ export function DoctorProfileEditForm({
                   />
                 </div>
               </div>
-              {hospital.city.trim() && (
-                <div className="mt-3">
-                  <CityAreaSelect
-                    id={`hospital-area-${index}`}
-                    city={hospital.city}
-                    value={hospital.area}
-                    onChange={(area) => updateHospital(index, { area })}
-                  />
-                </div>
-              )}
+              <div className="mt-3">
+                <CityAreaSelect
+                  id={`hospital-area-${index}`}
+                  city={hospital.city}
+                  value={hospital.area}
+                  onChange={(area) => updateHospital(index, { area })}
+                />
+              </div>
               <div className="mt-3">
                 <Label htmlFor={`hospital-address-${index}`}>Address</Label>
                 <Input

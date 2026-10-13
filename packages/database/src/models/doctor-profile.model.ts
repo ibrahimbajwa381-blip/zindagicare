@@ -184,7 +184,7 @@ const doctorProfileSchema = new Schema(
         isActive: { type: Boolean, default: true },
       },
     ],
-    coverageCities: { type: [String], default: ["Lahore"] },
+    coverageCities: { type: [String], default: [] },
     homeVisitEnabled: { type: Boolean, default: false },
     homeVisitLocation: {
       area: String,

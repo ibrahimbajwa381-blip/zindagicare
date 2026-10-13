@@ -95,6 +95,7 @@ export function HerbalistProfileOverview({
               <li key={index} className="text-sm text-slate-700">
                 <span className="font-medium text-slate-900">{clinic.name}</span>
                 {" · "}
+                {clinic.area ? `${clinic.area}, ` : ""}
                 {clinic.city}
                 {clinic.address ? ` · ${clinic.address}` : ""}
               </li>

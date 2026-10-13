@@ -11,15 +11,14 @@ type Props = {
   city: string;
   value: string;
   onChange: (area: string) => void;
-  /** When set, a city without a list still asks for an area (no "optional" hint). */
-  required?: boolean;
 };
 
 /**
- * Area within the chosen city: a searchable list for cities we have areas for
- * (unlisted areas can still be typed), otherwise a plain optional text box.
+ * Area within the chosen city (mandatory): a searchable list for cities we have
+ * areas for (unlisted areas can still be typed), otherwise a plain text box.
+ * Stays visible but disabled until a city is picked.
  */
-export function CityAreaSelect({ id, city, value, onChange, required }: Props) {
+export function CityAreaSelect({ id, city, value, onChange }: Props) {
   const zones = areaZonesForCity(city);
   const options = useMemo<readonly SearchableOption[]>(
     () => (zones ?? []).flatMap(({ zone, areas }) => areas.map((area) => ({ value: area, group: zone }))),
@@ -28,14 +27,16 @@ export function CityAreaSelect({ id, city, value, onChange, required }: Props) {
   const cityLabel = formatCityName(city) || "your city";
 
   if (!zones) {
+    const noCity = !city.trim();
     return (
       <div>
-        <Label htmlFor={id}>Area / neighbourhood{required ? "" : " (optional)"}</Label>
+        <Label htmlFor={id}>Area / neighbourhood</Label>
         <Input
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={`Area in ${cityLabel}`}
+          placeholder={noCity ? "Select a city first" : `Area in ${cityLabel}`}
+          disabled={noCity}
           className="mt-1"
         />
       </div>

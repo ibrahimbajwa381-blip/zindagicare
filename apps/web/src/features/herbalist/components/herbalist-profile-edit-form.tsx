@@ -4,16 +4,22 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { HERBALIST_SPECIALTIES_ALPHABETICAL, MAX_HERBALIST_SPECIALTIES } from "@zindagi/shared";
+import {
+  HERBALIST_SPECIALTIES_ALPHABETICAL,
+  MAX_HERBALIST_SPECIALTIES,
+} from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { TimePicker } from "@/components/ui/time-picker";
 import { formatDayOfWeek } from "@/features/herbalist/types";
 import { HerbalistProfilePhotoUpload } from "@/features/herbalist/components/herbalist-profile-photo-upload";
 import type { HerbalistProfileDto } from "@/server/services/herbalist-profile.service";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
-type ClinicRow = { name: string; city: string; address: string };
+type ClinicRow = { name: string; city: string; area: string; address: string };
 type AvailabilityRow = {
   dayOfWeek: number;
   startTimeLocal: string;
@@ -50,9 +56,10 @@ export function HerbalistProfileEditForm({ profile }: Props) {
       ? profile.clinics.map((c) => ({
           name: c.name,
           city: c.city,
+          area: c.area ?? "",
           address: c.address ?? "",
         }))
-      : [{ name: "", city: "Lahore", address: "" }],
+      : [{ name: "", city: "", area: "", address: "" }],
   );
   const [availability, setAvailability] = useState<AvailabilityRow[]>(
     profile.weeklyAvailability.length
@@ -65,7 +72,7 @@ export function HerbalistProfileEditForm({ profile }: Props) {
   }
 
   function addClinic() {
-    setClinics((prev) => [...prev, { name: "", city: "Lahore", address: "" }]);
+    setClinics((prev) => [...prev, { name: "", city: "", area: "", address: "" }]);
   }
 
   function removeClinic(index: number) {
@@ -93,10 +100,23 @@ export function HerbalistProfileEditForm({ profile }: Props) {
     setError(undefined);
     setFieldError(undefined);
 
+    // Every named location needs both a city and an area.
+    for (const [index, c] of clinics.entries()) {
+      if (!c.name.trim()) continue;
+      const locationError = cityAreaError(c.city, c.area, `for Location ${index + 1}`);
+      if (locationError) {
+        setError(locationError);
+        setPending(false);
+        return;
+      }
+    }
+
     const cleanedClinics = clinics
       .map((c) => ({
         name: c.name.trim(),
         city: c.city.trim(),
+        // Sent even when empty so clearing the area removes the saved one.
+        area: c.area.trim(),
         address: c.address.trim() || undefined,
       }))
       .filter((c) => c.name && c.city);
@@ -304,13 +324,24 @@ export function HerbalistProfileEditForm({ profile }: Props) {
                 </div>
                 <div>
                   <Label htmlFor={`clinic-city-${index}`}>City</Label>
-                  <Input
+                  <CitySelect
                     id={`clinic-city-${index}`}
                     value={clinic.city}
-                    onChange={(e) => updateClinic(index, { city: e.target.value })}
-                    required
+                    onChange={(city) =>
+                      // A new city makes the old area meaningless, so clear it.
+                      updateClinic(index, city === clinic.city ? { city } : { city, area: "" })
+                    }
+                    className="mt-1"
                   />
                 </div>
+              </div>
+              <div className="mt-3">
+                <CityAreaSelect
+                  id={`clinic-area-${index}`}
+                  city={clinic.city}
+                  value={clinic.area}
+                  onChange={(area) => updateClinic(index, { area })}
+                />
               </div>
               <div className="mt-3">
                 <Label htmlFor={`clinic-address-${index}`}>Address (optional)</Label>

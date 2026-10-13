@@ -20,6 +20,7 @@ import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select"
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import { NurseProfilePhotoUpload } from "@/features/nurse/components/nurse-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 type NurseVerificationFormProps = {
   name: string;
@@ -46,7 +47,7 @@ export function NurseVerificationForm({
 }: NurseVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
-  const [city, setCity] = useState(defaults?.city ?? "Lahore");
+  const [city, setCity] = useState(defaults?.city ?? "");
   const [area, setArea] = useState(defaults?.area ?? "");
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
@@ -78,14 +79,9 @@ export function NurseVerificationForm({
       }
     }
 
-    if (!city.trim()) {
-      setError("Select your city.");
-      setPending(false);
-      return;
-    }
-
-    if (area.trim().length < 2) {
-      setError("Select or type your area.");
+    const locationError = cityAreaError(city, area);
+    if (locationError) {
+      setError(locationError);
       setPending(false);
       return;
     }
@@ -275,9 +271,7 @@ export function NurseVerificationForm({
               className="mt-1"
             />
           </div>
-          {city.trim() && (
-            <CityAreaSelect id="area" city={city} value={area} onChange={setArea} required />
-          )}
+          <CityAreaSelect id="area" city={city} value={area} onChange={setArea} />
         </div>
 
         <label className="flex items-start gap-3">

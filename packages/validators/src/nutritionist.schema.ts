@@ -13,6 +13,8 @@ const MAX_ADDITIONAL = MAX_NUTRITIONIST_SPECIALTIES - 1;
 const clinicSchema = z.object({
   name: z.string().min(2, "Clinic name is required"),
   city: z.string().min(2, "City is required"),
+  /** Neighbourhood within the city; omitted by older clients. */
+  area: z.string().trim().max(80).optional(),
   address: z.string().optional(),
   geo: geoPointInputSchema.optional(),
 });
@@ -137,6 +139,7 @@ export const adminCreateNutritionistSchema = z.object({
   password: z.string().min(8).optional(),
   phone: z.string().optional(),
   licenseNumber: z.string().min(3).max(30),
+  city: z.string().trim().min(2, "City is required"),
   /** First entry becomes primary; remainder additional + verified. */
   specialties: z.array(nutritionistSpecialtyEnum).min(1).max(MAX_NUTRITIONIST_SPECIALTIES),
 });

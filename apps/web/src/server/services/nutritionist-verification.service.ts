@@ -109,6 +109,7 @@ export async function submitNutritionistVerification(
     input.clinics.map((clinic) => ({
       name: clinic.name,
       city: clinic.city,
+      area: clinic.area?.trim() || undefined,
       address: clinic.address,
       geo: clinic.geo
         ? {
@@ -120,7 +121,7 @@ export async function submitNutritionistVerification(
   );
 
   profile.set("weeklyAvailability", input.weeklyAvailability);
-  profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
+  profile.coverageCities = coverageCities;
   const previousDocuments = profile.verificationDocuments
     ? { ...profile.verificationDocuments }
     : undefined;

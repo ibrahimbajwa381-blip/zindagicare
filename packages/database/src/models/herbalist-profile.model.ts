@@ -53,6 +53,8 @@ const herbalistProfileSchema = new Schema(
       {
         name: { type: String, required: true },
         city: { type: String, required: true, index: true },
+        /** Neighbourhood within the city. */
+        area: String,
         address: String,
         geo: geoPointSchema,
       },
@@ -79,7 +81,7 @@ const herbalistProfileSchema = new Schema(
         isActive: { type: Boolean, default: true },
       },
     ],
-    coverageCities: { type: [String], default: ["Lahore"] },
+    coverageCities: { type: [String], default: [] },
     /** Override for online consult revenue share (0–100). Null uses platform default. */
     onlineCommissionPercent: { type: Number, min: 0, max: 100, default: null },
     verificationStatus: {

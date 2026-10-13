@@ -14,6 +14,7 @@ export const adminCreateDoctorSchema = z.object({
   password: z.string().min(8).optional(),
   phone: z.string().optional(),
   pmdcNumber: z.string().min(3).max(30),
+  city: z.string().trim().min(2, "City is required"),
   /** First entry becomes primary; remainder additional + verified. */
   specialties: z.array(z.enum(SPECIALTIES)).min(1).max(5),
   sundayConsultEnabled: z.boolean().optional(),

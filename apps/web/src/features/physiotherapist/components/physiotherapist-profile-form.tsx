@@ -23,6 +23,7 @@ import type { PhysiotherapistProfileDto } from "@/server/services/physiotherapis
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import { PhysiotherapistProfilePhotoUpload } from "./physiotherapist-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const VERIFICATION_BADGE: Record<string, { label: string; className: string }> = {
   approved: {
@@ -76,14 +77,9 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
     setError(undefined);
     setSaved(false);
 
-    if (!city.trim()) {
-      setError("Select your city.");
-      setPending(false);
-      return;
-    }
-
-    if (area.trim().length < 2) {
-      setError("Select or type your area.");
+    const locationError = cityAreaError(city, area);
+    if (locationError) {
+      setError(locationError);
       setPending(false);
       return;
     }
@@ -181,9 +177,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                   className="mt-1"
                 />
               </div>
-              {city.trim() && (
-                <CityAreaSelect id="area" city={city} value={area} onChange={setArea} required />
-              )}
+              <CityAreaSelect id="area" city={city} value={area} onChange={setArea} />
             </div>
 
             <div>

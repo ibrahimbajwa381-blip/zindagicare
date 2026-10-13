@@ -30,6 +30,7 @@ import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select"
 import { PhysiotherapistAvatar } from "@/features/physiotherapist/components/physiotherapist-avatar";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import type { AdminPhysiotherapistManageRow } from "@/features/admin/types/physiotherapist-admin";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -41,7 +42,7 @@ const EMPTY_FORM = {
   licenseNumber: "",
   qualification: "",
   experienceYears: "",
-  city: "Lahore",
+  city: "",
   area: "",
   homeVisitEnabled: true,
 };
@@ -225,6 +226,11 @@ export function AdminPhysiotherapistsManagement() {
   const createPhysiotherapist = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    const locationError = cityAreaError(form.city, form.area);
+    if (locationError) {
+      setFormError(locationError);
+      return;
+    }
     if (specialties.length === 0) {
       setFormError("Select at least one specialty.");
       return;

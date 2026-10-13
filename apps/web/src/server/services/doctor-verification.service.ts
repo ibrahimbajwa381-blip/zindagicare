@@ -188,7 +188,7 @@ export async function submitDoctorVerification(
   }
 
   profile.set("weeklyAvailability", input.weeklyAvailability);
-  profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
+  profile.coverageCities = coverageCities;
   const previousDocuments = profile.verificationDocuments
     ? { ...profile.verificationDocuments }
     : undefined;

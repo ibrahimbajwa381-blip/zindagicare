@@ -30,6 +30,7 @@ import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select"
 import { NurseAvatar } from "@/features/nurse/components/nurse-avatar";
 import { nurseProfilePath } from "@/lib/nurses/profile-path";
 import type { AdminNurseManageRow } from "@/features/admin/types/nurse-admin";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -41,7 +42,7 @@ const EMPTY_FORM = {
   licenseNumber: "",
   qualification: "",
   experienceYears: "",
-  city: "Lahore",
+  city: "",
   area: "",
   homeVisitEnabled: true,
 };
@@ -225,6 +226,11 @@ export function AdminNursesManagement() {
   const createNurse = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    const locationError = cityAreaError(form.city, form.area);
+    if (locationError) {
+      setFormError(locationError);
+      return;
+    }
     if (specialties.length === 0) {
       setFormError("Select at least one specialty.");
       return;

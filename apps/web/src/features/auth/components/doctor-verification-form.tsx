@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES, hasAreaList } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES } from "@zindagi/shared";
 import { parseQualificationsInput } from "@/lib/doctors/qualifications";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   type AvailabilityDayDraft,
   type DoctorVerificationDraftFields,
 } from "@/features/auth/hooks/use-doctor-verification-draft";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const DAYS = [
   { value: 1, label: "Monday" },
@@ -268,14 +269,9 @@ export function DoctorVerificationForm() {
       return;
     }
 
-    if (!fields.hospitalCity.trim()) {
-      setError("Select the city of your practice location.");
-      setPending(false);
-      return;
-    }
-
-    if (hasAreaList(fields.hospitalCity) && !fields.hospitalArea.trim()) {
-      setError("Select the area of your practice location.");
+    const locationError = cityAreaError(fields.hospitalCity, fields.hospitalArea);
+    if (locationError) {
+      setError(locationError);
       setPending(false);
       return;
     }
@@ -515,14 +511,12 @@ export function DoctorVerificationForm() {
             />
           </div>
         </div>
-        {fields.hospitalCity.trim() && (
-          <CityAreaSelect
-            id="hospitalArea"
-            city={fields.hospitalCity}
-            value={fields.hospitalArea}
-            onChange={(area) => updateField("hospitalArea", area)}
-          />
-        )}
+        <CityAreaSelect
+          id="hospitalArea"
+          city={fields.hospitalCity}
+          value={fields.hospitalArea}
+          onChange={(area) => updateField("hospitalArea", area)}
+        />
         <div>
           <Label htmlFor="hospitalAddress">Address</Label>
           <Input

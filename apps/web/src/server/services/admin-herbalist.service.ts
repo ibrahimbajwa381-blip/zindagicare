@@ -20,6 +20,7 @@ import type {
 } from "@zindagi/validators";
 import type { HydratedDocument } from "mongoose";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
 import { HERBALIST_PROVIDER_ROLE } from "./herbalist-dashboard.service";
@@ -72,7 +73,7 @@ export type AdminHerbalistDetail = AdminHerbalistRow & {
   bio?: string;
   languages: string[];
   additionalSpecialties: string[];
-  clinics: { name: string; city: string; address?: string }[];
+  clinics: { name: string; city: string; area?: string; address?: string }[];
   coverageCities: string[];
   weeklyAvailability: {
     dayOfWeek: number;
@@ -236,6 +237,7 @@ export async function getHerbalistDetailForAdmin(
     clinics: (profile.clinics ?? []).map((clinic) => ({
       name: clinic.name,
       city: clinic.city,
+      area: clinic.area ?? undefined,
       address: clinic.address ?? undefined,
     })),
     coverageCities: profile.coverageCities ?? [],
@@ -288,7 +290,7 @@ export async function adminCreateHerbalist(
     videoConsultEnabled: true,
     verifiedAt: new Date(),
     consultationFee: 2500,
-    coverageCities: ["Lahore"],
+    coverageCities: [input.city.trim()],
   } as Record<string, unknown>)) as HerbalistProfileDocument;
 
   const slug = await generateUniqueHerbalistSlug(
@@ -388,6 +390,7 @@ export async function adminUpdateHerbalist(
       data.clinics.map((clinic) => ({
         name: clinic.name,
         city: clinic.city,
+        area: resolveHospitalArea(clinic, profile.clinics),
         address: clinic.address,
         geo: clinic.geo
           ? {
@@ -398,7 +401,7 @@ export async function adminUpdateHerbalist(
       })),
     );
     const cities = [...new Set(data.clinics.map((c) => c.city.trim()))];
-    profile.coverageCities = cities.length ? cities : ["Lahore"];
+    profile.coverageCities = cities;
   }
 
   if (data.weeklyAvailability !== undefined) {

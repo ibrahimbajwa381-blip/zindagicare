@@ -167,10 +167,14 @@ export function RegisterForm({
         <select
           id="city"
           name="city"
-          defaultValue="Lahore"
+          defaultValue=""
+          required
           aria-invalid={!!state?.fieldErrors?.city}
           className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm"
         >
+          <option value="" disabled>
+            Select your city
+          </option>
           {PAKISTAN_CITIES.map((city) => (
             <option key={city} value={city}>
               {city}

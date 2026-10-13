@@ -10,9 +10,12 @@ import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import { HerbalistProfilePhotoUpload } from "@/features/herbalist/components/herbalist-profile-photo-upload";
 import { formatDayOfWeek } from "@/features/herbalist/types";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const UPLOAD_URL = "/api/v1/herbalist/verification/upload";
 
@@ -23,7 +26,7 @@ const REQUIRED_DOCS = [
   "cnicBack",
 ] as const;
 
-type ClinicRow = { name: string; city: string; address: string };
+type ClinicRow = { name: string; city: string; area: string; address: string };
 type AvailabilityRow = {
   dayOfWeek: number;
   startTimeLocal: string;
@@ -54,7 +57,7 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
   const [additionalSpecialties, setAdditionalSpecialties] = useState<string[]>([]);
   const [languages, setLanguages] = useState("English, Urdu");
   const [clinics, setClinics] = useState<ClinicRow[]>([
-    { name: "", city: "Lahore", address: "" },
+    { name: "", city: "", area: "", address: "" },
   ]);
   const [availability, setAvailability] = useState<AvailabilityRow[]>([
     { dayOfWeek: 1, startTimeLocal: "17:00", endTimeLocal: "21:00" },
@@ -97,6 +100,19 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
       setError("Select your primary specialty.");
       return;
     }
+    // Every named location needs both a city and an area.
+    for (const [index, clinic] of clinics.entries()) {
+      if (!clinic.name.trim()) continue;
+      const locationError = cityAreaError(
+        clinic.city,
+        clinic.area,
+        `for Location ${index + 1}`,
+      );
+      if (locationError) {
+        setError(locationError);
+        return;
+      }
+    }
     if (!clinics.some((clinic) => clinic.name.trim() && clinic.city.trim())) {
       setError("Add at least one practice location.");
       return;
@@ -134,6 +150,7 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
         .map((clinic) => ({
           name: clinic.name.trim(),
           city: clinic.city.trim(),
+          area: clinic.area.trim() || undefined,
           address: clinic.address.trim() || undefined,
         })),
       videoConsultEnabled: true,
@@ -333,7 +350,7 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
             onClick={() =>
               setClinics((prev) => [
                 ...prev,
-                { name: "", city: "Lahore", address: "" },
+                { name: "", city: "", area: "", address: "" },
               ])
             }
           >
@@ -343,7 +360,7 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
         {clinics.map((clinic, index) => (
           <div
             key={index}
-            className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-3"
+            className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:grid-cols-2"
           >
             <Input
               placeholder="Clinic name"
@@ -356,18 +373,33 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
                 )
               }
             />
-            <Input
-              placeholder="City"
+            <CitySelect
+              id={`clinic-city-${index}`}
               value={clinic.city}
-              onChange={(e) =>
+              onChange={(city) =>
                 setClinics((prev) =>
                   prev.map((c, i) =>
-                    i === index ? { ...c, city: e.target.value } : c,
+                    i !== index
+                      ? c
+                      : // A new city makes the old area meaningless, so clear it.
+                        { ...c, city, area: city === c.city ? c.area : "" },
                   ),
                 )
               }
             />
-            <div className="flex gap-2">
+            <div className="sm:col-span-2">
+              <CityAreaSelect
+                id={`clinic-area-${index}`}
+                city={clinic.city}
+                value={clinic.area}
+                onChange={(area) =>
+                  setClinics((prev) =>
+                    prev.map((c, i) => (i === index ? { ...c, area } : c)),
+                  )
+                }
+              />
+            </div>
+            <div className="flex gap-2 sm:col-span-2">
               <Input
                 placeholder="Address (optional)"
                 value={clinic.address}

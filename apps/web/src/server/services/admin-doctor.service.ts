@@ -542,7 +542,7 @@ export async function adminCreateDoctor(
     weeklyAvailability: DEFAULT_WEEKLY_AVAILABILITY,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
     homeVisitEnabled: true,
-    coverageCities: ["Lahore"],
+    coverageCities: [input.city.trim()],
   } as Record<string, unknown>)) as DoctorProfileDocument;
 
   const slug = await generateUniqueDoctorSlug(input.name, profile._id.toString());
