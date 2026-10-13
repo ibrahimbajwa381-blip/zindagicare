@@ -121,7 +121,9 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
     return profile;
   }
 
-  function requestInput(phone: string) {
+  function requestInput(
+    phone: string,
+  ): Parameters<typeof SundayConsultService.submitRequest>[1] {
     return {
       patientPhone: phone,
       history: [
@@ -132,7 +134,7 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
         { key: "additional_info", answer: "None" },
       ],
       affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD,
-    } as const;
+    };
   }
 
   // submitRequest's return type is a union (request vs. payment-checkout);

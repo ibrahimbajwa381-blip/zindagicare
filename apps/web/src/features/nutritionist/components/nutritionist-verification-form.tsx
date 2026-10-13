@@ -289,7 +289,8 @@ export function NutritionistVerificationForm({ name, defaults }: Props) {
               name="consultationFee"
               type="number"
               min={500}
-              defaultValue={defaults?.consultationFee ?? 1500}
+              defaultValue={defaults?.consultationFee || undefined}
+              placeholder="e.g. 1500"
               required
             />
           </div>

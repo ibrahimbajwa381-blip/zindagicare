@@ -10,7 +10,6 @@ import {
   PHYSIO_HOME_VISIT_FEE_MAX,
   PHYSIO_HOME_VISIT_FEE_MIN,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
-  resolvePhysioHomeVisitFee,
 } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
@@ -256,7 +255,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                   min={PHYSIO_HOME_VISIT_FEE_MIN}
                   max={PHYSIO_HOME_VISIT_FEE_MAX}
                   step={50}
-                  defaultValue={resolvePhysioHomeVisitFee(profile.staff.homeVisitFee)}
+                  defaultValue={profile.staff.homeVisitFee}
                   required
                 />
                 <p className="mt-1 text-xs text-slate-500">

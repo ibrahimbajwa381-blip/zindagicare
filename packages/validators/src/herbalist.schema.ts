@@ -42,9 +42,8 @@ export const herbalistVerificationSchema = z.object({
   avatarUrl: z.string().min(1, "Profile photo is required"),
   bio: z.string().max(2000).optional(),
   consultationFee: z.coerce
-    .number()
-    .min(500, "Consultation fee must be at least PKR 500")
-    .optional(),
+    .number({ message: "Enter your consultation fee" })
+    .min(500, "Consultation fee must be at least PKR 500"),
   primarySpecialty: herbalistSpecialtyEnum,
   additionalSpecialties: z
     .array(herbalistSpecialtyEnum)

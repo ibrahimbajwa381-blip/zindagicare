@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   HOME_CARE_MATCH_RADIUS_KM,
+  NURSE_HOME_VISIT_FEE_MAX,
+  NURSE_HOME_VISIT_FEE_MIN,
   MAX_NURSING_SPECIALTIES,
   NURSING_HOME_VISIT_SPLIT as SPLIT,
   NURSING_SPECIALTIES_ALPHABETICAL,
@@ -26,6 +28,7 @@ type NurseVerificationFormProps = {
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
+    homeVisitFee?: number;
     city?: string;
     area?: string;
     bankAccount?: {
@@ -110,6 +113,7 @@ export function NurseVerificationForm({
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
+      homeVisitFee: form.get("homeVisitFee"),
       specialties,
       avatarUrl,
       serviceArea: {
@@ -218,6 +222,25 @@ export function NurseVerificationForm({
             defaultValue={defaults?.experienceYears ?? 0}
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="homeVisitFee">Your fee per general nursing visit (Rs.)</Label>
+          <Input
+            id="homeVisitFee"
+            name="homeVisitFee"
+            type="number"
+            inputMode="numeric"
+            min={NURSE_HOME_VISIT_FEE_MIN}
+            max={NURSE_HOME_VISIT_FEE_MAX}
+            step={50}
+            defaultValue={defaults?.homeVisitFee}
+            placeholder="e.g. 2000"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Required. Set your own fee between Rs. {NURSE_HOME_VISIT_FEE_MIN.toLocaleString()} and Rs.{" "}
+            {NURSE_HOME_VISIT_FEE_MAX.toLocaleString()}. Patients who book you for a nursing visit pay this amount (IV drips, injections and wound care use standard rates).
+          </p>
         </div>
         <div>
           <Label htmlFor="specialties">Specialties</Label>

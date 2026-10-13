@@ -154,8 +154,8 @@ function EarningsSection() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <InfoCard icon={Wallet} title="You set your fee">
-              Choose any fee from {formatRs(F.feeMin)} to {formatRs(F.feeMax)} per visit in
-              Profile. Leave it empty to use the platform rate of {formatRs(F.defaultFee)}.
+              Choose any fee from {formatRs(F.feeMin)} to {formatRs(F.feeMax)} per visit when you
+              sign up, and change it any time in Profile.
             </InfoCard>
             <InfoCard icon={Sun} title="Paid every Sunday">
               Your full available balance is sent to your registered bank or wallet account

@@ -19,7 +19,6 @@ export const PHYSIO_GUIDE_EXAMPLES = [2800, 4000].map((fee) => {
 export const PHYSIO_GUIDE_FACTS = {
   physioPercent: SPLIT.physiotherapistPercent,
   platformPercent: SPLIT.platformPercent,
-  defaultFee: SPLIT.patientPays,
   feeMin: PHYSIO_HOME_VISIT_FEE_MIN,
   feeMax: PHYSIO_HOME_VISIT_FEE_MAX,
   radiusKm: HOME_CARE_MATCH_RADIUS_KM,
@@ -32,7 +31,7 @@ export const PHYSIO_GUIDE_FAQ = [
   },
   {
     q: "Can I set my own fee?",
-    a: `Yes. Set your fee per home visit in Profile, anywhere from ${formatRs(PHYSIO_HOME_VISIT_FEE_MIN)} to ${formatRs(PHYSIO_HOME_VISIT_FEE_MAX)}. If you leave it empty, the platform rate of ${formatRs(SPLIT.patientPays)} is used. Patients always pay your own fee, whether they book you from your profile or choose "nearest available" and are matched with you.`,
+    a: `Yes. Set your fee per home visit in Profile, anywhere from ${formatRs(PHYSIO_HOME_VISIT_FEE_MIN)} to ${formatRs(PHYSIO_HOME_VISIT_FEE_MAX)}. You set it when you create your profile and can change it any time. Patients always pay your own fee, whether they book you from your profile or choose "nearest available" and are matched with you.`,
   },
   {
     q: "When do I get paid?",

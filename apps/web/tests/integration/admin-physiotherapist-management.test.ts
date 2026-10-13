@@ -231,7 +231,7 @@ describe("Admin physiotherapist management (real local MongoDB)", () => {
     const row = await createPhysio();
     await svc.adminUpdatePhysiotherapist(adminId, row.id, { isActive: false });
     await expect(
-      HomeVisitService.assertPhysiotherapistBookable(row.userId, 74.3587, 31.5204, "Lahore", new Date()),
+      HomeVisitService.assertPhysiotherapistBookable(row.userId, 74.3587, 31.5204, new Date()),
     ).rejects.toMatchObject({ statusCode: 400 });
     const [listed] = await svc.listPhysiotherapistsForManagement();
     expect(listed.isActive).toBe(false);

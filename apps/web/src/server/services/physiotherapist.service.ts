@@ -472,6 +472,7 @@ export async function submitPhysiotherapistVerification(
   staff.cnicLast4 = cnicLast4(input.cnic);
   staff.qualification = input.qualification;
   staff.experienceYears = input.experienceYears;
+  staff.homeVisitFee = input.homeVisitFee;
   staff.specialties = input.specialties;
   const previousDocuments = staff.verificationDocuments
     ? { ...staff.verificationDocuments }

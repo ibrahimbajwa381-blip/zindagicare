@@ -22,11 +22,11 @@ export type RegisterFormState = {
   error?: string;
 };
 import {
+  findActiveUserByPhone,
+  findUserByEmail,
   isEmailRegistered,
   loadAuthUserPayload,
   registerWithCredentials,
-  signInWithPhoneOtp,
-  verifyCredentialsLogin,
 } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
 import { loginSchema, otpVerifySchema, registerSchema, type AccountType } from "@zindagi/validators";
@@ -46,15 +46,15 @@ async function resolveSignedInUser(
   provider: "credentials" | "phone-otp",
   fields: Record<string, string>,
 ): Promise<PostAuthUser | null> {
-  if (provider === "credentials") {
-    return verifyCredentialsLogin(
-      String(fields.email).trim().toLowerCase(),
-      String(fields.password),
-    );
-  }
-
-  const user = await signInWithPhoneOtp(String(fields.phone));
-  return user;
+  // signIn() has already run the provider's authorize() (password / OTP check),
+  // so only load the payload here — re-verifying would repeat the bcrypt compare
+  // and every DB query, roughly doubling sign-in time.
+  const user =
+    provider === "credentials"
+      ? await findUserByEmail(String(fields.email))
+      : await findActiveUserByPhone(String(fields.phone));
+  if (!user) return null;
+  return loadAuthUserPayload(String(user._id));
 }
 
 async function signInWithProvider(

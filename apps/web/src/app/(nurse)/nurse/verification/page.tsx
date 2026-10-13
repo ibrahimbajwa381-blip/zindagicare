@@ -93,6 +93,7 @@ export default async function NurseVerificationPage() {
             licenseNumber: profile.verification.licenseNumber,
             qualification: profile.verification.qualification,
             experienceYears: profile.verification.experienceYears,
+            homeVisitFee: profile.staff.homeVisitFee,
             city: profile.staff.serviceArea.city,
             area: profile.staff.serviceArea.area,
             bankAccount: bankAccount ?? undefined,

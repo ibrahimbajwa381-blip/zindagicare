@@ -87,17 +87,19 @@ const physiotherapySpecialtiesSchema = z
   .array(z.string().min(1))
   .max(MAX_PHYSIOTHERAPY_SPECIALTIES, `Select up to ${MAX_PHYSIOTHERAPY_SPECIALTIES} specialties`);
 
+/** The per-visit fee the physiotherapist sets themselves (PKR). */
+const physioHomeVisitFeeSchema = z.coerce
+  .number({ message: "Enter your per-visit fee" })
+  .int("Fee must be a whole number")
+  .min(PHYSIO_HOME_VISIT_FEE_MIN, `Fee must be at least Rs. ${PHYSIO_HOME_VISIT_FEE_MIN}`)
+  .max(PHYSIO_HOME_VISIT_FEE_MAX, `Fee can be at most Rs. ${PHYSIO_HOME_VISIT_FEE_MAX}`);
+
 export const updatePhysiotherapistProfileSchema = baseStaffProfileSchema.extend({
   specialties: physiotherapySpecialtiesSchema.optional(),
   bio: z.string().trim().max(2000, "Bio is too long").optional(),
   languages: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
   avatarUrl: z.string().min(1).max(500).optional(),
-  homeVisitFee: z.coerce
-    .number()
-    .int("Fee must be a whole number")
-    .min(PHYSIO_HOME_VISIT_FEE_MIN, `Fee must be at least Rs. ${PHYSIO_HOME_VISIT_FEE_MIN}`)
-    .max(PHYSIO_HOME_VISIT_FEE_MAX, `Fee can be at most Rs. ${PHYSIO_HOME_VISIT_FEE_MAX}`)
-    .optional(),
+  homeVisitFee: physioHomeVisitFeeSchema.optional(),
 });
 export type UpdatePhysiotherapistProfileInput = z.infer<
   typeof updatePhysiotherapistProfileSchema
@@ -164,6 +166,7 @@ export const physiotherapistVerificationSchema = baseStaffVerificationSchema.ext
   }),
   specialties: physiotherapySpecialtiesSchema.min(1, "Select at least one specialty"),
   avatarUrl: z.string().min(1, "Profile photo is required").max(500),
+  homeVisitFee: physioHomeVisitFeeSchema,
   bankAccount: verificationBankAccountSchema,
 });
 export type PhysiotherapistVerificationInput = z.infer<
@@ -346,17 +349,19 @@ const nursingSpecialtiesSchema = z
   .array(z.string().min(1))
   .max(MAX_NURSING_SPECIALTIES, `Select up to ${MAX_NURSING_SPECIALTIES} specialties`);
 
+/** The per-visit fee the nurse sets themselves (PKR). */
+const nurseHomeVisitFeeSchema = z.coerce
+  .number({ message: "Enter your per-visit fee" })
+  .int("Fee must be a whole number")
+  .min(NURSE_HOME_VISIT_FEE_MIN, `Fee must be at least Rs. ${NURSE_HOME_VISIT_FEE_MIN}`)
+  .max(NURSE_HOME_VISIT_FEE_MAX, `Fee can be at most Rs. ${NURSE_HOME_VISIT_FEE_MAX}`);
+
 export const updateNurseProfileSchema = baseStaffProfileSchema.extend({
   specialties: nursingSpecialtiesSchema.optional(),
   bio: z.string().trim().max(2000, "Bio is too long").optional(),
   languages: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
   avatarUrl: z.string().min(1).max(500).optional(),
-  homeVisitFee: z.coerce
-    .number()
-    .int("Fee must be a whole number")
-    .min(NURSE_HOME_VISIT_FEE_MIN, `Fee must be at least Rs. ${NURSE_HOME_VISIT_FEE_MIN}`)
-    .max(NURSE_HOME_VISIT_FEE_MAX, `Fee can be at most Rs. ${NURSE_HOME_VISIT_FEE_MAX}`)
-    .optional(),
+  homeVisitFee: nurseHomeVisitFeeSchema.optional(),
 });
 export type UpdateNurseProfileInput = z.infer<typeof updateNurseProfileSchema>;
 
@@ -366,6 +371,7 @@ export type NurseBankAccountInput = z.infer<typeof nurseBankAccountSchema>;
 export const nurseVerificationSchema = baseStaffVerificationSchema.extend({
   specialties: nursingSpecialtiesSchema.min(1, "Select at least one specialty"),
   avatarUrl: z.string().min(1, "Profile photo is required").max(500),
+  homeVisitFee: nurseHomeVisitFeeSchema,
   bankAccount: verificationBankAccountSchema,
 });
 export type NurseVerificationInput = z.infer<typeof nurseVerificationSchema>;

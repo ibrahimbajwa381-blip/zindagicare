@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   HOME_CARE_MATCH_RADIUS_KM,
+  PHYSIO_HOME_VISIT_FEE_MAX,
+  PHYSIO_HOME_VISIT_FEE_MIN,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
   PHYSIOTHERAPY_HOME_VISIT_SPLIT as SPLIT,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
@@ -26,6 +28,7 @@ type PhysiotherapistVerificationFormProps = {
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
+    homeVisitFee?: number;
     city?: string;
     area?: string;
     bankAccount?: {
@@ -110,6 +113,7 @@ export function PhysiotherapistVerificationForm({
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
+      homeVisitFee: form.get("homeVisitFee"),
       specialties,
       avatarUrl,
       serviceArea: {
@@ -220,6 +224,25 @@ export function PhysiotherapistVerificationForm({
             defaultValue={defaults?.experienceYears ?? 0}
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="homeVisitFee">Your fee per home visit (Rs.)</Label>
+          <Input
+            id="homeVisitFee"
+            name="homeVisitFee"
+            type="number"
+            inputMode="numeric"
+            min={PHYSIO_HOME_VISIT_FEE_MIN}
+            max={PHYSIO_HOME_VISIT_FEE_MAX}
+            step={50}
+            defaultValue={defaults?.homeVisitFee}
+            placeholder="e.g. 2000"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Required. Set your own fee between Rs. {PHYSIO_HOME_VISIT_FEE_MIN.toLocaleString()} and Rs.{" "}
+            {PHYSIO_HOME_VISIT_FEE_MAX.toLocaleString()}. Patients pay this amount per visit.
+          </p>
         </div>
         <div>
           <Label htmlFor="specialties">Specialties</Label>

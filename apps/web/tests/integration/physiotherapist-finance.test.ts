@@ -36,6 +36,7 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
     accountTitle: "Physio Person",
     bankName: "Meezan Bank",
     accountNumber: "0123456789",
+    iban: undefined,
   };
 
   beforeAll(async () => {
@@ -138,6 +139,7 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
       cnic: "35202-1234567-1",
       qualification: "DPT",
       experienceYears: 3,
+      homeVisitFee: 2000,
       specialties: [shared.PHYSIOTHERAPY_SPECIALTIES[0] as string],
       avatarUrl: "/api/v1/physiotherapist/avatar/x.webp",
       serviceArea: { city: "Lahore", area: "DHA", homeVisitEnabled: false },
@@ -165,6 +167,7 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
       cnic: "35202-1234567-1",
       qualification: "DPT",
       experienceYears: 3,
+      homeVisitFee: 2000,
       specialties: [shared.PHYSIOTHERAPY_SPECIALTIES[0] as string],
       avatarUrl: "/api/v1/physiotherapist/avatar/x.webp",
       serviceArea: { city: "Lahore", area: "DHA", homeVisitEnabled: false },
@@ -183,6 +186,9 @@ describe("Physiotherapist earnings & payouts (real local MongoDB)", () => {
     });
     expect(noDegree.success).toBe(false);
     expect(noDegree.error?.issues[0]?.path).toEqual(["documentUrls", "degreeCertificate"]);
+    const noFee: Record<string, unknown> = { ...base };
+    delete noFee.homeVisitFee;
+    expect(validators.physiotherapistVerificationSchema.safeParse(noFee).success).toBe(false);
   });
 
   it("credits 70% of completed visits only", async () => {

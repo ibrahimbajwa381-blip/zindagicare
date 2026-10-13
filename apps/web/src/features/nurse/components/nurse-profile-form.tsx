@@ -10,7 +10,6 @@ import {
   NURSE_HOME_VISIT_FEE_MAX,
   NURSE_HOME_VISIT_FEE_MIN,
   NURSING_SPECIALTIES_ALPHABETICAL,
-  resolveNurseHomeVisitFee,
 } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
@@ -256,7 +255,7 @@ export function NurseProfileForm({ profile }: NurseProfileFormProps) {
                   min={NURSE_HOME_VISIT_FEE_MIN}
                   max={NURSE_HOME_VISIT_FEE_MAX}
                   step={50}
-                  defaultValue={resolveNurseHomeVisitFee(profile.staff.homeVisitFee)}
+                  defaultValue={profile.staff.homeVisitFee}
                   required
                 />
                 <p className="mt-1 text-xs text-slate-500">
