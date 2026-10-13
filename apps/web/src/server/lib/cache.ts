@@ -79,7 +79,10 @@ type Backend = {
 };
 
 const PREFIX = "zc:";
-const OP_TIMEOUT_MS = 800;
+// Production runs next to Redis, so a slow op means Redis is unhealthy. Local
+// dev talks to the remote Upstash over the internet (~500ms+ per round trip),
+// which would trip a tight timeout on nearly every request.
+const OP_TIMEOUT_MS = process.env.NODE_ENV === "production" ? 800 : 3000;
 
 function tagKey(tag: string) {
   return `${PREFIX}tag:${tag}`;

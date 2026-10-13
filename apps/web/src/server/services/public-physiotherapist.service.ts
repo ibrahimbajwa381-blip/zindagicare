@@ -9,6 +9,7 @@ import {
 import { Types } from "mongoose";
 import { citiesMatch, formatCityName, normalizeCityName } from "@/lib/geo/city-match";
 import { haversineKm } from "@/lib/geo/distance";
+import { nearestCity } from "@/lib/geo/nearest-city";
 import { mongoFilter } from "@/lib/mongo/query";
 import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import {
@@ -43,6 +44,8 @@ export type PublicPhysiotherapist = {
   distanceKm?: number;
   /** True when the patient's pin is within the home-visit match radius. */
   withinRadius?: boolean;
+  /** True when the physio serves the city the patient's pin falls in. */
+  inPatientCity?: boolean;
   /** Average visible patient rating (one decimal); only set by `list()` when reviewed. */
   ratingAvg?: number;
   /** Number of visible patient reviews; only set by `list()`. */
@@ -76,6 +79,7 @@ async function mapStaff(
   origin?: { lng: number; lat: number },
   includePortfolio = false,
   city?: string,
+  patientCity?: string,
 ): Promise<PublicPhysiotherapist | null> {
   const user = staff.userId as PopulatedUser | null;
   if (!isListedUser(user)) return null;
@@ -94,9 +98,10 @@ async function mapStaff(
     area?: string;
     geo?: { coordinates?: number[] };
   }[];
-  // Show the service area in the filtered city, falling back to the primary one.
+  // Show the service area in the filtered (or patient's) city, falling back to the primary one.
+  const shownCity = city ?? patientCity;
   const area =
-    (city && areas.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city))) || areas[0];
+    (shownCity && areas.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, shownCity))) || areas[0];
 
   let distanceKm: number | undefined;
   if (origin) {
@@ -131,6 +136,9 @@ async function mapStaff(
     distanceKm,
     withinRadius:
       distanceKm === undefined ? undefined : distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+    inPatientCity: patientCity
+      ? areas.some((a) => citiesMatch(a.city ?? LAUNCH_CITY, patientCity))
+      : undefined,
   };
 }
 
@@ -164,6 +172,7 @@ export class PublicPhysiotherapistService {
     await connectDatabase();
     const city = options.city?.trim();
     const specialty = options.specialty?.trim().toLowerCase();
+    const patientCity = options.near ? nearestCity(options.near) : undefined;
 
     const docs = await StaffProfileModel.find(PUBLIC_FILTER)
       .populate("userId", `name avatarUrl ${USER_VISIBILITY_FIELDS}`)
@@ -181,7 +190,7 @@ export class PublicPhysiotherapistService {
             !specialty ||
             (doc.specialties ?? []).some((s) => s.trim().toLowerCase() === specialty),
         )
-        .map((doc) => mapStaff(doc as never, options.near, false, city)),
+        .map((doc) => mapStaff(doc as never, options.near, false, city, patientCity)),
     );
 
     let rows = mapped.filter((row): row is PublicPhysiotherapist => row !== null);
