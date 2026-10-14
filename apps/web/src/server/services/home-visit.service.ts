@@ -58,6 +58,7 @@ import {
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { withLeaseLock } from "@/server/lib/mongo-lease-lock";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import {
   buildManualTransferCheckout,
@@ -1596,62 +1597,58 @@ export class HomeVisitService {
       }
     }
 
-    const updated = (await HomeVisitModel.findOneAndUpdate(
-      mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
-      {
-        $set: {
-          assignedStaffId: staffId,
-          status: HomeVisitStatuses.ASSIGNED,
-          ...(distanceKm !== null
-            ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
-            : {}),
-          ...pricingSet,
-        },
+    // Check-then-assign must not interleave for the same provider: two visits
+    // could each see the provider as free and both get them. Serialize per
+    // provider; the conflict window (±2h) is a range, which no unique index
+    // can express.
+    const updated = await withLeaseLock(
+      `home-visit-provider:${staffId}`,
+      async () => {
+        const conflict = await HomeVisitModel.exists(
+          mongoFilter({
+            _id: { $ne: visitId },
+            assignedStaffId: staffId,
+            status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+            scheduledAt: {
+              $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
+              $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
+            },
+            deletedAt: { $exists: false },
+          }),
+        );
+        if (conflict) {
+          throw new AppError(
+            "Selected provider was just assigned to another visit at this time — please try again",
+            ErrorCodes.CONFLICT,
+            409,
+          );
+        }
+
+        const assigned = (await HomeVisitModel.findOneAndUpdate(
+          mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
+          {
+            $set: {
+              assignedStaffId: staffId,
+              status: HomeVisitStatuses.ASSIGNED,
+              ...(distanceKm !== null
+                ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
+                : {}),
+              ...pricingSet,
+            },
+          },
+          { new: true },
+        )) as HydratedDocument<HomeVisitDocument> | null;
+        if (!assigned) {
+          throw new AppError(
+            "Visit cannot be assigned right now — it may have just been updated by someone else",
+            ErrorCodes.CONFLICT,
+            409,
+          );
+        }
+        return assigned;
       },
-      { new: true },
-    )) as HydratedDocument<HomeVisitDocument> | null;
-    if (!updated) {
-      throw new AppError(
-        "Visit cannot be assigned right now — it may have just been updated by someone else",
-        ErrorCodes.CONFLICT,
-        409,
-      );
-    }
-
-    const holders = await HomeVisitModel.find(
-      mongoFilter({
-        assignedStaffId: staffId,
-        status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
-        scheduledAt: {
-          $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
-          $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
-        },
-        deletedAt: { $exists: false },
-      }),
-    )
-      .select("_id")
-      .sort({ _id: 1 })
-      .lean();
-
-    const winnerId = holders[0]?._id?.toString();
-    if (holders.length > 1 && winnerId !== visitId) {
-      await HomeVisitModel.updateOne(
-        mongoFilter({
-          _id: visitId,
-          assignedStaffId: staffId,
-          status: HomeVisitStatuses.ASSIGNED,
-        }),
-        {
-          $set: { status: HomeVisitStatuses.REQUESTED },
-          $unset: { assignedStaffId: "" },
-        },
-      );
-      throw new AppError(
-        "Selected provider was just assigned to another visit at this time — please try again",
-        ErrorCodes.CONFLICT,
-        409,
-      );
-    }
+      { busyMessage: "Selected provider is being assigned to another visit right now — please try again" },
+    );
 
     // A checkout opened before assignment must charge the re-priced amount.
     if (updated.paymentId && updated.pricing && "pricing.total" in pricingSet) {
