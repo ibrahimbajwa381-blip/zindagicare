@@ -191,7 +191,7 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
             : "No verified physiotherapists listed yet."}
         </p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((physio) => {
             const profileHref = physiotherapistProfilePath(physio.slug, physio.id);
             const canBookHome =
@@ -241,9 +241,14 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
                           {physio.distanceKm.toFixed(1)} km away
                         </span>
                       )}
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {[physio.area, physio.city].filter(Boolean).join(", ")}
+                      <span
+                        className="inline-flex min-w-0 max-w-full items-center gap-1"
+                        title={[physio.area, physio.city].filter(Boolean).join(", ")}
+                      >
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">
+                          {[physio.area, physio.city].filter(Boolean).join(", ")}
+                        </span>
                       </span>
                     </p>
                   </div>
