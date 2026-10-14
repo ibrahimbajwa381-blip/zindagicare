@@ -47,6 +47,7 @@ export const siteConfig = {
   links: {
     doctors: "/doctors",
     sundayConsult: "/sunday-consult",
+    askDoctor: "/questions",
     urgentCare: "/urgent-care",
     homeServices: "/home-services",
     /** Home physiotherapy is booked from the physiotherapist directory (old /home-physiotherapy redirects there). */

@@ -18,6 +18,7 @@ import { ProviderOnboardingPreview } from "@/features/marketing/components/provi
 import { TestimonialsSection } from "@/features/marketing/components/testimonials-section";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
 import { RefundGuaranteeBar } from "@/features/marketing/components/refund-guarantee-bar";
+import { HomeQaSection } from "@/features/medical-qa/components/home-qa-section";
 
 export const metadata: Metadata = buildRootMetadata({
   alternates: { canonical: getSiteUrl() },
@@ -33,6 +34,8 @@ export default async function HomePage() {
       <HeroSection />
       <TrustBar />
       <RefundGuaranteeBar />
+      {/* Free public Q&A, kept near the top so patients find it without scrolling far. */}
+      <HomeQaSection />
       <HomeServicesPreview />
       <HomePhysioBanner />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>

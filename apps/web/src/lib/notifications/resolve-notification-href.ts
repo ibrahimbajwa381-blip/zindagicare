@@ -127,6 +127,14 @@ export function resolveNotificationHref(
     case "prescription_issued":
       return "/prescriptions";
 
+    case "medical_question_new": {
+      // The public question page re-checks visibility on every load; the link grants nothing.
+      const questionId = payload.questionId;
+      return typeof questionId === "string" && /^[a-f0-9]{24}$/i.test(questionId)
+        ? `/questions/${questionId}`
+        : null;
+    }
+
     default:
       return null;
   }

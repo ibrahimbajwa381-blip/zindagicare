@@ -67,6 +67,7 @@ export function UnifiedHeader({
     home: t.nav.home,
     onlineConsult: t.nav.onlineConsult,
     sundayConsult: t.nav.sundayConsult,
+    askDoctor: t.nav.askDoctor,
     urgentCare: t.nav.urgentCare,
     homeServices: t.nav.homeServices,
     homePhysio: t.nav.homePhysio,
@@ -101,6 +102,11 @@ export function UnifiedHeader({
       href: siteConfig.links.homePhysiotherapy,
     },
     { label: t.nav.onlineConsult, href: siteConfig.links.doctors },
+    {
+      label: t.nav.askDoctor,
+      href: siteConfig.links.askDoctor,
+      badge: t.nav.freeBadge,
+    },
     {
       label: t.nav.sundayConsult,
       href: siteConfig.links.sundayConsult,
