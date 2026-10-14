@@ -7,7 +7,9 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
 
 export function useChatRealtime(onEvent: (event: ChatRealtimeEvent) => void) {
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     let source: EventSource | null = null;

@@ -40,7 +40,7 @@ export function ConsultJoinAction({
   scheduledStart,
   scheduledEnd,
 }: Props) {
-  const { canJoin, joinOpensAt } = useVideoJoinWindow(scheduledStart, scheduledEnd);
+  const { canJoin, joinOpensAt, now } = useVideoJoinWindow(scheduledStart, scheduledEnd);
 
   if (!VIDEO_TYPES.includes(type as (typeof VIDEO_TYPES)[number])) return null;
   if (outcome === "missed" || outcome === "cancelled" || outcome === "completed") {
@@ -58,7 +58,8 @@ export function ConsultJoinAction({
     );
   }
 
-  const msUntilJoin = joinOpensAt.getTime() - Date.now();
+  if (now === null) return null;
+  const msUntilJoin = joinOpensAt.getTime() - now;
   if (msUntilJoin <= 0) return null;
 
   return (

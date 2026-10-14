@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
@@ -15,7 +15,6 @@ import {
   UserPlus,
   Video,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
@@ -42,22 +41,31 @@ type MobileNavProps = {
   closeMenuLabel?: string;
 };
 
-function navItemIcon(item: MobileNavLink): LucideIcon {
-  if (item.action === "sign-out") return LogOut;
-  if (item.href?.includes("sunday")) return CalendarHeart;
-  if (item.href?.includes("home-services")) return Home;
-  if (item.href?.includes("doctors")) return Video;
-  if (item.href?.includes("login")) return LogIn;
-  if (item.href?.includes("register")) return UserPlus;
+/** Picks the icon for a nav item; a component so the icon type is static per branch. */
+function NavItemIcon({ item, className }: { item: MobileNavLink; className: string }) {
+  const props = { className, strokeWidth: 2 };
+  if (item.action === "sign-out") return <LogOut {...props} />;
+  if (item.href?.includes("sunday")) return <CalendarHeart {...props} />;
+  if (item.href?.includes("home-services")) return <Home {...props} />;
+  if (item.href?.includes("doctors")) return <Video {...props} />;
+  if (item.href?.includes("login")) return <LogIn {...props} />;
+  if (item.href?.includes("register")) return <UserPlus {...props} />;
   if (
     item.href?.includes("dashboard") ||
     item.href?.includes("doctor") ||
     item.href?.includes("admin")
   ) {
-    return LayoutDashboard;
+    return <LayoutDashboard {...props} />;
   }
-  return ChevronRight;
+  return <ChevronRight {...props} />;
 }
+
+/** Stagger for the open animation: each item starts 55ms after the previous. */
+function itemDelayMs(index: number) {
+  return 80 + index * 55;
+}
+
+const subscribeNoop = () => () => {};
 
 function MobileNavItem({
   item,
@@ -70,7 +78,6 @@ function MobileNavItem({
   animate: boolean;
   delayMs: number;
 }) {
-  const Icon = navItemIcon(item);
   const isSignOut = item.action === "sign-out";
 
   const itemClassName = cn(
@@ -93,7 +100,7 @@ function MobileNavItem({
         )}
         aria-hidden
       >
-        <Icon className="size-[1.125rem]" strokeWidth={2} />
+        <NavItemIcon item={item} className="size-[1.125rem]" />
       </span>
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.badge ? (
@@ -147,24 +154,29 @@ export function MobileNav({
   closeMenuLabel = "Close menu",
 }: MobileNavProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // Portal target exists only in the browser: false on the server and during
+  // hydration, true afterwards (no effect + setState round-trip needed).
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
   const [animateItems, setAnimateItems] = useState(false);
   const panelId = useId();
 
   const sectionLinks = sections.flatMap((section) => section.links);
   const allItems = [...links, ...sectionLinks];
-  const footerDelayMs = 80 + allItems.length * 55 + 40;
+  const footerDelayMs = itemDelayMs(allItems.length) + 40;
+  // Index of each section's first item, after the top-level links.
+  const sectionStart = sections.map((_, i) =>
+    sections.slice(0, i).reduce((count, section) => count + section.links.length, links.length),
+  );
+
+  // Every way of closing resets the animation, so the next open replays it.
+  const close = () => {
+    setOpen(false);
+    setAnimateItems(false);
+  };
+  const toggle = () => (open ? close() : setOpen(true));
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      setAnimateItems(false);
-      return;
-    }
-
+    if (!open) return;
     const frame = requestAnimationFrame(() => setAnimateItems(true));
     return () => cancelAnimationFrame(frame);
   }, [open]);
@@ -174,7 +186,7 @@ export function MobileNav({
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -182,11 +194,6 @@ export function MobileNav({
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  const close = () => setOpen(false);
-  const toggle = () => setOpen((value) => !value);
-
-  let itemIndex = 0;
 
   const drawer = (
     <div
@@ -244,23 +251,19 @@ export function MobileNav({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
           <ul className="space-y-1">
-            {links.map((item) => {
-              const delayMs = 80 + itemIndex * 55;
-              itemIndex += 1;
-              return (
-                <li key={item.href ?? item.label}>
-                  <MobileNavItem
-                    item={item}
-                    onClose={close}
-                    animate={animateItems}
-                    delayMs={delayMs}
-                  />
-                </li>
-              );
-            })}
+            {links.map((item, i) => (
+              <li key={item.href ?? item.label}>
+                <MobileNavItem
+                  item={item}
+                  onClose={close}
+                  animate={animateItems}
+                  delayMs={itemDelayMs(i)}
+                />
+              </li>
+            ))}
           </ul>
 
-          {sections.map((section) => (
+          {sections.map((section, sectionIndex) => (
             <div key={section.title ?? section.links[0]?.label} className="mt-3">
               {section.title ? (
                 <p
@@ -268,7 +271,7 @@ export function MobileNav({
                     "px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400",
                     animateItems && "mobile-menu-item-animate opacity-0",
                   )}
-                  style={animateItems ? { animationDelay: `${80 + itemIndex * 55}ms` } : undefined}
+                  style={animateItems ? { animationDelay: `${itemDelayMs(sectionStart[sectionIndex]!)}ms` } : undefined}
                 >
                   {section.title}
                 </p>
@@ -278,25 +281,21 @@ export function MobileNav({
                     "mx-3 mb-2 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent",
                     animateItems && "mobile-menu-item-animate opacity-0",
                   )}
-                  style={animateItems ? { animationDelay: `${80 + itemIndex * 55}ms` } : undefined}
+                  style={animateItems ? { animationDelay: `${itemDelayMs(sectionStart[sectionIndex]!)}ms` } : undefined}
                   aria-hidden
                 />
               ) : null}
               <ul className="space-y-1">
-                {section.links.map((item) => {
-                  const delayMs = 80 + itemIndex * 55;
-                  itemIndex += 1;
-                  return (
-                    <li key={item.href ?? item.label}>
-                      <MobileNavItem
-                        item={item}
-                        onClose={close}
-                        animate={animateItems}
-                        delayMs={delayMs}
-                      />
-                    </li>
-                  );
-                })}
+                {section.links.map((item, i) => (
+                  <li key={item.href ?? item.label}>
+                    <MobileNavItem
+                      item={item}
+                      onClose={close}
+                      animate={animateItems}
+                      delayMs={itemDelayMs(sectionStart[sectionIndex]! + i)}
+                    />
+                  </li>
+                ))}
               </ul>
             </div>
           ))}

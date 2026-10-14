@@ -70,6 +70,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const copy = t.consult.videoSession;
   const videoLeftCopy = t.consult.videoLeft;
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
+  /** When sessionStatus was fetched; refreshed by the 30s status poll. */
+  const [statusCheckedAt, setStatusCheckedAt] = useState(0);
   const [joinPayload, setJoinPayload] = useState<VideoJoinPayload | null>(null);
   const [inCall, setInCall] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -113,6 +115,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
         throw new Error(json.error?.message ?? copy.couldNotLoad);
       }
       setSessionStatus(json.data as SessionStatus);
+      setStatusCheckedAt(Date.now());
     } catch (e) {
       setError(e instanceof Error ? e.message : copy.somethingWrong);
     } finally {
@@ -373,7 +376,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   }
 
   if (!sessionStatus.canJoin) {
-    const joinWindowClosed = Date.now() > new Date(sessionStatus.joinClosesAt).getTime();
+    const joinWindowClosed = statusCheckedAt > new Date(sessionStatus.joinClosesAt).getTime();
 
     if (joinWindowClosed) {
       return (

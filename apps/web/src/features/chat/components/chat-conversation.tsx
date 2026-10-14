@@ -55,7 +55,9 @@ export function ChatConversation({
   const listRef = useRef<HTMLDivElement>(null);
   const loadingOlderRef = useRef(false);
   const onThreadReadRef = useRef(onThreadRead);
-  onThreadReadRef.current = onThreadRead;
+  useEffect(() => {
+    onThreadReadRef.current = onThreadRead;
+  }, [onThreadRead]);
   const { otherParticipant } = thread;
 
   // Scroll only the message list, never the page: scrollIntoView would also

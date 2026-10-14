@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -61,8 +61,10 @@ export function AgentFloatButton() {
     onError: (message) => setStatus(message),
   });
 
-  stopListeningRef.current = stopListening;
-  stopSpeakingRef.current = stopSpeaking;
+  useEffect(() => {
+    stopListeningRef.current = stopListening;
+    stopSpeakingRef.current = stopSpeaking;
+  }, [stopListening, stopSpeaking]);
 
   const hideOnPage =
     pathname === ASSISTANT_PATH || pathname.startsWith(`${ASSISTANT_PATH}/`);
