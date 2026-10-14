@@ -524,6 +524,32 @@ async function mapThreadsByPatientUserId(
   return threadByPatientUser;
 }
 
+/** A failed unique-index build scans the whole collection, so retry it at most this often. */
+const THREAD_INDEX_RETRY_MS = 5 * 60_000;
+let threadIndexFailedAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * Duplicate doctor–patient threads are prevented only by the unique
+ * `directKey` / `appointmentId` indexes, which Mongoose builds in the
+ * background after connecting. Make sure they exist before inserting a
+ * thread, so simultaneous requests on a fresh or lagging database can't each
+ * insert one. Thread creation is rare (first chat per pair) and this is a
+ * no-op on the server when the indexes already exist.
+ *
+ * The build fails if duplicates already exist; chat keeps working (without
+ * the guarantee) and the failure is logged without key values (user ids).
+ */
+async function ensureThreadUniqueIndexes() {
+  if (Date.now() - threadIndexFailedAt < THREAD_INDEX_RETRY_MS) return;
+  try {
+    await ChatThreadModel.createIndexes();
+  } catch (err) {
+    threadIndexFailedAt = Date.now();
+    const { code, codeName } = (err ?? {}) as { code?: number; codeName?: string };
+    console.error("[chat] unique thread indexes unavailable; duplicate threads possible", { code, codeName });
+  }
+}
+
 async function consolidateDuplicateThreads(
   canonicalThreadId: string,
   patientUserId: string,
@@ -545,9 +571,11 @@ async function consolidateDuplicateThreads(
     { $set: { threadId: canonicalThreadId } },
   );
 
+  // Drop the unique keys too: soft-deleted rows still count for the unique
+  // indexes, and a leftover duplicate key would stop them from being built.
   await ChatThreadModel.updateMany(
     mongoFilter({ _id: { $in: duplicateIds } }),
-    { $set: { deletedAt: new Date() } },
+    { $set: { deletedAt: new Date() }, $unset: { directKey: "", appointmentId: "" } },
   );
 
   const latestMessage = await ChatMessageModel.findOne(
@@ -927,6 +955,7 @@ export class ChatService {
     let thread = await findExistingDirectThread(patientUserId, doctorUserId);
 
     if (!thread) {
+      await ensureThreadUniqueIndexes();
       try {
         const created = await ChatThreadModel.create({
           type: ChatThreadTypes.DIRECT,
