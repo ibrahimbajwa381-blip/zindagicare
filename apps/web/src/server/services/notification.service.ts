@@ -176,7 +176,7 @@ export async function markNotificationRead(userId: string, notificationId: strin
   const updated = await NotificationModel.findOneAndUpdate(
     mongoFilter({ _id: notificationId, userId }),
     { readAt: new Date() },
-    { new: true },
+    { returnDocument: "after" },
   ).lean();
 
   if (!updated) {
