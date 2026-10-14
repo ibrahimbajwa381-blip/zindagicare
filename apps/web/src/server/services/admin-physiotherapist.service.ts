@@ -9,7 +9,6 @@ import {
 import {
   AppError,
   HomeVisitStatuses,
-  LAHORE_GEO,
   LAUNCH_CITY,
   Roles,
   VerificationStatuses,
@@ -33,6 +32,7 @@ import type {
 import { recordAdminActivity } from "./admin-activity.service";
 import { resolveCommissionPercent } from "./commission.service";
 import { decidePhysiotherapistVerification } from "./physiotherapist.service";
+import { hasRealServiceAreaGeo } from "./physiotherapist-location";
 import { ensureCanonicalPhysiotherapistSlug } from "./physiotherapist-slug.service";
 import {
   deletePhysiotherapistAvatar,
@@ -301,6 +301,15 @@ export async function adminCreatePhysiotherapist(
   }
   const phone = input.phone ? await assertPhoneAvailable(input.phone) : undefined;
 
+  // Creating here is an approval: home visits are on exactly when a real location is given.
+  if (input.homeVisitEnabled && !input.geo) {
+    throw new AppError(
+      "Add the physiotherapist's real Google Maps location to enable home visits.",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
   const passwordHash = await bcrypt.hash(input.password ?? DEFAULT_PASSWORD, BCRYPT_ROUNDS);
   const name = input.name.trim();
   const city = input.city.trim();
@@ -324,7 +333,7 @@ export async function adminCreatePhysiotherapist(
       userId: user._id,
       staffType: Roles.PHYSIOTHERAPIST,
       isAvailable: true,
-      homeVisitEnabled: input.homeVisitEnabled ?? true,
+      homeVisitEnabled: Boolean(input.geo),
       verificationStatus: VerificationStatuses.APPROVED,
       verifiedBy: adminUserId,
       verifiedAt: new Date(),
@@ -337,7 +346,9 @@ export async function adminCreatePhysiotherapist(
         {
           city,
           area: input.area?.trim() || undefined,
-          geo: { type: "Point", coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat] },
+          ...(input.geo
+            ? { geo: { type: "Point", coordinates: [input.geo.lng, input.geo.lat] } }
+            : {}),
           radiusKm: 15,
         },
       ],
@@ -376,10 +387,24 @@ export async function adminUpdatePhysiotherapist(
     throw new AppError("Physiotherapist account not found", "NOT_FOUND", 404);
   }
 
-  if (
+  // Save a newly collected location first so "set location + approve" works in one request.
+  if (input.geo) {
+    const area = current.serviceAreas?.[0];
+    current.serviceAreas = [
+      {
+        city: area?.city ?? LAUNCH_CITY,
+        area: area?.area,
+        geo: { type: "Point" as const, coordinates: [input.geo.lng, input.geo.lat] },
+        radiusKm: area?.radiusKm ?? 15,
+      },
+    ] as typeof current.serviceAreas;
+    await current.save();
+  }
+
+  const approvedNow =
     input.verificationStatus === VerificationStatuses.APPROVED &&
-    current.verificationStatus !== VerificationStatuses.APPROVED
-  ) {
+    current.verificationStatus !== VerificationStatuses.APPROVED;
+  if (approvedNow) {
     await decidePhysiotherapistVerification(adminUserId, staffProfileId, "approve");
   } else if (input.verificationStatus === VerificationStatuses.REJECTED) {
     await decidePhysiotherapistVerification(
@@ -396,6 +421,16 @@ export async function adminUpdatePhysiotherapist(
   if (input.homeVisitEnabled && staff.verificationStatus !== VerificationStatuses.APPROVED) {
     throw new AppError(
       "Only approved physiotherapists can take home visits",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+  if (
+    input.homeVisitEnabled &&
+    !hasRealServiceAreaGeo(staff.serviceAreas?.[0]?.geo?.coordinates)
+  ) {
+    throw new AppError(
+      "Add the physiotherapist's real Google Maps location before enabling home visits.",
       "VALIDATION_ERROR",
       400,
     );
@@ -431,7 +466,10 @@ export async function adminUpdatePhysiotherapist(
 
   // ── Staff profile ──
   if (input.isAvailable !== undefined) staff.isAvailable = input.isAvailable;
-  if (input.homeVisitEnabled !== undefined) staff.homeVisitEnabled = input.homeVisitEnabled;
+  // An approval in this request already switched home visits on; a stale toggle can't undo it.
+  if (input.homeVisitEnabled !== undefined && !approvedNow) {
+    staff.homeVisitEnabled = input.homeVisitEnabled;
+  }
   if (input.commissionPercent !== undefined) staff.commissionPercent = input.commissionPercent;
   if (input.bio !== undefined) staff.bio = input.bio || undefined;
   if (input.languages !== undefined) staff.languages = input.languages;
@@ -444,10 +482,11 @@ export async function adminUpdatePhysiotherapist(
 
   if (input.city !== undefined || input.area !== undefined || input.radiusKm !== undefined) {
     const area = staff.serviceAreas?.[0];
+    // Keep the saved pin; never invent a placeholder when none exists.
     const geo =
       area?.geo?.coordinates?.length === 2
         ? { type: "Point" as const, coordinates: area.geo.coordinates }
-        : { type: "Point" as const, coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat] };
+        : undefined;
     staff.serviceAreas = [
       {
         city: input.city?.trim() ?? area?.city ?? LAUNCH_CITY,

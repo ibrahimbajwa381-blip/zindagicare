@@ -541,7 +541,8 @@ export async function adminCreateDoctor(
     consultationFee: 2500,
     weeklyAvailability: DEFAULT_WEEKLY_AVAILABILITY,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
-    homeVisitEnabled: true,
+    // Doctors start without home visits; they opt in from their profile.
+    homeVisitEnabled: false,
     coverageCities: [input.city.trim()],
   } as Record<string, unknown>)) as DoctorProfileDocument;
 

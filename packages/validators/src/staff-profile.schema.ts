@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   MAX_NURSING_SPECIALTIES,
+  LAHORE_GEO,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
   NURSE_HOME_VISIT_FEE_MAX,
   NURSE_HOME_VISIT_FEE_MIN,
@@ -28,13 +29,27 @@ const baseStaffProfileSchema = z.object({
   isAvailable: z.boolean().optional(),
 });
 
-const staffServiceAreaSchema = z
-  .object({
-    city: z.string().min(2, "City is required"),
-    area: z.string().min(2, "Area / neighborhood is required"),
-    homeVisitEnabled: z.boolean(),
-    geo: geoPointInputSchema.optional(),
-  })
+/** The Lahore city-centre pin older flows saved when no real location was collected. */
+function isPlaceholderGeo(geo: { lng: number; lat: number }) {
+  return geo.lng === LAHORE_GEO.lng && geo.lat === LAHORE_GEO.lat;
+}
+
+const PLACEHOLDER_GEO_MESSAGE =
+  "That is the city-centre placeholder, not a real location. Paste your actual Google Maps location.";
+
+/** Optional real location an admin can set for a physiotherapist (never the placeholder). */
+const physiotherapistAdminGeoSchema = geoPointInputSchema
+  .refine((geo) => !isPlaceholderGeo(geo), { message: PLACEHOLDER_GEO_MESSAGE })
+  .optional();
+
+const staffServiceAreaObjectSchema = z.object({
+  city: z.string().min(2, "City is required"),
+  area: z.string().min(2, "Area / neighborhood is required"),
+  homeVisitEnabled: z.boolean(),
+  geo: geoPointInputSchema.optional(),
+});
+
+const staffServiceAreaSchema = staffServiceAreaObjectSchema
   .superRefine((data, ctx) => {
     if (data.homeVisitEnabled && !data.geo) {
       ctx.addIssue({
@@ -44,6 +59,28 @@ const staffServiceAreaSchema = z
       });
     }
   });
+
+/**
+ * Physiotherapists get home visits switched on at approval, so the map location is
+ * mandatory at submission regardless of the homeVisitEnabled flag the client sends.
+ */
+const physiotherapistServiceAreaSchema = staffServiceAreaObjectSchema.superRefine(
+  (data, ctx) => {
+    if (!data.geo) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Google Maps location is required for in-house visit matching",
+        path: ["geo"],
+      });
+    } else if (isPlaceholderGeo(data.geo)) {
+      ctx.addIssue({
+        code: "custom",
+        message: PLACEHOLDER_GEO_MESSAGE,
+        path: ["geo"],
+      });
+    }
+  },
+);
 
 const baseStaffVerificationSchema = z.object({
   licenseNumber: z
@@ -164,6 +201,7 @@ export const physiotherapistVerificationSchema = baseStaffVerificationSchema.ext
     cnicFront: z.string().min(1, "CNIC front image required"),
     cnicBack: z.string().min(1, "CNIC back image required"),
   }),
+  serviceArea: physiotherapistServiceAreaSchema,
   specialties: physiotherapySpecialtiesSchema.min(1, "Select at least one specialty"),
   avatarUrl: z.string().min(1, "Profile photo is required").max(500),
   homeVisitFee: physioHomeVisitFeeSchema,
@@ -207,14 +245,15 @@ export const adminCreatePhysiotherapistSchema = z.object({
   city: z.string().trim().min(2, "City is required"),
   area: z.string().trim().min(2).max(120).optional(),
   homeVisitEnabled: z.boolean().optional(),
+  /** Home visits only switch on when a real Google Maps location is given. */
+  geo: physiotherapistAdminGeoSchema,
 });
 export type AdminCreatePhysiotherapistInput = z.infer<
   typeof adminCreatePhysiotherapistSchema
 >;
 
 /** Admin: manage an existing physiotherapist — status, service toggles, and profile corrections. */
-export const adminUpdatePhysiotherapistSchema = z
-  .object({
+const adminUpdateStaffObjectSchema = z.object({
     verificationStatus: z.enum(["approved", "rejected"]).optional(),
     rejectionReason: z.string().trim().min(3).max(500).optional(),
     isActive: z.boolean().optional(),
@@ -237,16 +276,27 @@ export const adminUpdatePhysiotherapistSchema = z
     licenseNumber: z.string().trim().min(3).max(40).optional(),
     qualification: z.string().trim().max(120).optional(),
     experienceYears: z.coerce.number().min(0).max(60).optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.verificationStatus === "rejected" && !data.rejectionReason) {
-      ctx.addIssue({
-        code: "custom",
-        message: "A rejection reason is required",
-        path: ["rejectionReason"],
-      });
-    }
   });
+
+function requireRejectionReason(
+  data: { verificationStatus?: string; rejectionReason?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (data.verificationStatus === "rejected" && !data.rejectionReason) {
+    ctx.addIssue({
+      code: "custom",
+      message: "A rejection reason is required",
+      path: ["rejectionReason"],
+    });
+  }
+}
+
+export const adminUpdatePhysiotherapistSchema = adminUpdateStaffObjectSchema
+  .extend({
+    /** Real Google Maps location collected by the admin (required before approval). */
+    geo: physiotherapistAdminGeoSchema,
+  })
+  .superRefine(requireRejectionReason);
 export type AdminUpdatePhysiotherapistInput = z.infer<
   typeof adminUpdatePhysiotherapistSchema
 >;
@@ -377,15 +427,17 @@ export const nurseVerificationSchema = baseStaffVerificationSchema.extend({
 export type NurseVerificationInput = z.infer<typeof nurseVerificationSchema>;
 
 /** Admin: add an approved nurse directly (skips self-onboarding). */
-export const adminCreateNurseSchema = adminCreatePhysiotherapistSchema.extend({
+export const adminCreateNurseSchema = adminCreatePhysiotherapistSchema.omit({ geo: true }).extend({
   specialties: nursingSpecialtiesSchema.min(1, "Select at least one specialty"),
 });
 export type AdminCreateNurseInput = z.infer<typeof adminCreateNurseSchema>;
 
 /** Admin: manage an existing nurse — status, service toggles, and profile corrections. */
-export const adminUpdateNurseSchema = adminUpdatePhysiotherapistSchema.safeExtend({
-  specialties: nursingSpecialtiesSchema.optional(),
-});
+export const adminUpdateNurseSchema = adminUpdateStaffObjectSchema
+  .extend({
+    specialties: nursingSpecialtiesSchema.optional(),
+  })
+  .superRefine(requireRejectionReason);
 export type AdminUpdateNurseInput = z.infer<typeof adminUpdateNurseSchema>;
 
 /** Nurses share the physiotherapist portfolio shape (both live on StaffProfile.portfolio). */

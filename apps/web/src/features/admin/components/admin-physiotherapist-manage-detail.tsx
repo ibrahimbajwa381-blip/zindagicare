@@ -16,6 +16,8 @@ import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
+import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { PhysiotherapistAvatar } from "@/features/physiotherapist/components/physiotherapist-avatar";
 import {
   DeletePhysiotherapistDialog,
@@ -134,6 +136,7 @@ export function AdminPhysiotherapistManageDetail({
   const [showDelete, setShowDelete] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [geo, setGeo] = useState<GeoCoordinates | null>(null);
 
   const id = profile.id;
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
@@ -406,6 +409,36 @@ export function AdminPhysiotherapistManageDetail({
               enableLabel="Enable"
               disableLabel="Disable"
             />
+            <div className="space-y-3 border-b border-slate-100 py-4">
+              <div>
+                <p className="font-medium text-slate-900">Service location</p>
+                <p
+                  className={`mt-0.5 text-sm ${profile.serviceArea.hasLocation ? "text-slate-500" : "text-amber-700"}`}
+                >
+                  {profile.serviceArea.hasLocation
+                    ? "A real Google Maps location is saved."
+                    : "No real Google Maps location saved. Collect it before approving or enabling home visits."}
+                </p>
+              </div>
+              <GeoLocationPicker
+                id="admin-physio-geo"
+                value={geo}
+                onChange={setGeo}
+                description="Paste the physiotherapist's actual Google Maps location."
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy !== null || !geo}
+                onClick={async () => {
+                  if (!geo) return;
+                  const saved = await update("geo", { geo }, "Service location saved.");
+                  if (saved) setGeo(null);
+                }}
+              >
+                Save location
+              </Button>
+            </div>
             <ToggleRow
               title="Account active"
               description="Inactive accounts are hidden from patients and cannot be booked."

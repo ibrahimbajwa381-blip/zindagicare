@@ -53,7 +53,6 @@ export function PhysiotherapistVerificationForm({
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(defaults?.avatarUrl);
-  const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
@@ -86,7 +85,8 @@ export function PhysiotherapistVerificationForm({
       return;
     }
 
-    if (homeVisitEnabled && !geo) {
+    // Home visits switch on once verified, so matching needs the location up front.
+    if (!geo) {
       setError("Please add your Google Maps location for in-house visit matching.");
       setPending(false);
       return;
@@ -115,7 +115,8 @@ export function PhysiotherapistVerificationForm({
       serviceArea: {
         city: city.trim(),
         area: area.trim(),
-        homeVisitEnabled,
+        // Off until an admin verifies the profile; approval switches it on.
+        homeVisitEnabled: false,
         geo: geo ?? undefined,
       },
       documentUrls: {
@@ -276,33 +277,23 @@ export function PhysiotherapistVerificationForm({
           <CityAreaSelect id="area" city={city} value={area} onChange={setArea} />
         </div>
 
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={homeVisitEnabled}
-            onChange={(e) => setHomeVisitEnabled(e.target.checked)}
-            className="mt-1"
-          />
-          <div>
-            <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km of my
-              area
-            </p>
-            <p className="text-xs text-slate-600">
-              When enabled, admin dispatch will auto-match you to nearby patient home visits
-              based on your saved location.
-            </p>
-          </div>
-        </label>
+        <div className="rounded-xl border border-brand/20 bg-brand/5 p-3">
+          <p className="text-sm font-semibold text-slate-900">
+            In-house visits turn on once you are verified
+          </p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            After approval you will be matched to patient home visits within{" "}
+            {HOME_CARE_MATCH_RADIUS_KM} km of your saved location. You can turn this off
+            anytime from your profile.
+          </p>
+        </div>
 
-        {homeVisitEnabled && (
-          <GeoLocationPicker
-            id="Physiotherapist-verification-geo"
-            value={geo}
-            onChange={setGeo}
-            required
-          />
-        )}
+        <GeoLocationPicker
+          id="Physiotherapist-verification-geo"
+          value={geo}
+          onChange={setGeo}
+          required
+        />
       </section>
 
       <section className="space-y-4">

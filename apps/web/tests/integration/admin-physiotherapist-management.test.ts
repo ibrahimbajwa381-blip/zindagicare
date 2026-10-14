@@ -68,6 +68,8 @@ describe("Admin physiotherapist management (real local MongoDB)", () => {
       specialties: [specialty()],
       city: "Lahore",
       area: "DHA",
+      // A real (non-placeholder) pin — approval and home visits require one.
+      geo: { lng: 74.3436, lat: 31.4697 },
       ...overrides,
     } as Parameters<typeof svc.adminCreatePhysiotherapist>[1]);
   }
@@ -110,6 +112,33 @@ describe("Admin physiotherapist management (real local MongoDB)", () => {
 
     const list = await svc.listPhysiotherapistsForManagement();
     expect(list.map((r) => r.id)).toEqual([row.id]);
+  });
+
+  it("creates without a location as approved but with home visits off and no placeholder pin", async () => {
+    const row = await createPhysio({ geo: undefined });
+    expect(row.verificationStatus).toBe("approved");
+    expect(row.homeVisitEnabled).toBe(false);
+    const staff = await db.StaffProfileModel.findById(row.id).lean();
+    expect(staff?.serviceAreas?.[0]?.geo).toBeUndefined();
+
+    await expect(
+      createPhysio({ geo: undefined, homeVisitEnabled: true }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+    // Asking for home visits OFF at creation can't override approval when a location is given.
+    expect((await createPhysio({ homeVisitEnabled: false })).homeVisitEnabled).toBe(true);
+  });
+
+  it("refuses enabling home visits until a real location is saved, then accepts it", async () => {
+    const row = await createPhysio({ geo: undefined });
+    await expect(
+      svc.adminUpdatePhysiotherapist(adminId, row.id, { homeVisitEnabled: true }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    const enabled = await svc.adminUpdatePhysiotherapist(adminId, row.id, {
+      geo: { lng: 74.3, lat: 31.5 },
+      homeVisitEnabled: true,
+    });
+    expect(enabled.homeVisitEnabled).toBe(true);
   });
 
   it("rejects duplicate email and phone, and rolls back nothing half-created", async () => {

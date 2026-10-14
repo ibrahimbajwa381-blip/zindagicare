@@ -9,7 +9,6 @@ import {
   AppError,
   calculatePhysiotherapistVisitEarnings,
   HomeVisitStatuses,
-  LAHORE_GEO,
   LAUNCH_CITY,
   PROVIDER_AGREEMENT_VERSION,
   Roles,
@@ -47,6 +46,7 @@ import {
   physiotherapistAvatarStorageKeyFromUrl,
 } from "./physiotherapist-avatar.storage";
 import { ensureCanonicalPhysiotherapistSlug } from "./physiotherapist-slug.service";
+import { hasRealServiceAreaGeo } from "./physiotherapist-location";
 
 async function deleteReplacedPhysiotherapistAvatar(previousAvatarUrl: string | undefined) {
   if (!previousAvatarUrl) return;
@@ -164,7 +164,7 @@ async function ensureStaffProfile(user: PhysiotherapistUserDoc) {
     serviceAreas: [
       {
         city: user.metadata?.city ?? LAUNCH_CITY,
-        geo: { type: "Point", coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat] },
+        // No geo until the physiotherapist saves a real Google Maps location.
         radiusKm: 15,
       },
     ],
@@ -302,7 +302,7 @@ export async function updatePhysiotherapistProfile(
     const area = staff.serviceAreas?.[0];
     const existingGeo = area?.geo?.coordinates?.length === 2
       ? { type: "Point" as const, coordinates: area.geo.coordinates }
-      : { type: "Point" as const, coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat] };
+      : undefined;
 
     const nextGeo = data.geo
       ? {
@@ -491,7 +491,8 @@ export async function submitPhysiotherapistVerification(
   };
 
   const { serviceArea } = input;
-  staff.homeVisitEnabled = serviceArea.homeVisitEnabled;
+  // Stays off while pending/rejected; approval is what switches it on.
+  staff.homeVisitEnabled = false;
   staff.serviceAreas = [
     {
       city: serviceArea.city,
@@ -623,6 +624,15 @@ export async function decidePhysiotherapistVerification(
   }
 
   if (action === "approve") {
+    // Every approval switches home visits on, and matching needs a real map pin.
+    if (!hasRealServiceAreaGeo(staff.serviceAreas?.[0]?.geo?.coordinates)) {
+      throw new AppError(
+        "A real Google Maps location is missing (none saved, invalid, or the Lahore city-centre placeholder). Collect the physiotherapist's actual location before approving.",
+        "VALIDATION_ERROR",
+        400,
+      );
+    }
+    staff.homeVisitEnabled = true;
     staff.verificationStatus = VerificationStatuses.APPROVED;
     staff.verifiedBy = adminUserId as never;
     staff.verifiedAt = new Date();
@@ -723,11 +733,12 @@ export async function convertDoctorApplicationToPhysiotherapist(
     verificationSubmittedAt: doctorProfile.verificationSubmittedAt ?? new Date(),
     platformAgreementAcceptedAt: doctorProfile.platformAgreementAcceptedAt ?? undefined,
     platformAgreementVersion: doctorProfile.platformAgreementVersion ?? undefined,
-    homeVisitEnabled: doctorProfile.homeVisitEnabled ?? false,
+    // Pending like any new application; approval switches home visits on.
+    homeVisitEnabled: false,
     serviceAreas: [
       {
         city,
-        geo: { type: "Point", coordinates: [LAHORE_GEO.lng, LAHORE_GEO.lat] },
+        // The doctor application has no physio service-area pin; collect a real one.
         radiusKm: 15,
       },
     ],
@@ -891,6 +902,7 @@ export async function getPhysiotherapistProfileForAdmin(
       city: area?.city ?? LAUNCH_CITY,
       area: area?.area ?? undefined,
       radiusKm: area?.radiusKm ?? 15,
+      hasLocation: hasRealServiceAreaGeo(area?.geo?.coordinates),
     },
     documents: mapAdminPhysiotherapistDocuments(
       staff.verificationDocuments as Record<string, string | undefined>,

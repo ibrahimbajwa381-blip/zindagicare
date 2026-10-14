@@ -31,6 +31,8 @@ import { PhysiotherapistAvatar } from "@/features/physiotherapist/components/phy
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import type { AdminPhysiotherapistManageRow } from "@/features/admin/types/physiotherapist-admin";
 import { cityAreaError } from "@/lib/geo/city-area-error";
+import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -44,7 +46,6 @@ const EMPTY_FORM = {
   experienceYears: "",
   city: "",
   area: "",
-  homeVisitEnabled: true,
 };
 
 function formatCurrency(amount: number) {
@@ -104,6 +105,7 @@ export function AdminPhysiotherapistsManagement() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [specialties, setSpecialties] = useState<string[]>([]);
+  const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminPhysiotherapistManageRow | null>(null);
@@ -256,13 +258,15 @@ export function AdminPhysiotherapistsManagement() {
           specialties,
           city: form.city.trim(),
           area: form.area.trim() || undefined,
-          homeVisitEnabled: form.homeVisitEnabled,
+          // Home visits switch on when a real location is given.
+          geo: geo ?? undefined,
         }),
       });
       if (res.ok) {
         setShowForm(false);
         setForm(EMPTY_FORM);
         setSpecialties([]);
+        setGeo(null);
         reload();
       } else {
         setFormError(await readError(res, "Failed to create physiotherapist"));
@@ -480,14 +484,14 @@ export function AdminPhysiotherapistsManagement() {
                   placeholder="Add physiotherapy specialties"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3">
-                <input
-                  type="checkbox"
-                  checked={form.homeVisitEnabled}
-                  onChange={(e) => setForm({ ...form, homeVisitEnabled: e.target.checked })}
+              <div className="sm:col-span-2 lg:col-span-3">
+                <GeoLocationPicker
+                  id="pt-geo"
+                  value={geo}
+                  onChange={setGeo}
+                  description="Home visits switch on once a real Google Maps location is added. Without it, they stay off until the location is collected."
                 />
-                Enable home visits
-              </label>
+              </div>
               {formError && (
                 <p className="text-sm text-red-600 sm:col-span-2 lg:col-span-3">{formError}</p>
               )}
