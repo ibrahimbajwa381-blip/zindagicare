@@ -28,6 +28,7 @@ import { createDistributedRateLimiter } from "@/server/lib/distributed-rate-limi
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { recordAdminActivity } from "@/server/services/admin-activity.service";
 import { scheduleMedicalQaPublish as safePublish } from "@/server/lib/schedule-medical-qa-publish";
+import { scheduleAnswerNotification } from "@/server/lib/schedule-answer-notification";
 import { cached, cacheKey } from "@/server/lib/cache";
 import type {
   MedicalAnswerDto,
@@ -373,6 +374,9 @@ export const MedicalQaService = {
     );
 
     safePublish({ type: "answer_created", questionId: String(id), answerId: String(created._id) });
+    // Tell the patient (bell + push). Only new answers: an idempotent replay
+    // returned earlier, and the author's own follow-ups don't notify them.
+    if (kind === "answer") scheduleAnswerNotification(String(created._id));
     return (await answerDtos([created.toObject()]))[0];
   },
 

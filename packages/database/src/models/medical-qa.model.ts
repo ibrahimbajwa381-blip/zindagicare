@@ -41,6 +41,8 @@ const medicalQuestionSchema = new Schema(
     alertNextAttemptAt: { type: Date },
     alertedAt: { type: Date },
     alertRecipientCount: { type: Number, min: 0 },
+    /** Last "your question has an answer" push to the author (see medical-qa-answer-notify.service). */
+    answerPushAt: { type: Date },
   },
   { timestamps: true },
 );
