@@ -10,6 +10,28 @@
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { randomBytes } from "crypto";
 import type { Role } from "@zindagi/shared";
+import { MedicalQaCategories, type MedicalQaCategory } from "@zindagi/validators";
+import { topicRecipientRule } from "@/server/lib/medical-qa-alert-rules";
+
+/**
+ * The intended routing, written out independently of the app's table on
+ * purpose: tests driven from the app's own table would follow any mistake
+ * in it. Changing who a topic reaches must change this list too.
+ */
+const EXPECTED_SPECIALTY_ROUTING: Record<string, string[]> = {
+  skin: ["Dermatologist", "Cosmetologist", "Aesthetic Physician"],
+  "mental-health": ["Psychiatrist", "Psychologist", "Counselor", "Pediatric Psychologist"],
+  "heart-bp": ["Cardiologist", "Interventional Cardiologist", "Hypertension Specialist"],
+  children: ["Pediatrician", "Neonatologist"],
+  women: ["Gynecologist", "Obstetrician", "Fertility Consultant"],
+  diabetes: ["Diabetologist", "Endocrinologist"],
+  stomach: ["Gastroenterologist", "Hepatologist"],
+  "bones-joints": ["Orthopedic Surgeon", "Pain Management Specialist"],
+};
+const SPECIALTY_TOPICS = Object.entries(EXPECTED_SPECIALTY_ROUTING).map(([topic, specialties]) => ({
+  topic: topic as MedicalQaCategory,
+  specialties,
+}));
 
 jest.setTimeout(120000);
 
@@ -370,6 +392,137 @@ describe("Medical Q&A new-question alerts (real local MongoDB)", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Specialty routing: a question in a specialty topic reaches that topic's
+  // specialists — and only them — for every topic and every listed specialty.
+  // ---------------------------------------------------------------------------
+  describe("Specialty routing — every topic reaches the right doctors", () => {
+    test("the app's routing table matches the intended specialty routing exactly", () => {
+      const actual: Record<string, string[]> = {};
+      for (const topic of MedicalQaCategories) {
+        const rule = topicRecipientRule(topic);
+        if (rule.kind === "doctors" && rule.specialties) actual[topic] = [...rule.specialties].sort();
+      }
+      const expected = Object.fromEntries(
+        Object.entries(EXPECTED_SPECIALTY_ROUTING).map(([topic, sp]) => [topic, [...sp].sort()]),
+      );
+      expect(actual).toEqual(expected);
+    });
+
+    /**
+     * A full roster: one approved doctor for every specialty used by any
+     * topic, plus a General Physician, a nurse and a physiotherapist.
+     */
+    async function fullRoster() {
+      const bySpecialty = new Map<string, { _id: unknown }>();
+      for (const { specialties } of SPECIALTY_TOPICS) {
+        for (const specialty of specialties) {
+          if (!bySpecialty.has(specialty)) bySpecialty.set(specialty, await makeDoctor([specialty]));
+        }
+      }
+      const gp = await makeDoctor(["General Physician"]);
+      const nurse = await makeStaff("nurse");
+      const physio = await makeStaff("physiotherapist");
+      return { bySpecialty, gp, nurse, physio };
+    }
+
+    test.each(SPECIALTY_TOPICS.map((t) => [t.topic, t.specialties.join(", ")]))(
+      "%s reaches exactly its specialists (%s) and no other doctor, nurse or physio",
+      async (topic) => {
+        const { bySpecialty } = await fullRoster();
+        const expected = SPECIALTY_TOPICS.find((t) => t.topic === topic)!.specialties.map((sp) => bySpecialty.get(sp)!);
+
+        const q = await question(topic);
+        await Alerts.processQuestion(q.id, { now: DAYTIME });
+
+        expect(await notifiedIds(q.id)).toEqual(ids(...expected));
+      },
+    );
+
+    test.each(SPECIALTY_TOPICS.flatMap((t) => t.specialties.map((sp) => [t.topic, sp])))(
+      "%s: a lone %s is reached directly (no fallback to all doctors)",
+      async (topic, specialty) => {
+        const specialist = await makeDoctor([specialty as string]);
+        await makeDoctor(["General Physician"]); // decoy: would only be reached by the fallback
+        const q = await question(topic as string);
+        await Alerts.processQuestion(q.id, { now: DAYTIME });
+        expect(await notifiedIds(q.id)).toEqual(ids(specialist));
+      },
+    );
+
+    test("a doctor with several specialties gets each matching topic, and not unrelated ones", async () => {
+      const both = await makeDoctor(["Dermatologist", "Cardiologist"]);
+      const endo = await makeDoctor(["Endocrinologist"]);
+
+      const skin = await question("skin", "Itchy rash on both arms");
+      const heart = await question("heart-bp", "High blood pressure in the mornings");
+      const diabetes = await question("diabetes", "Sugar level high after meals");
+      for (const q of [skin, heart, diabetes]) await Alerts.processQuestion(q.id, { now: DAYTIME });
+
+      expect(await notifiedIds(skin.id)).toEqual(ids(both));
+      expect(await notifiedIds(heart.id)).toEqual(ids(both));
+      expect(await notifiedIds(diabetes.id)).toEqual(ids(endo));
+    });
+
+    test("a specialist who is not approved or has opted out is skipped; the approved one still gets it", async () => {
+      const approved = await makeDoctor(["Pediatrician"]);
+      await makeDoctor(["Pediatrician"], { status: "pending" });
+      await makeDoctor(["Neonatologist"], { status: "rejected" });
+      const optedOut = await makeDoctor(["Neonatologist"]);
+      await Alerts.setPreference(String(optedOut._id), false);
+
+      const q = await question("children", "Baby has a fever and is not feeding well");
+      await Alerts.processQuestion(q.id, { now: DAYTIME });
+      expect(await notifiedIds(q.id)).toEqual(ids(approved));
+    });
+
+    test("end to end through the real API: a patient picks Heart & BP; only the cardiologist is notified (in-app + push)", async () => {
+      const cardio = await makeDoctor(["Cardiologist"]);
+      const derm = await makeDoctor(["Dermatologist"]);
+      const gp = await makeDoctor(["General Physician"]);
+      const patient = await makeUser([Roles.PATIENT]);
+
+      const r = await call(questionsRoute.POST as never, "POST", "/api/v1/medical-questions", patient, {
+        category: "heart-bp",
+        title: "Chest tightness when climbing stairs",
+        body: "Synthetic: chest tightness on exertion for a week, BP 150/95 at home.",
+      });
+      expect(r.status).toBe(200);
+      expect(r.json.data.category).toBe("heart-bp");
+      expect(scheduleSpy).toHaveBeenCalledWith(r.json.data.id);
+
+      // Run the job the route scheduled for after the response.
+      await Alerts.processQuestion(r.json.data.id, { now: DAYTIME });
+
+      const [n] = await inAppFor(cardio._id);
+      expect(n).toBeDefined();
+      expect(n.title).toBe("New question · Heart & blood pressure");
+      expect(n.payload).toEqual({
+        type: "medical_question_new",
+        questionId: r.json.data.id,
+        category: "heart-bp",
+        url: `/questions/${r.json.data.id}`,
+      });
+      expect(await inAppFor(derm._id)).toHaveLength(0);
+      expect(await inAppFor(gp._id)).toHaveLength(0);
+      expect(await inAppFor(patient._id)).toHaveLength(0);
+
+      const pushedTo = new Set([...expoPush.mock.calls, ...webPush.mock.calls].map(([uid]) => String(uid)));
+      expect([...pushedTo]).toEqual([String(cardio._id)]);
+    });
+
+    test("end to end: the topic label in every specialty alert matches what the patient selected", async () => {
+      for (const { topic, specialties } of SPECIALTY_TOPICS) {
+        const doctor = await makeDoctor([specialties[0]!]);
+        const q = await question(topic, `Question about ${topic}`);
+        await Alerts.processQuestion(q.id, { now: DAYTIME });
+        const alerts = await db.NotificationModel.find({ userId: doctor._id, "payload.questionId": q.id }).lean();
+        expect(alerts).toHaveLength(1);
+        expect((alerts[0]!.payload as { category: MedicalQaCategory }).category).toBe(topic);
+      }
+    });
+  });
+
   describe("Delivery", () => {
     test("persists an in-app notification and sends a privacy-safe push with the question link", async () => {
       const d = await makeDoctor();
