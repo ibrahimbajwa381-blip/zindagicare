@@ -338,7 +338,7 @@ export class HomeVisitReviewService {
               moderatedBy: new Types.ObjectId(adminUserId),
             },
           },
-          { new: true },
+          { returnDocument: "after" },
         ).lean()
       : null;
 

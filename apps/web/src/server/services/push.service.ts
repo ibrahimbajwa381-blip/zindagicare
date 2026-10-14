@@ -57,7 +57,7 @@ export async function upsertPushSubscription(
       lastUsedAt: new Date(),
       expiresAt: input.expirationTime ? new Date(input.expirationTime) : undefined,
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 }
 
@@ -162,7 +162,7 @@ export async function upsertExpoPushToken(userId: string, input: ExpoPushRegiste
       platform: input.platform ?? undefined,
       lastUsedAt: new Date(),
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 }
 

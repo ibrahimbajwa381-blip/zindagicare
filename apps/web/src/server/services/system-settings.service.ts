@@ -147,7 +147,7 @@ export async function updateSystemSettings(
       $set: patch,
       $setOnInsert: { key: "global" },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   ).lean();
 
   settingsCache = null;

@@ -352,7 +352,7 @@ export class SundayConsultService {
           slots,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
 
     if (!instance) {
@@ -461,7 +461,7 @@ export class SundayConsultService {
           "slots.$.patientId": patientId,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!updated) {
@@ -644,7 +644,7 @@ export class SundayConsultService {
           "slots.$.patientId": undefined,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     )) as { doctorId: { toString(): string }; sundayDate: Date } | null;
 
     if (updated) {
@@ -687,7 +687,7 @@ export class SundayConsultService {
           timezone: SUNDAY_CONSULT_CONFIG.timezone,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
 
     await SundayConsultService.materializeInstance(
@@ -703,7 +703,7 @@ export class SundayConsultService {
     const profile = await DoctorProfileModel.findOneAndUpdate(
       mongoFilter({ userId }),
       { $set: { sundayConsultEnabled: enabled } },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!profile) {
       throw new AppError("Doctor profile not found", ErrorCodes.NOT_FOUND, 404);

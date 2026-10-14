@@ -216,7 +216,7 @@ export async function upsertSundayTemplateFromProfileEdit(
         isActive: true,
       },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 
   await SundayConsultService.materializeInstance(

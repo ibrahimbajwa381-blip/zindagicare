@@ -950,7 +950,7 @@ export class HomeVisitService {
         paymentId: visit.paymentId ?? { $exists: false },
       }),
       { $set: { paymentId: payment._id } },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!claimed) {
@@ -1195,7 +1195,7 @@ export class HomeVisitService {
           cancellationRequestResolvedBy: adminUserId,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!updated) {
       throw new AppError("No pending refund request", ErrorCodes.CONFLICT, 409);
@@ -1636,7 +1636,7 @@ export class HomeVisitService {
               ...pricingSet,
             },
           },
-          { new: true },
+          { returnDocument: "after" },
         )) as HydratedDocument<HomeVisitDocument> | null;
         if (!assigned) {
           throw new AppError(

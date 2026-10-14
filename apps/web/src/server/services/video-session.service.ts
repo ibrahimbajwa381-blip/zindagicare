@@ -242,7 +242,7 @@ export class VideoSessionService {
             },
           },
         },
-        { new: true },
+        { returnDocument: "after" },
       );
     } else {
       try {
