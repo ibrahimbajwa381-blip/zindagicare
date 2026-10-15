@@ -189,6 +189,11 @@ const doctorProfileSchema = new Schema(
     homeVisitLocation: {
       area: String,
       geo: geoPointSchema,
+      /**
+       * How far the doctor prefers to travel (km). Ranks matching only — never blocks a
+       * booking. Unset means the platform default (15 km).
+       */
+      radiusKm: { type: Number, min: 1, max: 50 },
     },
     homeVisitFee: { type: Number, default: 0, min: 0 },
     /** Override for online/clinic consult revenue share (0–100). Null uses platform default. */

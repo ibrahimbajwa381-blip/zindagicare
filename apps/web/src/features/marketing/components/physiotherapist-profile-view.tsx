@@ -308,7 +308,7 @@ export function PhysiotherapistProfileView({
               <ul className="space-y-2.5 text-sm text-slate-700">
                 {[
                   `${firstName} comes to your home — no travel, no waiting room`,
-                  `Covers patients within ${HOME_CARE_MATCH_RADIUS_KM} km of ${physio.area ?? physio.city}`,
+                  `Usually visits within ${HOME_CARE_MATCH_RADIUS_KM} km of ${physio.area ?? physio.city} — farther visits can be booked; travel and extra charges may need confirming`,
                   `Profile verified by ${siteConfig.name}`,
                 ].map((point) => (
                   <li key={point} className="flex items-start gap-2.5">

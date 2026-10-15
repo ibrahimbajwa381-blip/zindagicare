@@ -182,6 +182,8 @@ export async function submitDoctorVerification(
         type: "Point",
         coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat],
       },
+      // Keep a travel-radius preference saved before (re)submission.
+      radiusKm: profile.homeVisitLocation?.radiusKm ?? undefined,
     };
   } else {
     profile.homeVisitLocation = undefined;

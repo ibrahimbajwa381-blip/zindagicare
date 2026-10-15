@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import {
+  HOME_CARE_MATCH_RADIUS_KM,
+  isOutsideProviderCoverage,
+  bestHomeCareReach,
+  type HomeCareReach,
+} from "@zindagi/shared";
 import { MapPin, Navigation, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
@@ -14,6 +19,7 @@ import { nearestCity } from "@/lib/geo/nearest-city";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import type { PublicPhysiotherapist } from "@/server/services/public-physiotherapist.service";
+import { reachLocatedSummary } from "@/features/home-care/components/provider-reach";
 import { physiotherapistHomeVisitHref } from "./physiotherapist-profile-view";
 
 type Props = {
@@ -42,12 +48,19 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
   );
   const geoKey = geo ? `${geo.lat},${geo.lng}|${city ?? ""}|${specialty ?? ""}` : null;
   const loading = geoKey !== null && sorted?.key !== geoKey;
-  // With a location, only list physiotherapists in the patient's city or within the radius.
+  // With a location the API ranks everyone: within 15 km, then 30 km, then the patient's city,
+  // then anywhere. Nobody is hidden for distance — farther physios are flagged instead.
   const patientCity = geo ? nearestCity(geo) : undefined;
-  const sourceRows =
-    sorted && sorted.key === geoKey
-      ? sorted.rows.filter((r) => r.withinRadius || r.inPatientCity)
-      : initial;
+  const located = sorted !== null && sorted.key === geoKey;
+  const sourceRows = located ? sorted.rows : initial;
+  const tier = located
+    ? bestHomeCareReach(
+        sourceRows.filter(
+          (r): r is PublicPhysiotherapist & { reach: HomeCareReach } =>
+            !!r.reach && r.homeVisitEnabled && r.isAvailable,
+        ),
+      )
+    : null;
   const [query, setQuery] = useState("");
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const rows = terms.length
@@ -160,8 +173,9 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
       <div className={`p-5 ${surfaceCard}`}>
         <p className="text-sm font-semibold text-slate-900">Find physiotherapists near you</p>
         <p className="mb-3 text-xs text-slate-500">
-          Share your location to sort by distance. Home visits are available from physiotherapists
-          within {HOME_CARE_MATCH_RADIUS_KM} km.
+          Share your location to see who is closest. Physiotherapists who cover your location
+          are listed first, then those within {HOME_CARE_MATCH_RADIUS_KM} km; you can still book
+          someone farther away.
         </p>
         <GeoLocationPicker
           id="physio-directory-geo"
@@ -170,11 +184,7 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
           description={`Tap "Use my current location", or paste a Google Maps link / coordinates of your home.`}
         />
         {geo && !loading && (
-          <p className="mt-3 text-xs text-slate-600">
-            {sourceRows.length} physiotherapist{sourceRows.length === 1 ? "" : "s"}{" "}
-            {patientCity ? `in ${patientCity} or ` : ""}within {HOME_CARE_MATCH_RADIUS_KM} km of
-            your location, nearest first.
-          </p>
+          <p className="mt-3 text-xs text-slate-600">{reachLocatedSummary(tier, "physiotherapists", patientCity)}</p>
         )}
       </div>
 
@@ -182,9 +192,7 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
 
       {rows.length === 0 ? (
         <p className={`p-8 text-center text-sm text-slate-500 ${surfaceCard}`}>
-          {geo && !loading && sourceRows.length === 0
-            ? `No physiotherapists ${patientCity ? `in ${patientCity} or ` : ""}within ${HOME_CARE_MATCH_RADIUS_KM} km of your location yet. Clear the location to see all physiotherapists.`
-            : terms.length
+          {terms.length
             ? `No physiotherapists match "${query.trim()}"${city ? ` in ${city}` : ""}.`
             : city || specialty
             ? `No verified ${specialty ? `${specialty} ` : ""}physiotherapists${city ? ` in ${city}` : ""} yet.`
@@ -194,8 +202,8 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
         <div className="grid gap-4 md:grid-cols-2">
           {rows.map((physio) => {
             const profileHref = physiotherapistProfilePath(physio.slug, physio.id);
-            const canBookHome =
-              physio.homeVisitEnabled && physio.isAvailable && (!geo || physio.withinRadius);
+            const canBookHome = physio.homeVisitEnabled && physio.isAvailable;
+            const far = Boolean(geo) && isOutsideProviderCoverage(physio.reach);
             return (
               <div key={physio.id} className={`flex min-w-0 flex-col gap-4 p-5 ${surfaceCard}`}>
                 <Link href={profileHref} className="flex min-w-0 items-start gap-3">
@@ -262,13 +270,17 @@ export function PhysiotherapistDirectory({ initial, cities, specialties, city, s
                       </span>
                     </>
                   ) : (
-                    <span className="self-center text-xs text-slate-500">
-                      {physio.homeVisitEnabled && physio.isAvailable
-                        ? `Outside ${HOME_CARE_MATCH_RADIUS_KM} km of you`
-                        : "Not taking home visits"}
-                    </span>
+                    <span className="self-center text-xs text-slate-500">Not taking home visits</span>
                   )}
                 </div>
+                {canBookHome && far && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Outside the {physio.coverageRadiusKm} km area they usually cover
+                    {physio.inPatientCity === false ? `, in ${physio.city}` : ""}. You can still
+                    book — they will need to confirm they can travel, and extra travel charges may
+                    apply.
+                  </p>
+                )}
               </div>
             );
           })}

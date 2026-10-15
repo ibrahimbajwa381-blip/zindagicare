@@ -2,12 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM, cn } from "@zindagi/shared";
+import {
+  isOutsideProviderCoverage,
+  bestHomeCareReach,
+  cn,
+  type HomeCareReach,
+} from "@zindagi/shared";
 import { MapPin, Navigation, Sparkles } from "lucide-react";
 import { NurseAvatar } from "@/features/nurse/components/nurse-avatar";
 import { nurseProfilePath } from "@/lib/nurses/profile-path";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import type { PublicNurse } from "@/server/services/public-nurse.service";
+import { FarAwayNotice, FarBadge, reachTierDescription } from "./provider-reach";
 
 /** "nearest" leaves the visit for our team to assign the closest available nurse. */
 export type NurseChoice = "nearest" | string;
@@ -43,7 +49,15 @@ export function NursePicker({
   const loading = geoKey !== null && result?.key !== geoKey;
   const [preselected, setPreselected] = useState<PublicNurse | null>(null);
   const rows = geoKey && result?.key === geoKey ? result.rows : [];
-  const nearby = rows.filter((p) => p.withinRadius && p.homeVisitEnabled && p.isAvailable);
+  // Already ranked by the API: within 15 km, then 30 km, then the patient's city, then anywhere.
+  // Distance never rules anyone out — farther nurses are flagged, not hidden.
+  const bookable = rows.filter((p) => p.homeVisitEnabled && p.isAvailable);
+  const tier = bestHomeCareReach(
+    bookable.filter((p): p is PublicNurse & { reach: HomeCareReach } => !!p.reach),
+  );
+  const primary = bookable.filter((p) => p.reach === tier);
+  const farther = bookable.filter((p) => p.reach !== tier);
+  const [showFarther, setShowFarther] = useState(false);
   // Prefer the distance-annotated row for a nurse chosen from their profile page.
   const preselectedRow = preselected
     ? (rows.find((p) => p.id === preselected.id) ?? preselected)
@@ -79,28 +93,26 @@ export function NursePicker({
     };
   }, [geo, geoKey]);
 
-  const selectedFee =
-    !usesNurseFee || value === "nearest"
+  const selectedRow =
+    value === "nearest"
       ? null
-      : ([...nearby, ...(preselectedRow ? [preselectedRow] : [])].find((p) => p.id === value)
-          ?.homeVisitFee ?? null);
+      : (bookable.find((p) => p.id === value) ??
+        (preselectedRow?.id === value ? preselectedRow : null));
+  const selectedFee =
+    !usesNurseFee || value === "nearest" ? null : (selectedRow?.homeVisitFee ?? null);
   useEffect(() => {
     onFeeChange?.(selectedFee);
   }, [selectedFee, onFeeChange]);
 
-  const selectedIsNearby = value === "nearest" || nearby.some((p) => p.id === value);
-  const selectedOutsideRadius =
-    geo && !loading && value !== "nearest" && !selectedIsNearby;
+  // Warn (never block) when the chosen nurse is outside 15 km or the distance is unknown.
+  const selectedFar =
+    geo && !loading && selectedRow ? isOutsideProviderCoverage(selectedRow.reach) : false;
+  const farWarning = selectedRow && selectedFar ? <FarAwayNotice provider={selectedRow} /> : null;
 
   // Arriving from a profile page means the patient already picked someone, so show only that
-  // nurse until they ask to change. Expand automatically if the pick can't visit this location.
+  // nurse until they ask to change.
   const [showAll, setShowAll] = useState(!initialNurseId);
-  const selectedRow =
-    value === "nearest"
-      ? null
-      : (nearby.find((p) => p.id === value) ??
-        (preselectedRow?.id === value ? preselectedRow : null));
-  const collapsed = !showAll && value !== "nearest" && !selectedOutsideRadius;
+  const collapsed = !showAll && value !== "nearest";
 
   if (collapsed) {
     return (
@@ -111,6 +123,7 @@ export function NursePicker({
         ) : (
           <p className="text-xs text-slate-500">Loading nurse…</p>
         )}
+        {farWarning}
         <button
           type="button"
           onClick={() => setShowAll(true)}
@@ -128,7 +141,7 @@ export function NursePicker({
         <p className="text-sm font-medium text-slate-900">Choose your nurse</p>
         <p className="text-xs text-slate-500">
           {geo
-            ? `Showing verified nurses within ${HOME_CARE_MATCH_RADIUS_KM} km of your location, nearest first.`
+            ? reachTierDescription(tier, "nurses")
             : "Set your home location above to see nurses near you."}
         </p>
       </div>
@@ -149,13 +162,16 @@ export function NursePicker({
         <span>
           <span className="block text-sm font-semibold">Nearest available (recommended)</span>
           <span className="block text-xs text-slate-500">
-            Our team will assign the closest verified nurse who is free at your time, at the
-            standard rate.
+            Our team will assign the closest verified nurse in your city who is free at your
+            time, at the standard rate.
+            {geo && !loading && isOutsideProviderCoverage(tier)
+              ? " Nobody free covers your location, so they may be farther away — travel and any extra charges may need to be confirmed."
+              : ""}
           </span>
         </span>
       </button>
 
-      {preselectedRow && !nearby.some((p) => p.id === preselectedRow.id) && (
+      {preselectedRow && !bookable.some((p) => p.id === preselectedRow.id) && (
         <NurseOption
           nurse={preselectedRow}
           showFee={usesNurseFee}
@@ -166,30 +182,38 @@ export function NursePicker({
 
       {loading && <p className="text-xs text-slate-500">Finding nurses near you…</p>}
 
-      {geo && !loading && nearby.length === 0 && (
+      {geo && !loading && bookable.length === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          No nurses are available within {HOME_CARE_MATCH_RADIUS_KM} km right now. Keep
-          &ldquo;Nearest available&rdquo; selected and our team will arrange one for you.
+          No nurses are taking home visits right now. Keep &ldquo;Nearest available&rdquo;
+          selected and our team will arrange one for you.
         </p>
       )}
 
       <div className="grid gap-2">
-        {nearby.map((nurse) => (
-          <NurseOption
-            key={nurse.id}
-            nurse={nurse}
-            showFee={usesNurseFee}
-            selected={value === nurse.id}
-            onSelect={() => onChange(nurse.id)}
-          />
-        ))}
+        {[...primary, ...(showFarther || farther.some((p) => p.id === value) ? farther : [])].map(
+          (nurse) => (
+            <NurseOption
+              key={nurse.id}
+              nurse={nurse}
+              showFee={usesNurseFee}
+              selected={value === nurse.id}
+              onSelect={() => onChange(nurse.id)}
+            />
+          ),
+        )}
       </div>
 
-      {selectedOutsideRadius && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {`${preselected?.name ?? "This nurse"} is more than ${HOME_CARE_MATCH_RADIUS_KM} km from the location you set, so they can't visit. Choose someone from the list or “Nearest available”.`}
-        </p>
+      {farther.length > 0 && !showFarther && !farther.some((p) => p.id === value) && (
+        <button
+          type="button"
+          onClick={() => setShowFarther(true)}
+          className="text-xs font-medium text-brand hover:underline"
+        >
+          Show {farther.length} more nurse{farther.length === 1 ? "" : "s"} farther away
+        </button>
       )}
+
+      {farWarning}
     </div>
   );
 }
@@ -208,7 +232,7 @@ function NurseOption({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border p-3 transition",
+        "flex min-w-0 items-center gap-3 rounded-xl border p-3 transition",
         selected
           ? "border-brand bg-brand-muted/50 ring-2 ring-brand/20"
           : "border-white/60 bg-white/80 hover:border-brand/30",
@@ -230,6 +254,7 @@ function NurseOption({
                 {nurse.distanceKm.toFixed(1)} km away
               </span>
             )}
+            <FarBadge reach={nurse.reach} />
             {nurse.area && (
               <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3 w-3" />

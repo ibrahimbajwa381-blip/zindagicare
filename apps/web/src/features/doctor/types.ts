@@ -18,6 +18,8 @@ export type DoctorHomeVisitDto = {
   enabled: boolean;
   area?: string;
   geo?: { lng: number; lat: number };
+  /** Preferred travel radius (km) — the platform default when the doctor hasn't set one. */
+  radiusKm: number;
 };
 
 export type DoctorProfileDto = {

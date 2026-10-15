@@ -282,9 +282,9 @@ export function PhysiotherapistVerificationForm({
             In-house visits turn on once you are verified
           </p>
           <p className="mt-0.5 text-xs text-slate-600">
-            After approval you will be matched to patient home visits within{" "}
-            {HOME_CARE_MATCH_RADIUS_KM} km of your saved location. You can turn this off
-            anytime from your profile.
+            After approval you will be matched to patient home visits near your saved location
+            — within {HOME_CARE_MATCH_RADIUS_KM} km first, then farther out. Patients farther away can also book you.
+            You can turn this off anytime from your profile.
           </p>
         </div>
 

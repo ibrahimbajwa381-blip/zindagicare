@@ -23,6 +23,11 @@ const doctorHomeVisitSchema = z
     enabled: z.boolean(),
     area: z.string().min(2).optional(),
     geo: geoPointInputSchema.optional(),
+    radiusKm: z.coerce
+      .number()
+      .min(1, "Radius must be at least 1 km")
+      .max(50, "Radius cannot exceed 50 km")
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.enabled) return;

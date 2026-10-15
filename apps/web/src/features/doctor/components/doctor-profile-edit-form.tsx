@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { CalendarHeart, Clock, Home, Plus, Trash2 } from "lucide-react";
 import {
+  HOME_CARE_COVERAGE_RADIUS_MAX_KM,
+  HOME_CARE_COVERAGE_RADIUS_MIN_KM,
   HOME_CARE_MATCH_RADIUS_KM,
   SPECIALTIES,
   VerificationStatuses,
@@ -154,6 +156,7 @@ export function DoctorProfileEditForm({
   );
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(profile.homeVisit.enabled);
   const [homeVisitArea, setHomeVisitArea] = useState(profile.homeVisit.area ?? "");
+  const [homeVisitRadius, setHomeVisitRadius] = useState(String(profile.homeVisit.radiusKm));
   const [homeVisitGeo, setHomeVisitGeo] = useState<GeoCoordinates | null>(
     profile.homeVisit.geo ?? null,
   );
@@ -286,6 +289,7 @@ export function DoctorProfileEditForm({
         enabled: homeVisitEnabled,
         area: homeVisitArea.trim() || undefined,
         geo: homeVisitGeo ?? undefined,
+        radiusKm: homeVisitRadius ? Number(homeVisitRadius) : undefined,
       },
       sundayConsult: {
         enabled: sundayEnabled,
@@ -583,8 +587,9 @@ export function DoctorProfileEditForm({
           <div>
             <h2 className="text-sm font-semibold text-slate-900">In-house visit service</h2>
             <p className="mt-0.5 text-xs text-slate-600">
-              Offer doctor home visits in your city. Admin assigns you to nearby patient requests
-              when you are the nearest available doctor within {HOME_CARE_MATCH_RADIUS_KM} km.
+              Offer doctor home visits in your city. Admin assigns you to patient requests when
+              you are the nearest available doctor — patients inside your coverage radius first,
+              then within {HOME_CARE_MATCH_RADIUS_KM} km, 30 km, and anywhere in your coverage cities.
             </p>
           </div>
         </div>
@@ -601,6 +606,24 @@ export function DoctorProfileEditForm({
           />
         </div>
 
+        <div>
+          <Label htmlFor="homeVisitRadius">Coverage radius (km)</Label>
+          <Input
+            id="homeVisitRadius"
+            type="number"
+            min={HOME_CARE_COVERAGE_RADIUS_MIN_KM}
+            max={HOME_CARE_COVERAGE_RADIUS_MAX_KM}
+            value={homeVisitRadius}
+            onChange={(e) => setHomeVisitRadius(e.target.value)}
+            disabled={!homeVisitEnabled}
+            className="mt-1 max-w-[10rem]"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            How far you prefer to travel. Patients inside this radius are matched to you first;
+            farther patients can still be assigned, with travel confirmed first.
+          </p>
+        </div>
+
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -610,8 +633,7 @@ export function DoctorProfileEditForm({
           />
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house doctor visits within {HOME_CARE_MATCH_RADIUS_KM} km
-              of my area
+              I am available for in-house doctor visits in my coverage cities
             </p>
             <p className="text-xs text-slate-600">
               Turn this on to receive home visit assignments from admin dispatch.

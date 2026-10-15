@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  HOME_CARE_MATCH_RADIUS_KM,
   NURSE_HOME_VISIT_FEE_MAX,
   NURSE_HOME_VISIT_FEE_MIN,
   MAX_NURSING_SPECIALTIES,
@@ -283,8 +282,7 @@ export function NurseVerificationForm({
           />
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km of my
-              area
+              I am available for in-house visits in my city
             </p>
             <p className="text-xs text-slate-600">
               When enabled, admin dispatch will auto-match you to nearby patient home visits

@@ -550,7 +550,7 @@ function VisitFlowSection() {
           {
             icon: MapPin,
             title: "Keep location accurate",
-            desc: `Nearest-available requests are matched within ${F.radiusKm} km of your saved location. Update it if you move.`,
+            desc: `Nearest-available requests go to physios within ${F.radiusKm} km of the patient first, then farther out. Update it if you move.`,
           },
           {
             icon: Car,

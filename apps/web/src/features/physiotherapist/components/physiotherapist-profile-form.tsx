@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   cn,
-  HOME_CARE_MATCH_RADIUS_KM,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
   PHYSIO_HOME_VISIT_FEE_MAX,
   PHYSIO_HOME_VISIT_FEE_MIN,
@@ -190,6 +189,10 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                 max={50}
                 defaultValue={profile.staff.serviceArea.radiusKm}
               />
+              <p className="mt-1 text-xs text-slate-500">
+                How far you prefer to travel. Patients inside it are matched to you first; it
+                never stops a farther patient from booking you.
+              </p>
             </div>
 
             <div>
@@ -230,11 +233,11 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                 />
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km
+                    Available for in-house visits
                   </p>
                   <p className="text-xs text-slate-600">
-                    Patients near your saved location can book you directly, and admin dispatch
-                    uses it to match nearby visits.
+                    Patients can book you directly. Those inside your coverage radius see you first;
+                    farther patients can still book and are told travel may need confirming.
                   </p>
                 </div>
               </label>

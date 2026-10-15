@@ -564,8 +564,7 @@ export function DoctorVerificationForm() {
           />
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house doctor visits within {HOME_CARE_MATCH_RADIUS_KM} km
-              of my area
+              I am available for in-house doctor visits in my coverage cities
             </p>
             <p className="text-xs text-slate-600">
               Admin will auto-assign you to nearby patient home visits when you are the

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
-import { HomeVisitServiceTypes } from "@zindagi/shared";
+import { HOME_CARE_MATCH_RADIUS_KM, HomeVisitServiceTypes } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -156,6 +156,15 @@ export function PatientVisitsSection() {
                 ) : (
                   <p className="text-sm text-amber-700">{h.pendingAssignment}</p>
                 ))}
+              {visit.assignedStaff &&
+                (visit.status === "assigned" || visit.status === "requested") &&
+                visit.pricing.distance > HOME_CARE_MATCH_RADIUS_KM && (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm text-amber-800">
+                    {visit.assignedStaff.name} is about {Math.round(visit.pricing.distance)} km away —
+                    outside our usual {HOME_CARE_MATCH_RADIUS_KM} km home-visit area. They will
+                    confirm they can travel to you, and extra travel charges may apply.
+                  </p>
+                )}
 
               {visit.paymentStatus === "paid" && (
                 <span className="inline-block rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800">

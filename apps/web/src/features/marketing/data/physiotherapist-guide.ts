@@ -1,4 +1,5 @@
 import {
+  HOME_CARE_EXTENDED_RADIUS_KM,
   HOME_CARE_MATCH_RADIUS_KM,
   PHYSIO_HOME_VISIT_FEE_MAX,
   PHYSIO_HOME_VISIT_FEE_MIN,
@@ -51,7 +52,7 @@ export const PHYSIO_GUIDE_FAQ = [
   },
   {
     q: "How are home visits assigned to me?",
-    a: `Two ways. Patients can pick you directly from your profile or the physiotherapist directory. And when a patient asks for the nearest available physiotherapist, ZindagiCare matches them to verified physios within ${HOME_CARE_MATCH_RADIUS_KM} km of their location — so keep your location and availability up to date.`,
+    a: `Two ways. Patients can pick you directly from your profile or the physiotherapist directory. And when a patient asks for the nearest available physiotherapist, ZindagiCare matches them to the closest free verified physio — within ${HOME_CARE_MATCH_RADIUS_KM} km first, then ${HOME_CARE_EXTENDED_RADIUS_KM} km, then the same city. Patients can also book physios farther away, so keep your location and availability up to date.`,
   },
   {
     q: "Can I stop receiving visits for a while?",

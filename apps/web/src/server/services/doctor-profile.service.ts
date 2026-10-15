@@ -11,6 +11,7 @@ import {
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
   phoneLookupHash,
+  resolveCoverageRadiusKm,
   withDoctorTitle,
 } from "@zindagi/shared";
 import type { UpdateDoctorPortfolioInput, UpdateDoctorProfileInput } from "@zindagi/validators";
@@ -119,6 +120,7 @@ function mapProfileToDto(
     homeVisit: {
       enabled: profile.homeVisitEnabled ?? false,
       area: profile.homeVisitLocation?.area ?? undefined,
+      radiusKm: resolveCoverageRadiusKm(profile.homeVisitLocation?.radiusKm),
       geo:
         profile.homeVisitLocation?.geo?.coordinates?.length === 2
           ? {
@@ -349,6 +351,7 @@ export async function updateDoctorProfile(
           type: "Point",
           coordinates: [data.homeVisit.geo.lng, data.homeVisit.geo.lat],
         },
+        radiusKm: data.homeVisit.radiusKm ?? profile.homeVisitLocation?.radiusKm ?? undefined,
       };
     } else if (!data.homeVisit.enabled) {
       profile.homeVisitLocation = undefined;

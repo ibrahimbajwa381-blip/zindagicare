@@ -686,6 +686,8 @@ export async function adminUpdateDoctor(
           type: "Point",
           coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat],
         },
+        // Keep the doctor's own travel-radius preference.
+        radiusKm: refreshed.homeVisitLocation?.radiusKm ?? undefined,
       };
     } else if (!input.homeVisit.enabled) {
       refreshed.homeVisitLocation = undefined;
