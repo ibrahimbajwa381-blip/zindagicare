@@ -82,6 +82,46 @@ function parseId(value: string): Types.ObjectId {
 
 const visibleQuestion = (id: Types.ObjectId) => ({ _id: id, deletedAt: null, moderationStatus: "visible" as const });
 
+const COUNT_SYNC_MAX_ATTEMPTS = 8;
+
+/**
+ * Recomputes answerCount from the answers themselves (visible provider answers
+ * only), so a failed or repeated write can never leave it permanently off.
+ *
+ * Concurrency: answers and moderation flips live in another collection, so the
+ * count is written with compare-and-set on the question's version key (`__v`,
+ * Mongoose's built-in field — no schema change), read *before* counting. If
+ * another sync wrote in between, our count may predate their change, so we
+ * re-read and recount. Every writer that changes an answer syncs afterwards,
+ * so the last successful write always reflects every committed change — no
+ * stale count can land on top of a newer one (no transactions needed).
+ */
+async function syncAnswerCount(questionId: Types.ObjectId, extra: Record<string, unknown> = {}) {
+  for (let attempt = 0; attempt < COUNT_SYNC_MAX_ATTEMPTS; attempt++) {
+    const q = await MedicalQuestionModel.findById(questionId).select("__v").lean<{ __v?: number }>();
+    if (!q) return;
+    const count = await MedicalAnswerModel.countDocuments({
+      questionId,
+      kind: "answer",
+      moderationStatus: "visible",
+      deletedAt: null,
+    });
+    const r = await MedicalQuestionModel.updateOne(
+      // `null` also matches older documents stored without a version key.
+      { _id: questionId, __v: q.__v ?? null },
+      { $set: { answerCount: count, ...extra }, $inc: { __v: 1 } },
+    );
+    if (r.matchedCount === 1) return;
+  }
+  throw new Error("answer count sync kept conflicting");
+}
+
+const logCountSyncFailure = (questionId: Types.ObjectId) => (e: unknown) =>
+  console.error("[medical-qa] answer count sync failed; it is recounted on the next answer, retry or moderation", {
+    questionId: String(questionId),
+    error: (e as Error)?.name,
+  });
+
 
 /**
  * The provider role a user may answer as, from trusted DB records only —
@@ -344,10 +384,16 @@ export const MedicalQaService = {
       return existing;
     };
 
+    // A replay re-syncs the count, repairing it if the original request's count write failed.
+    const replay = async (existing: NonNullable<Awaited<ReturnType<typeof findExisting>>>) => {
+      if (existing.kind === "answer") await syncAnswerCount(id).catch(logCountSyncFailure(id));
+      return (await answerDtos([existing]))[0];
+    };
+
     if (input.idempotencyKey) {
       await MedicalAnswerModel.init();
       const existing = await findExisting();
-      if (existing) return (await answerDtos([existing]))[0];
+      if (existing) return replay(existing);
     }
 
     let created;
@@ -363,15 +409,18 @@ export const MedicalQaService = {
     } catch (e) {
       if (input.idempotencyKey && isDuplicateKey(e)) {
         const existing = await findExisting();
-        if (existing) return (await answerDtos([existing]))[0];
+        if (existing) return replay(existing);
       }
       throw e;
     }
 
-    await MedicalQuestionModel.updateOne(
-      { _id: id },
-      { $set: { lastActivityAt: new Date() }, ...(kind === "answer" ? { $inc: { answerCount: 1 } } : {}) },
-    );
+    // The answer is saved from here on: a failed count write is logged and healed
+    // later, never turned into an error that hides a saved answer from its author.
+    const lastActivity = { lastActivityAt: new Date() };
+    await (kind === "answer"
+      ? syncAnswerCount(id, lastActivity)
+      : MedicalQuestionModel.updateOne({ _id: id }, { $set: lastActivity })
+    ).catch(logCountSyncFailure(id));
 
     safePublish({ type: "answer_created", questionId: String(id), answerId: String(created._id) });
     // Tell the patient (bell + push). Only new answers: an idempotent replay
@@ -482,8 +531,11 @@ export const MedicalQaService = {
     const qid = parseId(questionId);
     const aid = parseId(attachmentId);
 
-    const q = await MedicalQuestionModel.findOne({ _id: qid, deletedAt: null }).select("authorId").lean();
+    const q = await MedicalQuestionModel.findOne({ _id: qid, deletedAt: null }).select("authorId moderationStatus").lean();
     if (!q) throw notFound();
+    // A hidden question is 404 for everyone (its author included) except admins, who
+    // may need the photos to review the report. Its photos follow the same rule.
+    if (q.moderationStatus !== "visible" && !isAdmin(viewer.roles)) throw notFound();
     // Authorize at the question level first so attachment ids can't be probed.
     if (!(await canViewPrivatePhotos(viewer, q.authorId))) {
       throw new AppError("Photos are only visible to the patient and verified providers", "FORBIDDEN", 403);
@@ -504,14 +556,20 @@ export const MedicalQaService = {
     await connectDatabase();
     const qid = parseId(questionId);
     const targetId = new Types.ObjectId(input.targetId);
-    const q = await MedicalQuestionModel.exists(visibleQuestion(qid));
+    const q = await MedicalQuestionModel.findOne(visibleQuestion(qid)).select("authorId").lean();
     if (!q) throw notFound();
 
+    // Hidden answers are already out of public view, so they can't be reported (same as hidden questions).
     const targetBelongsToThread =
       input.targetType === "question"
         ? targetId.equals(qid)
-        : !!(await MedicalAnswerModel.exists({ _id: targetId, questionId: qid, deletedAt: null }));
+        : !!(await MedicalAnswerModel.exists({ _id: targetId, questionId: qid, deletedAt: null, moderationStatus: "visible" }));
     if (!targetBelongsToThread) throw new AppError("Content not found", "NOT_FOUND", 404);
+    // Mirrors viewer.canReport: an author deletes their own question instead of reporting it.
+    // They can still report answers on it.
+    if (input.targetType === "question" && String(q.authorId) === viewer.id) {
+      throw new AppError("You can't report your own question", "FORBIDDEN", 403);
+    }
 
     try {
       await MedicalQaReportModel.create({
@@ -564,28 +622,29 @@ export const MedicalQaService = {
     };
   },
 
-  async moderate(admin: NonNullable<Viewer>, input: ModerateMedicalQaReportInput) {
+  /**
+   * `restoredQuestionId` is for the route only (never sent to the client): a restored
+   * question may still owe its new-question alerts, which are skipped while hidden.
+   */
+  async moderate(
+    admin: NonNullable<Viewer>,
+    input: ModerateMedicalQaReportInput,
+  ): Promise<{ ok: true; restoredQuestionId?: string }> {
     await connectDatabase();
     const report = await MedicalQaReportModel.findById(input.reportId).lean();
     if (!report) throw new AppError("Report not found", "NOT_FOUND", 404);
 
+    let restoredQuestionId: string | undefined;
     if (input.action === "hide" || input.action === "restore") {
       const [from, to] = input.action === "hide" ? (["visible", "hidden"] as const) : (["hidden", "visible"] as const);
       if (report.targetType === "question") {
         await MedicalQuestionModel.updateOne({ _id: report.targetId, moderationStatus: from }, { $set: { moderationStatus: to } });
+        if (to === "visible") restoredQuestionId = String(report.targetId);
       } else {
-        const changed = await MedicalAnswerModel.findOneAndUpdate(
-          { _id: report.targetId, moderationStatus: from },
-          { $set: { moderationStatus: to } },
-          { projection: { kind: 1, questionId: 1 } },
-        ).lean();
-        // Keep the public answer count in step with what is actually visible.
-        if (changed?.kind === "answer") {
-          await MedicalQuestionModel.updateOne(
-            { _id: changed.questionId, ...(to === "hidden" ? { answerCount: { $gt: 0 } } : {}) },
-            { $inc: { answerCount: to === "hidden" ? -1 : 1 } },
-          );
-        }
+        await MedicalAnswerModel.updateOne({ _id: report.targetId, moderationStatus: from }, { $set: { moderationStatus: to } });
+        // Recount even when the status was already `to`: if a previous attempt flipped it
+        // but failed before the recount, repeating the action is what repairs the count.
+        await syncAnswerCount(report.questionId as Types.ObjectId);
       }
       safePublish({ type: "question_updated", questionId: String(report.questionId) });
     }
@@ -608,6 +667,6 @@ export const MedicalQaService = {
       entityId: String(report.targetId),
       changes: { reportId: input.reportId, reason: report.reason, ...(input.note ? { note: input.note } : {}) },
     });
-    return { ok: true };
+    return { ok: true, ...(restoredQuestionId ? { restoredQuestionId } : {}) };
   },
 };

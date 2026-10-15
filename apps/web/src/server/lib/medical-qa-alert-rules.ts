@@ -26,6 +26,14 @@ export const QUESTION_ALERT_CONFIG = {
   maxRecipients: 5000,
   /** The sweep only retries questions this recent; older alerts are no longer useful. */
   retryWindowMs: 24 * 60 * 60 * 1000,
+  /**
+   * A question an admin restores is alerted only if it was posted within this
+   * window (measured from when it was asked, not restored): restoring is not a
+   * new question, and professionals shouldn't be pinged about stale ones.
+   * Same as retryWindowMs, so a failed restored-question run is retried only
+   * while it is still fresh.
+   */
+  restoreAlertMaxAgeMs: 24 * 60 * 60 * 1000,
 } as const;
 
 export type AlertRecipientRole = "doctor" | "nurse" | "physiotherapist";

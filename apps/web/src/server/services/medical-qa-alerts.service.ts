@@ -44,7 +44,8 @@ import {
  */
 
 type Recipient = { userId: Types.ObjectId; role: AlertRecipientRole };
-type ProcessOptions = { now?: Date; pushTimeoutMs?: number };
+/** `maxAgeMs`: skip questions posted longer ago than this (used for restored questions). */
+type ProcessOptions = { now?: Date; pushTimeoutMs?: number; maxAgeMs?: number };
 type ProcessResult = { processed: false } | { processed: true; recipients: number; status: "done" | "failed" };
 
 const isDuplicateKey = (e: unknown) => (e as { code?: number })?.code === 11000;
@@ -239,6 +240,7 @@ export const MedicalQaAlerts = {
         moderationStatus: "visible",
         alertStatus: { $in: ["pending", "failed", "processing"] },
         alertAttempts: { $lt: CFG.maxAttempts },
+        ...(opts.maxAgeMs !== undefined ? { createdAt: { $gte: new Date(now.getTime() - opts.maxAgeMs) } } : {}),
         $and: [
           { $or: [{ alertLeaseUntil: null }, { alertLeaseUntil: { $lte: now } }] },
           { $or: [{ alertNextAttemptAt: null }, { alertNextAttemptAt: { $lte: now } }] },

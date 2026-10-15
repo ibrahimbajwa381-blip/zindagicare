@@ -23,7 +23,16 @@ export const ANSWER_NOTIFY_CONFIG = {
   /** At most one push per question per this window (from the last push sent); every answer still lands in the bell. */
   pushPerQuestionWindowMs: 10 * 60 * 1000,
   pushTimeoutMs: 10_000,
+  /** The catch-up sweep looks back this far for answers whose notification never landed. */
+  sweepWindowMs: 24 * 60 * 60 * 1000,
+  /** Answers younger than this are left to their own in-flight run. */
+  sweepGraceMs: 60 * 1000,
+  sweepLimit: 20,
+  /** Answers examined per sweep at most (bounds the work when nearly everything is already notified). */
+  sweepMaxScan: 2000,
 } as const;
+
+const SWEEP_PAGE_SIZE = 200;
 
 const ROLE_LABELS: Record<string, string> = {
   doctor: "A doctor",
@@ -186,4 +195,78 @@ export async function notifyQuestionAnswered(
   // Nothing reached a device: free the slot so the next answer can try again.
   if (result !== "sent") await releasePushSlot(question._id, now);
   return { notified: true, push: result };
+}
+
+/**
+ * Catch-up for notifications that never landed (a background run that crashed,
+ * timed out or hit a transient DB error). There is no queue in this project,
+ * so this runs alongside each new answer's own notification.
+ *
+ * Duplicates are impossible: the notification's _id is the answer's _id, and
+ * only the run that creates it may push. Answers that legitimately get no
+ * notification (own question, hidden, deleted, inactive author) are simply
+ * re-checked and skipped until they leave the window. Returns how many it notified.
+ */
+export async function sweepMissedAnswerNotifications(
+  opts: { now?: Date; limit?: number; pushTimeoutMs?: number } = {},
+): Promise<number> {
+  const now = opts.now ?? new Date();
+  await connectDatabase();
+  // _id range (it embeds the creation time) so the query uses the _id index.
+  const since = Types.ObjectId.createFromTime(Math.floor((now.getTime() - ANSWER_NOTIFY_CONFIG.sweepWindowMs) / 1000));
+  const until = Types.ObjectId.createFromTime(Math.floor((now.getTime() - ANSWER_NOTIFY_CONFIG.sweepGraceMs) / 1000));
+  const limit = opts.limit ?? ANSWER_NOTIFY_CONFIG.sweepLimit;
+  const missing: Array<{ _id: Types.ObjectId }> = [];
+  let upper = until;
+  let scanned = 0;
+
+  // Newest first, a page at a time, until `limit` misses are found or the window
+  // (or the scan budget) is used up — so a backlog deeper than one page is still reached.
+  while (missing.length < limit && scanned < ANSWER_NOTIFY_CONFIG.sweepMaxScan) {
+    const page = await MedicalAnswerModel.find({
+      _id: { $gte: since, $lt: upper },
+      kind: "answer",
+      deletedAt: null,
+      moderationStatus: "visible",
+    })
+      .sort({ _id: -1 })
+      .limit(SWEEP_PAGE_SIZE)
+      .select("_id questionId authorId")
+      .lean();
+    if (page.length === 0) break;
+    scanned += page.length;
+    upper = page[page.length - 1]._id;
+
+    const [done, questions] = await Promise.all([
+      NotificationModel.find({ _id: { $in: page.map((a) => a._id) } }).select("_id").lean(),
+      MedicalQuestionModel.find({
+        _id: { $in: [...new Set(page.map((a) => String(a.questionId)))].map((id) => new Types.ObjectId(id)) },
+        deletedAt: null,
+        moderationStatus: "visible",
+      })
+        .select("authorId")
+        .lean(),
+    ]);
+    const notified = new Set(done.map((n) => String(n._id)));
+    const askers = new Map(questions.map((q) => [String(q._id), String(q.authorId)]));
+    // Skip answers that are meant to get no notification, so they never crowd out real misses.
+    for (const a of page) {
+      const asker = askers.get(String(a.questionId));
+      if (notified.has(String(a._id)) || asker === undefined || asker === String(a.authorId)) continue;
+      missing.push(a);
+      if (missing.length >= limit) break;
+    }
+  }
+
+  let count = 0;
+  for (const a of missing) {
+    try {
+      const r = await notifyQuestionAnswered(String(a._id), { now, pushTimeoutMs: opts.pushTimeoutMs });
+      if (r.notified) count += 1;
+    } catch (e) {
+      // One bad row must not stop the rest; it is retried on the next sweep.
+      console.error("[medical-qa-answer-notify] sweep item failed", { answerId: String(a._id), error: (e as Error)?.name });
+    }
+  }
+  return count;
 }

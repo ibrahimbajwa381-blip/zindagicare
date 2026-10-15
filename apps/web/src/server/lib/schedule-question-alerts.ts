@@ -9,10 +9,10 @@ const OPPORTUNISTIC_SWEEP_LIMIT = 5;
  * question never waits on push providers. Failures are contained here:
  * they can never turn a saved question into an error response.
  */
-export function scheduleQuestionAlerts(questionId: string) {
+export function scheduleQuestionAlerts(questionId: string, opts: { maxAgeMs?: number } = {}) {
   const run = async () => {
     try {
-      await MedicalQaAlerts.processQuestion(questionId);
+      await MedicalQaAlerts.processQuestion(questionId, opts);
       await MedicalQaAlerts.sweepPending({ limit: OPPORTUNISTIC_SWEEP_LIMIT });
     } catch (e) {
       console.error("[medical-qa-alerts] background run failed", { questionId, error: (e as Error)?.name });

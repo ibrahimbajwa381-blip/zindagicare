@@ -5,8 +5,9 @@
  * Real local MongoDB (mongodb-memory-server, ephemeral — never Atlas, never
  * production) + REAL route handlers + REAL auth (mobile Bearer JWT signed
  * with a test secret) + REAL MedicalQaService and image pipeline.
- * Only Supabase network I/O (object-storage double) and the realtime
- * publisher (spy) are replaced. Redis is never reached: production Upstash
+ * Only Supabase network I/O (object-storage double), the realtime
+ * publisher (spy) and the push providers (mocks) are replaced; global fetch
+ * throws, as a backstop. Redis is never reached: production Upstash
  * env vars are removed before any module loads.
  */
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -43,6 +44,14 @@ jest.mock("@/lib/realtime/medical-qa-emitter", () => {
   const actual = jest.requireActual("@/lib/realtime/medical-qa-emitter");
   return { ...actual, publishMedicalQaEvent: (...args: unknown[]) => publishSpy(...args) };
 });
+
+// Answers and new questions trigger real background notification runs here; their
+// push step must never reach Expo or web-push.
+const pushSpy = jest.fn(async () => ({ sent: 0, failed: 0 }));
+jest.mock("@/server/services/push.service", () => ({
+  sendExpoPushToUser: (...args: unknown[]) => pushSpy(...(args as [])),
+  sendWebPushToUser: (...args: unknown[]) => pushSpy(...(args as [])),
+}));
 
 jest.mock("@/lib/auth", () => ({ auth: async () => null }));
 
@@ -163,9 +172,13 @@ describe("Public Medical Q&A API (real local MongoDB)", () => {
     return attachmentRoute.GET(req as never);
   }
 
+  const realFetch = global.fetch;
+
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
     process.env.MONGODB_URI = mongod.getUri("medical_qa_audit");
+    // Backstop: nothing in these tests may reach the network.
+    global.fetch = (() => Promise.reject(new Error("network access is blocked in tests"))) as typeof fetch;
     process.env.FIELD_ENCRYPTION_KEY = randomBytes(32).toString("base64");
     process.env.AUTH_SECRET = "test-secret-at-least-32-chars-long-12345";
 
@@ -194,6 +207,7 @@ describe("Public Medical Q&A API (real local MongoDB)", () => {
   });
 
   afterAll(async () => {
+    global.fetch = realFetch;
     await mongooseMod.disconnect();
     await mongod.stop();
   });
