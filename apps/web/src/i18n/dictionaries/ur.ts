@@ -2159,6 +2159,7 @@ export const ur: Dictionary = {
       title: "صحت کا سوال پوچھیں",
       description: "یہ مفت ہے۔ تصدیق شدہ ڈاکٹرز، نرسز اور فزیو تھراپسٹس جواب دیں گے۔",
       categoryLabel: "موضوع",
+      categoryPlaceholder: "موضوع منتخب کریں",
       titleLabel: "اپنا سوال ایک سطر میں",
       titlePlaceholder: "مثلاً: میرے 5 سالہ بچے کو 3 دن سے بخار ہے — کب فکر کرنی چاہیے؟",
       bodyLabel: "تفصیل",

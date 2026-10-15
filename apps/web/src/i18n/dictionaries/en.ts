@@ -2191,6 +2191,7 @@ export const en = {
       title: "Ask a health question",
       description: "It's free. Verified doctors, nurses and physiotherapists will answer.",
       categoryLabel: "Topic",
+      categoryPlaceholder: "Select a topic",
       titleLabel: "Your question in one line",
       titlePlaceholder: "e.g. Fever for 3 days in my 5-year-old — when should I worry?",
       bodyLabel: "Details",

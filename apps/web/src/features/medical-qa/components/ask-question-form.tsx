@@ -19,6 +19,9 @@ const ASK_PATH = "/questions/ask";
 
 type PickedPhoto = { file: File; preview: string };
 
+// "general" stays a valid stored category for older questions, but new askers pick a specific topic.
+const ASKABLE_CATEGORIES = MedicalQaCategories.filter((c) => c !== "general");
+
 const textareaClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base text-foreground shadow-sm placeholder:text-slate-400 focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:rounded-lg sm:px-3 sm:text-sm";
 
@@ -28,7 +31,9 @@ export function AskQuestionForm({ initialCategory }: { initialCategory?: Medical
   const router = useRouter();
   const { status } = useSession();
 
-  const [category, setCategory] = useState<MedicalQaCategory>(initialCategory ?? "general");
+  const [category, setCategory] = useState<MedicalQaCategory | "">(
+    initialCategory && initialCategory !== "general" ? initialCategory : "",
+  );
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
@@ -66,6 +71,7 @@ export function AskQuestionForm({ initialCategory }: { initialCategory?: Medical
   const canSubmit =
     status === "authenticated" &&
     phase === "idle" &&
+    category !== "" &&
     titleLen >= MEDICAL_QA_LIMITS.titleMin &&
     bodyLen >= MEDICAL_QA_LIMITS.bodyMin;
 
@@ -132,10 +138,17 @@ export function AskQuestionForm({ initialCategory }: { initialCategory?: Medical
           id="qa-category"
           value={category}
           onChange={(e) => setCategory(e.target.value as MedicalQaCategory)}
-          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:text-sm"
+          required
+          className={cn(
+            "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:text-sm",
+            category === "" && "text-slate-400",
+          )}
         >
-          {MedicalQaCategories.map((c) => (
-            <option key={c} value={c}>
+          <option value="" disabled>
+            {f.categoryPlaceholder}
+          </option>
+          {ASKABLE_CATEGORIES.map((c) => (
+            <option key={c} value={c} className="text-foreground">
               {t.categories[c]}
             </option>
           ))}
@@ -154,7 +167,12 @@ export function AskQuestionForm({ initialCategory }: { initialCategory?: Medical
           autoComplete="off"
           required
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p
+          className={cn(
+            "mt-1 text-xs",
+            titleLen > 0 && titleLen < MEDICAL_QA_LIMITS.titleMin ? "font-medium text-red-600" : "text-slate-500",
+          )}
+        >
           {titleLen > 0 && titleLen < MEDICAL_QA_LIMITS.titleMin
             ? f.minLength.replace("{count}", String(MEDICAL_QA_LIMITS.titleMin))
             : f.charactersLeft.replace("{count}", String(MEDICAL_QA_LIMITS.titleMax - title.length))}
@@ -174,7 +192,12 @@ export function AskQuestionForm({ initialCategory }: { initialCategory?: Medical
           className={textareaClass}
           required
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p
+          className={cn(
+            "mt-1 text-xs",
+            bodyLen > 0 && bodyLen < MEDICAL_QA_LIMITS.bodyMin ? "font-medium text-red-600" : "text-slate-500",
+          )}
+        >
           {bodyLen > 0 && bodyLen < MEDICAL_QA_LIMITS.bodyMin
             ? f.minLength.replace("{count}", String(MEDICAL_QA_LIMITS.bodyMin))
             : f.charactersLeft.replace("{count}", String(MEDICAL_QA_LIMITS.bodyMax - body.length))}
