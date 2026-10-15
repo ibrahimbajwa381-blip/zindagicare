@@ -21,13 +21,23 @@ import { buildMarketingMobileNav } from "@/lib/nav/mobile-menu";
 import { providerDirectoryLinks } from "@/lib/nav/provider-directories";
 import { useTranslations } from "@/i18n/locale-provider";
 
-export type UnifiedNavLink = {
-  href: string;
-  label: string;
-  badge?: string;
-  /** Desktop dropdown items; the parent link stays clickable. */
-  children?: readonly UnifiedNavLink[];
-};
+type NavBadge = { badge?: string };
+
+export type UnifiedNavLink = NavBadge &
+  (
+    | {
+        href: string;
+        label: string;
+        /** Desktop dropdown items; the parent link stays clickable. */
+        children?: readonly UnifiedNavLink[];
+      }
+    | {
+        /** Menu-only parent (e.g. "More"): opens its dropdown, links nowhere itself. */
+        href?: undefined;
+        label: string;
+        children: readonly UnifiedNavLink[];
+      }
+  );
 
 type UnifiedHeaderProps = {
   /** Primary navigation links shown on desktop. */
@@ -98,24 +108,27 @@ export function UnifiedHeader({
     },
     { label: t.nav.homeServices, href: siteConfig.links.homeServices },
     {
-      label: t.nav.homePhysio,
-      href: siteConfig.links.homePhysiotherapy,
-    },
-    { label: t.nav.onlineConsult, href: siteConfig.links.doctors },
-    {
       label: t.nav.askDoctor,
       href: siteConfig.links.askDoctor,
-      badge: t.nav.freeBadge,
-    },
-    {
-      label: t.nav.sundayConsult,
-      href: siteConfig.links.sundayConsult,
       badge: t.nav.freeBadge,
     },
     {
       label: t.nav.urgentCare,
       href: siteConfig.links.urgentCare,
       badge: t.nav.urgentBadge,
+    },
+    // Seven top-level links overflow the header at every width, so the rest sit under "More".
+    {
+      label: t.nav.more,
+      children: [
+        { label: t.nav.homePhysio, href: siteConfig.links.homePhysiotherapy },
+        { label: t.nav.onlineConsult, href: siteConfig.links.doctors },
+        {
+          label: t.nav.sundayConsult,
+          href: siteConfig.links.sundayConsult,
+          badge: t.nav.freeBadge,
+        },
+      ],
     },
   ];
 
@@ -154,25 +167,32 @@ export function UnifiedHeader({
 
         {resolvedNavLinks.length > 0 ? (
           <nav
-            className="hidden min-w-0 flex-1 items-center justify-center gap-0 px-0.5 text-xs font-medium text-slate-600 lg:flex xl:gap-0.5 xl:px-1 xl:text-[13px] 2xl:gap-1 2xl:px-2 2xl:text-sm"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-0 px-0.5 text-xs font-medium text-slate-600 xl:flex xl:gap-0.5 xl:px-1 xl:text-[13px] 2xl:gap-1 2xl:px-2 2xl:text-sm"
             aria-label="Main"
           >
             {resolvedNavLinks.map((item) => {
-              const link = (
+              const linkClass =
+                "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 transition-colors hover:bg-brand-muted hover:text-brand-dark xl:px-2 2xl:gap-1.5 2xl:px-3";
+              const linkContent = (
+                <>
+                  {item.label}
+                  {item.children ? <ChevronDown className="h-3 w-3" aria-hidden /> : null}
+                  {item.badge ? <NavBadgePill label={item.badge} /> : null}
+                </>
+              );
+              const link = item.href ? (
                 <Link
                   key={item.label}
                   href={item.href}
                   aria-haspopup={item.children ? "true" : undefined}
-                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-2 transition-colors hover:bg-brand-muted hover:text-brand-dark xl:px-2 2xl:gap-1.5 2xl:px-3"
+                  className={linkClass}
                 >
-                  {item.label}
-                  {item.children ? <ChevronDown className="h-3 w-3" aria-hidden /> : null}
-                  {item.badge ? (
-                    <span className="rounded-md bg-brand px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white xl:px-1.5 xl:text-[10px]">
-                      {item.badge}
-                    </span>
-                  ) : null}
+                  {linkContent}
                 </Link>
+              ) : (
+                <button key={item.label} type="button" aria-haspopup="true" className={linkClass}>
+                  {linkContent}
+                </button>
               );
               if (!item.children) return link;
               // Opens on hover and on keyboard focus (focus-within), no JS state needed.
@@ -182,12 +202,13 @@ export function UnifiedHeader({
                   <div className="invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                     <ul className="min-w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
                       {item.children.map((child) => (
-                        <li key={child.href}>
+                        <li key={child.label}>
                           <Link
-                            href={child.href}
-                            className="block whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-brand-muted hover:text-brand-dark"
+                            href={child.href ?? "#"}
+                            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-brand-muted hover:text-brand-dark"
                           >
                             {child.label}
+                            {child.badge ? <NavBadgePill label={child.badge} /> : null}
                           </Link>
                         </li>
                       ))}
@@ -198,7 +219,7 @@ export function UnifiedHeader({
             })}
           </nav>
         ) : (
-          <div className="hidden flex-1 lg:block" aria-hidden />
+          <div className="hidden flex-1 xl:block" aria-hidden />
         )}
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
@@ -239,7 +260,7 @@ export function UnifiedHeader({
 
           {showMobileNav ? (
             <MobileNav
-              className={resolvedNavLinks.length > 0 ? "lg:hidden" : undefined}
+              className={resolvedNavLinks.length > 0 ? "xl:hidden" : undefined}
               links={resolvedMobileLinks}
               sections={resolvedMobileSections}
               menuLabel={menuLabel ?? t.common.menu}
@@ -255,5 +276,13 @@ export function UnifiedHeader({
         </div>
       </div>
     </header>
+  );
+}
+
+function NavBadgePill({ label }: { label: string }) {
+  return (
+    <span className="rounded-md bg-brand px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white xl:px-1.5 xl:text-[10px]">
+      {label}
+    </span>
   );
 }

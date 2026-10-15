@@ -12,6 +12,7 @@ export const ur: Dictionary = {
   },
   nav: {
     home: "ہوم",
+    more: "مزید",
     onlineConsult: "آن لائن مشورہ",
     sundayConsult: "اتوار مفت مشورہ",
     homeServices: "گھر پر طبی خدمات",

@@ -11,6 +11,7 @@ export const en = {
   },
   nav: {
     home: "Home",
+    more: "More",
     onlineConsult: "Online consultation",
     sundayConsult: "Sunday Free Consult",
     homeServices: "In-house medical services",
