@@ -112,7 +112,9 @@ export const en = {
     forgotPassword: "Forgot password?",
     forgotPasswordTitle: "Forgot your password?",
     forgotPasswordDescription:
-      "Enter your registered mobile number. We'll text you a one-time code to sign in — no email required.",
+      "Enter your registered mobile number. We'll send a one-time code to the email on your account, then you can set a new password.",
+    newPassword: "New password",
+    resetPasswordSubmit: "Save password & sign in",
     phoneLoginTitle: "Forgot your password?",
     phoneLoginDescription:
       "Enter your registered mobile number. We'll text you a one-time code to sign in — no email required.",

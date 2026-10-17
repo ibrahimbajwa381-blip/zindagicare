@@ -8,7 +8,8 @@ import { formatMessage } from "@/i18n/messages";
 import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
-import { loginWithPhoneOtpAction } from "@/server/actions/auth.actions";
+import { PasswordInput } from "@/components/ui/password-input";
+import { resetPasswordWithOtpAction } from "@/server/actions/auth.actions";
 
 export function PhoneOtpForm({ callbackUrl }: { callbackUrl?: string }) {
   const t = useTranslations();
@@ -17,7 +18,7 @@ export function PhoneOtpForm({ callbackUrl }: { callbackUrl?: string }) {
   const [otpError, setOtpError] = useState<string>();
   const [otpNotice, setOtpNotice] = useState<string>();
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [state, action, pending] = useActionState(loginWithPhoneOtpAction, undefined);
+  const [state, action, pending] = useActionState(resetPasswordWithOtpAction, undefined);
   const loginHref = callbackUrl
     ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
     : "/login";
@@ -128,6 +129,28 @@ export function PhoneOtpForm({ callbackUrl }: { callbackUrl?: string }) {
           {formatMessage(t.auth.sentTo, { phone })}
         </p>
       </div>
+      <div>
+        <Label htmlFor="password">{t.auth.newPassword}</Label>
+        <PasswordInput
+          id="password"
+          name="password"
+          autoComplete="new-password"
+          className="mt-1.5 h-12"
+          minLength={6}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="confirmPassword">{t.auth.confirmPassword}</Label>
+        <PasswordInput
+          id="confirmPassword"
+          name="confirmPassword"
+          autoComplete="new-password"
+          className="mt-1.5 h-12"
+          minLength={6}
+          required
+        />
+      </div>
       {otpNotice ? (
         <p className="text-sm text-emerald-700" role="status">
           {otpNotice}
@@ -135,7 +158,7 @@ export function PhoneOtpForm({ callbackUrl }: { callbackUrl?: string }) {
       ) : null}
       <FieldError message={otpError ?? state?.error} />
       <Button type="submit" size="lg" className="w-full" disabled={pending} loading={pending}>
-        {pending ? t.auth.verifying : t.auth.verifySignIn}
+        {pending ? t.auth.verifying : t.auth.resetPasswordSubmit}
       </Button>
       <Button
         type="button"

@@ -29,7 +29,7 @@ import {
   registerWithCredentials,
 } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
-import { loginSchema, otpVerifySchema, registerSchema, type AccountType } from "@zindagi/validators";
+import { loginSchema, passwordResetSchema, registerSchema, type AccountType } from "@zindagi/validators";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
 import { safeCallbackUrl } from "@/lib/auth/safe-callback-url";
 import {
@@ -202,13 +202,16 @@ export async function loginWithGoogleAction(callbackUrl?: string) {
   });
 }
 
-export async function loginWithPhoneOtpAction(
+/** Forgot password: verify the OTP, save the new password, then sign in. */
+export async function resetPasswordWithOtpAction(
   _prev: { error?: string } | undefined,
   formData: FormData,
 ) {
-  const parsed = otpVerifySchema.safeParse({
+  const parsed = passwordResetSchema.safeParse({
     phone: formData.get("phone"),
     code: formData.get("code"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
   });
 
   if (!parsed.success) {
@@ -226,6 +229,7 @@ export async function loginWithPhoneOtpAction(
       {
         phone: parsed.data.phone,
         code: parsed.data.code,
+        newPassword: parsed.data.password,
       },
       { callbackUrl },
     );

@@ -226,6 +226,19 @@ export async function findActiveUserByPhone(phone: string) {
   return user;
 }
 
+/** Forgot password: replace the password of the account behind a verified phone OTP. */
+export async function setPasswordByPhone(phone: string, newPassword: string) {
+  const user = await findActiveUserByPhone(phone);
+  if (!user) return false;
+
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  await UserModel.updateOne(
+    { _id: user._id },
+    { $set: { passwordHash }, $addToSet: { authProviders: "credentials" } },
+  );
+  return true;
+}
+
 /** Sign in an existing user via phone OTP (passwordless recovery). */
 export async function signInWithPhoneOtp(phone: string) {
   const user = await findActiveUserByPhone(phone);

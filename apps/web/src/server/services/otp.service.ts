@@ -31,7 +31,8 @@ function storeKey(phone: string) {
  * Phone OTP architecture:
  * 1. Client POST /api/v1/auth/otp/request → SMS gateway (SMS_API_KEY) sends code,
  *    and email (when the account has one on file) via Resend.
- * 2. Client submits code via signIn("phone-otp") with phone + code.
+ * 2. Client submits code + new password via signIn("phone-otp"); the password is
+ *    saved, then the user is signed in (forgot-password flow).
  * 3. Challenges persist in MongoDB so API routes and server actions share state.
  */
 function sendOtpSms(phone: string, code: string) {

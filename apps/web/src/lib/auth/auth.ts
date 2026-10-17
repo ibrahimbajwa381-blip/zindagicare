@@ -2,11 +2,13 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { Roles } from "@zindagi/shared";
+import { newPasswordSchema } from "@zindagi/validators";
 import { authConfig } from "./auth.config";
 import { isGoogleAuthConfigured } from "./google";
 import {
   findGoogleLoginUser,
   loadAuthUserPayload,
+  setPasswordByPhone,
   signInWithPhoneOtp,
   verifyCredentialsLogin,
 } from "@/server/services/auth.service";
@@ -50,6 +52,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         phone: { label: "Phone", type: "tel" },
         code: { label: "OTP", type: "text" },
+        newPassword: { label: "New password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.phone || !credentials?.code) {
@@ -58,9 +61,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const phone = String(credentials.phone);
         const code = String(credentials.code);
+        // Forgot-password flow: the OTP only unlocks sign-in together with a new
+        // password. Validate it before verifying so a bad password doesn't burn the code.
+        const newPassword = newPasswordSchema.safeParse(credentials.newPassword);
+        if (!newPassword.success) {
+          return null;
+        }
 
         const valid = await otpService.verifyOtp(phone, code);
         if (!valid) {
+          return null;
+        }
+
+        if (!(await setPasswordByPhone(phone, newPassword.data))) {
           return null;
         }
 
