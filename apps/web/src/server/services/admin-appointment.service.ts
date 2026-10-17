@@ -23,6 +23,8 @@ import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter } from "@/lib/mongo/query";
+import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
+import { sendBookingEmail } from "@/lib/notifications/booking-emails";
 import { getReferredPatientDoctorMap } from "@/server/services/commission.service";
 import {
   recordAdminActivity,
@@ -673,6 +675,22 @@ export async function adminCreateManualAppointment(input: {
       scheduledEnd: Date;
     };
   }
+
+  // Confirmed and saved — tell both sides. Never throws; a reused slot that
+  // was already emailed is deduplicated by the email idempotency key.
+  const appointmentId = appointment._id.toString();
+  await Promise.all([
+    sendBookingEmail({ appointmentId, recipient: "patient", expectedUserId: patient._id.toString() }),
+    ...(doctor.userId
+      ? [
+          sendBookingEmail({
+            appointmentId,
+            recipient: "doctor",
+            expectedUserId: resolveMongoRefId(doctor.userId),
+          }),
+        ]
+      : []),
+  ]);
 
   const doctorUser = doctor.userId as { name?: string; phone?: string } | null;
   return {

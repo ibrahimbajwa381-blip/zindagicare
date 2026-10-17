@@ -1,4 +1,5 @@
 import { withDoctorTitle } from "@zindagi/shared";
+import { sendBookingEmail } from "@/lib/notifications/booking-emails";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 
 /**
@@ -10,6 +11,7 @@ export async function sendSundayReminder(input: {
   body: string;
   phone?: string;
   payload: Record<string, unknown>;
+  skipEmail?: boolean;
 }) {
   await deliverUserNotification(input);
 }
@@ -19,6 +21,7 @@ export async function sendBookingConfirmation(params: {
   phone?: string;
   doctorName: string;
   slotStart: Date;
+  appointmentId: string;
 }) {
   const time = params.slotStart.toLocaleString("en-PK", {
     timeZone: "Asia/Karachi",
@@ -32,5 +35,13 @@ export async function sendBookingConfirmation(params: {
     title: "Sunday Free Consult confirmed",
     body: `Your free consult with ${withDoctorTitle(params.doctorName)} is booked for ${time}.`,
     payload: { type: "sunday_booking_confirmed" },
+    // The detailed booking email below replaces the generic one.
+    skipEmail: true,
+  });
+
+  await sendBookingEmail({
+    appointmentId: params.appointmentId,
+    recipient: "patient",
+    expectedUserId: params.userId,
   });
 }

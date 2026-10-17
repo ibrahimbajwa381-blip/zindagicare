@@ -1038,6 +1038,7 @@ export class OnlineConsultService {
       doctorName: mapUserPii(doctorUser ?? {}).name,
       slotStart: appointment.scheduledStart,
       amount: payment.amount,
+      appointmentId: appointment._id.toString(),
     });
 
     if (doctor?.userId) {

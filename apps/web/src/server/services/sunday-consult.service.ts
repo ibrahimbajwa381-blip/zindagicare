@@ -589,6 +589,7 @@ export class SundayConsultService {
       phone: safeDisplayText(patient?.phone) ?? undefined,
       doctorName: safeDisplayText(doctorUser?.name) ?? "Doctor",
       slotStart: slot.startAt,
+      appointmentId: result.appointmentId,
     });
 
     if (doctor?.userId) {
@@ -1801,6 +1802,7 @@ export class SundayConsultService {
       phone: safeDisplayText(patient?.phone) ?? request.patientPhone,
       doctorName: safeDisplayText(doctorUser?.name) ?? "Doctor",
       slotStart: scheduledStart,
+      appointmentId,
     }).catch((err) => {
       console.error("[sunday-consult] patient notification failed", err);
     });
