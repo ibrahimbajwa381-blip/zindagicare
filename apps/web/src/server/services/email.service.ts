@@ -2,7 +2,7 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 
 /**
  * Hard cap on a single send so a slow/hung provider call can never stall a
- * request path (OTP, booking confirmation, etc.) beyond a few seconds.
+ * request path (booking confirmation, etc.) beyond a few seconds.
  */
 const SEND_TIMEOUT_MS = 5000;
 

@@ -100,34 +100,6 @@ export const registerSchema = z
     }
   });
 
-export const otpRequestSchema = z.object({
-  phone: pakistaniPhone,
-});
-
-export const otpVerifySchema = otpRequestSchema.extend({
-  code: z.string().length(6, "Enter the 6-digit code"),
-});
-
-export const newPasswordSchema = z
-  .string()
-  .min(6, "Password must be at least 6 characters");
-
-/** Forgot password: phone OTP proves ownership, then the new password is saved. */
-export const passwordResetSchema = otpVerifySchema
-  .extend({
-    password: newPasswordSchema,
-    confirmPassword: z.string().min(1, "Confirm your password"),
-  })
-  .superRefine((data, ctx) => {
-    if (data.password !== data.confirmPassword) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Passwords do not match",
-        path: ["confirmPassword"],
-      });
-    }
-  });
-
 /** Patient-only profile completion after signup. */
 export const onboardingSchema = z.object({
   city: z.string().min(2, "City is required"),

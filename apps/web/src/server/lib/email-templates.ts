@@ -53,22 +53,6 @@ function paragraph(text: string): string {
   return `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#334155;">${escapeHtml(text)}</p>`;
 }
 
-export function otpEmail(input: { name?: string; code: string; minutes: number }) {
-  const greeting = input.name ? `Hi ${input.name},` : "Hi,";
-  const bodyHtml = `
-    ${paragraph(`${greeting} use the verification code below to continue.`)}
-    <div style="margin:0 0 16px;padding:16px;background:#f0fdfa;border-radius:8px;text-align:center;">
-      <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:${BRAND_COLOR};">${escapeHtml(input.code)}</span>
-    </div>
-    ${paragraph(`This code expires in ${input.minutes} minutes. If you didn't request this, you can safely ignore this email.`)}
-  `;
-  return {
-    subject: `${input.code} is your ${BRAND} verification code`,
-    html: layout({ heading: "Your verification code", bodyHtml, preheader: `Your code: ${input.code}` }),
-    text: `${greeting} your ${BRAND} verification code is ${input.code}. It expires in ${input.minutes} minutes.`,
-  };
-}
-
 export function notificationEmail(input: {
   name?: string;
   title: string;

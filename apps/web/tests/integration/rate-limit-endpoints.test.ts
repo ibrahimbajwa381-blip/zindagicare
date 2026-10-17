@@ -45,13 +45,11 @@ describe("Rate Limiting / Abuse Protection (RT-001 .. RT-007)", () => {
   let mongod: InstanceType<typeof MongoMemoryServer>;
   let mongooseMod: typeof import("mongoose");
   let UserModel: typeof import("@zindagi/database").UserModel;
-  let OtpChallengeModel: typeof import("@zindagi/database").OtpChallengeModel;
   let Roles: typeof import("@zindagi/shared").Roles;
   let signMobileAccessToken: typeof import("@/server/api/mobile-jwt").signMobileAccessToken;
   let registerWithCredentials: typeof import("@/server/services/auth.service").registerWithCredentials;
 
   let mobileLoginRoute: typeof import("@/app/api/v1/mobile/auth/login/route");
-  let otpRequestRoute: typeof import("@/app/api/v1/auth/otp/request/route");
   let chatMessagesRoute: typeof import("@/app/api/v1/chat/threads/[threadId]/messages/route");
   let sundayRequestRoute: typeof import("@/app/api/v1/sunday/request/route");
   let urgentCheckoutRoute: typeof import("@/app/api/v1/urgent/checkout/route");
@@ -87,7 +85,6 @@ describe("Rate Limiting / Abuse Protection (RT-001 .. RT-007)", () => {
 
     const db = await import("@zindagi/database");
     UserModel = db.UserModel;
-    OtpChallengeModel = db.OtpChallengeModel;
     mongooseMod = (await import("mongoose")).default;
 
     const shared = await import("@zindagi/shared");
@@ -99,7 +96,6 @@ describe("Rate Limiting / Abuse Protection (RT-001 .. RT-007)", () => {
     ({ registerWithCredentials } = await import("@/server/services/auth.service"));
 
     mobileLoginRoute = await import("@/app/api/v1/mobile/auth/login/route");
-    otpRequestRoute = await import("@/app/api/v1/auth/otp/request/route");
     chatMessagesRoute = await import("@/app/api/v1/chat/threads/[threadId]/messages/route");
     sundayRequestRoute = await import("@/app/api/v1/sunday/request/route");
     urgentCheckoutRoute = await import("@/app/api/v1/urgent/checkout/route");
@@ -212,99 +208,19 @@ describe("Rate Limiting / Abuse Protection (RT-001 .. RT-007)", () => {
     });
   });
 
-  // =========================================================================
-  // RT-002 — OTP Rate Limiting
-  // =========================================================================
-  describe("RT-002 — OTP", () => {
-    async function requestOtp(phone: string, ip: string) {
-      const req = new Request("http://localhost/api/v1/auth/otp/request", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-forwarded-for": ip },
-        body: JSON.stringify({ phone }),
-      });
-      return otpRequestRoute.POST(req as never);
-    }
-
-    /**
-     * Bypasses the 30s inter-request cooldown without waiting in real time.
-     * `timestamps: false` is required here — the schema has `timestamps: true`,
-     * so a plain updateOne silently overwrites our explicit `updatedAt` back
-     * to "now" via Mongoose's own timestamp middleware.
-     */
-    async function clearCooldown(phone: string) {
-      await OtpChallengeModel.updateOne(
-        { phoneKey: `otp:${phone}` },
-        { $set: { updatedAt: new Date(Date.now() - 60_000) } },
-        { timestamps: false },
-      );
-    }
-
-    test("1 request succeeds; an immediate repeat is cooldown-limited with Retry-After", async () => {
-      const phone = nextPhone();
-      await UserModel.create({ name: "OTP User", email: nextEmail(), phone, roles: [Roles.PATIENT] });
-
-      const first = await requestOtp(phone, "20.0.0.1");
-      expect(first.status).toBe(200);
-
-      const second = await requestOtp(phone, "20.0.0.1");
-      expect(second.status).toBe(429);
-      expect(second.headers.get("Retry-After")).toBeTruthy();
-      const json = await second.json();
-      expect(json.error.code).toBe("RATE_LIMITED");
+  // VAL-009 / ERR-001 — malformed JSON body regression (withApiHandler bug:
+  // req.json()'s raw SyntaxError wasn't caught as AppError/ZodError, so
+  // apiError() fell through to a generic 500 instead of a clean 400).
+  test("malformed JSON body returns a clean 400 VALIDATION_ERROR, never a 500", async () => {
+    const req = new Request("http://localhost/api/v1/mobile/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{not valid json",
     });
-
-    test("hourly per-phone cap kicks in even when the 30s cooldown is respected each time", async () => {
-      const phone = nextPhone();
-      await UserModel.create({ name: "OTP Hourly User", email: nextEmail(), phone, roles: [Roles.PATIENT] });
-
-      const statuses: number[] = [];
-      for (let i = 0; i < 6; i += 1) {
-        const res = await requestOtp(phone, "20.0.0.2");
-        statuses.push(res.status);
-        await clearCooldown(phone);
-      }
-
-      // 5 requests/hour configured — the 6th is blocked by the hourly cap,
-      // not the (already-cleared) cooldown.
-      expect(statuses).toEqual([200, 200, 200, 200, 200, 429]);
-    });
-
-    test("exhausting phone A's OTP budget does not affect phone B (RT-CROSS-001)", async () => {
-      const phoneA = nextPhone();
-      const phoneB = nextPhone();
-      await UserModel.create({ name: "Phone A", email: nextEmail(), phone: phoneA, roles: [Roles.PATIENT] });
-      await UserModel.create({ name: "Phone B", email: nextEmail(), phone: phoneB, roles: [Roles.PATIENT] });
-
-      for (let i = 0; i < 6; i += 1) {
-        await requestOtp(phoneA, "20.0.0.3");
-        await clearCooldown(phoneA);
-      }
-
-      const resB = await requestOtp(phoneB, "20.0.0.3");
-      expect(resB.status).toBe(200);
-    });
-
-    test("unknown phone number does not leak account existence and is not a free 500", async () => {
-      const res = await requestOtp(nextPhone(), "20.0.0.4");
-      expect(res.status).toBe(404);
-      const json = await res.json();
-      expect(json.error.code).not.toBe("INTERNAL_ERROR");
-    });
-
-    // VAL-009 / ERR-001 — malformed JSON body regression (withApiHandler bug:
-    // req.json()'s raw SyntaxError wasn't caught as AppError/ZodError, so
-    // apiError() fell through to a generic 500 instead of a clean 400).
-    test("malformed JSON body returns a clean 400 VALIDATION_ERROR, never a 500", async () => {
-      const req = new Request("http://localhost/api/v1/auth/otp/request", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: "{not valid json",
-      });
-      const res = await otpRequestRoute.POST(req as never);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.error.code).toBe("VALIDATION_ERROR");
-    });
+    const res = await mobileLoginRoute.POST(req as never);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe("VALIDATION_ERROR");
   });
 
   // =========================================================================

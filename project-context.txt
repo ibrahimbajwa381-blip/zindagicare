@@ -38,7 +38,7 @@ Mobile API/data layer: apps/mobile/src/api/ (calls apps/web REST API)
 3. STACK
 --------------------------------------------------------------------------------
 Next.js 16.2.6 App Router + React 19.2 + TypeScript
-Auth.js / next-auth v5 beta (credentials, Google, phone OTP)
+Auth.js / next-auth v5 beta (credentials, Google)
 MongoDB + Mongoose 9
 Tailwind CSS v4, Radix Slot, CVA, lucide-react, RHF + Zod
 i18n: custom en/ur (cookie zc_locale) — dictionaries in apps/web/src/i18n/
@@ -266,7 +266,7 @@ DONE: doctor/patient/nurse/physio auth+verification, paid online booking,
 
 PARTIAL / NEEDS LIVE CREDENTIALS: JazzCash/EasyPaisa gateway live mode,
   Zoom production apps, SMS gateway, WhatsApp provider credentials
-  (Meta Cloud or HTTP API), Redis for OTP/holds at scale.
+  (Meta Cloud or HTTP API), Redis for holds at scale.
 
 NOT BUILT / THIN: rider delivery app UI, pharmacy catalog, multi-city beyond
   Lahore, automated PMDC registry check, clinic in-person patient booking UI.

@@ -22,14 +22,13 @@ export type RegisterFormState = {
   error?: string;
 };
 import {
-  findActiveUserByPhone,
   findUserByEmail,
   isEmailRegistered,
   loadAuthUserPayload,
   registerWithCredentials,
 } from "@/server/services/auth.service";
 import { AppError } from "@zindagi/shared";
-import { loginSchema, passwordResetSchema, registerSchema, type AccountType } from "@zindagi/validators";
+import { loginSchema, registerSchema, type AccountType } from "@zindagi/validators";
 import { isGoogleAuthConfigured } from "@/lib/auth/google";
 import { safeCallbackUrl } from "@/lib/auth/safe-callback-url";
 import {
@@ -43,22 +42,18 @@ import {
 } from "@/server/services/doctor-referral.service";
 
 async function resolveSignedInUser(
-  provider: "credentials" | "phone-otp",
   fields: Record<string, string>,
 ): Promise<PostAuthUser | null> {
-  // signIn() has already run the provider's authorize() (password / OTP check),
+  // signIn() has already run the provider's authorize() (password check),
   // so only load the payload here — re-verifying would repeat the bcrypt compare
   // and every DB query, roughly doubling sign-in time.
-  const user =
-    provider === "credentials"
-      ? await findUserByEmail(String(fields.email))
-      : await findActiveUserByPhone(String(fields.phone));
+  const user = await findUserByEmail(String(fields.email));
   if (!user) return null;
   return loadAuthUserPayload(String(user._id));
 }
 
 async function signInWithProvider(
-  provider: "credentials" | "phone-otp",
+  provider: "credentials",
   fields: Record<string, string>,
   options: { redirectTo: string } | { callbackUrl?: string },
 ) {
@@ -73,7 +68,7 @@ async function signInWithProvider(
 
   // Session cookies are set by signIn above, but auth() may not see them in the
   // same server-action request (Next.js App Router). Load the user directly instead.
-  const signedInUser = await resolveSignedInUser(provider, fields);
+  const signedInUser = await resolveSignedInUser(fields);
   if (!signedInUser) {
     throw new CredentialsSignin();
   }
@@ -200,50 +195,4 @@ export async function loginWithGoogleAction(callbackUrl?: string) {
   await signIn("google", {
     redirectTo: safeCallbackUrl(callbackUrl) ?? AUTH_ROUTES.patientDashboard,
   });
-}
-
-/** Forgot password: verify the OTP, save the new password, then sign in. */
-export async function resetPasswordWithOtpAction(
-  _prev: { error?: string } | undefined,
-  formData: FormData,
-) {
-  const parsed = passwordResetSchema.safeParse({
-    phone: formData.get("phone"),
-    code: formData.get("code"),
-    password: formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
-  });
-
-  if (!parsed.success) {
-    const locale = await getLocale();
-    const field = parsed.error.issues[0]?.path[0]?.toString();
-    return { error: authValidationMessage(locale, field) };
-  }
-
-  const locale = await getLocale();
-  const callbackUrl = String(formData.get("callbackUrl") || "/dashboard");
-
-  try {
-    await signInWithProvider(
-      "phone-otp",
-      {
-        phone: parsed.data.phone,
-        code: parsed.data.code,
-        newPassword: parsed.data.password,
-      },
-      { callbackUrl },
-    );
-  } catch (e) {
-    if (isRedirectError(e)) throw e;
-    const message = authActionErrorMessage(e);
-    if (message) {
-      return {
-        error:
-          message === "Invalid email or password"
-            ? authValidationMessage(locale, "code")
-            : message,
-      };
-    }
-    throw e;
-  }
 }

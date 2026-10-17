@@ -15,9 +15,6 @@ export const AUTH_ROUTES = {
   registerPhysiotherapist: "/register/physiotherapist",
   registerHerbalist: "/register/herbalist",
   registerNutritionist: "/register/nutritionist",
-  forgotPassword: "/login/forgot-password",
-  /** @deprecated Use forgotPassword — kept for old links */
-  phoneLogin: "/login/forgot-password",
   onboarding: "/onboarding",
   doctorVerification: "/doctor/verification",
   doctorProfile: "/doctor/profile",
@@ -73,8 +70,6 @@ export const PUBLIC_PATH_PREFIXES = [
   AUTH_ROUTES.registerPhysiotherapist,
   AUTH_ROUTES.registerHerbalist,
   AUTH_ROUTES.registerNutritionist,
-  AUTH_ROUTES.forgotPassword,
-  "/login/phone",
   "/api/auth",
   "/api/v1/sunday/doctors",
   "/api/v1/sunday/slots",
@@ -87,7 +82,6 @@ export const PUBLIC_PATH_PREFIXES = [
   "/api/v1/payments/mock",
   "/api/v1/payments/test",
   "/api/internal/bootstrap-admin",
-  "/api/v1/auth/otp/request",
   "/api/v1/auth/register",
   "/api/health",
 ] as const;

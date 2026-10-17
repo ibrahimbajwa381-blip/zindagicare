@@ -35,9 +35,7 @@ jest.mock("@/server/services/doctor-referral.service", () => ({
 jest.mock("@/server/services/auth.service", () => ({
   findUserByEmail: (...args: unknown[]) => mockFindUserByEmail(...args),
   isEmailRegistered: (...args: unknown[]) => mockIsEmailRegistered(...args),
-  findActiveUserByPhone: jest.fn(),
   verifyCredentialsLogin: (...args: unknown[]) => mockVerifyCredentialsLogin(...args),
-  signInWithPhoneOtp: jest.fn(),
   loadAuthUserPayload: (...args: unknown[]) => mockLoadAuthUserPayload(...args),
   registerWithCredentials: (...args: unknown[]) => mockRegisterWithCredentials(...args),
 }));

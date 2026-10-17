@@ -28,5 +28,4 @@ export * from "./system-settings.model";
 export * from "./push-subscription.model";
 export * from "./expo-push-token.model";
 export * from "./copilot-session.model";
-export * from "./otp-challenge.model";
 export * from "./medical-qa.model";
