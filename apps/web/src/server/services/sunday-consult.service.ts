@@ -1453,19 +1453,20 @@ export class SundayConsultService {
     await connectDatabase();
     const sundayDateKey = dateKey ?? formatSundayDateKey(getActiveOrNextSundayDate());
 
+    // All statuses — admins follow a request through to completion, no-show or cancellation.
     const docs = await SundayFreeRequestModel.find(
-      mongoFilter({
-        sundayDateKey,
-        status: { $in: [...ACTIVE_REQUEST_STATUSES] },
-      }),
+      mongoFilter({ sundayDateKey, deletedAt: null }),
     )
       .sort({ createdAt: 1 })
       .populate("patientId", "name phone")
-      .populate("appointmentId", "scheduledStart scheduledEnd")
+      .populate(
+        "appointmentId",
+        "scheduledStart scheduledEnd status completedAt missedBy noShowMarkedAt cancellationReason",
+      )
       .populate({
         path: "assignedDoctorId",
-        select: "specialties pmdcVerified",
-        populate: { path: "userId", select: "name" },
+        select: "specialties pmdcVerified ratingAvg ratingCount",
+        populate: { path: "userId", select: "name phone" },
       })
       .lean();
 
@@ -1482,10 +1483,12 @@ export class SundayConsultService {
     const [videoSessions, reviews] = appointmentIds.length
       ? await Promise.all([
           VideoSessionModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
-            .select("appointmentId patientJoinedAt doctorJoinedAt")
+            .select(
+              "appointmentId status patientJoinedAt doctorJoinedAt startedAt endedAt durationSeconds",
+            )
             .lean(),
           ReviewModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
-            .select("appointmentId rating comment")
+            .select("appointmentId rating comment createdAt isVisible")
             .lean(),
         ])
       : [[], []];
@@ -1499,6 +1502,14 @@ export class SundayConsultService {
 
     return docs.map((doc) => {
       const patient = doc.patientId as { name?: string; phone?: string } | null;
+      const appointment = doc.appointmentId as {
+        completedAt?: Date;
+        missedBy?: "patient" | "doctor";
+        noShowMarkedAt?: Date;
+        cancellationReason?: string;
+      } | null;
+      const doctorUser = (doc.assignedDoctorId as { userId?: { phone?: string } | null } | null)
+        ?.userId;
       const mapped = SundayConsultService.mapPatientRequest(
         doc as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
       );
@@ -1512,7 +1523,7 @@ export class SundayConsultService {
         requestId: mapped.requestId,
         status: mapped.status,
         sundayDateKey: mapped.sundayDateKey,
-        patientName: patient?.name ?? "Patient",
+        patientName: safeDisplayText(patient?.name) ?? "Patient",
         patientPhone: mapped.patientPhone,
         patientNotes: mapped.patientNotes,
         affordabilityChoice: mapped.affordabilityChoice,
@@ -1520,21 +1531,43 @@ export class SundayConsultService {
         contributionFeePkr: mapped.contributionFeePkr,
         createdAt: mapped.createdAt,
         assignedAt: mapped.assignedAt,
+        completedAt: (doc.completedAt ?? appointment?.completedAt)?.toISOString(),
+        cancelledAt: doc.cancelledAt?.toISOString(),
+        cancellationReason:
+          safeDisplayText(doc.cancellationReason) ?? appointment?.cancellationReason ?? undefined,
         appointmentId: mapped.appointmentId,
+        appointmentStatus: mapped.appointmentStatus,
+        missedBy: appointment?.missedBy ?? undefined,
         scheduledStart: mapped.scheduledStart,
         scheduledEnd: mapped.scheduledEnd,
         doctor: mapped.doctor
           ? {
               doctorId: mapped.doctor.doctorId,
               name: mapped.doctor.name,
+              phone: safeDisplayText(doctorUser?.phone) ?? undefined,
               specialty: mapped.doctor.specialty,
               pmdcVerified: mapped.doctor.pmdcVerified,
+              ratingAvg: mapped.doctor.ratingAvg,
+              ratingCount: mapped.doctor.ratingCount,
             }
           : undefined,
         patientJoinedAt: videoSession?.patientJoinedAt?.toISOString(),
         doctorJoinedAt: videoSession?.doctorJoinedAt?.toISOString(),
+        session: videoSession
+          ? {
+              status: videoSession.status,
+              startedAt: videoSession.startedAt?.toISOString(),
+              endedAt: videoSession.endedAt?.toISOString(),
+              durationSeconds: videoSession.durationSeconds ?? undefined,
+            }
+          : undefined,
         review: review
-          ? { rating: review.rating, comment: review.comment ?? undefined }
+          ? {
+              rating: review.rating,
+              comment: review.comment ?? undefined,
+              createdAt: review.createdAt?.toISOString(),
+              isVisible: review.isVisible !== false,
+            }
           : undefined,
       };
     });

@@ -116,14 +116,31 @@ export type SundayAdminRequestDto = {
   contributionFeePkr?: number;
   createdAt: string;
   assignedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
   appointmentId?: string;
+  appointmentStatus?: AppointmentStatus;
+  /** Set when the appointment was closed as a no-show. */
+  missedBy?: "patient" | "doctor";
   scheduledStart?: string;
   scheduledEnd?: string;
-  doctor?: Pick<SundayDoctorSummary, "doctorId" | "name" | "specialty" | "pmdcVerified">;
+  doctor?: Pick<
+    SundayDoctorSummary,
+    "doctorId" | "name" | "specialty" | "pmdcVerified" | "ratingAvg" | "ratingCount"
+  > & { phone?: string };
   patientJoinedAt?: string;
   doctorJoinedAt?: string;
+  session?: {
+    status: string;
+    startedAt?: string;
+    endedAt?: string;
+    durationSeconds?: number;
+  };
   review?: {
     rating: number;
     comment?: string;
+    createdAt?: string;
+    isVisible: boolean;
   };
 };
