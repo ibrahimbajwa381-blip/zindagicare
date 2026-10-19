@@ -23,7 +23,8 @@ import { ZOOM_CONSULT_MEETING_TITLE } from "@/lib/zoom/branding";
 import { CountdownTimer } from "@/features/sunday-consult/components/countdown-timer";
 import { PostConsultReviewPrompt } from "@/features/consult/components/post-consult-review-prompt";
 import type { VideoJoinPayload } from "@/features/consult/types";
-import { AppointmentTypes } from "@zindagi/shared";
+import { AppointmentStatuses, AppointmentTypes } from "@zindagi/shared";
+import { videoConsultPath } from "@/features/consult/paths";
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
 
@@ -69,6 +70,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const t = useTranslations();
   const copy = t.consult.videoSession;
   const videoLeftCopy = t.consult.videoLeft;
+  const sundayDoctorCopy = copy.sundayDoctorOpen;
+  const sundayPatientCopy = copy.sundayPatientOpen;
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
   /** When sessionStatus was fetched; refreshed by the 30s status poll. */
   const [statusCheckedAt, setStatusCheckedAt] = useState(0);
@@ -79,6 +82,9 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showPostConsultReview, setShowPostConsultReview] = useState(leftSession ?? false);
   const [showDoctorPostConsult, setShowDoctorPostConsult] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const [rxPanelOpen, setRxPanelOpen] = useState(false);
   const rxAutoOpenedRef = useRef(false);
   const joinAttemptedRef = useRef(false);
@@ -181,6 +187,43 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     await loadStatus();
   };
 
+  const isSundayFree = sessionStatus?.appointmentType === AppointmentTypes.SUNDAY_FREE;
+  /** Sunday free consults stay open (video + chat) until the doctor finishes them. */
+  const sundayStillOpen =
+    isSundayFree &&
+    !finished &&
+    (sessionStatus?.appointmentStatus === AppointmentStatuses.CONFIRMED ||
+      sessionStatus?.appointmentStatus === AppointmentStatuses.IN_PROGRESS);
+
+  const rejoin = () => {
+    if (leftSession) {
+      window.location.href = videoConsultPath(appointmentId);
+      return;
+    }
+    setShowPostConsultReview(false);
+    setShowDoctorPostConsult(false);
+    joinAttemptedRef.current = false;
+    void loadStatus();
+  };
+
+  const finishSundayConsult = async () => {
+    if (!window.confirm(sundayDoctorCopy.confirm)) return;
+    setFinishing(true);
+    setFinishError(null);
+    const res = await fetch("/api/v1/sunday/doctor/appointment-status", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appointmentId, status: "completed" }),
+    }).catch(() => null);
+    const json = await res?.json().catch(() => null);
+    setFinishing(false);
+    if (!res?.ok) {
+      setFinishError(json?.error?.message ?? sundayDoctorCopy.finishError);
+      return;
+    }
+    setFinished(true);
+  };
+
   if (loading && !sessionStatus && (leftSession || showPostConsultReview)) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">
@@ -189,8 +232,81 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     );
   }
 
+  if (
+    (showPostConsultReview || leftSession) &&
+    sessionStatus?.role === "patient" &&
+    sundayStillOpen
+  ) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="font-display text-xl font-semibold text-foreground">
+          {sundayPatientCopy.title}
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">{sundayPatientCopy.description}</p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Button className="gap-1.5" onClick={rejoin}>
+            <Video className="h-4 w-4" />
+            {sundayPatientCopy.rejoin}
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={dashboardHref}>{videoLeftCopy.backToDashboard}</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if ((showPostConsultReview || leftSession) && sessionStatus?.role === "patient") {
     return <PostConsultReviewPrompt appointmentId={appointmentId} />;
+  }
+
+  if (
+    (showDoctorPostConsult || leftSession || finished) &&
+    sessionStatus?.role === "doctor" &&
+    isSundayFree
+  ) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="font-display text-xl font-semibold text-foreground">
+          {sundayStillOpen ? sundayDoctorCopy.title : sundayDoctorCopy.finishedTitle}
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">
+          {sundayStillOpen ? sundayDoctorCopy.description : sundayDoctorCopy.finishedDescription}
+        </p>
+        {finishError && (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {finishError}
+          </p>
+        )}
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+          {sundayStillOpen && (
+            <>
+              <Button
+                className="gap-1.5"
+                onClick={() => void finishSundayConsult()}
+                disabled={finishing}
+                loading={finishing}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {sundayDoctorCopy.finish}
+              </Button>
+              <Button variant="outline" className="gap-1.5" onClick={rejoin}>
+                <Video className="h-4 w-4" />
+                {sundayDoctorCopy.rejoin}
+              </Button>
+            </>
+          )}
+          <Button asChild variant="outline">
+            <Link href={`/doctor/prescriptions/new?appointmentId=${appointmentId}`}>
+              {copy.doctorEnded.issuePrescription}
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={dashboardHref}>{copy.doctorEnded.backToDashboard}</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (showDoctorPostConsult && sessionStatus?.role === "doctor") {
@@ -436,10 +552,14 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
               {copy.roomOpensSoon}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {formatMessage(copy.roomOpensBetween, {
-                open: formatKarachiDateTime(sessionStatus.joinOpensAt),
-                close: formatKarachiDateTime(sessionStatus.joinClosesAt),
-              })}
+              {isSundayFree
+                ? formatMessage(copy.roomOpensUntilDoctorCloses, {
+                    open: formatKarachiDateTime(sessionStatus.joinOpensAt),
+                  })
+                : formatMessage(copy.roomOpensBetween, {
+                    open: formatKarachiDateTime(sessionStatus.joinOpensAt),
+                    close: formatKarachiDateTime(sessionStatus.joinClosesAt),
+                  })}
             </p>
             <p className="mt-2 text-xs text-slate-500">{copy.autoConnectNote}</p>
             <div className="mt-3">

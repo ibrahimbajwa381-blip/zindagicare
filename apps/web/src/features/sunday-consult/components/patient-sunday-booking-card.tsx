@@ -71,6 +71,7 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
   const { canJoin, joinClosesAt, now } = useVideoJoinWindow(
     booking.scheduledStart,
     joinEnd,
+    true,
   );
   const isCompleted =
     booking.status === AppointmentStatuses.COMPLETED ||
@@ -207,6 +208,7 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
           scheduledStart={booking.scheduledStart}
           scheduledEnd={joinEnd}
           appointmentStatus={booking.status}
+          openUntilClosed
         />
 
         {intakeStatus && intakeStatus !== IntakeStatuses.COMPLETED && !isCompleted && (
@@ -232,6 +234,7 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
               scheduledStart={booking.scheduledStart}
               scheduledEnd={joinEnd}
               label={b.joinSession}
+              openUntilClosed
               className="gap-1.5"
               iconClassName="h-4 w-4"
             />

@@ -6,6 +6,8 @@ Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a
 
 Request lifecycle: `requested` → (doctor picks + time) `assigned` → `completed` / `cancelled`. A doctor may release an `assigned` request before the consult starts; it goes back to `requested` and the appointment is cancelled.
 
+Closing a consult: video and chat stay open from the usual join-window opening (`VIDEO_CONSULT_CONFIG.joinEarlyMinutes` before the start) until the **doctor** presses "Finish consultation" (`PATCH /api/v1/sunday/doctor/appointment-status`). Leaving the call does not end it, and nothing auto-completes a Sunday consult. Only a completed consult can be reviewed. Finishing (or marking a no-show) closes the video session and the chat thread (unless the pair shares another open/paid consult) and notifies the patient to leave a review. The doctor-miss sweep still records a no-show if the doctor never joins.
+
 Overdue requests: `requested` requests older than 7 days (no doctor ever picked them) also appear on the doctor board under "Waiting over a week". Picking one moves the request to the current board Sunday and schedules the consult there.
 
 ## 2. Data model

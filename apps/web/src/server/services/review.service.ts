@@ -146,6 +146,11 @@ function isAppointmentReviewEligible(
     return false;
   }
 
+  // Sunday free consults are reviewable once the doctor finishes them.
+  if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
+    return appointment.status === AppointmentStatuses.COMPLETED;
+  }
+
   if (
     options.afterVideoLeave &&
     options.videoSessionAttended &&

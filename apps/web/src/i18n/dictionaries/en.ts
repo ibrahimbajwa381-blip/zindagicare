@@ -1452,6 +1452,8 @@ export const en = {
       roomOpensSoon: "Recommended time not yet reached",
       roomOpensBetween:
         "Your recommended time is {open}, but you can join anytime between {open} and {close} (Pakistan time) — whenever works for both of you.",
+      roomOpensUntilDoctorCloses:
+        "The room opens at {open} (Pakistan time) and stays open until the doctor finishes the consultation.",
       autoConnectNote: "This page connects you automatically once you're within the join window — no extra steps.",
       back: "Back",
       endSession: "End session",
@@ -1474,6 +1476,24 @@ export const en = {
         description: "Issue a digital prescription for your patient if clinically appropriate.",
         issuePrescription: "Issue prescription",
         backToDashboard: "Back to dashboard",
+      },
+      sundayDoctorOpen: {
+        title: "This free consultation is still open",
+        description:
+          "You left the video call, but the consultation is not finished. Video and chat stay open so you or the patient can rejoin. When you are done, press Finish consultation — only then is it marked completed and the patient can review you.",
+        finish: "Finish consultation",
+        confirm:
+          "Finish this consultation? The video room and chat will close and the patient will be asked to review you.",
+        rejoin: "Rejoin video",
+        finishError: "Could not finish the consultation. Please try again.",
+        finishedTitle: "Consultation completed",
+        finishedDescription: "The video room and chat are closed. The patient has been asked to review you.",
+      },
+      sundayPatientOpen: {
+        title: "You left the video call",
+        description:
+          "Your free consultation stays open until your doctor finishes it, so you can rejoin the video or keep chatting. You can rate your doctor once they close the consultation.",
+        rejoin: "Rejoin video",
       },
       errors: {
         generic: "Could not join the video room. Please try again.",

@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { getVideoJoinWindow, AppointmentStatuses } from "@zindagi/shared";
+import { getSundayFreeJoinWindow, getVideoJoinWindow, AppointmentStatuses } from "@zindagi/shared";
 import { useTranslations } from "@/i18n/locale-provider";
 
 type Props = {
   scheduledStart: string;
   scheduledEnd: string;
   appointmentStatus?: string;
+  /** Sunday free consult — stays open until the doctor finishes it. */
+  openUntilClosed?: boolean;
 };
 
 function formatCountdown(remainingMs: number) {
@@ -27,6 +29,7 @@ export function VideoSessionStatusBanner({
   scheduledStart,
   scheduledEnd,
   appointmentStatus,
+  openUntilClosed = false,
 }: Props) {
   const t = useTranslations();
   const copy = t.consult.videoSession;
@@ -50,11 +53,9 @@ export function VideoSessionStatusBanner({
     );
   }
 
-  const { joinOpensAt, joinClosesAt, canJoin } = getVideoJoinWindow(
-    scheduledStart,
-    scheduledEnd,
-    new Date(now),
-  );
+  const { joinOpensAt, joinClosesAt, canJoin } = openUntilClosed
+    ? getSundayFreeJoinWindow(scheduledStart, new Date(now))
+    : getVideoJoinWindow(scheduledStart, scheduledEnd, new Date(now));
 
   const attendedPastWindow =
     appointmentStatus === AppointmentStatuses.COMPLETED ||

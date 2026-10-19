@@ -18,6 +18,8 @@ type Props = {
   iconClassName?: string;
   /** Urgent care — joinable while the consult is still active. */
   urgent?: boolean;
+  /** Sunday free consult — joinable until the doctor finishes it. */
+  openUntilClosed?: boolean;
 };
 
 export function VideoJoinLinkButton({
@@ -29,9 +31,10 @@ export function VideoJoinLinkButton({
   className,
   iconClassName = "h-3.5 w-3.5",
   urgent = false,
+  openUntilClosed = false,
 }: Props) {
   const t = useTranslations();
-  const { canJoin } = useVideoJoinWindow(scheduledStart, scheduledEnd);
+  const { canJoin } = useVideoJoinWindow(scheduledStart, scheduledEnd, openUntilClosed);
   const buttonLabel = label ?? t.consult.videoSession.joinVideo;
 
   if (!urgent && !canJoin) return null;
