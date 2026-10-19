@@ -32,7 +32,7 @@ const privacy: LegalDocument = {
         "Facilitate bookings, video consultations, Sunday free consults, and home-care visits.",
         "Verify provider credentials (PMDC, nursing licenses) before listing or dispatch.",
         "Process payments, refunds, and provider payouts.",
-        "Send appointment reminders, OTP codes, and service notifications.",
+        "Send appointment reminders and service notifications.",
         "Provide customer support and resolve disputes.",
         "Improve platform safety, detect abuse, and comply with applicable law.",
         "Generate anonymised or aggregated analytics that do not identify you.",
@@ -53,7 +53,7 @@ const privacy: LegalDocument = {
       bullets: [
         "Healthcare providers you choose to book (doctors, nurses) — only what is needed for your care.",
         "Payment processors (JazzCash, EasyPaisa) to complete transactions.",
-        "Infrastructure and service providers (hosting, database, video, SMS/OTP) under strict confidentiality obligations.",
+        "Infrastructure and service providers (hosting, database, video, SMS) under strict confidentiality obligations.",
         "Law enforcement or regulators when required by applicable Pakistani law or a valid legal process.",
         "Professional advisers (lawyers, auditors, insurers) bound by confidentiality.",
       ],

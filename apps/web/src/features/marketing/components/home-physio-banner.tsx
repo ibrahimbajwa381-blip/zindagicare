@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Activity, MapPin, Users } from "lucide-react";
@@ -7,14 +5,14 @@ import { siteConfig } from "@/config/site";
 import { Button } from "@/components/ui/button";
 import { WhatsAppCtaButton } from "@/components/shared/whatsapp-cta-button";
 import { PageSection } from "@/components/layout/page-section";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 import {
   HOME_PHYSIO_HERO_IMAGE,
   HOME_PHYSIO_HERO_IMAGE_CLASS,
 } from "@/features/marketing/data/hero-services";
 
-export function HomePhysioBanner() {
-  const t = useTranslations();
+export async function HomePhysioBanner() {
+  const { t } = await getServerTranslations();
   const copy = t.homePhysio;
   const bookHref = siteConfig.links.physiotherapists;
 

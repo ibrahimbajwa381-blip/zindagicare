@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import * as Device from "expo-device";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { router } from "expo-router";
 import { registerExpoPushToken, unregisterExpoPushToken } from "@/api/push";
 import { getNotificationSummary } from "@/api/notifications";
 import type { AuthUser } from "@/api/client";
+import { API_URL } from "@/lib/config";
 
 /**
  * expo-notifications' remote push functionality was removed from Expo Go in SDK 53 —
@@ -154,6 +155,16 @@ function routeForNotificationData(data: Record<string, unknown> | undefined) {
     case "prescription_issued":
       router.push("/(tabs)/appointments");
       return;
+    case "medical_question_answered": {
+      // The Health Forum lives on the web app only; open the question page there.
+      const questionId = typeof data?.questionId === "string" ? data.questionId : undefined;
+      if (questionId && /^[a-f0-9]{24}$/i.test(questionId)) {
+        void Linking.openURL(`${API_URL}/questions/${questionId}`).catch(() => router.push("/notifications"));
+        return;
+      }
+      router.push("/notifications");
+      return;
+    }
     default:
       router.push("/notifications");
   }

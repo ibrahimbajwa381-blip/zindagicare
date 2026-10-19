@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Check, Copy, Eye, Stethoscope, User } from "lucide-react";
+import { Calendar, Check, Copy, Eye, Star, Stethoscope, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,41 @@ import { AdminDoctorAvatar } from "./admin-doctor-avatar";
 import { PaymentProofModal } from "./payment-proof-modal";
 
 type Appointment = AppointmentDetail;
+
+function ReviewLine({
+  label,
+  review,
+}: {
+  label: string;
+  review?: { rating: number; comment?: string; createdAt: string };
+}) {
+  if (!review) {
+    return <p className="text-xs text-slate-400">No {label} review yet</p>;
+  }
+  return (
+    <div className="text-xs">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-medium text-slate-700">{label} review</span>
+        <span className="inline-flex items-center gap-0.5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Star
+              key={index}
+              className={cn(
+                "h-3 w-3",
+                index < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200",
+              )}
+            />
+          ))}
+        </span>
+        <span className="text-slate-500">{review.rating}/5</span>
+        <span className="text-slate-400">{formatKarachiDateTime(review.createdAt)}</span>
+      </div>
+      {review.comment ? (
+        <p className="mt-0.5 text-slate-600">&ldquo;{review.comment}&rdquo;</p>
+      ) : null}
+    </div>
+  );
+}
 
 const STATUS_STYLES: Record<string, { border: string; badge: string; dot: string }> = {
   confirmed: {
@@ -435,6 +470,13 @@ export function AdminAppointmentsBoard() {
                         >
                           {a.doctorJoinedAt ? "Doctor joined" : "Doctor not joined"}
                         </Badge>
+                      </div>
+                    )}
+
+                    {a.isOnline && (a.status === "completed" || a.doctorReview || a.platformReview) && (
+                      <div className="space-y-1.5 rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2">
+                        <ReviewLine label="Doctor" review={a.doctorReview} />
+                        <ReviewLine label="ZindagiCare" review={a.platformReview} />
                       </div>
                     )}
 

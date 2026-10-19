@@ -8,6 +8,7 @@ import { VerificationStatuses } from "@zindagi/shared";
 import { Types } from "mongoose";
 import { citiesMatch, formatCityName, normalizeCityName } from "@/lib/geo/city-match";
 import { mongoFilter } from "@/lib/mongo/query";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { ensureCanonicalHerbalistSlug } from "./herbalist-slug.service";
 import { ensureCanonicalNutritionistSlug } from "./nutritionist-slug.service";
@@ -15,7 +16,12 @@ import { ensureCanonicalNutritionistSlug } from "./nutritionist-slug.service";
 /** Video-consult providers that are built like doctors (own profile collection per role). */
 export type ConsultProviderRole = "herbalist" | "nutritionist";
 
-export type PublicConsultProviderClinic = { name: string; city: string; address?: string };
+export type PublicConsultProviderClinic = {
+  name: string;
+  city: string;
+  area?: string;
+  address?: string;
+};
 
 export type PublicConsultProviderWeeklyWindow = {
   dayOfWeek: number;
@@ -124,11 +130,14 @@ async function mapProfile(
     doc.slug as string | undefined,
   );
 
-  const clinics = ((doc.clinics as { name?: string; city?: string; address?: string }[]) ?? [])
+  const clinics = (
+    (doc.clinics as { name?: string; city?: string; area?: string; address?: string }[]) ?? []
+  )
     .filter((c) => c.name && c.city)
     .map((c) => ({
       name: safeDisplayText(c.name) ?? "",
       city: formatCityName(c.city!),
+      area: safeDisplayText(c.area),
       address: safeDisplayText(c.address),
     }))
     .filter((c) => c.name);
@@ -159,7 +168,7 @@ async function mapProfile(
     institute: safeDisplayText(doc.institute as string | undefined),
     graduationYear: (doc.graduationYear as number | undefined) ?? undefined,
     clinics,
-    city: clinics[0]?.city ?? coverageCities[0] ?? "Lahore",
+    city: clinics[0]?.city ?? coverageCities[0] ?? "Pakistan",
     coverageCities,
     consultationFee: (doc.consultationFee as number | undefined) ?? 0,
     videoConsultEnabled: Boolean(doc.videoConsultEnabled),
@@ -189,6 +198,11 @@ function servesCity(provider: PublicConsultProvider, city: string): boolean {
   );
 }
 
+const ROLE_CACHE_TAG = {
+  herbalist: CacheTags.HERBALISTS,
+  nutritionist: CacheTags.NUTRITIONISTS,
+} as const satisfies Record<ConsultProviderRole, string>;
+
 export class PublicConsultProviderService {
   /**
    * Listed herbalists or nutritionists, optionally narrowed to a city and/or specialty.
@@ -197,6 +211,17 @@ export class PublicConsultProviderService {
   static async list(
     role: ConsultProviderRole,
     options: { city?: string; specialty?: string; limit?: number } = {},
+  ): Promise<PublicConsultProvider[]> {
+    return cached(
+      cacheKey(`${role}s`, options.city, options.specialty, options.limit),
+      { ttl: 300, tags: [ROLE_CACHE_TAG[role]] },
+      () => PublicConsultProviderService.load(role, options),
+    );
+  }
+
+  private static async load(
+    role: ConsultProviderRole,
+    options: { city?: string; specialty?: string; limit?: number },
   ): Promise<PublicConsultProvider[]> {
     await connectDatabase();
     const city = options.city?.trim();
@@ -245,6 +270,15 @@ export class PublicConsultProviderService {
 
   /** Look up by public slug or by profile id. */
   static async get(
+    role: ConsultProviderRole,
+    slugOrId: string,
+  ): Promise<PublicConsultProvider | null> {
+    return cached(cacheKey(role, slugOrId), { ttl: 300, tags: [ROLE_CACHE_TAG[role]] }, () =>
+      PublicConsultProviderService.loadOne(role, slugOrId),
+    );
+  }
+
+  private static async loadOne(
     role: ConsultProviderRole,
     slugOrId: string,
   ): Promise<PublicConsultProvider | null> {

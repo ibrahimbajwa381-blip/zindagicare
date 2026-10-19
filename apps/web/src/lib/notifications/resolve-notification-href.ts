@@ -47,6 +47,9 @@ export function resolveNotificationHref(
     case "sunday_free_open_request":
       return isDoctor ? "/doctor/sunday-consult" : null;
 
+    case "sunday_free_rejected":
+      return isDoctor ? "/doctor/sunday-consult" : "/dashboard";
+
     case "online_consult_requested":
     case "online_consult_paid":
       if (!isStaffAdmin) return null;
@@ -105,6 +108,7 @@ export function resolveNotificationHref(
     case "urgent_consult_confirmed":
     case "sunday_booking_confirmed":
     case "sunday_free_released":
+    case "sunday_free_completed":
     case "patient_doctor_missed":
       return "/dashboard";
 
@@ -126,6 +130,15 @@ export function resolveNotificationHref(
 
     case "prescription_issued":
       return "/prescriptions";
+
+    case "medical_question_new":
+    case "medical_question_answered": {
+      // The public question page re-checks visibility on every load; the link grants nothing.
+      const questionId = payload.questionId;
+      return typeof questionId === "string" && /^[a-f0-9]{24}$/i.test(questionId)
+        ? `/questions/${questionId}`
+        : null;
+    }
 
     default:
       return null;

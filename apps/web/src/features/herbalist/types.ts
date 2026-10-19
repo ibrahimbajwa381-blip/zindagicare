@@ -7,6 +7,7 @@ export type HerbalistWeeklyAvailabilityDto = {
 export type HerbalistClinicInput = {
   name: string;
   city: string;
+  area?: string;
   address?: string;
 };
 

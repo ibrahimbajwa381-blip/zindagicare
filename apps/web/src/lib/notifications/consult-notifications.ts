@@ -1,4 +1,5 @@
 import { withDoctorTitle } from "@zindagi/shared";
+import { sendBookingEmail } from "@/lib/notifications/booking-emails";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
 import { sendWebPushToUser } from "@/server/services/push.service";
 
@@ -8,6 +9,7 @@ export async function sendOnlineConsultConfirmation(params: {
   doctorName: string;
   slotStart: Date;
   amount: number;
+  appointmentId: string;
 }) {
   const time = params.slotStart.toLocaleString("en-PK", {
     timeZone: "Asia/Karachi",
@@ -21,6 +23,14 @@ export async function sendOnlineConsultConfirmation(params: {
     title: "Online consult confirmed",
     body: `Your paid consult with ${withDoctorTitle(params.doctorName)} is booked for ${time}. Fee: Rs. ${params.amount.toLocaleString()}.`,
     payload: { type: "online_consult_confirmed" },
+    // The detailed booking email below replaces the generic one.
+    skipEmail: true,
+  });
+
+  await sendBookingEmail({
+    appointmentId: params.appointmentId,
+    recipient: "patient",
+    expectedUserId: params.userId,
   });
 }
 
@@ -70,6 +80,14 @@ export async function sendDoctorConsultBooked(params: {
           appointmentId: params.appointmentId,
           ...(params.patientId ? { patientId: params.patientId } : {}),
         },
+    // The detailed booking email below replaces the generic one.
+    skipEmail: true,
+  });
+
+  await sendBookingEmail({
+    appointmentId: params.appointmentId,
+    recipient: "doctor",
+    expectedUserId: params.userId,
   });
 
   if (isUrgent) {
@@ -131,5 +149,15 @@ export async function sendUrgentConsultConfirmation(params: {
       type: "urgent_consult_confirmed",
       ...(params.appointmentId ? { appointmentId: params.appointmentId } : {}),
     },
+    // With an appointment, the detailed booking email below replaces the generic one.
+    skipEmail: Boolean(params.appointmentId),
   });
+
+  if (params.appointmentId) {
+    await sendBookingEmail({
+      appointmentId: params.appointmentId,
+      recipient: "patient",
+      expectedUserId: params.userId,
+    });
+  }
 }

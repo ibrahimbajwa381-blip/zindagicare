@@ -14,6 +14,7 @@ import {
   AppError,
   AppointmentStatuses,
   AppointmentTypes,
+  getSundayFreeJoinWindow,
   getVideoJoinWindow,
   HomeVisitServiceTypes,
   HomeVisitStatuses,
@@ -789,6 +790,9 @@ function resolveConsultOutcome(
   if (status === AppointmentStatuses.IN_PROGRESS) return "in_progress";
   if (status === AppointmentStatuses.PENDING) return "pending";
 
+  // Sunday free consults stay open until the doctor finishes or marks a no-show.
+  if (type === AppointmentTypes.SUNDAY_FREE) return "upcoming";
+
   if (
     status === AppointmentStatuses.CONFIRMED &&
     scheduledStart &&
@@ -833,11 +837,14 @@ function canJoinConsultRequest(
     return false;
   }
 
-  const { canJoin } = getVideoJoinWindow(
-    scheduledStart,
-    effectiveVideoEnd(type, scheduledStart, scheduledEnd),
-    now,
-  );
+  const { canJoin } =
+    type === AppointmentTypes.SUNDAY_FREE
+      ? getSundayFreeJoinWindow(scheduledStart, now)
+      : getVideoJoinWindow(
+          scheduledStart,
+          effectiveVideoEnd(type, scheduledStart, scheduledEnd),
+          now,
+        );
   return canJoin || status === AppointmentStatuses.IN_PROGRESS;
 }
 

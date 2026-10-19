@@ -99,7 +99,7 @@ async function upsertSundayTemplateFromOnboarding(
         isActive: true,
       },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 }
 
@@ -182,13 +182,15 @@ export async function submitDoctorVerification(
         type: "Point",
         coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat],
       },
+      // Keep a travel-radius preference saved before (re)submission.
+      radiusKm: profile.homeVisitLocation?.radiusKm ?? undefined,
     };
   } else {
     profile.homeVisitLocation = undefined;
   }
 
   profile.set("weeklyAvailability", input.weeklyAvailability);
-  profile.coverageCities = coverageCities.length ? coverageCities : ["Lahore"];
+  profile.coverageCities = coverageCities;
   const previousDocuments = profile.verificationDocuments
     ? { ...profile.verificationDocuments }
     : undefined;

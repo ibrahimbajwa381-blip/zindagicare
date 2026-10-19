@@ -141,6 +141,7 @@ describe("Nurse earnings & payouts (real local MongoDB)", () => {
       cnic: "35202-1234567-1",
       qualification: "BSN",
       experienceYears: 3,
+      homeVisitFee: 2000,
       specialties: [shared.NURSING_SPECIALTIES[0] as string],
       avatarUrl: "/api/v1/nurse/avatar/x.webp",
       serviceArea: { city: "Lahore", area: "DHA", homeVisitEnabled: false },
@@ -169,6 +170,7 @@ describe("Nurse earnings & payouts (real local MongoDB)", () => {
       cnic: "35202-1234567-1",
       qualification: "BSN",
       experienceYears: 3,
+      homeVisitFee: 2000,
       specialties: [shared.NURSING_SPECIALTIES[0] as string],
       avatarUrl: "/api/v1/nurse/avatar/x.webp",
       serviceArea: { city: "Lahore", area: "DHA", homeVisitEnabled: false },
@@ -177,7 +179,7 @@ describe("Nurse earnings & payouts (real local MongoDB)", () => {
       acceptedProviderAgreement: true,
     };
     expect(validators.nurseVerificationSchema.safeParse(base).success).toBe(true);
-    for (const missing of ["licenseNumber", "avatarUrl", "bankAccount"] as const) {
+    for (const missing of ["licenseNumber", "avatarUrl", "bankAccount", "homeVisitFee"] as const) {
       const input: Record<string, unknown> = { ...base };
       delete input[missing];
       expect(validators.nurseVerificationSchema.safeParse(input).success).toBe(false);

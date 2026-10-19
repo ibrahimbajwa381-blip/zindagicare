@@ -7,6 +7,7 @@ export type NutritionistWeeklyAvailabilityDto = {
 export type NutritionistClinicInput = {
   name: string;
   city: string;
+  area?: string;
   address?: string;
 };
 

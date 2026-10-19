@@ -23,6 +23,7 @@ export type DoctorVerificationDraftFields = {
   bio: string;
   hospitalName: string;
   hospitalCity: string;
+  hospitalArea: string;
   hospitalAddress: string;
   consultationFee: string;
   homeVisitArea: string;
@@ -63,7 +64,8 @@ export const EMPTY_VERIFICATION_FIELDS: DoctorVerificationDraftFields = {
   experienceYears: "0",
   bio: "",
   hospitalName: "",
-  hospitalCity: "Lahore",
+  hospitalCity: "",
+  hospitalArea: "",
   hospitalAddress: "",
   consultationFee: "",
   homeVisitArea: "",
@@ -134,7 +136,8 @@ function parseDraft(raw: string): DoctorVerificationDraft | null {
         experienceYears: asString(fields.experienceYears, "0"),
         bio: asString(fields.bio),
         hospitalName: asString(fields.hospitalName),
-        hospitalCity: asString(fields.hospitalCity, "Lahore"),
+        hospitalCity: asString(fields.hospitalCity, ""),
+        hospitalArea: asString(fields.hospitalArea),
         hospitalAddress: asString(fields.hospitalAddress),
         consultationFee: asString(fields.consultationFee),
         homeVisitArea: asString(fields.homeVisitArea),
@@ -224,6 +227,7 @@ export function isMeaningfulVerificationDraft(
     f.graduationYear ||
     f.bio ||
     f.hospitalName ||
+    f.hospitalArea ||
     f.hospitalAddress ||
     f.consultationFee ||
     f.homeVisitArea

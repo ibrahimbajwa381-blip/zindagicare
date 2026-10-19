@@ -1,4 +1,5 @@
 import {
+  HOME_CARE_EXTENDED_RADIUS_KM,
   HOME_CARE_MATCH_RADIUS_KM,
   HOME_VISIT_PROVIDER_KINDS,
   HomeVisitProviderKinds,
@@ -42,7 +43,7 @@ export const ADMIN_HOME_VISIT_PROVIDERS: Record<HomeVisitProviderKind, AdminHome
       "In-house visits enabled — turned on in profile edit or at verification",
       "Publicly listed on the online doctors page (Admin → Doctors)",
       "Coverage cities include the visit city — always required, even with manual override",
-      `Home-visit location within ${HOME_CARE_MATCH_RADIUS_KM} km of the patient pin (manual override skips distance only)`,
+      `Any distance — matching prefers doctors whose own coverage radius includes the patient, then within ${HOME_CARE_MATCH_RADIUS_KM} km, ${HOME_CARE_EXTENDED_RADIUS_KM} km, and the rest of the city. Confirm travel and any extra charges outside a doctor's radius`,
     ],
     navCountKey: "homeVisitsDoctor",
   },
@@ -60,7 +61,7 @@ export const ADMIN_HOME_VISIT_PROVIDERS: Record<HomeVisitProviderKind, AdminHome
     eligibilityRules: [
       "Verified physiotherapist with home visits enabled and marked available",
       "Not already booked at the visit time",
-      `Location within ${HOME_CARE_MATCH_RADIUS_KM} km of the patient pin (or use manual override)`,
+      `Any distance or city — auto-match prefers physios whose own coverage radius includes the patient, then within ${HOME_CARE_MATCH_RADIUS_KM} km, ${HOME_CARE_EXTENDED_RADIUS_KM} km, the patient's city, then other cities. Confirm travel and any extra charges outside a physio's radius`,
     ],
     navCountKey: "homeVisitsPhysiotherapist",
   },
@@ -78,7 +79,7 @@ export const ADMIN_HOME_VISIT_PROVIDERS: Record<HomeVisitProviderKind, AdminHome
     eligibilityRules: [
       "Verified nurse with home visits enabled and marked available",
       "Not already booked at the visit time",
-      `Location within ${HOME_CARE_MATCH_RADIUS_KM} km of the patient pin (or use manual override)`,
+      `Any distance — auto-match prefers nurses whose own coverage radius includes the patient, then within ${HOME_CARE_MATCH_RADIUS_KM} km, ${HOME_CARE_EXTENDED_RADIUS_KM} km, and the patient's city (never another city). Confirm travel and any extra charges outside a nurse's radius`,
     ],
     navCountKey: "homeVisitsNurse",
   },

@@ -6,6 +6,7 @@ import { AlertTriangle, Banknote, TrendingUp, Wallet, Stethoscope } from "lucide
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { AdminDoctorAvatar } from "@/features/admin/components/admin-doctor-avatar";
+import { AdminManualEarnings } from "@/features/admin/components/admin-manual-earnings";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import type { AdminPlatformEarningsOverview } from "@/server/services/admin-platform-earnings.service";
 
@@ -51,7 +52,8 @@ export function AdminPlatformEarnings() {
     );
   }
 
-  const { totals, byDoctor, unresolvedPayments, unresolvedPaymentsTotal } = data;
+  const { totals, byDoctor, unresolvedPayments, unresolvedPaymentsTotal, manualEntries, manualTotals } =
+    data;
 
   const deleteAppointment = async (appointmentId: string, doctorName: string, patientName: string) => {
     if (
@@ -100,7 +102,7 @@ export function AdminPlatformEarnings() {
             accent: "text-blue-600 bg-blue-50 border-blue-100",
           },
           {
-            label: "Paid to doctors",
+            label: "Paid to doctors & physios",
             value: formatCurrency(totals.doctorEarnings),
             icon: Stethoscope,
             accent: "text-violet-600 bg-violet-50 border-violet-100",
@@ -175,7 +177,14 @@ export function AdminPlatformEarnings() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-slate-600">{doctor.consultCount}</td>
+                      <td className="px-3 py-3 text-slate-600">
+                        {doctor.consultCount}
+                        {doctor.manualCount > 0 && (
+                          <span className="block text-xs text-slate-400">
+                            incl. {doctor.manualCount} manual
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-slate-600">
                         {formatCurrency(doctor.grossRevenue)}
                       </td>
@@ -223,6 +232,8 @@ export function AdminPlatformEarnings() {
           )}
         </CardContent>
       </Card>
+
+      <AdminManualEarnings entries={manualEntries} totals={manualTotals} onChange={load} />
 
       <Card className="border-amber-200 bg-amber-50/40 shadow-sm">
         <CardHeader className="flex flex-row items-start gap-3 space-y-0">

@@ -5,6 +5,7 @@ import { apiError, apiSuccess } from "./response";
 import { AppError } from "@zindagi/shared";
 import type { ZodType } from "zod";
 import { createRateLimiter, enforceRateLimit, getClientIp } from "@/server/lib/rate-limit";
+import { flushCacheInvalidations } from "@/server/lib/cache";
 
 type HandlerContext<TBody> = {
   req: NextRequest;
@@ -100,6 +101,10 @@ export function withApiHandler<TBody = unknown>(
         body,
         searchParams: req.nextUrl?.searchParams ?? new URL(req.url).searchParams,
       });
+
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        await flushCacheInvalidations();
+      }
 
       return apiSuccess(data);
     } catch (e) {

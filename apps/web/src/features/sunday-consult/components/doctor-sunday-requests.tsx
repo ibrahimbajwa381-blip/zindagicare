@@ -52,6 +52,14 @@ function SundayHistoryList({ request }: { request: SundayDoctorRequestDto }) {
   );
 }
 
+async function fetchDoctorRequests(): Promise<SundayDoctorRequestDto[] | null> {
+  // Network failures (offline, dev-server reload) keep the last list; the next poll retries.
+  const res = await fetch("/api/v1/sunday/doctor/requests").catch(() => null);
+  if (!res) return null;
+  const json = await res.json().catch(() => null);
+  return json?.success ? (json.data ?? []) : null;
+}
+
 type Props = {
   /** Called after a pick/release so the parent can refresh the consult queue. */
   onChange?: () => void;
@@ -63,11 +71,13 @@ export function DoctorSundayRequests({ onChange }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await fetch("/api/v1/sunday/doctor/requests");
-    const json = await res.json().catch(() => null);
-    if (json?.success) setRequests(json.data ?? []);
-  }, []);
+  const load = useCallback(
+    () =>
+      fetchDoctorRequests().then((data) => {
+        if (data) setRequests(data);
+      }),
+    [],
+  );
 
   useEffect(() => {
     load();
@@ -76,7 +86,7 @@ export function DoctorSundayRequests({ onChange }: Props) {
   }, [load]);
 
   const pick = async (request: SundayDoctorRequestDto) => {
-    const startTimeLocal = times[request.requestId] ?? suggestedStartTime(request.sundayDateKey);
+    const startTimeLocal = times[request.requestId] ?? suggestedStartTime(request.consultDateKey);
     setBusyId(request.requestId);
     setError(null);
     const res = await fetch(`/api/v1/sunday/doctor/requests/${request.requestId}/claim`, {
@@ -111,8 +121,53 @@ export function DoctorSundayRequests({ onChange }: Props) {
     onChange?.();
   };
 
-  const open = requests.filter((r) => r.status === SundayFreeRequestStatuses.REQUESTED);
+  const waiting = requests.filter((r) => r.status === SundayFreeRequestStatuses.REQUESTED);
+  const open = waiting.filter((r) => !r.overdue);
+  const overdue = waiting.filter((r) => r.overdue);
   const mine = requests.filter((r) => r.pickedByMe);
+
+  const renderOpenRequest = (request: SundayDoctorRequestDto) => (
+    <div key={request.requestId} className={`space-y-3 p-3 ${surfaceInset}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-medium">{request.patientName}</p>
+          <p className="text-xs text-slate-500">
+            Requested {formatKarachiDateTime(request.createdAt)}
+            {request.overdue ? ` · will be scheduled on ${request.consultDateKey}` : ""}
+          </p>
+          <SundayHistoryList request={request} />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {request.overdue && <Badge variant="accent">Waiting over a week</Badge>}
+          {request.affordabilityChoice === SundayAffordabilityChoices.CANNOT_AFFORD && (
+            <Badge variant="secondary">Cannot afford paid care</Badge>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-sm">
+          Consult time (PK)
+          <Input
+            type="time"
+            step={600}
+            className="mt-1 w-36"
+            value={times[request.requestId] ?? suggestedStartTime(request.consultDateKey)}
+            onChange={(e) =>
+              setTimes((prev) => ({ ...prev, [request.requestId]: e.target.value }))
+            }
+          />
+        </label>
+        <Button
+          size="sm"
+          disabled={busyId === request.requestId}
+          loading={busyId === request.requestId}
+          onClick={() => pick(request)}
+        >
+          Pick patient
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <Card className={`mt-8 ${surfaceCardInteractive}`}>
@@ -132,46 +187,24 @@ export function DoctorSundayRequests({ onChange }: Props) {
           </p>
         )}
 
-        {open.map((request) => (
-          <div key={request.requestId} className={`space-y-3 p-3 ${surfaceInset}`}>
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium">{request.patientName}</p>
-                <p className="text-xs text-slate-500">
-                  Requested {formatKarachiDateTime(request.createdAt)}
-                </p>
-                <SundayHistoryList request={request} />
-              </div>
-              {request.affordabilityChoice === SundayAffordabilityChoices.CANNOT_AFFORD && (
-                <Badge variant="secondary">Cannot afford paid care</Badge>
-              )}
-            </div>
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="text-sm">
-                Consult time (PK)
-                <Input
-                  type="time"
-                  step={600}
-                  className="mt-1 w-36"
-                  value={times[request.requestId] ?? suggestedStartTime(request.sundayDateKey)}
-                  onChange={(e) =>
-                    setTimes((prev) => ({ ...prev, [request.requestId]: e.target.value }))
-                  }
-                />
-              </label>
-              <Button
-                size="sm"
-                disabled={busyId === request.requestId}
-                loading={busyId === request.requestId}
-                onClick={() => pick(request)}
-              >
-                Pick patient
-              </Button>
-            </div>
-          </div>
-        ))}
+        {open.map(renderOpenRequest)}
         {!open.length && (
           <p className="text-sm text-slate-500">No patients are waiting right now.</p>
+        )}
+
+        {overdue.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <div>
+              <p className="text-sm font-medium text-slate-700">
+                Waiting over a week ({overdue.length})
+              </p>
+              <p className="text-xs text-slate-500">
+                No doctor picked these patients on their Sunday. Picking one schedules the consult
+                on this Sunday.
+              </p>
+            </div>
+            {overdue.map(renderOpenRequest)}
+          </div>
         )}
 
         {mine.length > 0 && (

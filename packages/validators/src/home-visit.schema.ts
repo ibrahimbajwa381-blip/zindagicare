@@ -34,7 +34,7 @@ export const createHomeVisitSchema = z.object({
 export const assignHomeVisitSchema = z.object({
   staffId: z.string().min(1).optional(),
   auto: z.boolean().optional(),
-  /** Allow assigning staff outside the home-care match radius (admin only). */
+  /** No longer needed — distance never blocks an assignment. Accepted for older clients. */
   override: z.boolean().optional(),
 });
 

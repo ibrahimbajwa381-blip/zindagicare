@@ -10,19 +10,26 @@ import { NavigationLoadingProvider } from "@/components/providers/navigation-loa
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import type { Locale } from "@/i18n/config";
+import type { Dictionary } from "@/i18n/dictionaries/en";
 import { LocaleProvider } from "@/i18n/locale-provider";
 
 type AppProvidersProps = {
   children: React.ReactNode;
   session: Session | null;
   initialLocale: Locale;
+  initialDictionary: Dictionary;
 };
 
 /** Single client boundary so locale context is always available to nested client trees. */
-export function AppProviders({ children, session, initialLocale }: AppProvidersProps) {
+export function AppProviders({
+  children,
+  session,
+  initialLocale,
+  initialDictionary,
+}: AppProvidersProps) {
   return (
     <SerwistProvider swUrl="/serwist/sw.js">
-      <LocaleProvider initialLocale={initialLocale}>
+      <LocaleProvider initialLocale={initialLocale} initialDictionary={initialDictionary}>
         <AuthSessionProvider session={session}>
           <NavigationLoadingProvider>
             {children}

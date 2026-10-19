@@ -18,6 +18,8 @@ import { ProviderOnboardingPreview } from "@/features/marketing/components/provi
 import { TestimonialsSection } from "@/features/marketing/components/testimonials-section";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
 import { RefundGuaranteeBar } from "@/features/marketing/components/refund-guarantee-bar";
+// Hidden for now: re-enable with the <HomeQaSection /> below.
+// import { HomeQaSection } from "@/features/medical-qa/components/home-qa-section";
 
 export const metadata: Metadata = buildRootMetadata({
   alternates: { canonical: getSiteUrl() },
@@ -33,6 +35,8 @@ export default async function HomePage() {
       <HeroSection />
       <TrustBar />
       <RefundGuaranteeBar />
+      {/* Free public Q&A, kept near the top so patients find it without scrolling far. */}
+      {/* <HomeQaSection /> */}
       <HomeServicesPreview />
       <HomePhysioBanner />
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
@@ -44,7 +48,10 @@ export default async function HomePage() {
       <DoctorBrowseSection />
       <SundayBanner />
       <HowItWorksSection />
-      <TestimonialsSection />
+      {/* Below-the-fold DB query — must not hold the hero (LCP) behind loading.tsx. */}
+      <Suspense fallback={null}>
+        <TestimonialsSection />
+      </Suspense>
       <ProviderOnboardingPreview />
       <FaqSection />
     </>

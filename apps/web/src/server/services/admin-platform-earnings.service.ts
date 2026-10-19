@@ -25,6 +25,7 @@ import {
   getReferredPatientDoctorMap,
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
+import { listManualEarnings, type ManualEarningRow } from "./admin-manual-earnings.service";
 
 export type PlatformEarningsDoctorRow = {
   id: string;
@@ -32,6 +33,8 @@ export type PlatformEarningsDoctorRow = {
   avatarUrl?: string;
   specialties: string[];
   consultCount: number;
+  /** Of `consultCount`, how many were recorded manually (booked outside the app). */
+  manualCount: number;
   grossRevenue: number;
   doctorEarnings: number;
   platformCommission: number;
@@ -67,6 +70,13 @@ export type AdminPlatformEarningsOverview = {
   byDoctor: PlatformEarningsDoctorRow[];
   unresolvedPayments: UnresolvedPaymentRow[];
   unresolvedPaymentsTotal: number;
+  manualEntries: ManualEarningRow[];
+  manualTotals: {
+    grossRevenue: number;
+    platformCommission: number;
+    /** Commission still to be collected from providers who took the patient's money directly. */
+    commissionHeldByProviders: number;
+  };
 };
 
 const EMPTY_ROW = () => ({
@@ -75,6 +85,9 @@ const EMPTY_ROW = () => ({
   doctorEarnings: 0,
   doctorEarningsThisMonth: 0,
   consultCount: 0,
+  manualCount: 0,
+  /** Adjustment to what ZindagiCare owes the doctor from manual entries. */
+  manualOwedAdjustment: 0,
 });
 
 export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsOverview> {
@@ -101,7 +114,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
       .filter(([userId]) => Boolean(userId)),
   );
 
-  const [users, rates, completedAppointments, completedHomeVisits] = await Promise.all([
+  const [users, rates, completedAppointments, completedHomeVisits, manualEntries] = await Promise.all([
     userIds.length
       ? UserModel.find(mongoFilter({ _id: { $in: mongoObjectIds(userIds) } }))
           .select("name avatarUrl")
@@ -127,6 +140,7 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     )
       .select("assignedStaffId patientId paymentId pricing completedAt")
       .lean(),
+    listManualEarnings(),
   ]);
 
   const userMap = new Map(users.map((u) => [u._id.toString(), u]));
@@ -248,6 +262,39 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     rowsByProfile.set(profileId, row);
   }
 
+  // Off-app bookings (e.g. a home visit arranged over WhatsApp). Doctor entries roll into
+  // their row; physiotherapist entries only count toward the platform totals below.
+  const physioManual = { grossRevenue: 0, providerEarnings: 0, grossThisMonth: 0, earningsThisMonth: 0 };
+  let commissionHeldByProviders = 0;
+  for (const entry of manualEntries) {
+    const isThisMonth = new Date(entry.occurredAt) >= startOfMonth;
+    if (entry.collectedBy === "provider") commissionHeldByProviders += entry.platformCommission;
+
+    if (entry.providerRole !== "doctor") {
+      physioManual.grossRevenue += entry.grossAmount;
+      physioManual.providerEarnings += entry.providerEarnings;
+      if (isThisMonth) {
+        physioManual.grossThisMonth += entry.grossAmount;
+        physioManual.earningsThisMonth += entry.providerEarnings;
+      }
+      continue;
+    }
+
+    const row = rowsByProfile.get(entry.providerProfileId);
+    if (!row) continue;
+    row.grossRevenue += entry.grossAmount;
+    row.doctorEarnings += entry.providerEarnings;
+    row.consultCount += 1;
+    row.manualCount += 1;
+    // Provider kept the cash: they owe our commission rather than being owed their share.
+    row.manualOwedAdjustment +=
+      entry.collectedBy === "provider" ? -entry.grossAmount : 0;
+    if (isThisMonth) {
+      row.grossRevenueThisMonth += entry.grossAmount;
+      row.doctorEarningsThisMonth += entry.providerEarnings;
+    }
+  }
+
   const byDoctor: PlatformEarningsDoctorRow[] = profiles
     .map((profile) => {
       const id = profile._id.toString();
@@ -263,11 +310,12 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
         avatarUrl: resolveDoctorPortrait(pii.name, user?.avatarUrl),
         specialties: profile.specialties ?? [],
         consultCount: row.consultCount,
+        manualCount: row.manualCount,
         grossRevenue: row.grossRevenue,
         doctorEarnings: row.doctorEarnings,
         platformCommission: row.grossRevenue - row.doctorEarnings,
         totalPaidOut,
-        balanceDue: Math.max(row.doctorEarnings - totalPaidOut, 0),
+        balanceDue: Math.max(row.doctorEarnings + row.manualOwedAdjustment - totalPaidOut, 0),
         platformOnlineCommissionPercent: 100 - rate.online,
         platformHomeVisitCommissionPercent: 100 - rate.homeVisit,
         referredPatientCount: referredCountByProfile.get(id) ?? 0,
@@ -284,7 +332,12 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
       acc.consultCount += row.consultCount;
       return acc;
     },
-    { grossRevenue: 0, doctorEarnings: 0, platformCommission: 0, consultCount: 0 },
+    {
+      grossRevenue: physioManual.grossRevenue,
+      doctorEarnings: physioManual.providerEarnings,
+      platformCommission: physioManual.grossRevenue - physioManual.providerEarnings,
+      consultCount: 0,
+    },
   );
 
   const monthTotals = [...rowsByProfile.values()].reduce(
@@ -293,7 +346,10 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
       acc.doctorEarningsThisMonth += row.doctorEarningsThisMonth;
       return acc;
     },
-    { grossRevenueThisMonth: 0, doctorEarningsThisMonth: 0 },
+    {
+      grossRevenueThisMonth: physioManual.grossThisMonth,
+      doctorEarningsThisMonth: physioManual.earningsThisMonth,
+    },
   );
 
   const unresolvedCandidates = await AppointmentModel.find(
@@ -385,5 +441,11 @@ export async function getAdminPlatformEarnings(): Promise<AdminPlatformEarningsO
     byDoctor,
     unresolvedPayments,
     unresolvedPaymentsTotal,
+    manualEntries,
+    manualTotals: {
+      grossRevenue: manualEntries.reduce((sum, e) => sum + e.grossAmount, 0),
+      platformCommission: manualEntries.reduce((sum, e) => sum + e.platformCommission, 0),
+      commissionHeldByProviders,
+    },
   };
 }

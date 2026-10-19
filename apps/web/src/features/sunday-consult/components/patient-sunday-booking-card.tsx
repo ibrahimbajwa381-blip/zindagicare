@@ -68,7 +68,7 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
     booking.requestStatus === SundayFreeRequestStatuses.REQUESTED || !doctor.doctorId;
   const intakeStatus = useIntakeStatus(isMatching ? undefined : booking.appointmentId);
   const joinEnd = sundayJoinWindowEnd(booking.scheduledStart, booking.scheduledEnd);
-  const { canJoin, joinClosesAt } = useVideoJoinWindow(
+  const { canJoin, joinClosesAt, now } = useVideoJoinWindow(
     booking.scheduledStart,
     joinEnd,
   );
@@ -85,7 +85,8 @@ export function PatientSundayBookingCard({ booking, variant = "dashboard" }: Pro
     !isCancelled &&
     booking.status === AppointmentStatuses.CONFIRMED &&
     !canJoin &&
-    Date.now() > joinClosesAt.getTime();
+    now !== null &&
+    now > joinClosesAt.getTime();
 
   const statusLabel = isMatching
     ? t.sunday.matchingTitle

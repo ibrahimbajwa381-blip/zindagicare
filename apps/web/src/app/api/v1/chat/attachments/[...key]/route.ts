@@ -1,5 +1,5 @@
 import { unwrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
-import { AppError } from "@zindagi/shared";
+import { AppError, Roles } from "@zindagi/shared";
 import { resolveSession } from "@/server/api/resolve-session";
 import { contentTypeFromKey, validateStorageKey } from "@/server/lib/object-storage";
 import { readChatAttachment } from "@/server/services/chat-attachment.storage";
@@ -19,7 +19,12 @@ export async function GET(req: Request, { params }: Params) {
     validateStorageKey(storageKey);
 
     const threadId = storageKey.split("/")[0];
-    await ChatService.assertParticipant(threadId, session.user.id);
+    // Admins can open attachments from the read-only transcripts they review.
+    const roles = session.user.roles ?? [];
+    const isAdmin = roles.includes(Roles.ADMIN) || roles.includes(Roles.SUPER_ADMIN);
+    if (!isAdmin) {
+      await ChatService.assertParticipant(threadId, session.user.id);
+    }
 
     const raw = await readChatAttachment(storageKey);
     const buffer = unwrapEncryptedFile(raw);

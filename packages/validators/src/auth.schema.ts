@@ -100,14 +100,6 @@ export const registerSchema = z
     }
   });
 
-export const otpRequestSchema = z.object({
-  phone: pakistaniPhone,
-});
-
-export const otpVerifySchema = otpRequestSchema.extend({
-  code: z.string().length(6, "Enter the 6-digit code"),
-});
-
 /** Patient-only profile completion after signup. */
 export const onboardingSchema = z.object({
   city: z.string().min(2, "City is required"),
@@ -160,14 +152,14 @@ export const doctorVerificationSchema = z.object({
   avatarUrl: z.string().min(1, "Profile photo is required"),
   bio: z.string().max(2000).optional(),
   consultationFee: z.coerce
-    .number()
-    .min(500, "Consultation fee must be at least PKR 500")
-    .optional(),
+    .number({ message: "Enter your consultation fee" })
+    .min(500, "Consultation fee must be at least PKR 500"),
   hospitals: z
     .array(
       z.object({
         name: z.string().min(2),
         city: z.string().min(2),
+        area: z.string().trim().max(100).optional(),
         address: z.string().optional(),
         geo: geoPointInputSchema.optional(),
       }),

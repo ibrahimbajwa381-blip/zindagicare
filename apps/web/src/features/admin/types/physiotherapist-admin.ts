@@ -47,7 +47,7 @@ export type AdminPhysiotherapistDetailDto = {
   isAvailable: boolean;
   homeVisitEnabled: boolean;
   employeeCode?: string;
-  serviceArea: { city: string; area?: string; radiusKm: number };
+  serviceArea: { city: string; area?: string; radiusKm: number; hasLocation: boolean };
   documents: { label: string; url: string }[];
   stats: {
     activeVisits: number;

@@ -11,6 +11,7 @@ import {
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
   phoneLookupHash,
+  resolveCoverageRadiusKm,
   withDoctorTitle,
 } from "@zindagi/shared";
 import type { UpdateDoctorPortfolioInput, UpdateDoctorProfileInput } from "@zindagi/validators";
@@ -21,6 +22,7 @@ import type {
   WeeklyAvailabilityDto,
 } from "@/features/doctor/types";
 import { formatDayOfWeek } from "@/features/doctor/types";
+import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { mongoFilter } from "@/lib/mongo/query";
@@ -105,6 +107,7 @@ function mapProfileToDto(
     hospitals: (profile.hospitals ?? []).map((h) => ({
       name: h.name,
       city: h.city,
+      area: h.area ?? undefined,
       address: h.address ?? undefined,
     })),
     consultationFee: profile.consultationFee ?? 0,
@@ -117,6 +120,7 @@ function mapProfileToDto(
     homeVisit: {
       enabled: profile.homeVisitEnabled ?? false,
       area: profile.homeVisitLocation?.area ?? undefined,
+      radiusKm: resolveCoverageRadiusKm(profile.homeVisitLocation?.radiusKm),
       geo:
         profile.homeVisitLocation?.geo?.coordinates?.length === 2
           ? {
@@ -214,7 +218,7 @@ export async function upsertSundayTemplateFromProfileEdit(
         isActive: true,
       },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 
   await SundayConsultService.materializeInstance(
@@ -326,6 +330,7 @@ export async function updateDoctorProfile(
     const hospitals = data.hospitals.map((h) => ({
       name: h.name.trim(),
       city: h.city.trim(),
+      area: resolveHospitalArea(h, profile.hospitals),
       address: h.address?.trim() || undefined,
     }));
     profile.set("hospitals", hospitals);
@@ -346,6 +351,7 @@ export async function updateDoctorProfile(
           type: "Point",
           coordinates: [data.homeVisit.geo.lng, data.homeVisit.geo.lat],
         },
+        radiusKm: data.homeVisit.radiusKm ?? profile.homeVisitLocation?.radiusKm ?? undefined,
       };
     } else if (!data.homeVisit.enabled) {
       profile.homeVisitLocation = undefined;

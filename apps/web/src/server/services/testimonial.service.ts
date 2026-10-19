@@ -6,6 +6,7 @@ import type {
 } from "@zindagi/validators";
 import { AppError, ErrorCodes } from "@zindagi/shared";
 import { mongoFilter } from "@/lib/mongo/query";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import {
   deleteTestimonialAvatar,
   testimonialAvatarStorageKeyFromUrl,
@@ -40,6 +41,14 @@ export class TestimonialService {
   }
 
   static async listPublic(limit = 12): Promise<PublicTestimonialDto[]> {
+    return cached(
+      cacheKey("testimonials", limit),
+      { ttl: 600, tags: [CacheTags.TESTIMONIALS] },
+      () => TestimonialService.loadPublic(limit),
+    );
+  }
+
+  private static async loadPublic(limit: number): Promise<PublicTestimonialDto[]> {
     await TestimonialService.ensureConnected();
 
     const rows = await TestimonialModel.find(

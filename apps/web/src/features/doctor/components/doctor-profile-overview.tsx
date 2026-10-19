@@ -420,7 +420,11 @@ export function DoctorProfileOverview({ profile, summary }: Props) {
                 {profile.hospitals.map((h) => (
                   <li key={`${h.name}-${h.city}`} className="rounded-lg bg-slate-50 px-3 py-2">
                     <span className="font-medium text-slate-900">{h.name}</span>
-                    <span className="text-slate-600"> · {h.city}</span>
+                    <span className="text-slate-600">
+                      {" · "}
+                      {h.area ? `${h.area}, ` : ""}
+                      {h.city}
+                    </span>
                   </li>
                 ))}
               </ul>

@@ -172,6 +172,18 @@ export async function findUserByEmail(email: string) {
   };
 }
 
+/**
+ * True when any account — including deactivated or deleted ones — holds this
+ * email. Mirrors the conflict check in registerWithCredentials, so "no account"
+ * here means registration with this email can actually succeed.
+ */
+export async function isEmailRegistered(email: string): Promise<boolean> {
+  await connectDatabase();
+  const normalized = email.trim().toLowerCase();
+  const exists = await UserModel.exists({ emailLookup: emailLookupHash(normalized) });
+  return Boolean(exists);
+}
+
 /** Email/password sign-in for Auth.js credentials provider. */
 export async function verifyCredentialsLogin(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
@@ -205,28 +217,6 @@ export async function findUserByPhone(phone: string) {
       { phoneLookup: phoneLookupHash(phoneLocal) },
     ],
   });
-}
-
-export async function findActiveUserByPhone(phone: string) {
-  const user = await findUserByPhone(phone);
-  if (!user || user.deletedAt || user.isActive === false) return null;
-  if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) return null;
-  return user;
-}
-
-/** Sign in an existing user via phone OTP (passwordless recovery). */
-export async function signInWithPhoneOtp(phone: string) {
-  const user = await findActiveUserByPhone(phone);
-  if (!user) return null;
-
-  user.phoneVerified = new Date();
-  if (!user.authProviders.includes("phone")) {
-    user.authProviders.push("phone");
-  }
-  await user.save();
-  await ensurePatientProfile(user._id);
-
-  return loadAuthUserPayload(user._id.toString());
 }
 
 export async function registerWithCredentials(

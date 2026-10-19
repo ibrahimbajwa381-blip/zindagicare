@@ -47,6 +47,10 @@ export type AppointmentDetail = {
   refundBankName?: string;
   patientJoinedAt?: string;
   doctorJoinedAt?: string;
+  /** Patient's rating of the doctor for this consult. */
+  doctorReview?: { rating: number; comment?: string; createdAt: string };
+  /** Patient's rating of ZindagiCare itself for this consult. */
+  platformReview?: { rating: number; comment?: string; createdAt: string };
 };
 
 const REFUND_METHOD_LABEL: Record<string, string> = {

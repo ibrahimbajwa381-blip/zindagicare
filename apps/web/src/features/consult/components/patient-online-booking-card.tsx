@@ -44,7 +44,7 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
   const t = useTranslations();
   const { doctor } = booking;
   const intakeStatus = useIntakeStatus(booking.appointmentId);
-  const { canJoin, joinClosesAt } = useVideoJoinWindow(
+  const { canJoin, joinClosesAt, now } = useVideoJoinWindow(
     booking.scheduledStart,
     booking.scheduledEnd,
   );
@@ -52,7 +52,8 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
   const isMissed =
     booking.status === AppointmentStatuses.CONFIRMED &&
     !canJoin &&
-    Date.now() > joinClosesAt.getTime();
+    now !== null &&
+    now > joinClosesAt.getTime();
 
   const statusLabel = isMissed
     ? t.dashboard.appointmentHistory.missed

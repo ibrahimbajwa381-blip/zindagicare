@@ -1,7 +1,12 @@
 import { connectDatabase, StaffProfileModel } from "@zindagi/database";
 import {
+  bestHomeCareReach,
+  compareHomeCareReach,
   HOME_CARE_MATCH_RADIUS_KM,
   LAUNCH_CITY,
+  homeCareReach,
+  resolveCoverageRadiusKm,
+  type HomeCareReach,
   resolvePhysioHomeVisitFee,
   Roles,
   VerificationStatuses,
@@ -9,7 +14,9 @@ import {
 import { Types } from "mongoose";
 import { citiesMatch, formatCityName, normalizeCityName } from "@/lib/geo/city-match";
 import { haversineKm } from "@/lib/geo/distance";
+import { nearestCity } from "@/lib/geo/nearest-city";
 import { mongoFilter } from "@/lib/mongo/query";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import {
   mapPhysiotherapistPortfolio,
   type PhysiotherapistPortfolio,
@@ -42,6 +49,16 @@ export type PublicPhysiotherapist = {
   distanceKm?: number;
   /** True when the patient's pin is within the home-visit match radius. */
   withinRadius?: boolean;
+  /** True when the physio serves the city the patient's pin falls in. */
+  inPatientCity?: boolean;
+  /** The provider's own preferred coverage radius (km) around their nearest service area. */
+  coverageRadiusKm: number;
+  /**
+   * Search tier relative to the patient's pin (inside the provider's own radius, within 15 km,
+   * 30 km, same city, or farther). Only ranks results — every tier is bookable; outside their
+   * own radius the patient is told travel and charges may need confirming.
+   */
+  reach?: HomeCareReach;
   /** Average visible patient rating (one decimal); only set by `list()` when reviewed. */
   ratingAvg?: number;
   /** Number of visible patient reviews; only set by `list()`. */
@@ -75,6 +92,7 @@ async function mapStaff(
   origin?: { lng: number; lat: number },
   includePortfolio = false,
   city?: string,
+  patientCity?: string,
 ): Promise<PublicPhysiotherapist | null> {
   const user = staff.userId as PopulatedUser | null;
   if (!isListedUser(user)) return null;
@@ -92,18 +110,31 @@ async function mapStaff(
     city?: string;
     area?: string;
     geo?: { coordinates?: number[] };
+    radiusKm?: number;
   }[];
-  // Show the service area in the filtered city, falling back to the primary one.
+  // Show the service area in the filtered (or patient's) city, falling back to the primary one.
+  const shownCity = city ?? patientCity;
   const area =
-    (city && areas.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city))) || areas[0];
+    (shownCity && areas.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, shownCity))) || areas[0];
+
+  const inPatientCity = patientCity
+    ? areas.some((a) => citiesMatch(a.city ?? LAUNCH_CITY, patientCity))
+    : undefined;
 
   let distanceKm: number | undefined;
+  let coverageRadiusKm = resolveCoverageRadiusKm(areas[0]?.radiusKm);
+  let withinOwnRadius = false;
   if (origin) {
     for (const a of areas) {
       const coords = a.geo?.coordinates;
       if (!coords || coords.length < 2) continue;
       const d = haversineKm(origin.lng, origin.lat, coords[0], coords[1]);
-      if (distanceKm === undefined || d < distanceKm) distanceKm = d;
+      const radius = resolveCoverageRadiusKm(a.radiusKm);
+      if (d <= radius) withinOwnRadius = true;
+      if (distanceKm === undefined || d < distanceKm) {
+        distanceKm = d;
+        coverageRadiusKm = radius;
+      }
     }
   }
 
@@ -130,14 +161,19 @@ async function mapStaff(
     distanceKm,
     withinRadius:
       distanceKm === undefined ? undefined : distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+    inPatientCity,
+    coverageRadiusKm,
+    reach: origin ? homeCareReach(distanceKm, inPatientCity ?? false, withinOwnRadius) : undefined,
   };
 }
 
 export class PublicPhysiotherapistService {
   /**
    * Verified physiotherapists, optionally narrowed to a city and/or specialty (all cities
-   * when `city` is omitted). With `near`, results are sorted nearest-first and `nearbyOnly`
-   * keeps only those within the home-visit radius who take home visits.
+   * when `city` is omitted). With `near`, bookable physios come first, ranked by reach
+   * (own radius, then 15 km, then 30 km, then the patient's city, then anywhere) and distance. `nearbyOnly`
+   * keeps the bookable physios in the closest reach tier that has any — it never drops
+   * everyone just because nobody is close.
    */
   static async list(options: {
     city?: string;
@@ -145,9 +181,25 @@ export class PublicPhysiotherapistService {
     near?: { lng: number; lat: number };
     nearbyOnly?: boolean;
   } = {}): Promise<PublicPhysiotherapist[]> {
+    // Location searches are per-visitor coordinates — not worth caching.
+    if (options.near) return PublicPhysiotherapistService.load(options);
+    return cached(
+      cacheKey("physiotherapists", options.city, options.specialty),
+      { ttl: 300, tags: [CacheTags.PHYSIOTHERAPISTS] },
+      () => PublicPhysiotherapistService.load(options),
+    );
+  }
+
+  private static async load(options: {
+    city?: string;
+    specialty?: string;
+    near?: { lng: number; lat: number };
+    nearbyOnly?: boolean;
+  }): Promise<PublicPhysiotherapist[]> {
     await connectDatabase();
     const city = options.city?.trim();
     const specialty = options.specialty?.trim().toLowerCase();
+    const patientCity = options.near ? nearestCity(options.near) : undefined;
 
     const docs = await StaffProfileModel.find(PUBLIC_FILTER)
       .populate("userId", `name avatarUrl ${USER_VISIBILITY_FIELDS}`)
@@ -165,7 +217,7 @@ export class PublicPhysiotherapistService {
             !specialty ||
             (doc.specialties ?? []).some((s) => s.trim().toLowerCase() === specialty),
         )
-        .map((doc) => mapStaff(doc as never, options.near, false, city)),
+        .map((doc) => mapStaff(doc as never, options.near, false, city, patientCity)),
     );
 
     let rows = mapped.filter((row): row is PublicPhysiotherapist => row !== null);
@@ -177,11 +229,16 @@ export class PublicPhysiotherapistService {
     });
 
     if (options.near) {
+      const bookable = (r: PublicPhysiotherapist) => r.homeVisitEnabled && r.isAvailable;
       if (options.nearbyOnly) {
-        rows = rows.filter((r) => r.homeVisitEnabled && r.isAvailable && r.withinRadius);
+        const eligible = rows.filter(bookable);
+        const tier = bestHomeCareReach(eligible as { reach: HomeCareReach }[]);
+        rows = eligible.filter((r) => r.reach === tier);
       }
       rows.sort(
-        (a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY),
+        (a, b) =>
+          Number(bookable(b)) - Number(bookable(a)) ||
+          compareHomeCareReach(a as { reach: HomeCareReach }, b as { reach: HomeCareReach }),
       );
     } else {
       // Most-reviewed first, then higher rating, then more experience.
@@ -201,6 +258,12 @@ export class PublicPhysiotherapistService {
    * directory would list, deduplicated case-insensitively and title-cased for display.
    */
   static async listCities(): Promise<string[]> {
+    return cached(cacheKey("physiotherapists-cities"), { ttl: 600, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
+      PublicPhysiotherapistService.loadCities(),
+    );
+  }
+
+  private static async loadCities(): Promise<string[]> {
     await connectDatabase();
     const docs = await StaffProfileModel.find(PUBLIC_FILTER)
       .select("serviceAreas.city userId")
@@ -222,6 +285,12 @@ export class PublicPhysiotherapistService {
 
   /** Look up by public slug or by User id (used by ?physio= deep links). */
   static async get(slugOrId: string): Promise<PublicPhysiotherapist | null> {
+    return cached(cacheKey("physiotherapist", slugOrId), { ttl: 300, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
+      PublicPhysiotherapistService.loadOne(slugOrId),
+    );
+  }
+
+  private static async loadOne(slugOrId: string): Promise<PublicPhysiotherapist | null> {
     await connectDatabase();
     const key = slugOrId.trim().toLowerCase();
     if (!key) return null;

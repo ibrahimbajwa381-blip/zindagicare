@@ -3,7 +3,6 @@ import {
   connectDatabase,
   DoctorProfileModel,
   PrescriptionModel,
-  SundayFreeRequestModel,
   UserModel,
   VideoSessionModel,
 } from "@zindagi/database";
@@ -12,10 +11,9 @@ import {
   AppointmentStatuses,
   AppointmentTypes,
   ErrorCodes,
-  SUNDAY_CONSULT_CONFIG,
-  SundayFreeRequestStatuses,
   VIDEO_CONSULT_CONFIG,
   VideoSessionStatuses,
+  getSundayFreeJoinWindow,
   getVideoJoinWindow,
   getVideoJoinWindowForAppointment,
 } from "@zindagi/shared";
@@ -61,18 +59,14 @@ function getJoinWindow(appointment: AppointmentRow) {
     );
   }
 
-  let scheduledEnd = appointment.scheduledEnd;
+  // Sunday free consults stay open until the doctor marks them completed.
   if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
-    const matchEnd = new Date(
-      appointment.scheduledStart.getTime() +
-        SUNDAY_CONSULT_CONFIG.matchWithinMinutes * 60_000,
-    );
-    if (matchEnd > scheduledEnd) scheduledEnd = matchEnd;
+    return getSundayFreeJoinWindow(appointment.scheduledStart);
   }
 
   return getVideoJoinWindow(
     appointment.scheduledStart,
-    scheduledEnd,
+    appointment.scheduledEnd,
   );
 }
 
@@ -93,6 +87,8 @@ export class VideoSessionService {
     const appointment = await AppointmentModel.findById(appointmentId).lean();
     if (
       !appointment ||
+      // Only the doctor completes a Sunday free consult (so the patient can review it).
+      appointment.type === AppointmentTypes.SUNDAY_FREE ||
       appointment.status === AppointmentStatuses.COMPLETED ||
       appointment.status === AppointmentStatuses.CANCELLED ||
       appointment.status === AppointmentStatuses.NO_SHOW
@@ -131,18 +127,6 @@ export class VideoSessionService {
         completedAt,
       },
     });
-
-    if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
-      await SundayFreeRequestModel.updateOne(
-        mongoFilter({ appointmentId: appointment._id }),
-        {
-          $set: {
-            status: SundayFreeRequestStatuses.COMPLETED,
-            completedAt,
-          },
-        },
-      );
-    }
 
     if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
       await UrgentConsultService.tryCompleteByAppointmentId(
@@ -242,7 +226,7 @@ export class VideoSessionService {
             },
           },
         },
-        { new: true },
+        { returnDocument: "after" },
       );
     } else {
       try {
@@ -442,6 +426,12 @@ export class VideoSessionService {
       return;
     }
 
+    // Leaving a Sunday free consult keeps the room open so either side can rejoin;
+    // the doctor ends it from the Sunday dashboard ("Finish consultation").
+    if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
+      return;
+    }
+
     const endedAt = new Date();
     const startedAt = session.startedAt ?? session.createdAt;
     const durationSeconds = startedAt
@@ -492,17 +482,6 @@ export class VideoSessionService {
         },
       );
 
-      if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
-        await SundayFreeRequestModel.updateOne(
-          mongoFilter({ appointmentId: appointment._id }),
-          {
-            $set: {
-              status: SundayFreeRequestStatuses.COMPLETED,
-              completedAt: endedAt,
-            },
-          },
-        );
-      }
     }
   }
 

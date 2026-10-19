@@ -19,7 +19,6 @@ describe("INJ-001..003 — NoSQL operator injection", () => {
   let mongooseMod: typeof import("mongoose");
   let registerWithCredentials: typeof import("@/server/services/auth.service").registerWithCredentials;
   let mobileLoginRoute: typeof import("@/app/api/v1/mobile/auth/login/route");
-  let otpRequestRoute: typeof import("@/app/api/v1/auth/otp/request/route");
 
   let counter = 0;
   const nextEmail = () => `inj-${Date.now()}-${counter++}@test.local`;
@@ -37,7 +36,6 @@ describe("INJ-001..003 — NoSQL operator injection", () => {
 
     ({ registerWithCredentials } = await import("@/server/services/auth.service"));
     mobileLoginRoute = await import("@/app/api/v1/mobile/auth/login/route");
-    otpRequestRoute = await import("@/app/api/v1/auth/otp/request/route");
   });
 
   afterAll(async () => {
@@ -90,20 +88,6 @@ describe("INJ-001..003 — NoSQL operator injection", () => {
       });
       const res = await mobileLoginRoute.POST(req as never);
       expect(res.status).toBe(400);
-    });
-  });
-
-  describe("INJ-002 — OTP endpoint rejects operator injection in phone", () => {
-    test('{"phone": {"$gt": ""}} does not enumerate/target an arbitrary account', async () => {
-      const req = new Request("http://localhost/api/v1/auth/otp/request", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone: { $gt: "" } }),
-      });
-      const res = await otpRequestRoute.POST(req as never);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.error.code).toBe("VALIDATION_ERROR");
     });
   });
 

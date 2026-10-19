@@ -2,12 +2,17 @@ import {
   AppointmentModel,
   DoctorProfileModel,
   ReviewModel,
+  TestimonialModel,
   UserModel,
   VideoSessionModel,
   connectDatabase,
 } from "@zindagi/database";
 import { Types } from "mongoose";
-import type { AdminAddReviewInput, SubmitReviewInput } from "@zindagi/validators";
+import type {
+  AdminAddReviewInput,
+  SubmitPlatformReviewInput,
+  SubmitReviewInput,
+} from "@zindagi/validators";
 import {
   AppointmentStatuses,
   AppointmentTypes,
@@ -27,6 +32,7 @@ import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types
 import { mongoFilter } from "@/lib/mongo/query";
 import { PrescriptionService } from "@/server/services/prescription.service";
 import { UrgentConsultService } from "@/server/services/urgent-consult.service";
+import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
 function formatPatientName(name: string) {
   return name.trim().replace(/\s+/g, " ") || "Patient";
@@ -40,12 +46,55 @@ export type PatientReviewDto = {
   createdAt: string;
 };
 
+/** Patient's rating of ZindagiCare itself for one consult (stored as a Testimonial). */
+export type PlatformReviewDto = {
+  rating: number;
+  comment?: string;
+  createdAt: string;
+};
+
+export type PlatformReviewState = {
+  canReview: boolean;
+  review?: PlatformReviewDto;
+};
+
 export type PatientReviewState = {
   canReview: boolean;
   doctorName: string;
   review?: PatientReviewDto;
   prescription?: AppointmentPrescriptionLink;
+  /** Online consults (paid, urgent, Sunday free) — ZindagiCare asks for its own rating too. */
+  platform?: PlatformReviewState;
 };
+
+/** Consult types where the patient is also asked to rate ZindagiCare. */
+const PLATFORM_REVIEW_TYPES: string[] = [
+  AppointmentTypes.SUNDAY_FREE,
+  AppointmentTypes.ONLINE,
+  AppointmentTypes.URGENT_ONLINE,
+];
+
+const PLATFORM_REVIEW_LABELS: Record<string, { consult: string; title: string }> = {
+  [AppointmentTypes.SUNDAY_FREE]: {
+    consult: "a Sunday free consult",
+    title: "Sunday Free Consult patient",
+  },
+  [AppointmentTypes.ONLINE]: { consult: "an online consult", title: "Online consult patient" },
+  [AppointmentTypes.URGENT_ONLINE]: {
+    consult: "an urgent online consult",
+    title: "Urgent consult patient",
+  },
+};
+
+/** Testimonial text when the patient gave stars without a comment (kept hidden from the site). */
+function ratingOnlyPlatformContent(rating: number, appointmentType: string) {
+  const consult = PLATFORM_REVIEW_LABELS[appointmentType]?.consult ?? "a consult";
+  return `Rated ZindagiCare ${rating}/5 after ${consult}.`;
+}
+
+function isRatingOnlyPlatformContent(content: string) {
+  return /^Rated ZindagiCare [1-5]\/5 after (a|an) [A-Za-z ]+ consult\.$/.test(content);
+}
 
 export type AdminReviewRow = AdminModerationReview & {
   appointmentId?: string;
@@ -145,6 +194,17 @@ export class ReviewService {
   static async listDoctorReviews(
     doctorProfileId: string,
     options: { page?: number; limit?: number } = {},
+  ): Promise<{ reviews: DoctorReviewDto[]; total: number; hasMore: boolean }> {
+    return cached(
+      cacheKey("doctor-reviews", doctorProfileId, options.page, options.limit),
+      { ttl: 300, tags: [CacheTags.REVIEWS] },
+      () => ReviewService.loadDoctorReviews(doctorProfileId, options),
+    );
+  }
+
+  private static async loadDoctorReviews(
+    doctorProfileId: string,
+    options: { page?: number; limit?: number },
   ): Promise<{ reviews: DoctorReviewDto[]; total: number; hasMore: boolean }> {
     await ReviewService.ensureConnected();
 
@@ -258,17 +318,28 @@ export class ReviewService {
     const doctorName = doctor?.userId?.name ?? "Doctor";
     const payment = appointment.paymentId as { status?: string } | null;
 
-    const [existing, prescriptionMap] = await Promise.all([
+    const wantsPlatform = PLATFORM_REVIEW_TYPES.includes(appointment.type);
+    const [existing, prescriptionMap, platformMap] = await Promise.all([
       ReviewModel.findOne(mongoFilter({ appointmentId, deletedAt: null })).lean(),
       PrescriptionService.getPrescriptionsForAppointments([appointmentId]),
+      wantsPlatform
+        ? ReviewService.getPlatformReviewsForAppointments([appointmentId])
+        : Promise.resolve(new Map<string, PlatformReviewDto>()),
     ]);
     const prescription = prescriptionMap.get(appointmentId);
+    const platformReview = platformMap.get(appointmentId);
+    const platformFor = (consultEligible: boolean): PlatformReviewState | undefined =>
+      wantsPlatform
+        ? { canReview: !platformReview && consultEligible, review: platformReview }
+        : undefined;
 
     if (existing) {
       return {
         canReview: false,
         doctorName,
         prescription,
+        // A doctor review means the consult happened, so ZindagiCare can be rated too.
+        platform: platformFor(true),
         review: {
           id: existing._id.toString(),
           appointmentId,
@@ -304,7 +375,112 @@ export class ReviewService {
       },
     );
 
-    return { canReview, doctorName, prescription };
+    return { canReview, doctorName, prescription, platform: platformFor(canReview) };
+  }
+
+  static async getPlatformReviewsForAppointments(
+    appointmentIds: string[],
+  ): Promise<Map<string, PlatformReviewDto>> {
+    await ReviewService.ensureConnected();
+    if (!appointmentIds.length) return new Map();
+
+    const rows = await TestimonialModel.find(
+      mongoFilter({ appointmentId: { $in: appointmentIds }, deletedAt: null }),
+    )
+      .select("appointmentId rating content createdAt")
+      .lean();
+
+    return new Map(
+      rows.map((row) => [
+        row.appointmentId!.toString(),
+        {
+          rating: row.rating ?? 0,
+          comment:
+            isRatingOnlyPlatformContent(row.content) ? undefined : row.content,
+          createdAt: row.createdAt.toISOString(),
+        },
+      ]),
+    );
+  }
+
+  /**
+   * Patient rates ZindagiCare after an online / Sunday free consult. Saved as a Testimonial linked to
+   * the appointment; written comments go live on the site, rating-only entries stay hidden.
+   */
+  static async submitPlatformReview(
+    patientId: string,
+    appointmentId: string,
+    input: SubmitPlatformReviewInput,
+    options: ReviewEligibilityOptions = {},
+  ): Promise<PlatformReviewDto> {
+    await ReviewService.ensureConnected();
+
+    const appointment = await AppointmentModel.findOne(
+      mongoFilter({ _id: appointmentId, patientId, deletedAt: null }),
+    )
+      .populate("paymentId", "status")
+      .lean();
+    if (!appointment || !PLATFORM_REVIEW_TYPES.includes(appointment.type)) {
+      throw new AppError("Appointment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+
+    const [existing, doctorReview] = await Promise.all([
+      TestimonialModel.findOne(mongoFilter({ appointmentId, deletedAt: null })).lean(),
+      ReviewModel.exists(mongoFilter({ appointmentId, deletedAt: null })),
+    ]);
+    if (existing) {
+      throw new AppError("You already rated ZindagiCare for this consultation", ErrorCodes.CONFLICT, 409);
+    }
+
+    let eligible = Boolean(doctorReview);
+    if (!eligible) {
+      let videoSessionAttended = options.videoSessionAttended;
+      if (options.afterVideoLeave && videoSessionAttended == null) {
+        const session = await VideoSessionModel.findOne(mongoFilter({ appointmentId }))
+          .select("patientJoinedAt startedAt status")
+          .lean();
+        videoSessionAttended = videoSessionWasAttended(session);
+      }
+      const payment = appointment.paymentId as { status?: string } | null;
+      eligible = isAppointmentReviewEligible(
+        {
+          appointmentId: appointment._id.toString(),
+          type: appointment.type,
+          status: appointment.status,
+          scheduledEnd: appointment.scheduledEnd,
+          paymentStatus: payment?.status,
+        },
+        false,
+        { afterVideoLeave: options.afterVideoLeave, videoSessionAttended },
+      );
+    }
+    if (!eligible) {
+      throw new AppError(
+        "This consultation is not eligible for a review yet",
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    const patient = await UserModel.findById(patientId).select("name").lean();
+    const comment = input.comment?.trim();
+
+    const testimonial = await TestimonialModel.create({
+      patientId,
+      appointmentId: appointment._id,
+      patientName: formatPatientName(patient?.name ?? "Patient"),
+      patientTitle: PLATFORM_REVIEW_LABELS[appointment.type]?.title ?? "Patient",
+      rating: input.rating,
+      content: comment || ratingOnlyPlatformContent(input.rating, appointment.type),
+      source: "patient",
+      isVisible: Boolean(comment),
+    } as Record<string, unknown>);
+
+    return {
+      rating: input.rating,
+      comment: comment || undefined,
+      createdAt: testimonial.createdAt.toISOString(),
+    };
   }
 
   static async submitReview(

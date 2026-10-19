@@ -17,3 +17,11 @@ export const adminAddReviewSchema = z.object({
 });
 
 export type AdminAddReviewInput = z.infer<typeof adminAddReviewSchema>;
+
+/** Patient rates ZindagiCare itself after a consult (stored as a Testimonial). */
+export const submitPlatformReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(2000).optional(),
+});
+
+export type SubmitPlatformReviewInput = z.infer<typeof submitPlatformReviewSchema>;

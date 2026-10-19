@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, Star } from "lucide-react";
+import { FileText, Heart, Share2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SocialLinks } from "@/components/shared/social-links";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
@@ -23,6 +24,14 @@ type ReviewState = {
   prescription?: {
     id: string;
     downloadUrl: string;
+  };
+  /** ZindagiCare's own rating for this consult. */
+  platform?: {
+    canReview: boolean;
+    review?: {
+      rating: number;
+      comment?: string;
+    };
   };
 };
 
@@ -60,7 +69,10 @@ export function PostConsultReviewPrompt({ appointmentId }: Props) {
   }, [load]);
 
   const showReview =
-    state && (state.canReview || state.review) && !loading && !error;
+    state &&
+    (state.canReview || state.review || state.platform?.canReview || state.platform?.review) &&
+    !loading &&
+    !error;
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -129,12 +141,62 @@ export function PostConsultReviewPrompt({ appointmentId }: Props) {
             copy={copy}
             initialReview={state.review}
             canReview={state.canReview}
-            defaultExpanded={state.canReview}
+            platform={state.platform}
+            defaultExpanded={state.canReview || Boolean(state.platform?.canReview)}
             afterVideoLeave
             onSubmitted={load}
           />
         </div>
       ) : null}
+
+      {/* Once the patient has rated ZindagiCare, ask them to follow and share us. */}
+      {state?.platform?.review && !loading && !error ? <SupportZindagiCareCard /> : null}
+    </div>
+  );
+}
+
+function SupportZindagiCareCard() {
+  const videoCopy = useTranslations().consult.videoLeft;
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = siteConfig.url;
+    const text = videoCopy.shareText;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: siteConfig.name, text, url });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, "_blank", "noopener");
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-brand-light/30 bg-brand-muted/40 p-6 shadow-sm">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <Heart className="h-5 w-5 fill-brand/20" />
+        </span>
+        <div>
+          <h2 className="font-display text-lg font-semibold text-slate-900">
+            {videoCopy.supportTitle}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">{videoCopy.supportDescription}</p>
+        </div>
+      </div>
+      <SocialLinks variant="buttons" />
+      <Button type="button" variant="outline" className="mt-3 w-full gap-1.5" onClick={handleShare}>
+        <Share2 className="h-4 w-4" />
+        {copied ? videoCopy.linkCopied : videoCopy.shareCta}
+      </Button>
     </div>
   );
 }

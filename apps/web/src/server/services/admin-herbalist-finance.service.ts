@@ -15,6 +15,7 @@ import {
   VerificationStatuses,
   calculateStaffNetEarnings,
 } from "@zindagi/shared";
+import { Types } from "mongoose";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { HERBALIST_PROVIDER_ROLE } from "./herbalist-dashboard.service";
@@ -24,6 +25,7 @@ import {
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
 import { recordAdminActivity } from "./admin-activity.service";
+import { savePayoutReceipt } from "./payout-receipt.storage";
 
 export type HerbalistBankAccount = {
   accountTitle?: string;
@@ -371,6 +373,10 @@ export async function getOwnHerbalistBankAccount(
   };
 }
 
+function receiptUrl(herbalistProfileId: string, payoutId: string): string {
+  return `/api/v1/admin/herbalists/${herbalistProfileId}/finance/payouts/${payoutId}/receipt`;
+}
+
 export async function recordHerbalistPayout(
   adminUserId: string,
   herbalistProfileId: string,
@@ -378,12 +384,7 @@ export async function recordHerbalistPayout(
     amount: number;
     method?: string;
     note?: string;
-    receipt?: {
-      storageKey: string;
-      url: string;
-      originalName?: string;
-      mimeType?: string;
-    };
+    receiptFile: File;
   },
 ): Promise<HerbalistPayoutRow> {
   await connectDatabase();
@@ -395,7 +396,16 @@ export async function recordHerbalistPayout(
     throw new AppError("Payout amount must be positive", "VALIDATION_ERROR", 400);
   }
 
+  const payoutId = new Types.ObjectId();
+  const stored = await savePayoutReceipt(
+    herbalistProfileId,
+    payoutId.toString(),
+    input.receiptFile,
+  );
+  const receipt = { ...stored, url: receiptUrl(herbalistProfileId, payoutId.toString()) };
+
   const payout = (await DoctorPayoutModel.create({
+    _id: payoutId,
     providerRole: HERBALIST_PROVIDER_ROLE,
     providerProfileId: herbalistProfileId,
     // doctorProfileId is required on the shared payout ledger; mirror the provider id.
@@ -403,7 +413,7 @@ export async function recordHerbalistPayout(
     amount: input.amount,
     method: input.method ?? "bank_transfer",
     note: input.note,
-    receipt: input.receipt,
+    receipt,
     paidBy: adminUserId,
     paidAt: new Date(),
   } as Record<string, unknown>)) as DoctorPayoutDocument;

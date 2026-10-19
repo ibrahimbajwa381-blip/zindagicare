@@ -3,13 +3,20 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM } from "@zindagi/shared";
+import {
+  HOME_CARE_MATCH_RADIUS_KM,
+  isOutsideProviderCoverage,
+  bestHomeCareReach,
+  type HomeCareReach,
+} from "@zindagi/shared";
 import { MapPin, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { RatingStars } from "@/features/marketing/components/profile-reviews";
 import { NurseAvatar } from "@/features/nurse/components/nurse-avatar";
 import { nurseProfilePath } from "@/lib/nurses/profile-path";
+import { reachLocatedSummary } from "@/features/home-care/components/provider-reach";
+import { nearestCity } from "@/lib/geo/nearest-city";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import type { PublicNurse } from "@/server/services/public-nurse.service";
@@ -37,7 +44,19 @@ export function NurseDirectory({ initial, cities, specialties, city, specialty }
   );
   const geoKey = geo ? `${geo.lat},${geo.lng}|${city ?? ""}|${specialty ?? ""}` : null;
   const loading = geoKey !== null && sorted?.key !== geoKey;
-  const rows = sorted && sorted.key === geoKey ? sorted.rows : initial;
+  // With a location the API ranks everyone: within 15 km, then 30 km, then the patient's city,
+  // then anywhere. Nobody is hidden for distance — farther nurses are flagged instead.
+  const located = sorted !== null && sorted.key === geoKey;
+  const rows = located ? sorted.rows : initial;
+  const patientCity = geo ? nearestCity(geo) : undefined;
+  const tier = located
+    ? bestHomeCareReach(
+        rows.filter(
+          (r): r is PublicNurse & { reach: HomeCareReach } =>
+            !!r.reach && r.homeVisitEnabled && r.isAvailable,
+        ),
+      )
+    : null;
 
   function setFilter(name: "city" | "specialty", value: string) {
     const params = new URLSearchParams();
@@ -66,8 +85,6 @@ export function NurseDirectory({ initial, cities, specialties, city, specialty }
       cancelled = true;
     };
   }, [geo, geoKey, initial, city, specialty]);
-
-  const nearbyCount = geo ? rows.filter((r) => r.withinRadius).length : 0;
 
   return (
     <div className="space-y-6">
@@ -113,8 +130,9 @@ export function NurseDirectory({ initial, cities, specialties, city, specialty }
       <div className={`p-5 ${surfaceCard}`}>
         <p className="text-sm font-semibold text-slate-900">Find nurses near you</p>
         <p className="mb-3 text-xs text-slate-500">
-          Share your location to sort by distance. Home visits are available from nurses
-          within {HOME_CARE_MATCH_RADIUS_KM} km.
+          Share your location to see who is closest. Nurses who cover your location are listed
+          first, then those within {HOME_CARE_MATCH_RADIUS_KM} km; you can still book someone
+          farther away.
         </p>
         <GeoLocationPicker
           id="nurse-directory-geo"
@@ -124,8 +142,7 @@ export function NurseDirectory({ initial, cities, specialties, city, specialty }
         />
         {geo && !loading && (
           <p className="mt-3 text-xs text-slate-600">
-            {nearbyCount} nurse{nearbyCount === 1 ? "" : "s"} within{" "}
-            {HOME_CARE_MATCH_RADIUS_KM} km, nearest first.
+            {reachLocatedSummary(tier, "nurses", patientCity)}
           </p>
         )}
       </div>
@@ -142,8 +159,8 @@ export function NurseDirectory({ initial, cities, specialties, city, specialty }
         <div className="grid gap-4 md:grid-cols-2">
           {rows.map((nurse) => {
             const profileHref = nurseProfilePath(nurse.slug, nurse.id);
-            const canBookHome =
-              nurse.homeVisitEnabled && nurse.isAvailable && (!geo || nurse.withinRadius);
+            const canBookHome = nurse.homeVisitEnabled && nurse.isAvailable;
+            const far = Boolean(geo) && isOutsideProviderCoverage(nurse.reach);
             return (
               <div key={nurse.id} className={`flex min-w-0 flex-col gap-4 p-5 ${surfaceCard}`}>
                 <Link href={profileHref} className="flex min-w-0 items-start gap-3">
@@ -210,13 +227,17 @@ export function NurseDirectory({ initial, cities, specialties, city, specialty }
                       </span>
                     </>
                   ) : (
-                    <span className="self-center text-xs text-slate-500">
-                      {nurse.homeVisitEnabled && nurse.isAvailable
-                        ? `Outside ${HOME_CARE_MATCH_RADIUS_KM} km of you`
-                        : "Not taking home visits"}
-                    </span>
+                    <span className="self-center text-xs text-slate-500">Not taking home visits</span>
                   )}
                 </div>
+                {canBookHome && far && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Outside the {nurse.coverageRadiusKm} km area they usually cover
+                    {nurse.inPatientCity === false ? `, in ${nurse.city}` : ""}. You can still
+                    book — they will need to confirm they can travel, and extra travel charges may
+                    apply.
+                  </p>
+                )}
               </div>
             );
           })}

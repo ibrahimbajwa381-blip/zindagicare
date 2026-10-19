@@ -309,7 +309,7 @@ export function NurseProfileView({
               <ul className="space-y-2.5 text-sm text-slate-700">
                 {[
                   `${firstName} comes to your home — no travel, no waiting room`,
-                  `Covers patients within ${HOME_CARE_MATCH_RADIUS_KM} km of ${nurse.area ?? nurse.city}`,
+                  `Usually visits within ${HOME_CARE_MATCH_RADIUS_KM} km of ${nurse.area ?? nurse.city} — farther visits can be booked; travel and extra charges may need confirming`,
                   `Profile verified by ${siteConfig.name}`,
                   "IV drips, injections and wound care are billed at standard rates",
                 ].map((point) => (

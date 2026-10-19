@@ -210,18 +210,11 @@ describe("AUTHZ-001..012 — Authorization / RBAC / IDOR audit (real local Mongo
   // AUTHZ-003 — Patient A cannot mark Patient B's notification read
   // =========================================================================
   describe("AUTHZ-003 — Notification IDOR", () => {
-    // BLOCKED, not fixed: importing this route pulls in notification.service
-    // -> push.service (web-push) at module scope, which throws "AsyncLocalStorage
-    // accessed in runtime where it is not available" under Jest — the same
-    // pre-existing Next.js/Jest require-hook environment issue already
-    // documented against home-visit-concurrency.test.ts and
-    // sunday-consult-concurrency.test.ts in bugs.txt (unrelated to
-    // authorization, reproducible even with push.service mocked out here).
-    // Ownership IS enforced in code — markNotificationRead's query is scoped
-    // to `{ _id: notificationId, userId }` (server/services/notification.service.ts)
-    // — but that claim is backed by code inspection only, not an executed
-    // HTTP-level test, and is reported as such rather than claimed as PASS.
-    test.skip("Patient A marking Patient B's notification as read gets 404 (no data leak, no mutation)", async () => {
+    // Previously skipped: markNotificationRead passed Mongoose 9's deprecated
+    // `new: true`, and the resulting deprecation warning crashed under Jest
+    // ("AsyncLocalStorage accessed in runtime where it is not available").
+    // It now uses `returnDocument: "after"`, so this runs for real.
+    test("Patient A marking Patient B's notification as read gets 404 (no data leak, no mutation)", async () => {
       const patientA = await createUser([Roles.PATIENT]);
       const patientB = await createUser([Roles.PATIENT]);
 

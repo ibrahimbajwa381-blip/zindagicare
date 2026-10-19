@@ -12,6 +12,8 @@ const testimonialSchema = new Schema(
       ref: "User",
       index: true,
     },
+    /** Set when the patient rated ZindagiCare right after a consult — one per appointment. */
+    appointmentId: { type: Schema.Types.ObjectId, ref: "Appointment", unique: true, sparse: true },
     /** Free-text display name — used for admin-entered testimonials with no linked account. */
     patientName: { type: String, required: true, maxlength: 100 },
     /** Reviewer's profession/title, e.g. "Patient", "Software Engineer". */

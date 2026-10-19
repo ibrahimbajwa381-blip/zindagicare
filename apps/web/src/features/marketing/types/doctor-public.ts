@@ -3,6 +3,7 @@ import type { DoctorPortfolio } from "@/lib/doctors/portfolio";
 export type PublicDoctorHospital = {
   name: string;
   city: string;
+  area?: string;
   address?: string;
 };
 

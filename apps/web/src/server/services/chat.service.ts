@@ -26,6 +26,7 @@ import {
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
+  AdminChatTranscriptDto,
   ChatContactDto,
   ChatMessageDto,
   ChatParticipantDto,
@@ -121,6 +122,14 @@ function isPaidAppointmentChatEligibleSync(
     return false;
   }
 
+  // Sunday free chat lasts until the doctor finishes the consultation.
+  if (
+    appointment.type === AppointmentTypes.SUNDAY_FREE &&
+    appointment.status === AppointmentStatuses.COMPLETED
+  ) {
+    return false;
+  }
+
   if (appointment.paymentId) {
     return paidByPaymentId.get(appointment.paymentId.toString()) ?? false;
   }
@@ -187,9 +196,21 @@ async function buildEligibleDoctorUserIdsForPatient(
     .select("type status paymentId doctorId")
     .lean();
 
-  const paidByPaymentId = await batchPaidStatusByPaymentId(
-    collectPaymentIds(appointments),
-  );
+  if (appointments.length === 0) return new Set();
+
+  // Payment status and doctor profiles are independent lookups, so fetch them
+  // together and filter to the eligible doctors afterwards (saves a round trip).
+  const candidateDoctorProfileIds = [
+    ...new Set(appointments.map((appointment) => appointment.doctorId.toString())),
+  ];
+  const [paidByPaymentId, profiles] = await Promise.all([
+    batchPaidStatusByPaymentId(collectPaymentIds(appointments)),
+    DoctorProfileModel.find(
+      mongoFilter({ _id: { $in: candidateDoctorProfileIds } }),
+    )
+      .select("userId")
+      .lean(),
+  ]);
 
   const eligibleDoctorProfileIds = new Set<string>();
   for (const appointment of appointments) {
@@ -199,15 +220,11 @@ async function buildEligibleDoctorUserIdsForPatient(
     eligibleDoctorProfileIds.add(appointment.doctorId.toString());
   }
 
-  if (eligibleDoctorProfileIds.size === 0) return new Set();
-
-  const profiles = await DoctorProfileModel.find(
-    mongoFilter({ _id: { $in: [...eligibleDoctorProfileIds] } }),
-  )
-    .select("userId")
-    .lean();
-
-  return new Set(profiles.map((profile) => profile.userId.toString()));
+  return new Set(
+    profiles
+      .filter((profile) => eligibleDoctorProfileIds.has(profile._id.toString()))
+      .map((profile) => profile.userId.toString()),
+  );
 }
 
 async function buildEligiblePatientIdsForDoctor(
@@ -516,6 +533,32 @@ async function mapThreadsByPatientUserId(
   return threadByPatientUser;
 }
 
+/** A failed unique-index build scans the whole collection, so retry it at most this often. */
+const THREAD_INDEX_RETRY_MS = 5 * 60_000;
+let threadIndexFailedAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * Duplicate doctor–patient threads are prevented only by the unique
+ * `directKey` / `appointmentId` indexes, which Mongoose builds in the
+ * background after connecting. Make sure they exist before inserting a
+ * thread, so simultaneous requests on a fresh or lagging database can't each
+ * insert one. Thread creation is rare (first chat per pair) and this is a
+ * no-op on the server when the indexes already exist.
+ *
+ * The build fails if duplicates already exist; chat keeps working (without
+ * the guarantee) and the failure is logged without key values (user ids).
+ */
+async function ensureThreadUniqueIndexes() {
+  if (Date.now() - threadIndexFailedAt < THREAD_INDEX_RETRY_MS) return;
+  try {
+    await ChatThreadModel.createIndexes();
+  } catch (err) {
+    threadIndexFailedAt = Date.now();
+    const { code, codeName } = (err ?? {}) as { code?: number; codeName?: string };
+    console.error("[chat] unique thread indexes unavailable; duplicate threads possible", { code, codeName });
+  }
+}
+
 async function consolidateDuplicateThreads(
   canonicalThreadId: string,
   patientUserId: string,
@@ -537,9 +580,11 @@ async function consolidateDuplicateThreads(
     { $set: { threadId: canonicalThreadId } },
   );
 
+  // Drop the unique keys too: soft-deleted rows still count for the unique
+  // indexes, and a leftover duplicate key would stop them from being built.
   await ChatThreadModel.updateMany(
     mongoFilter({ _id: { $in: duplicateIds } }),
-    { $set: { deletedAt: new Date() } },
+    { $set: { deletedAt: new Date() }, $unset: { directKey: "", appointmentId: "" } },
   );
 
   const latestMessage = await ChatMessageModel.findOne(
@@ -621,7 +666,7 @@ async function toThreadDto(
   };
 }
 
-async function listEligibleThreadRowsForUser(userId: string): Promise<ThreadRow[]> {
+async function loadViewerAndThreads(userId: string) {
   await connectDatabase();
 
   const [viewer, threads] = await Promise.all([
@@ -631,15 +676,31 @@ async function listEligibleThreadRowsForUser(userId: string): Promise<ThreadRow[
       .lean(),
   ]);
 
+  return { viewer, threads };
+}
+
+async function buildEligibleOtherIdsForViewer(
+  userId: string,
+  viewerRoles: readonly string[],
+): Promise<Set<string>> {
+  return viewerRoles.includes(Roles.DOCTOR)
+    ? buildEligiblePatientIdsForDoctor(await resolveDoctorProfileId(userId))
+    : buildEligibleDoctorUserIdsForPatient(userId);
+}
+
+async function listEligibleThreadRowsForUser(userId: string): Promise<ThreadRow[]> {
+  const { viewer, threads } = await loadViewerAndThreads(userId);
   if (!viewer) return [];
 
-  const viewerIsDoctor = viewer.roles.includes(Roles.DOCTOR);
-  const eligibleOtherIds = viewerIsDoctor
-    ? await buildEligiblePatientIdsForDoctor(
-        await resolveDoctorProfileId(userId),
-      )
-    : await buildEligibleDoctorUserIdsForPatient(userId);
+  const eligibleOtherIds = await buildEligibleOtherIdsForViewer(userId, viewer.roles);
+  return dedupeEligibleThreads(threads, userId, eligibleOtherIds);
+}
 
+function dedupeEligibleThreads(
+  threads: ThreadRow[],
+  userId: string,
+  eligibleOtherIds: Set<string>,
+): ThreadRow[] {
   const deduped = new Map<string, ThreadRow>();
   for (const thread of threads) {
     const otherId = thread.participantIds
@@ -717,15 +778,23 @@ export class ChatService {
   static async totalUnreadCount(userId: string): Promise<number> {
     await ChatService.ensureConnected();
 
-    const threadRows = await listEligibleThreadRowsForUser(userId);
-    if (threadRows.length === 0) return 0;
+    const { viewer, threads } = await loadViewerAndThreads(userId);
+    if (!viewer) return 0;
 
-    const threadIds = threadRows.map((thread) => thread._id.toString());
-    const unreadByThreadId = await batchCountUnread(threadIds, userId);
+    // Count unread across all of the viewer's threads while eligibility is
+    // resolved, then sum only the eligible (deduped) threads. Same result as
+    // counting eligible threads alone, one fewer sequential round trip.
+    const [eligibleOtherIds, unreadByThreadId] = await Promise.all([
+      buildEligibleOtherIdsForViewer(userId, viewer.roles),
+      batchCountUnread(
+        threads.map((thread) => thread._id.toString()),
+        userId,
+      ),
+    ]);
 
     let total = 0;
-    for (const count of unreadByThreadId.values()) {
-      total += count;
+    for (const thread of dedupeEligibleThreads(threads, userId, eligibleOtherIds)) {
+      total += unreadByThreadId.get(thread._id.toString()) ?? 0;
     }
     return total;
   }
@@ -819,7 +888,7 @@ export class ChatService {
         throw new AppError("Doctor is not available for chat", "FORBIDDEN", 403);
       }
       throw new AppError(
-        "Chat is available after a paid consultation booking. Sunday free consults do not include messaging.",
+        "Chat is available after a paid consultation booking, or during an open Sunday free consultation.",
         "FORBIDDEN",
         403,
       );
@@ -842,6 +911,7 @@ export class ChatService {
             directKey: buildChatDirectKey(patientUserId, doctorUserId),
             appointmentId: paidAppointment._id,
             type: ChatThreadTypes.DIRECT,
+            isClosed: false,
           },
         },
       );
@@ -872,6 +942,32 @@ export class ChatService {
     return toThreadDto(thread, initiatorId);
   }
 
+  /**
+   * Closes the chat of a Sunday free consult the doctor just finished, unless the
+   * pair still shares another consult that keeps chat open.
+   */
+  static async closeSundayConsultThread(appointmentId: string) {
+    await ChatService.ensureConnected();
+
+    const appointment = await AppointmentModel.findById(appointmentId).lean();
+    if (!appointment) return;
+
+    const doctorUserId = await resolveDoctorUserId(appointment.doctorId.toString());
+    const patientUserId = appointment.patientId.toString();
+    const thread = await findExistingDirectThread(patientUserId, doctorUserId);
+    if (!thread || thread.isClosed) return;
+
+    const stillEligible = await findLatestEligibleAppointment(
+      patientUserId,
+      appointment.doctorId.toString(),
+    );
+    if (stillEligible) return;
+
+    await ChatThreadModel.updateOne(mongoFilter({ _id: thread._id }), {
+      $set: { isClosed: true },
+    });
+  }
+
   static async ensureAppointmentThread(appointmentId: string) {
     await ChatService.ensureConnected();
 
@@ -895,6 +991,7 @@ export class ChatService {
     let thread = await findExistingDirectThread(patientUserId, doctorUserId);
 
     if (!thread) {
+      await ensureThreadUniqueIndexes();
       try {
         const created = await ChatThreadModel.create({
           type: ChatThreadTypes.DIRECT,
@@ -927,6 +1024,7 @@ export class ChatService {
             directKey,
             appointmentId,
             type: ChatThreadTypes.DIRECT,
+            isClosed: false,
           },
         },
       );
@@ -1016,6 +1114,80 @@ export class ChatService {
 
   static async assertParticipant(threadId: string, userId: string) {
     return assertThreadParticipant(threadId, userId);
+  }
+
+  /**
+   * Admin-only read of the doctor–patient thread behind an appointment. Bypasses
+   * the participant check, so only call it from admin-gated routes.
+   */
+  static async getAppointmentTranscriptForAdmin(
+    appointmentId: string,
+    limit = 500,
+  ): Promise<AdminChatTranscriptDto> {
+    await ChatService.ensureConnected();
+    if (!Types.ObjectId.isValid(appointmentId)) {
+      throw new AppError("Appointment not found", "NOT_FOUND", 404);
+    }
+
+    const appointment = await AppointmentModel.findById(appointmentId)
+      .select("patientId doctorId chatThreadId")
+      .lean();
+    if (!appointment) {
+      throw new AppError("Appointment not found", "NOT_FOUND", 404);
+    }
+
+    const patientUserId = appointment.patientId.toString();
+    let doctorUserId: string | undefined;
+    try {
+      doctorUserId = await resolveDoctorUserId(appointment.doctorId.toString());
+    } catch {
+      doctorUserId = undefined;
+    }
+
+    let threadId = appointment.chatThreadId?.toString();
+    if (!threadId) {
+      const byAppointment = await ChatThreadModel.findOne(
+        mongoFilter({ appointmentId, deletedAt: null }),
+      )
+        .select("_id")
+        .lean();
+      threadId = byAppointment?._id.toString();
+    }
+    if (!threadId && doctorUserId) {
+      threadId = (await findExistingDirectThread(patientUserId, doctorUserId))?._id.toString();
+    }
+    if (!threadId) {
+      return { threadId: null, messages: [], truncated: false };
+    }
+
+    const rows = await ChatMessageModel.find(mongoFilter({ threadId, deletedAt: null }))
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
+      .lean();
+    const truncated = rows.length > limit;
+    const slice = truncated ? rows.slice(0, limit) : rows;
+
+    return {
+      threadId,
+      truncated,
+      messages: slice.reverse().map((row) => {
+        const senderId = row.senderId?.toString();
+        const sender: "patient" | "doctor" | "system" =
+          row.kind === ChatMessageKinds.SYSTEM || !senderId
+            ? "system"
+            : senderId === patientUserId
+              ? "patient"
+              : "doctor";
+        return {
+          id: row._id.toString(),
+          sender,
+          body: row.body ?? "",
+          attachmentUrl: row.attachmentUrl ?? undefined,
+          attachmentMime: row.attachmentMime ?? undefined,
+          createdAt: row.createdAt.toISOString(),
+        };
+      }),
+    };
   }
 
   static async sendMessage(

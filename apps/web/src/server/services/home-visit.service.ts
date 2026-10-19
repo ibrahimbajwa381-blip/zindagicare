@@ -5,7 +5,7 @@ import {
   HomeVisitModel,
   HomeVisitReviewModel,
   PaymentModel,
-  StaffProfileModel,
+  StaffProfileModel, 
   UserModel,
   type HomeVisitDocument,
 } from "@zindagi/database";
@@ -19,6 +19,12 @@ import {
   HomeVisitServiceTypes,
   HOME_CARE_PRICING,
   HOME_CARE_MATCH_RADIUS_KM,
+  bestHomeCareReach,
+  compareHomeCareReach,
+  homeCareReach,
+  HomeCareReaches,
+  resolveCoverageRadiusKm,
+  type HomeCareReach,
   LAHORE_GEO,
   LAUNCH_CITY,
   nearestCity,
@@ -58,6 +64,7 @@ import {
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { withLeaseLock } from "@/server/lib/mongo-lease-lock";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import {
   buildManualTransferCheckout,
@@ -495,15 +502,42 @@ export type HomeCareStaffOption = {
   homeVisitFee?: number;
 };
 
-export type VisitStaffCandidate = HomeCareStaffOption & { unavailable?: boolean };
+export type VisitStaffCandidate = HomeCareStaffOption & {
+  unavailable?: boolean;
+  reach?: HomeCareReach;
+  /** The provider's own preferred coverage radius (km). */
+  coverageRadiusKm?: number;
+};
 
 export type VisitStaffCandidates = {
   providerKind: HomeVisitProviderKind;
   patientLocation: { lng: number; lat: number };
   radiusKm: number;
+  /** Search tier `nearby` comes from: 15 km, else 30 km, else the city (null = nobody free). */
+  tier: HomeCareReach | null;
   nearby: VisitStaffCandidate[];
   all: VisitStaffCandidate[];
 };
+
+export type ProviderMatch = {
+  userId: string;
+  distanceKm: number | null;
+  name: string;
+  homeVisitFee?: number;
+  reach: HomeCareReach;
+  coverageRadiusKm: number;
+};
+
+/**
+ * Closest-tier, nearest candidate. Only physiotherapists fall back to another city;
+ * doctors and nurses stop at the patient's city.
+ */
+function pickBestMatch<T extends ProviderMatch>(candidates: T[], allowOtherCities: boolean): T | null {
+  const eligible = allowOtherCities
+    ? candidates
+    : candidates.filter((c) => c.reach !== HomeCareReaches.FAR);
+  return [...eligible].sort(compareHomeCareReach)[0] ?? null;
+}
 
 function byDistance(a: VisitStaffCandidate, b: VisitStaffCandidate) {
   return (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
@@ -542,14 +576,17 @@ async function listStaffProfileCandidates(
       const area =
         p.serviceAreas?.find((a) => citiesMatch(a.city ?? LAUNCH_CITY, city)) ??
         p.serviceAreas?.[0];
-      const points = nurseGeoPoints(p);
       const userId = user?._id?.toString() ?? "";
+      const coverage = staffCoverage(p, lng, lat);
+      const inCity = (p.serviceAreas ?? []).some((a) => citiesMatch(a.city ?? LAUNCH_CITY, city));
       return {
         id: userId,
         name: user?.name ?? defaultName,
         phone: user?.phone,
         serviceArea: [area?.area, area?.city ?? LAUNCH_CITY].filter(Boolean).join(", "),
-        distanceKm: points.length ? nearestGeoDistanceKm(lng, lat, points) : undefined,
+        distanceKm: coverage.distanceKm ?? undefined,
+        reach: homeCareReach(coverage.distanceKm, inCity, coverage.withinOwnRadius),
+        coverageRadiusKm: coverage.radiusKm,
         unavailable: userId ? busyIds.includes(userId) : undefined,
       };
     })
@@ -586,7 +623,7 @@ async function listDoctorCandidates(
         phone?: string;
       };
       const userId = user?._id?.toString() ?? "";
-      const points = doctorGeoPoints(p);
+      const coverage = doctorCoverage(p, lng, lat);
       return {
         id: userId,
         name: user?.name ?? "Doctor",
@@ -595,7 +632,10 @@ async function listDoctorCandidates(
         serviceArea: (p.coverageCities ?? [LAUNCH_CITY]).join(", "),
         homeVisitFee:
           p.homeVisitFee ?? HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT],
-        distanceKm: points.length ? nearestGeoDistanceKm(lng, lat, points) : undefined,
+        distanceKm: coverage.distanceKm ?? undefined,
+        // Only doctors covering the visit city are listed.
+        reach: homeCareReach(coverage.distanceKm, true, coverage.withinOwnRadius),
+        coverageRadiusKm: coverage.radiusKm,
         unavailable: busyIds.includes(userId),
       };
     })
@@ -636,6 +676,47 @@ function doctorGeoPoints(doctor: unknown): { lng: number; lat: number }[] {
         lat: h.geo!.coordinates![1],
       })),
   ];
+}
+
+type ProviderCoverage = {
+  distanceKm: number | null;
+  /** The provider's own coverage radius for the nearest area (platform default when unset). */
+  radiusKm: number;
+  /** True when the patient's pin is inside the provider's own radius for any of their areas. */
+  withinOwnRadius: boolean;
+};
+
+/** Nurse/physio distance to the patient pin and their own coverage-radius preference. */
+function staffCoverage(staff: unknown, lng: number, lat: number): ProviderCoverage {
+  const profile = staff as {
+    serviceAreas?: { radiusKm?: number | null; geo?: { coordinates?: number[] } | null }[];
+  };
+  let best: { distanceKm: number; radiusKm: number } | null = null;
+  let withinOwnRadius = false;
+  for (const area of profile.serviceAreas ?? []) {
+    const coords = area.geo?.coordinates;
+    if (!coords || coords.length !== 2) continue;
+    const distanceKm = haversineKm(lng, lat, coords[0], coords[1]);
+    const radiusKm = resolveCoverageRadiusKm(area.radiusKm);
+    if (distanceKm <= radiusKm) withinOwnRadius = true;
+    if (!best || distanceKm < best.distanceKm) best = { distanceKm, radiusKm };
+  }
+  return {
+    distanceKm: best?.distanceKm ?? null,
+    radiusKm: best?.radiusKm ?? resolveCoverageRadiusKm(profile.serviceAreas?.[0]?.radiusKm),
+    withinOwnRadius,
+  };
+}
+
+/** Doctor distance (home-visit location or hospitals) and their travel-radius preference. */
+function doctorCoverage(doctor: unknown, lng: number, lat: number): ProviderCoverage {
+  const points = doctorGeoPoints(doctor);
+  const radiusKm = resolveCoverageRadiusKm(
+    (doctor as { homeVisitLocation?: { radiusKm?: number | null } | null }).homeVisitLocation
+      ?.radiusKm,
+  );
+  const distanceKm = points.length ? nearestGeoDistanceKm(lng, lat, points) : null;
+  return { distanceKm, radiusKm, withinOwnRadius: distanceKm !== null && distanceKm <= radiusKm };
 }
 
 function visitPatientCoords(visit: unknown): [number, number] {
@@ -803,8 +884,9 @@ export class HomeVisitService {
   /**
    * Patient-facing check before a visit is booked with a chosen nurse or
    * physiotherapist — same rules admin manual assignment enforces (verified,
-   * taking home visits, within radius, free at that time), but with
-   * patient-readable errors so they can pick someone else or another time.
+   * taking home visits, free at that time), but with patient-readable errors so
+   * they can pick someone else or another time. Distance and city never block —
+   * the picker warns the patient that travel and charges may need confirming.
    */
   private static async assertStaffBookable(
     staffUserId: string,
@@ -833,24 +915,6 @@ export class HomeVisitService {
         400,
       );
     }
-    // Distance from the patient's pin decides coverage — city names are free
-    // text (or missing on older areas) and would wrongly reject nearby providers.
-    const distanceKm = await HomeVisitService.getStaffDistanceKm(
-      staffUserId,
-      false,
-      lng,
-      lat,
-      undefined,
-      staffType,
-    );
-    if (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM) {
-      throw new AppError(
-        `This ${label} is more than ${HOME_CARE_MATCH_RADIUS_KM} km from your location. Please choose someone nearer.`,
-        ErrorCodes.VALIDATION,
-        400,
-      );
-    }
-
     const busyIds = await getBusyStaffIds(scheduledAt);
     if (busyIds.includes(staffUserId)) {
       throw new AppError(
@@ -949,7 +1013,7 @@ export class HomeVisitService {
         paymentId: visit.paymentId ?? { $exists: false },
       }),
       { $set: { paymentId: payment._id } },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!claimed) {
@@ -1194,7 +1258,7 @@ export class HomeVisitService {
           cancellationRequestResolvedBy: adminUserId,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!updated) {
       throw new AppError("No pending refund request", ErrorCodes.CONFLICT, 409);
@@ -1397,40 +1461,39 @@ export class HomeVisitService {
     }
   }
 
+  /**
+   * Best free nurse for the patient's pin: inside the nurse's own coverage radius, else
+   * within 15 km, else within 30 km, else anyone serving the patient's city. A nurse from another city is never auto-dispatched —
+   * the visit stays with the team to arrange instead.
+   */
   static async findNearestAvailableStaff(lng: number, lat: number, scheduledAt: Date) {
-    return HomeVisitService.findNearestAvailableStaffByType(
-      lng,
-      lat,
-      Roles.NURSE,
-      scheduledAt,
-    );
+    return HomeVisitService.findBestAvailableStaff(lng, lat, Roles.NURSE, scheduledAt);
   }
 
+  /**
+   * Best free physiotherapist for the patient's pin: inside the physio's own coverage radius,
+   * else within 15 km, else 30 km, else the patient's city, else the nearest anywhere — physio visits are never left unmatched while
+   * someone is free. `reach` tells the caller whether to warn the patient about travel.
+   */
   static async findNearestAvailablePhysiotherapist(
     lng: number,
     lat: number,
     scheduledAt: Date,
   ) {
-    return HomeVisitService.findNearestAvailableStaffByType(
-      lng,
-      lat,
-      Roles.PHYSIOTHERAPIST,
-      scheduledAt,
-    );
+    return HomeVisitService.findBestAvailableStaff(lng, lat, Roles.PHYSIOTHERAPIST, scheduledAt);
   }
 
-  /** Nearest free nurse/physio whose service-area pin is within its radius — in any city. */
-  private static async findNearestAvailableStaffByType(
+  private static async findBestAvailableStaff(
     lng: number,
     lat: number,
     staffType: typeof Roles.NURSE | typeof Roles.PHYSIOTHERAPIST,
     scheduledAt: Date,
-  ) {
-    // Same conflict check already applied to doctors below — a nurse/
-    // physiotherapist already assigned to another active visit overlapping
-    // this time window is not actually available, regardless of the static
-    // isAvailable "on duty" toggle.
+  ): Promise<ProviderMatch | null> {
+    // A nurse/physiotherapist already assigned to another active visit overlapping this
+    // time window is not actually available, regardless of the "on duty" toggle.
     const busyIds = await getBusyStaffIds(scheduledAt);
+    const patientCity = nearestCity(lng, lat);
+    const defaultName = staffType === Roles.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
 
     const staffProfiles = await StaffProfileModel.find({
       staffType,
@@ -1439,43 +1502,49 @@ export class HomeVisitService {
       verificationStatus: "approved",
       deletedAt: { $exists: false },
     })
-      .populate("userId", "name phone")
+      .populate("userId", "name phone isActive deletedAt")
       .lean();
 
-    let best: { userId: string; distanceKm: number; name: string; homeVisitFee?: number } | null =
-      null;
-    const defaultName = staffType === Roles.PHYSIOTHERAPIST ? "Physiotherapist" : "Nurse";
+    const candidates = staffProfiles.flatMap((staff): ProviderMatch[] => {
+      const user = staff.userId as {
+        _id?: { toString(): string };
+        name?: string;
+        isActive?: boolean;
+        deletedAt?: Date;
+      };
+      if (!user?._id || user.isActive === false || user.deletedAt) return [];
+      const userId = user._id.toString();
+      if (busyIds.includes(userId)) return [];
 
-    for (const staff of staffProfiles) {
-      const user = staff.userId as { _id?: { toString(): string }; name?: string };
-      if (!user?._id || busyIds.includes(user._id.toString())) continue;
+      const coverage = staffCoverage(staff, lng, lat);
+      const inPatientCity = (staff.serviceAreas ?? []).some((a) =>
+        citiesMatch(a.city ?? LAUNCH_CITY, patientCity),
+      );
+      return [
+        {
+          userId,
+          distanceKm: coverage.distanceKm,
+          name: user.name ?? defaultName,
+          homeVisitFee: staff.homeVisitFee ?? undefined,
+          reach: homeCareReach(coverage.distanceKm, inPatientCity, coverage.withinOwnRadius),
+          coverageRadiusKm: coverage.radiusKm,
+        },
+      ];
+    });
 
-      const areas = staff.serviceAreas ?? [];
-      for (const area of areas) {
-        if (!area.geo?.coordinates) continue;
-        const [areaLng, areaLat] = area.geo.coordinates;
-        const dist = haversineKm(lng, lat, areaLng, areaLat);
-        const radius = area.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM;
-        if (dist <= radius && (!best || dist < best.distanceKm)) {
-          best = {
-            userId: user._id.toString(),
-            distanceKm: dist,
-            name: user.name ?? defaultName,
-            homeVisitFee: staff.homeVisitFee ?? undefined,
-          };
-        }
-      }
-    }
-
-    return best;
+    return pickBestMatch(candidates, staffType === Roles.PHYSIOTHERAPIST);
   }
 
+  /**
+   * Best free doctor among those listing the visit city in their coverage cities: inside the
+   * doctor's own travel radius, else within 15 km, else within 30 km, else any of them.
+   */
   static async findNearestAvailableDoctor(
     lng: number,
     lat: number,
     city: string,
     scheduledAt: Date,
-  ) {
+  ): Promise<(ProviderMatch & { specialties: string[] }) | null> {
     const busyIds = await getBusyStaffIds(scheduledAt);
 
     const doctors = await DoctorProfileModel.find({
@@ -1488,52 +1557,31 @@ export class HomeVisitService {
       .populate("userId", "name phone isActive")
       .lean();
 
-    let best: {
-      userId: string;
-      distanceKm: number;
-      name: string;
-      specialties: string[];
-    } | null = null;
-
-    for (const doctor of doctors) {
+    const candidates = doctors.flatMap((doctor) => {
       const user = doctor.userId as {
         _id?: { toString(): string };
         name?: string;
         isActive?: boolean;
       };
-      if (!user?._id || user.isActive === false) continue;
+      if (!user?._id || user.isActive === false) return [];
       const userId = user._id.toString();
-      if (busyIds.includes(userId)) continue;
+      if (busyIds.includes(userId)) return [];
 
-      const geoPoints = [
-        ...(doctor.homeVisitLocation?.geo?.coordinates?.length === 2
-          ? [
-              {
-                lng: doctor.homeVisitLocation.geo.coordinates[0],
-                lat: doctor.homeVisitLocation.geo.coordinates[1],
-              },
-            ]
-          : []),
-        ...(doctor.hospitals ?? [])
-          .filter((h) => h.geo?.coordinates?.length === 2)
-          .map((h) => ({
-            lng: h.geo!.coordinates[0],
-            lat: h.geo!.coordinates[1],
-          })),
-      ];
-
-      const dist = nearestGeoDistanceKm(lng, lat, geoPoints);
-      if (dist <= HOME_CARE_MATCH_RADIUS_KM && (!best || dist < best.distanceKm)) {
-        best = {
+      const coverage = doctorCoverage(doctor, lng, lat);
+      return [
+        {
           userId,
-          distanceKm: dist,
+          distanceKm: coverage.distanceKm,
           name: user.name ?? "Doctor",
           specialties: doctor.specialties ?? [],
-        };
-      }
-    }
+          // Coverage cities already include the visit city.
+          reach: homeCareReach(coverage.distanceKm, true, coverage.withinOwnRadius),
+          coverageRadiusKm: coverage.radiusKm,
+        },
+      ];
+    });
 
-    return best;
+    return pickBestMatch(candidates, false);
   }
 
   /**
@@ -1596,62 +1644,58 @@ export class HomeVisitService {
       }
     }
 
-    const updated = (await HomeVisitModel.findOneAndUpdate(
-      mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
-      {
-        $set: {
-          assignedStaffId: staffId,
-          status: HomeVisitStatuses.ASSIGNED,
-          ...(distanceKm !== null
-            ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
-            : {}),
-          ...pricingSet,
-        },
+    // Check-then-assign must not interleave for the same provider: two visits
+    // could each see the provider as free and both get them. Serialize per
+    // provider; the conflict window (±2h) is a range, which no unique index
+    // can express.
+    const updated = await withLeaseLock(
+      `home-visit-provider:${staffId}`,
+      async () => {
+        const conflict = await HomeVisitModel.exists(
+          mongoFilter({
+            _id: { $ne: visitId },
+            assignedStaffId: staffId,
+            status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
+            scheduledAt: {
+              $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
+              $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
+            },
+            deletedAt: { $exists: false },
+          }),
+        );
+        if (conflict) {
+          throw new AppError(
+            "Selected provider was just assigned to another visit at this time — please try again",
+            ErrorCodes.CONFLICT,
+            409,
+          );
+        }
+
+        const assigned = (await HomeVisitModel.findOneAndUpdate(
+          mongoFilter({ _id: visitId, status: { $in: fromStatuses } }),
+          {
+            $set: {
+              assignedStaffId: staffId,
+              status: HomeVisitStatuses.ASSIGNED,
+              ...(distanceKm !== null
+                ? { "pricing.distance": Math.round(distanceKm * 100) / 100 }
+                : {}),
+              ...pricingSet,
+            },
+          },
+          { returnDocument: "after" },
+        )) as HydratedDocument<HomeVisitDocument> | null;
+        if (!assigned) {
+          throw new AppError(
+            "Visit cannot be assigned right now — it may have just been updated by someone else",
+            ErrorCodes.CONFLICT,
+            409,
+          );
+        }
+        return assigned;
       },
-      { new: true },
-    )) as HydratedDocument<HomeVisitDocument> | null;
-    if (!updated) {
-      throw new AppError(
-        "Visit cannot be assigned right now — it may have just been updated by someone else",
-        ErrorCodes.CONFLICT,
-        409,
-      );
-    }
-
-    const holders = await HomeVisitModel.find(
-      mongoFilter({
-        assignedStaffId: staffId,
-        status: { $in: ACTIVE_STATUSES.filter((s) => s !== HomeVisitStatuses.REQUESTED) },
-        scheduledAt: {
-          $gte: new Date(scheduledAt.getTime() - HOME_VISIT_CONFLICT_WINDOW_MS),
-          $lte: new Date(scheduledAt.getTime() + HOME_VISIT_CONFLICT_WINDOW_MS),
-        },
-        deletedAt: { $exists: false },
-      }),
-    )
-      .select("_id")
-      .sort({ _id: 1 })
-      .lean();
-
-    const winnerId = holders[0]?._id?.toString();
-    if (holders.length > 1 && winnerId !== visitId) {
-      await HomeVisitModel.updateOne(
-        mongoFilter({
-          _id: visitId,
-          assignedStaffId: staffId,
-          status: HomeVisitStatuses.ASSIGNED,
-        }),
-        {
-          $set: { status: HomeVisitStatuses.REQUESTED },
-          $unset: { assignedStaffId: "" },
-        },
-      );
-      throw new AppError(
-        "Selected provider was just assigned to another visit at this time — please try again",
-        ErrorCodes.CONFLICT,
-        409,
-      );
-    }
+      { busyMessage: "Selected provider is being assigned to another visit right now — please try again" },
+    );
 
     // A checkout opened before assignment must charge the re-priced amount.
     if (updated.paymentId && updated.pricing && "pricing.total" in pricingSet) {
@@ -1694,7 +1738,7 @@ export class HomeVisitService {
       );
       if (!match) {
         throw new AppError(
-          "No available doctor found in your area",
+          "No doctor covering your city is free at that time",
           ErrorCodes.NOT_FOUND,
           404,
         );
@@ -1715,9 +1759,10 @@ export class HomeVisitService {
       return {
         staffId: match.userId,
         staffName: match.name,
-        distanceKm: match.distanceKm,
+        distanceKm: match.distanceKm ?? undefined,
         role: "doctor" as const,
         specialties: match.specialties,
+        reach: match.reach,
       };
     }
 
@@ -1728,8 +1773,8 @@ export class HomeVisitService {
     if (!match) {
       throw new AppError(
         isPhysiotherapyHomeVisitService(visit.serviceType)
-          ? "No available physiotherapist found in your area"
-          : "No available provider found in your area",
+          ? "No physiotherapist is free at that time"
+          : "No nurse in your city is free at that time",
         ErrorCodes.NOT_FOUND,
         404,
       );
@@ -1756,10 +1801,11 @@ export class HomeVisitService {
     return {
       staffId: match.userId,
       staffName: match.name,
-      distanceKm: match.distanceKm,
+      distanceKm: match.distanceKm ?? undefined,
       role: isPhysiotherapyHomeVisitService(visit.serviceType)
         ? ("physiotherapist" as const)
         : ("nurse" as const),
+      reach: match.reach,
     };
   }
 
@@ -1867,24 +1913,9 @@ export class HomeVisitService {
       isPhysio ? Roles.PHYSIOTHERAPIST : Roles.NURSE,
     );
 
-    if (
-      !input.override &&
-      (distanceKm === null || distanceKm > HOME_CARE_MATCH_RADIUS_KM)
-    ) {
-      throw new AppError(
-        `Selected provider is outside the ${HOME_CARE_MATCH_RADIUS_KM} km service radius. Enable manual override to assign anyway.`,
-        ErrorCodes.VALIDATION,
-        400,
-      );
-    }
-
-    // Manual assignment previously had NO conflict check at all (unlike the
-    // auto-assign doctor path, which already checked getBusyStaffIds) —
-    // confirmed by testing: an admin could manually assign the same staff
-    // member to two overlapping-time visits with zero rejection. override
-    // only ever governed the distance/service-radius check above (per its
-    // existing doc comment); it does not extend to bypassing a genuine
-    // double-booking, so this check is not gated on it.
+    // Distance never blocks an assignment: patients may book providers at any distance
+    // (they are warned about travel). A doctor's coverage cities above still apply.
+    // A genuine double-booking is always refused.
     const busyIds = await getBusyStaffIds(visit.scheduledAt, visitId);
     if (busyIds.includes(input.staffId)) {
       throw new AppError(
@@ -2163,7 +2194,9 @@ export class HomeVisitService {
   /**
    * Candidate providers for one visit — only the kind that serves its service
    * type (doctors, physiotherapists or nurses), nearest first. `nearby` is the
-   * free-at-that-time subset within the match radius; `all` ignores distance.
+   * free-at-that-time subset in the closest search tier (inside the provider's own radius,
+   * else 15 km, else 30 km, else the city — and for physiotherapists, else anywhere); `all`
+   * ignores distance.
    */
   static async listStaffForVisit(visitId: string): Promise<VisitStaffCandidates> {
     await HomeVisitService.ensureConnected();
@@ -2184,17 +2217,23 @@ export class HomeVisitService {
         ? await listDoctorCandidates(lng, lat, city, busyIds)
         : await listStaffProfileCandidates(providerKind, lng, lat, city, busyIds);
 
-    const nearby = all.filter(
-      (p) =>
+    const allowOtherCities = providerKind === HomeVisitProviderKinds.PHYSIOTHERAPIST;
+    const free = all.filter(
+      (p): p is VisitStaffCandidate & { reach: HomeCareReach } =>
         !p.unavailable &&
-        p.distanceKm !== undefined &&
-        p.distanceKm <= HOME_CARE_MATCH_RADIUS_KM,
+        !!p.reach &&
+        (allowOtherCities || p.reach !== HomeCareReaches.FAR),
     );
+    const tier = bestHomeCareReach(free);
+    const nearby = free
+      .filter((p) => p.reach === tier)
+      .sort(compareHomeCareReach);
 
     return {
       providerKind,
       patientLocation: { lng, lat },
       radiusKm: HOME_CARE_MATCH_RADIUS_KM,
+      tier,
       nearby,
       all,
     };

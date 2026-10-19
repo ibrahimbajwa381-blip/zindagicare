@@ -26,7 +26,9 @@ import {
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
+  VideoSessionStatuses,
   getPaidOnlineIntakeQuestions,
+  getSundayFreeJoinWindow,
   normalizeIntakeLocale,
   type IntakeLocale,
 } from "@zindagi/shared";
@@ -36,6 +38,7 @@ import { deliverUserNotification } from "@/lib/notifications/deliver-notificatio
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import { ChatService } from "@/server/services/chat.service";
+import { ReviewService } from "@/server/services/review.service";
 import {
   canBookNow,
   canRequestSundayNow,
@@ -132,6 +135,8 @@ function readPaymentHistory(metadata: SundayPaymentMetadata): SundayHistoryAnswe
   }
 }
 
+const ADMIN_REQUEST_HISTORY_LIMIT = 500;
+
 const ACTIVE_REQUEST_STATUSES = [
   SundayFreeRequestStatuses.REQUESTED,
   SundayFreeRequestStatuses.ASSIGNED,
@@ -169,6 +174,8 @@ const ACTIVE_APPOINTMENT_STATUSES = [
 
 /** A doctor picking "now" may land a minute or two after the chosen HH:mm. */
 const CLAIM_PAST_GRACE_MS = 5 * 60_000;
+/** Unpicked requests older than this stay on the doctor board as overdue. */
+const OVERDUE_REQUEST_AGE_MS = 7 * 24 * 60 * 60_000;
 
 const HOLD_SWEEP_INTERVAL_MS = 60_000;
 let lastHoldSweepAt = 0;
@@ -352,7 +359,7 @@ export class SundayConsultService {
           slots,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
 
     if (!instance) {
@@ -461,7 +468,7 @@ export class SundayConsultService {
           "slots.$.patientId": patientId,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!updated) {
@@ -589,6 +596,7 @@ export class SundayConsultService {
       phone: safeDisplayText(patient?.phone) ?? undefined,
       doctorName: safeDisplayText(doctorUser?.name) ?? "Doctor",
       slotStart: slot.startAt,
+      appointmentId: result.appointmentId,
     });
 
     if (doctor?.userId) {
@@ -644,7 +652,7 @@ export class SundayConsultService {
           "slots.$.patientId": undefined,
         },
       },
-      { new: true },
+      { returnDocument: "after" },
     )) as { doctorId: { toString(): string }; sundayDate: Date } | null;
 
     if (updated) {
@@ -687,7 +695,7 @@ export class SundayConsultService {
           timezone: SUNDAY_CONSULT_CONFIG.timezone,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
 
     await SundayConsultService.materializeInstance(
@@ -703,7 +711,7 @@ export class SundayConsultService {
     const profile = await DoctorProfileModel.findOneAndUpdate(
       mongoFilter({ userId }),
       { $set: { sundayConsultEnabled: enabled } },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!profile) {
       throw new AppError("Doctor profile not found", ErrorCodes.NOT_FOUND, 404);
@@ -774,6 +782,28 @@ export class SundayConsultService {
       throw new AppError("Appointment not found", ErrorCodes.NOT_FOUND, 404);
     }
 
+    if (
+      appointment.status !== AppointmentStatuses.CONFIRMED &&
+      appointment.status !== AppointmentStatuses.IN_PROGRESS
+    ) {
+      throw new AppError(
+        "This consultation is already closed.",
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
+    if (
+      status === "completed" &&
+      !getSundayFreeJoinWindow(appointment.scheduledStart).canJoin
+    ) {
+      throw new AppError(
+        "You can finish this consultation once it has started.",
+        ErrorCodes.VALIDATION,
+        400,
+      );
+    }
+
     if (status === "completed") {
       appointment.status = AppointmentStatuses.COMPLETED;
       appointment.completedAt = new Date();
@@ -838,7 +868,49 @@ export class SundayConsultService {
       );
     }
 
+    // The room and chat stay open until now; closing the consult closes both.
+    await SundayConsultService.closeConsultRoom(appointment._id.toString());
+    await ChatService.closeSundayConsultThread(appointment._id.toString()).catch((err) => {
+      console.error("[sunday-consult] chat close failed", err);
+    });
+
+    if (status === "completed") {
+      await deliverUserNotification({
+        userId: appointment.patientId.toString(),
+        title: "Your free consultation is complete",
+        body: "Your doctor has finished your Sunday free consultation. Please take a moment to rate your doctor.",
+        payload: { type: "sunday_free_completed", appointmentId: appointment._id.toString() },
+      }).catch((err) => {
+        console.error("[sunday-consult] completion notification failed", err);
+      });
+    }
+
     return appointment;
+  }
+
+  /** Ends the video session (if any) of a Sunday consult the doctor just closed. */
+  private static async closeConsultRoom(appointmentId: string) {
+    const session = await VideoSessionModel.findOne(
+      mongoFilter({
+        appointmentId,
+        status: { $nin: [VideoSessionStatuses.COMPLETED, VideoSessionStatuses.CANCELLED] },
+      }),
+    )
+      .select("startedAt createdAt")
+      .lean();
+    if (!session) return;
+
+    const endedAt = new Date();
+    const startedAt = session.startedAt ?? session.createdAt;
+    await VideoSessionModel.updateOne(mongoFilter({ _id: session._id }), {
+      $set: {
+        status: VideoSessionStatuses.COMPLETED,
+        endedAt,
+        durationSeconds: startedAt
+          ? Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000))
+          : 0,
+      },
+    });
   }
 
   static async getPatientBooking(
@@ -1449,15 +1521,31 @@ export class SundayConsultService {
     );
   }
 
+  /** Sunday date keys that have at least one request, newest first. */
+  static async listAdminRequestDates(): Promise<string[]> {
+    await connectDatabase();
+    const keys = await SundayFreeRequestModel.distinct(
+      "sundayDateKey",
+      mongoFilter({ deletedAt: null }),
+    );
+    return (keys as string[]).filter(Boolean).sort().reverse();
+  }
+
+  /**
+   * Admin progress feed. `dateKey` = one Sunday (YYYY-MM-DD); `"all"` = full history,
+   * newest first (capped at ADMIN_REQUEST_HISTORY_LIMIT).
+   */
   static async listAdminRequests(dateKey?: string): Promise<SundayAdminRequestDto[]> {
     await connectDatabase();
+    const allSundays = dateKey === "all";
     const sundayDateKey = dateKey ?? formatSundayDateKey(getActiveOrNextSundayDate());
 
     // All statuses — admins follow a request through to completion, no-show or cancellation.
     const docs = await SundayFreeRequestModel.find(
-      mongoFilter({ sundayDateKey, deletedAt: null }),
+      mongoFilter(allSundays ? { deletedAt: null } : { sundayDateKey, deletedAt: null }),
     )
-      .sort({ createdAt: 1 })
+      .sort(allSundays ? { sundayDateKey: -1, createdAt: 1 } : { createdAt: 1 })
+      .limit(allSundays ? ADMIN_REQUEST_HISTORY_LIMIT : 0)
       .populate("patientId", "name phone")
       .populate(
         "appointmentId",
@@ -1480,7 +1568,7 @@ export class SundayConsultService {
       })
       .filter((id): id is string => Boolean(id));
 
-    const [videoSessions, reviews] = appointmentIds.length
+    const [videoSessions, reviews, platformReviews] = appointmentIds.length
       ? await Promise.all([
           VideoSessionModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
             .select(
@@ -1490,8 +1578,9 @@ export class SundayConsultService {
           ReviewModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
             .select("appointmentId rating comment createdAt isVisible")
             .lean(),
+          ReviewService.getPlatformReviewsForAppointments(appointmentIds),
         ])
-      : [[], []];
+      : [[], [], new Map()];
 
     const videoSessionByAppointment = new Map(
       videoSessions.map((session) => [session.appointmentId?.toString(), session]),
@@ -1526,6 +1615,11 @@ export class SundayConsultService {
         patientName: safeDisplayText(patient?.name) ?? "Patient",
         patientPhone: mapped.patientPhone,
         patientNotes: mapped.patientNotes,
+        history: (doc.history ?? []).map((h) => ({
+          key: h.key,
+          text: h.text,
+          answer: h.answer,
+        })),
         affordabilityChoice: mapped.affordabilityChoice,
         paymentId: mapped.paymentId,
         contributionFeePkr: mapped.contributionFeePkr,
@@ -1533,6 +1627,7 @@ export class SundayConsultService {
         assignedAt: mapped.assignedAt,
         completedAt: (doc.completedAt ?? appointment?.completedAt)?.toISOString(),
         cancelledAt: doc.cancelledAt?.toISOString(),
+        rejectedByAdmin: Boolean(doc.rejectedBy),
         cancellationReason:
           safeDisplayText(doc.cancellationReason) ?? appointment?.cancellationReason ?? undefined,
         appointmentId: mapped.appointmentId,
@@ -1569,8 +1664,111 @@ export class SundayConsultService {
               isVisible: review.isVisible !== false,
             }
           : undefined,
+        platformReview: mapped.appointmentId
+          ? platformReviews.get(mapped.appointmentId)
+          : undefined,
       };
     });
+  }
+
+  /**
+   * Admin rejects a request outright — waiting or already picked, as long as the
+   * consult has not started. Cancels the linked appointment and tells patient + doctor.
+   */
+  static async rejectRequestByAdmin(
+    adminUserId: string,
+    requestId: string,
+    reason: string,
+  ): Promise<{ rejected: true }> {
+    await connectDatabase();
+
+    const request = await SundayFreeRequestModel.findOne(
+      mongoFilter({
+        _id: requestId,
+        deletedAt: null,
+        status: { $in: [...ACTIVE_REQUEST_STATUSES] },
+      }),
+    ).lean();
+    if (!request) {
+      throw new AppError(
+        "Request not found or already closed",
+        ErrorCodes.NOT_FOUND,
+        404,
+      );
+    }
+
+    if (request.appointmentId) {
+      const cancelled = await AppointmentModel.findOneAndUpdate(
+        mongoFilter({
+          _id: request.appointmentId,
+          status: { $in: [AppointmentStatuses.PENDING, AppointmentStatuses.CONFIRMED] },
+        }),
+        {
+          $set: {
+            status: AppointmentStatuses.CANCELLED,
+            cancellationReason: `Rejected by admin: ${reason}`,
+            cancelledBy: adminUserId,
+          },
+        },
+      );
+      if (!cancelled) {
+        throw new AppError(
+          "This consultation has already started or finished",
+          ErrorCodes.CONFLICT,
+          409,
+        );
+      }
+    }
+
+    const updated = await SundayFreeRequestModel.findOneAndUpdate(
+      mongoFilter({ _id: requestId, status: request.status }),
+      {
+        $set: {
+          status: SundayFreeRequestStatuses.CANCELLED,
+          cancelledAt: new Date(),
+          cancellationReason: reason,
+          rejectedBy: adminUserId,
+        },
+      },
+    );
+    if (!updated) {
+      throw new AppError("Request changed — refresh and try again", ErrorCodes.CONFLICT, 409);
+    }
+
+    await deliverUserNotification({
+      userId: request.patientId.toString(),
+      title: "Sunday free consult request declined",
+      body: `Your Sunday free consultation request was declined by ZindagiCare. Note: ${reason}`,
+      payload: { type: "sunday_free_rejected", requestId },
+    }).catch((err) => {
+      console.error("[sunday-consult] patient rejection notification failed", err);
+    });
+
+    if (request.assignedDoctorId) {
+      const doctor = await DoctorProfileModel.findById(request.assignedDoctorId)
+        .select("userId")
+        .lean();
+      if (doctor?.userId) {
+        await deliverUserNotification({
+          userId: doctor.userId.toString(),
+          title: "Sunday consult cancelled by admin",
+          body: "An admin cancelled a Sunday free consult you had picked. It has been removed from your schedule.",
+          payload: { type: "sunday_free_rejected", requestId },
+          skipWhatsApp: true,
+        }).catch((err) => {
+          console.error("[sunday-consult] doctor rejection notification failed", err);
+        });
+      }
+    }
+
+    publishSundayEvent({
+      type: "instance_updated",
+      doctorId: request.assignedDoctorId?.toString() ?? "queue",
+      sundayDateKey: request.sundayDateKey,
+      instanceId: requestId,
+    });
+
+    return { rejected: true };
   }
 
   /** In-app + push heads-up to doctors who opted into Sunday consults. */
@@ -1618,7 +1816,9 @@ export class SundayConsultService {
   /**
    * Open-requests board for doctors: every unpicked request for the Sunday,
    * plus the requests this doctor has already picked. Any verified doctor can
-   * see the board — opting into Sunday consults is not required.
+   * see the board — opting into Sunday consults is not required. Requests
+   * older than a week that no doctor ever picked stay on the board (flagged
+   * `overdue`) so those patients are not silently dropped.
    */
   static async listDoctorRequests(
     userId: string,
@@ -1630,16 +1830,21 @@ export class SundayConsultService {
 
     const docs = await SundayFreeRequestModel.find(
       mongoFilter({
-        sundayDateKey,
         $or: [
-          { status: SundayFreeRequestStatuses.REQUESTED },
+          { sundayDateKey, status: SundayFreeRequestStatuses.REQUESTED },
           {
+            sundayDateKey,
             status: {
               $in: [SundayFreeRequestStatuses.ASSIGNED, SundayFreeRequestStatuses.COMPLETED],
             },
             assignedDoctorId: doctor._id,
           },
+          {
+            status: SundayFreeRequestStatuses.REQUESTED,
+            createdAt: { $lte: new Date(Date.now() - OVERDUE_REQUEST_AGE_MS) },
+          },
         ],
+        deletedAt: null,
       }),
     )
       .sort({ createdAt: 1 })
@@ -1653,6 +1858,9 @@ export class SundayConsultService {
         doc as Parameters<typeof SundayConsultService.mapPatientRequest>[0],
       );
       const pickedByMe = doc.assignedDoctorId?.toString() === doctor._id.toString();
+      const overdue =
+        mapped.status === SundayFreeRequestStatuses.REQUESTED &&
+        mapped.sundayDateKey < sundayDateKey;
       return {
         requestId: mapped.requestId,
         status: mapped.status,
@@ -1667,6 +1875,8 @@ export class SundayConsultService {
         })),
         affordabilityChoice: mapped.affordabilityChoice,
         createdAt: mapped.createdAt,
+        overdue,
+        consultDateKey: overdue ? sundayDateKey : mapped.sundayDateKey,
         pickedByMe,
         appointmentId: pickedByMe ? mapped.appointmentId : undefined,
         scheduledStart: pickedByMe ? mapped.scheduledStart : undefined,
@@ -1702,7 +1912,12 @@ export class SundayConsultService {
       );
     }
 
-    const scheduledStart = localTimeToUtc(request.sundayDateKey, input.startTimeLocal);
+    // An overdue request (its Sunday passed with no doctor picking it) is
+    // scheduled on the current board Sunday instead of its original date.
+    const boardDateKey = formatSundayDateKey(getActiveOrNextSundayDate());
+    const consultDateKey =
+      request.sundayDateKey < boardDateKey ? boardDateKey : request.sundayDateKey;
+    const scheduledStart = localTimeToUtc(consultDateKey, input.startTimeLocal);
     const scheduledEnd = new Date(
       scheduledStart.getTime() + SUNDAY_CONSULT_CONFIG.defaultSlotDurationMins * 60_000,
     );
@@ -1730,17 +1945,32 @@ export class SundayConsultService {
       );
     }
 
-    const claimed = await SundayFreeRequestModel.findOneAndUpdate(
-      mongoFilter({ _id: requestId, status: SundayFreeRequestStatuses.REQUESTED }),
-      {
-        $set: {
-          status: SundayFreeRequestStatuses.ASSIGNED,
-          assignedDoctorId: doctor._id,
-          assignedAt: new Date(),
+    let claimed;
+    try {
+      claimed = await SundayFreeRequestModel.findOneAndUpdate(
+        mongoFilter({ _id: requestId, status: SundayFreeRequestStatuses.REQUESTED }),
+        {
+          $set: {
+            status: SundayFreeRequestStatuses.ASSIGNED,
+            assignedDoctorId: doctor._id,
+            assignedAt: new Date(),
+            sundayDateKey: consultDateKey,
+          },
         },
-      },
-      { returnDocument: "after" },
-    );
+        { returnDocument: "after" },
+      );
+    } catch (error) {
+      // Moving an overdue request onto this Sunday collides with the unique
+      // index when the patient already has an active request for it.
+      if (isDuplicateKeyError(error)) {
+        throw new AppError(
+          "This patient already has a free consult request this Sunday",
+          ErrorCodes.CONFLICT,
+          409,
+        );
+      }
+      throw error;
+    }
     if (!claimed) {
       throw new AppError(
         "Another doctor already picked this patient",
@@ -1760,7 +1990,7 @@ export class SundayConsultService {
         scheduledStart,
         scheduledEnd,
         timezone: SUNDAY_CONSULT_CONFIG.timezone,
-        sundayDateKey: request.sundayDateKey,
+        sundayDateKey: consultDateKey,
         isOnline: true,
         patientNotes: request.patientNotes,
       } as Record<string, unknown>);
@@ -1775,10 +2005,20 @@ export class SundayConsultService {
           assignedDoctorId: doctor._id,
         }),
         {
-          $set: { status: SundayFreeRequestStatuses.REQUESTED },
+          $set: {
+            status: SundayFreeRequestStatuses.REQUESTED,
+            sundayDateKey: request.sundayDateKey,
+          },
           $unset: { assignedDoctorId: "", assignedAt: "" },
         },
       );
+      if (isDuplicateKeyError(error) && consultDateKey !== request.sundayDateKey) {
+        throw new AppError(
+          "This patient already has a free consult booked this Sunday",
+          ErrorCodes.CONFLICT,
+          409,
+        );
+      }
       if (isDuplicateKeyError(error)) {
         throw new AppError(
           "That time was just taken — pick another time",
@@ -1834,6 +2074,7 @@ export class SundayConsultService {
       phone: safeDisplayText(patient?.phone) ?? request.patientPhone,
       doctorName: safeDisplayText(doctorUser?.name) ?? "Doctor",
       slotStart: scheduledStart,
+      appointmentId,
     }).catch((err) => {
       console.error("[sunday-consult] patient notification failed", err);
     });
@@ -1863,7 +2104,7 @@ export class SundayConsultService {
       instanceId: requestId,
     });
 
-    const rows = await SundayConsultService.listDoctorRequests(userId, request.sundayDateKey);
+    const rows = await SundayConsultService.listDoctorRequests(userId, consultDateKey);
     const row = rows.find((r) => r.requestId === requestId);
     if (!row) {
       throw new AppError("Picked request not found", ErrorCodes.NOT_FOUND, 404);

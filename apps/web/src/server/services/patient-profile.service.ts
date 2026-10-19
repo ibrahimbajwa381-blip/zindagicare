@@ -16,6 +16,13 @@ import {
   mapUserPii,
   safeDisplayText,
 } from "@/server/lib/decrypt-pii";
+import {
+  cacheKey,
+  cached,
+  invalidateCacheTags,
+  patientCacheTag,
+  patientCacheTags,
+} from "@/server/lib/cache";
 
 export type PatientProfileDto = {
   user: {
@@ -50,6 +57,14 @@ function formatDateForInput(date?: Date | null): string | undefined {
 }
 
 export async function getPatientProfile(userId: string): Promise<PatientProfileDto> {
+  return cached(
+    cacheKey("patient-profile", userId),
+    { ttl: 300, tags: patientCacheTags(userId), sensitive: true },
+    () => loadPatientProfile(userId),
+  );
+}
+
+async function loadPatientProfile(userId: string): Promise<PatientProfileDto> {
   await connectDatabase();
 
   const user = await UserModel.findById(userId).lean();
@@ -180,5 +195,7 @@ export async function updatePatientProfile(
     );
   }
 
+  // Don't read back through a cache entry the write hook hasn't cleared yet.
+  await invalidateCacheTags([patientCacheTag(userId)]);
   return getPatientProfile(userId);
 }

@@ -214,7 +214,7 @@ export function ConsultProviderProfileView({
                   <ul className="space-y-3">
                     {provider.clinics.map((clinic) => {
                       const mapQuery = encodeURIComponent(
-                        [clinic.name, clinic.address, clinic.city, "Pakistan"].filter(Boolean).join(", "),
+                        [clinic.name, clinic.address, clinic.area, clinic.city, "Pakistan"].filter(Boolean).join(", "),
                       );
                       return (
                         <li
@@ -223,6 +223,7 @@ export function ConsultProviderProfileView({
                         >
                           <p className="font-medium text-slate-900">{clinic.name}</p>
                           <p className="text-slate-500">
+                            {clinic.area ? `${clinic.area}, ` : ""}
                             {clinic.city}
                             {clinic.address ? ` · ${clinic.address}` : ""}
                           </p>

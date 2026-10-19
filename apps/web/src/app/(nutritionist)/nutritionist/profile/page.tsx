@@ -62,7 +62,7 @@ export default async function NutritionistProfilePage() {
         qualifications={profile.qualifications}
         experienceYears={profile.experienceYears}
         consultationFee={profile.consultationFee}
-        city={profile.clinics[0]?.city ?? profile.coverageCities[0] ?? "Lahore"}
+        city={profile.clinics[0]?.city ?? profile.coverageCities[0] ?? "Pakistan"}
         clinicCount={profile.clinics.length}
         availabilityWindowCount={profile.weeklyAvailability.length}
         publicPath={publicPath}

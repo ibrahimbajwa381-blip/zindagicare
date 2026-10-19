@@ -5,23 +5,24 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   cn,
-  HOME_CARE_MATCH_RADIUS_KM,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
   PHYSIO_HOME_VISIT_FEE_MAX,
   PHYSIO_HOME_VISIT_FEE_MIN,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
-  resolvePhysioHomeVisitFee,
 } from "@zindagi/shared";
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import type { PhysiotherapistProfileDto } from "@/server/services/physiotherapist.service";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import { PhysiotherapistProfilePhotoUpload } from "./physiotherapist-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const VERIFICATION_BADGE: Record<string, { label: string; className: string }> = {
   approved: {
@@ -47,6 +48,8 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
   const { update } = useSession();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [city, setCity] = useState(profile.staff.serviceArea.city);
+  const [area, setArea] = useState(profile.staff.serviceArea.area ?? "");
   const [saved, setSaved] = useState(false);
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(
     profile.staff.homeVisitEnabled,
@@ -73,6 +76,13 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
     setError(undefined);
     setSaved(false);
 
+    const locationError = cityAreaError(city, area);
+    if (locationError) {
+      setError(locationError);
+      setPending(false);
+      return;
+    }
+
     if (homeVisitEnabled && !geo) {
       setError("Please add your Google Maps location for in-house visit matching.");
       setPending(false);
@@ -85,8 +95,8 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
     const body = {
       name: String(form.get("name") ?? "").trim(),
       phone: String(form.get("phone") ?? "").trim() || undefined,
-      city: String(form.get("city") ?? "").trim(),
-      area: String(form.get("area") ?? "").trim(),
+      city: city.trim(),
+      area: area.trim(),
       radiusKm: radiusRaw ? Number(radiusRaw) : undefined,
       homeVisitEnabled,
       homeVisitFee: feeRaw ? Number(feeRaw) : undefined,
@@ -155,25 +165,18 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="city">Service city</Label>
-                <Input
+                <CitySelect
                   id="city"
-                  name="city"
-                  defaultValue={profile.staff.serviceArea.city}
-                  required
-                  minLength={2}
+                  value={city}
+                  onChange={(next) => {
+                    // A new city makes the old area meaningless, so clear it.
+                    if (next !== city) setArea("");
+                    setCity(next);
+                  }}
+                  className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="area">Area / neighborhood</Label>
-                <Input
-                  id="area"
-                  name="area"
-                  defaultValue={profile.staff.serviceArea.area ?? ""}
-                  placeholder="e.g. DHA Phase 5"
-                  required
-                  minLength={2}
-                />
-              </div>
+              <CityAreaSelect id="area" city={city} value={area} onChange={setArea} />
             </div>
 
             <div>
@@ -186,6 +189,10 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                 max={50}
                 defaultValue={profile.staff.serviceArea.radiusKm}
               />
+              <p className="mt-1 text-xs text-slate-500">
+                How far you prefer to travel. Patients inside it are matched to you first; it
+                never stops a farther patient from booking you.
+              </p>
             </div>
 
             <div>
@@ -226,11 +233,11 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                 />
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km
+                    Available for in-house visits
                   </p>
                   <p className="text-xs text-slate-600">
-                    Patients near your saved location can book you directly, and admin dispatch
-                    uses it to match nearby visits.
+                    Patients can book you directly. Those inside your coverage radius see you first;
+                    farther patients can still book and are told travel may need confirming.
                   </p>
                 </div>
               </label>
@@ -245,7 +252,7 @@ export function PhysiotherapistProfileForm({ profile }: PhysiotherapistProfileFo
                   min={PHYSIO_HOME_VISIT_FEE_MIN}
                   max={PHYSIO_HOME_VISIT_FEE_MAX}
                   step={50}
-                  defaultValue={resolvePhysioHomeVisitFee(profile.staff.homeVisitFee)}
+                  defaultValue={profile.staff.homeVisitFee}
                   required
                 />
                 <p className="mt-1 text-xs text-slate-500">

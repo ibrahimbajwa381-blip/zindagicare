@@ -25,11 +25,23 @@ export const siteConfig = {
       "ZindagiCare Pakistan",
       "zindagicare.com",
     ],
-    sameAs: ["https://www.linkedin.com/company/134544059/"],
+    sameAs: [
+      "https://www.facebook.com/profile.php?id=61593362033546",
+      "https://www.instagram.com/zindagi.care",
+      "https://www.linkedin.com/company/134544059",
+      "https://whatsapp.com/channel/0029Vb92EKaCXC3LwBGSE118",
+    ],
     googleSiteVerification: process.env.GOOGLE_SITE_VERIFICATION,
     bingSiteVerification: "926E710D97534856394734561D5740B9",
   },
   launchCity: LAUNCH_CITY,
+  /** Official social pages — shown in the footer and after free-consult reviews. */
+  social: {
+    facebook: "https://www.facebook.com/profile.php?id=61593362033546",
+    instagram: "https://www.instagram.com/zindagi.care?igsh=MWo0d2kzNG85Y2dxcA%3D%3D&utm_source=qr",
+    linkedin: "https://www.linkedin.com/company/134544059",
+    whatsappChannel: "https://whatsapp.com/channel/0029Vb92EKaCXC3LwBGSE118",
+  },
   supportEmail: "info.zindagicare@gmail.com",
   supportWhatsApp: "923277661515",
   supportWhatsAppDisplay: "0327 7661515",
@@ -47,6 +59,7 @@ export const siteConfig = {
   links: {
     doctors: "/doctors",
     sundayConsult: "/sunday-consult",
+    askDoctor: "/questions",
     urgentCare: "/urgent-care",
     homeServices: "/home-services",
     /** Home physiotherapy is booked from the physiotherapist directory (old /home-physiotherapy redirects there). */

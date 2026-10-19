@@ -15,6 +15,7 @@ import {
 import { VerificationStatuses } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CitySelect } from "@/components/forms/city-select";
 import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +84,7 @@ export function AdminDoctorsManagement() {
     password: "",
     phone: "",
     pmdcNumber: "",
+    city: "",
     specialties: "",
     sundayConsultEnabled: false,
   });
@@ -132,6 +134,10 @@ export function AdminDoctorsManagement() {
 
   const createDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.city.trim()) {
+      alert("Select the doctor's city.");
+      return;
+    }
     setPending("create");
     const res = await fetch("/api/v1/admin/doctors/manage", {
       method: "POST",
@@ -142,6 +148,7 @@ export function AdminDoctorsManagement() {
         password: form.password || undefined,
         phone: form.phone || undefined,
         pmdcNumber: form.pmdcNumber,
+        city: form.city.trim(),
         specialties: form.specialties.split(",").map((s) => s.trim()).filter(Boolean),
         sundayConsultEnabled: form.sundayConsultEnabled,
       }),
@@ -155,6 +162,7 @@ export function AdminDoctorsManagement() {
         password: "",
         phone: "",
         pmdcNumber: "",
+        city: "",
         specialties: "",
         sundayConsultEnabled: false,
       });
@@ -293,6 +301,11 @@ export function AdminDoctorsManagement() {
                 value={form.pmdcNumber}
                 onChange={(e) => setForm({ ...form, pmdcNumber: e.target.value })}
                 required
+              />
+              <CitySelect
+                id="new-doctor-city"
+                value={form.city}
+                onChange={(city) => setForm({ ...form, city })}
               />
               <Input
                 placeholder="Specialties (comma-separated)"

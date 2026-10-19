@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   HOME_CARE_MATCH_RADIUS_KM,
+  PHYSIO_HOME_VISIT_FEE_MAX,
+  PHYSIO_HOME_VISIT_FEE_MIN,
   MAX_PHYSIOTHERAPY_SPECIALTIES,
   PHYSIOTHERAPY_HOME_VISIT_SPLIT as SPLIT,
   PHYSIOTHERAPY_SPECIALTIES_ALPHABETICAL,
@@ -11,11 +13,14 @@ import {
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import { PhysiotherapistProfilePhotoUpload } from "@/features/physiotherapist/components/physiotherapist-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 type PhysiotherapistVerificationFormProps = {
   name: string;
@@ -24,6 +29,7 @@ type PhysiotherapistVerificationFormProps = {
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
+    homeVisitFee?: number;
     city?: string;
     area?: string;
     bankAccount?: {
@@ -41,11 +47,12 @@ export function PhysiotherapistVerificationForm({
 }: PhysiotherapistVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
+  const [city, setCity] = useState(defaults?.city ?? "");
+  const [area, setArea] = useState(defaults?.area ?? "");
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(defaults?.avatarUrl);
-  const [homeVisitEnabled, setHomeVisitEnabled] = useState(false);
   const [geo, setGeo] = useState<GeoCoordinates | null>(null);
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
@@ -71,7 +78,15 @@ export function PhysiotherapistVerificationForm({
       }
     }
 
-    if (homeVisitEnabled && !geo) {
+    const locationError = cityAreaError(city, area);
+    if (locationError) {
+      setError(locationError);
+      setPending(false);
+      return;
+    }
+
+    // Home visits switch on once verified, so matching needs the location up front.
+    if (!geo) {
       setError("Please add your Google Maps location for in-house visit matching.");
       setPending(false);
       return;
@@ -94,12 +109,14 @@ export function PhysiotherapistVerificationForm({
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
+      homeVisitFee: form.get("homeVisitFee"),
       specialties,
       avatarUrl,
       serviceArea: {
-        city: form.get("city"),
-        area: form.get("area"),
-        homeVisitEnabled,
+        city: city.trim(),
+        area: area.trim(),
+        // Off until an admin verifies the profile; approval switches it on.
+        homeVisitEnabled: false,
         geo: geo ?? undefined,
       },
       documentUrls: {
@@ -206,6 +223,25 @@ export function PhysiotherapistVerificationForm({
           />
         </div>
         <div>
+          <Label htmlFor="homeVisitFee">Your fee per home visit (Rs.)</Label>
+          <Input
+            id="homeVisitFee"
+            name="homeVisitFee"
+            type="number"
+            inputMode="numeric"
+            min={PHYSIO_HOME_VISIT_FEE_MIN}
+            max={PHYSIO_HOME_VISIT_FEE_MAX}
+            step={50}
+            defaultValue={defaults?.homeVisitFee}
+            placeholder="e.g. 2000"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Required. Set your own fee between Rs. {PHYSIO_HOME_VISIT_FEE_MIN.toLocaleString()} and Rs.{" "}
+            {PHYSIO_HOME_VISIT_FEE_MAX.toLocaleString()}. Patients pay this amount per visit.
+          </p>
+        </div>
+        <div>
           <Label htmlFor="specialties">Specialties</Label>
           <SpecialtyMultiSelect
             id="specialties"
@@ -227,54 +263,37 @@ export function PhysiotherapistVerificationForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="city">City</Label>
-            <Input
+            <CitySelect
               id="city"
-              name="city"
-              defaultValue={defaults?.city ?? "Lahore"}
-              required
-              minLength={2}
+              value={city}
+              onChange={(next) => {
+                // A new city makes the old area meaningless, so clear it.
+                if (next !== city) setArea("");
+                setCity(next);
+              }}
+              className="mt-1"
             />
           </div>
-          <div>
-            <Label htmlFor="area">Area / neighborhood</Label>
-            <Input
-              id="area"
-              name="area"
-              defaultValue={defaults?.area}
-              placeholder="e.g. DHA Phase 5, Gulberg"
-              required
-              minLength={2}
-            />
-          </div>
+          <CityAreaSelect id="area" city={city} value={area} onChange={setArea} />
         </div>
 
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={homeVisitEnabled}
-            onChange={(e) => setHomeVisitEnabled(e.target.checked)}
-            className="mt-1"
-          />
-          <div>
-            <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km of my
-              area
-            </p>
-            <p className="text-xs text-slate-600">
-              When enabled, admin dispatch will auto-match you to nearby patient home visits
-              based on your saved location.
-            </p>
-          </div>
-        </label>
+        <div className="rounded-xl border border-brand/20 bg-brand/5 p-3">
+          <p className="text-sm font-semibold text-slate-900">
+            In-house visits turn on once you are verified
+          </p>
+          <p className="mt-0.5 text-xs text-slate-600">
+            After approval you will be matched to patient home visits near your saved location
+            — within {HOME_CARE_MATCH_RADIUS_KM} km first, then farther out. Patients farther away can also book you.
+            You can turn this off anytime from your profile.
+          </p>
+        </div>
 
-        {homeVisitEnabled && (
-          <GeoLocationPicker
-            id="Physiotherapist-verification-geo"
-            value={geo}
-            onChange={setGeo}
-            required
-          />
-        )}
+        <GeoLocationPicker
+          id="Physiotherapist-verification-geo"
+          value={geo}
+          onChange={setGeo}
+          required
+        />
       </section>
 
       <section className="space-y-4">

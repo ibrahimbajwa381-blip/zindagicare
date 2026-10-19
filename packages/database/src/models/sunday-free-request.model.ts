@@ -59,6 +59,8 @@ const sundayFreeRequestSchema = new Schema(
     completedAt: { type: Date },
     cancelledAt: { type: Date },
     cancellationReason: { type: String, maxlength: 500 },
+    /** Admin who rejected the request (unset when the patient/doctor flow cancelled it). */
+    rejectedBy: { type: Schema.Types.ObjectId, ref: "User" },
     deletedAt: { type: Date },
   },
   { timestamps: true },

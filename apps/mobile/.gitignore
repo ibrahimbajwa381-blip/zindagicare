@@ -3,6 +3,7 @@
 # dependencies
 node_modules/
 
+
 # Expo
 .expo/
 dist/
@@ -39,3 +40,5 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+//  buges files
+bugs.txt

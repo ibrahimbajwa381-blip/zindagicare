@@ -7,10 +7,8 @@ import { isGoogleAuthConfigured } from "./google";
 import {
   findGoogleLoginUser,
   loadAuthUserPayload,
-  signInWithPhoneOtp,
   verifyCredentialsLogin,
 } from "@/server/services/auth.service";
-import { otpService } from "@/server/services/otp.service";
 
 const googleProvider = isGoogleAuthConfigured()
   ? [
@@ -42,31 +40,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials.password);
 
         return verifyCredentialsLogin(email, password);
-      },
-    }),
-    Credentials({
-      id: "phone-otp",
-      name: "Phone OTP",
-      credentials: {
-        phone: { label: "Phone", type: "tel" },
-        code: { label: "OTP", type: "text" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.phone || !credentials?.code) {
-          return null;
-        }
-
-        const phone = String(credentials.phone);
-        const code = String(credentials.code);
-
-        const valid = await otpService.verifyOtp(phone, code);
-        if (!valid) {
-          return null;
-        }
-
-        const user = await signInWithPhoneOtp(phone);
-        if (!user) return null;
-        return user;
       },
     }),
   ],

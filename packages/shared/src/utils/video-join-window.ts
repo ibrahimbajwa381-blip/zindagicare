@@ -45,3 +45,24 @@ export function getVideoJoinWindowForAppointment(
   }
   return getVideoJoinWindow(scheduledStart, scheduledEnd, now);
 }
+
+/**
+ * Far-future close time for consults that have no fixed end. Sunday free
+ * consults stay open until the doctor finishes them.
+ */
+export const OPEN_UNTIL_DOCTOR_CLOSES = new Date("9999-12-31T23:59:59.000Z");
+
+/**
+ * Sunday free consults open at the usual time before the slot and stay
+ * joinable (video and chat) until the doctor marks them completed.
+ */
+export function getSundayFreeJoinWindow(scheduledStart: Date | string, now = new Date()) {
+  const joinOpensAt = new Date(
+    toDate(scheduledStart).getTime() - VIDEO_CONSULT_CONFIG.joinEarlyMinutes * 60_000,
+  );
+  return {
+    joinOpensAt,
+    joinClosesAt: OPEN_UNTIL_DOCTOR_CLOSES,
+    canJoin: now >= joinOpensAt,
+  };
+}

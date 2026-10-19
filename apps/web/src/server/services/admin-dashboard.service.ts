@@ -10,6 +10,8 @@ import {
   UrgentCareRequestModel,
   StaffProfileModel,
   ReviewModel,
+  HerbalistProfileModel,
+  NutritionistProfileModel,
 } from "@zindagi/database";
 import {
   AppointmentStatuses,
@@ -48,6 +50,13 @@ export type AdminDashboardStats = {
   };
 };
 
+/** Submitted, undecided applications for soft-deletable consult provider profiles. */
+const pendingConsultProviderFilter = {
+  verificationStatus: VerificationStatuses.PENDING,
+  verificationSubmittedAt: { $exists: true },
+  deletedAt: null,
+};
+
 export async function getAdminNavCounts(): Promise<AdminNavCounts> {
   await connectDatabase();
 
@@ -57,6 +66,8 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
     doctors,
     nurses,
     physiotherapists,
+    herbalists,
+    nutritionists,
     consultReviews,
     sundayConsult,
     urgentCare,
@@ -77,6 +88,8 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
       verificationStatus: VerificationStatuses.PENDING,
       verificationSubmittedAt: { $exists: true },
     }),
+    HerbalistProfileModel.countDocuments(pendingConsultProviderFilter),
+    NutritionistProfileModel.countDocuments(pendingConsultProviderFilter),
     ReviewModel.countDocuments({
       deletedAt: null,
       isModerated: false,
@@ -98,6 +111,8 @@ export async function getAdminNavCounts(): Promise<AdminNavCounts> {
     doctors,
     nurses,
     physiotherapists,
+    herbalists,
+    nutritionists,
     sundayConsult,
     urgentCare,
     homeVisitsDoctor: homeVisits.doctor,

@@ -154,13 +154,18 @@ export function PatientAppointmentHistorySection({
                       </Button>
                     ) : null}
                   </div>
-                  {(item.canReview || item.review) && !item.isMissed ? (
+                  {(item.canReview ||
+                    item.review ||
+                    item.platform?.canReview ||
+                    item.platform?.review) &&
+                  !item.isMissed ? (
                     <PatientAppointmentReviewAction
                       appointmentId={item.appointmentId}
                       doctorName={item.doctor.name}
                       copy={reviewCopy}
                       initialReview={item.review}
                       canReview={item.canReview}
+                      platform={item.platform}
                       onSubmitted={onReviewSubmitted}
                     />
                   ) : null}

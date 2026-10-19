@@ -1,11 +1,9 @@
-"use client";
-
 import { CalendarCheck, Home, Search, Video } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { PageSection } from "@/components/layout/page-section";
 import { sectionPanel, surfaceCardInteractive } from "@/lib/ui/surfaces";
 import { SectionHeader } from "./section-header";
-import { useTranslations } from "@/i18n/locale-provider";
+import { getServerTranslations } from "@/i18n/server";
 
 const stepIcons = [Search, CalendarCheck, Video, Home] as const;
 const stepNumbers = ["01", "02", "03", "04"] as const;
@@ -33,8 +31,8 @@ const stepAccents = [
   },
 ] as const;
 
-export function HowItWorksSection() {
-  const t = useTranslations();
+export async function HowItWorksSection() {
+  const { t } = await getServerTranslations();
 
   return (
     <PageSection variant="soft" spacing="lg" flipBlur>

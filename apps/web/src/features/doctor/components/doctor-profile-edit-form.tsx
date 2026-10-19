@@ -4,16 +4,25 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import { CalendarHeart, Clock, Home, Plus, Trash2 } from "lucide-react";
-import { HOME_CARE_MATCH_RADIUS_KM, SPECIALTIES, VerificationStatuses } from "@zindagi/shared";
+import {
+  HOME_CARE_COVERAGE_RADIUS_MAX_KM,
+  HOME_CARE_COVERAGE_RADIUS_MIN_KM,
+  HOME_CARE_MATCH_RADIUS_KM,
+  SPECIALTIES,
+  VerificationStatuses,
+} from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { TimePicker, formatTime12h } from "@/components/ui/time-picker";
 import { DoctorSpecialtyFields } from "@/components/forms/doctor-specialty-fields";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { previewSundaySlots } from "@/lib/sunday/display";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import type { DoctorProfileDto } from "@/features/doctor/types";
 import { DoctorProfilePhotoUpload } from "@/features/doctor/components/doctor-profile-photo-upload";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 const DAYS = [
   { value: 1, label: "Monday" },
@@ -34,6 +43,7 @@ type AvailabilityDay = {
 type HospitalRow = {
   name: string;
   city: string;
+  area: string;
   address: string;
 };
 
@@ -126,9 +136,10 @@ export function DoctorProfileEditForm({
       ? profile.hospitals.map((h) => ({
           name: h.name,
           city: h.city,
+          area: h.area ?? "",
           address: h.address ?? "",
         }))
-      : [{ name: "", city: "Lahore", address: "" }],
+      : [{ name: "", city: "", area: "", address: "" }],
   );
   const [availability, setAvailability] = useState(() =>
     buildAvailabilityFromProfile(profile.weeklyAvailability),
@@ -145,6 +156,7 @@ export function DoctorProfileEditForm({
   );
   const [homeVisitEnabled, setHomeVisitEnabled] = useState(profile.homeVisit.enabled);
   const [homeVisitArea, setHomeVisitArea] = useState(profile.homeVisit.area ?? "");
+  const [homeVisitRadius, setHomeVisitRadius] = useState(String(profile.homeVisit.radiusKm));
   const [homeVisitGeo, setHomeVisitGeo] = useState<GeoCoordinates | null>(
     profile.homeVisit.geo ?? null,
   );
@@ -163,7 +175,7 @@ export function DoctorProfileEditForm({
   }
 
   function addHospital() {
-    setHospitals((prev) => [...prev, { name: "", city: "Lahore", address: "" }]);
+    setHospitals((prev) => [...prev, { name: "", city: "", area: "", address: "" }]);
   }
 
   function removeHospital(index: number) {
@@ -195,10 +207,23 @@ export function DoctorProfileEditForm({
       return;
     }
 
+    // Every named location needs both a city and an area.
+    for (const [index, h] of hospitals.entries()) {
+      if (!h.name.trim()) continue;
+      const locationError = cityAreaError(h.city, h.area, `for Location ${index + 1}`);
+      if (locationError) {
+        setError(locationError);
+        setPending(false);
+        return;
+      }
+    }
+
     const cleanedHospitals = hospitals
       .map((h) => ({
         name: h.name.trim(),
         city: h.city.trim(),
+        // Sent even when empty so clearing the area removes the saved one.
+        area: h.area.trim(),
         address: h.address.trim() || undefined,
       }))
       .filter((h) => h.name && h.city);
@@ -264,6 +289,7 @@ export function DoctorProfileEditForm({
         enabled: homeVisitEnabled,
         area: homeVisitArea.trim() || undefined,
         geo: homeVisitGeo ?? undefined,
+        radiusKm: homeVisitRadius ? Number(homeVisitRadius) : undefined,
       },
       sundayConsult: {
         enabled: sundayEnabled,
@@ -510,13 +536,24 @@ export function DoctorProfileEditForm({
                 </div>
                 <div>
                   <Label htmlFor={`hospital-city-${index}`}>City</Label>
-                  <Input
+                  <CitySelect
                     id={`hospital-city-${index}`}
                     value={hospital.city}
-                    onChange={(e) => updateHospital(index, { city: e.target.value })}
-                    required
+                    onChange={(city) =>
+                      // A new city makes the old area meaningless, so clear it.
+                      updateHospital(index, city === hospital.city ? { city } : { city, area: "" })
+                    }
+                    className="mt-1"
                   />
                 </div>
+              </div>
+              <div className="mt-3">
+                <CityAreaSelect
+                  id={`hospital-area-${index}`}
+                  city={hospital.city}
+                  value={hospital.area}
+                  onChange={(area) => updateHospital(index, { area })}
+                />
               </div>
               <div className="mt-3">
                 <Label htmlFor={`hospital-address-${index}`}>Address</Label>
@@ -550,8 +587,9 @@ export function DoctorProfileEditForm({
           <div>
             <h2 className="text-sm font-semibold text-slate-900">In-house visit service</h2>
             <p className="mt-0.5 text-xs text-slate-600">
-              Offer doctor home visits in your city. Admin assigns you to nearby patient requests
-              when you are the nearest available doctor within {HOME_CARE_MATCH_RADIUS_KM} km.
+              Offer doctor home visits in your city. Admin assigns you to patient requests when
+              you are the nearest available doctor — patients inside your coverage radius first,
+              then within {HOME_CARE_MATCH_RADIUS_KM} km, 30 km, and anywhere in your coverage cities.
             </p>
           </div>
         </div>
@@ -568,6 +606,24 @@ export function DoctorProfileEditForm({
           />
         </div>
 
+        <div>
+          <Label htmlFor="homeVisitRadius">Coverage radius (km)</Label>
+          <Input
+            id="homeVisitRadius"
+            type="number"
+            min={HOME_CARE_COVERAGE_RADIUS_MIN_KM}
+            max={HOME_CARE_COVERAGE_RADIUS_MAX_KM}
+            value={homeVisitRadius}
+            onChange={(e) => setHomeVisitRadius(e.target.value)}
+            disabled={!homeVisitEnabled}
+            className="mt-1 max-w-[10rem]"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            How far you prefer to travel. Patients inside this radius are matched to you first;
+            farther patients can still be assigned, with travel confirmed first.
+          </p>
+        </div>
+
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -577,8 +633,7 @@ export function DoctorProfileEditForm({
           />
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house doctor visits within {HOME_CARE_MATCH_RADIUS_KM} km
-              of my area
+              I am available for in-house doctor visits in my coverage cities
             </p>
             <p className="text-xs text-slate-600">
               Turn this on to receive home visit assignments from admin dispatch.

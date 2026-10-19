@@ -2,7 +2,7 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 
 /**
  * Hard cap on a single send so a slow/hung provider call can never stall a
- * request path (OTP, booking confirmation, etc.) beyond a few seconds.
+ * request path (booking confirmation, etc.) beyond a few seconds.
  */
 const SEND_TIMEOUT_MS = 5000;
 
@@ -19,6 +19,11 @@ export type SendEmailInput = {
   html: string;
   text?: string;
   replyTo?: string;
+  /**
+   * Resend drops a repeat send carrying the same key for 24 hours, so a
+   * retried or replayed booking event can't email the same person twice.
+   */
+  idempotencyKey?: string;
 };
 
 function resendConfig() {
@@ -45,6 +50,11 @@ export function isEmailConfigured(): boolean {
  * a best-effort notification channel, not the source of truth).
  */
 export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult> {
+  // Jest loads the real .env — never let a test run reach the live provider.
+  if (process.env.NODE_ENV === "test") {
+    return { ok: false, skipped: true };
+  }
+
   const config = resendConfig();
   if (!config) {
     if (process.env.NODE_ENV !== "production") {
@@ -66,6 +76,7 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
         "Content-Type": "application/json",
+        ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: config.from,

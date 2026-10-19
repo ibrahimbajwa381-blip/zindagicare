@@ -133,5 +133,84 @@ export function isPhysiotherapyHomeVisitService(serviceType: string): boolean {
   return homeVisitProviderKind(serviceType) === HomeVisitProviderKinds.PHYSIOTHERAPIST;
 }
 
-/** Max distance (km) a nurse can be auto-matched from the visit address. */
+/** First search ring (km) around the patient for home-visit providers. */
 export const HOME_CARE_MATCH_RADIUS_KM = 15;
+
+/** Second search ring when no provider is free within the match radius. */
+export const HOME_CARE_EXTENDED_RADIUS_KM = 30;
+
+/** Bounds for the coverage radius a doctor, nurse or physiotherapist sets on their profile. */
+export const HOME_CARE_COVERAGE_RADIUS_MIN_KM = 1;
+export const HOME_CARE_COVERAGE_RADIUS_MAX_KM = 50;
+
+/**
+ * How far a home-visit provider (doctor, nurse or physiotherapist) is from the patient, in
+ * search-priority order: inside the provider's own coverage radius, then within 15 km, within
+ * 30 km, elsewhere in the patient's city, then anywhere. Distance only ranks — it never blocks
+ * a booking; outside the provider's own radius the patient is told travel and extra charges
+ * may need confirming.
+ */
+export const HomeCareReaches = {
+  IN_RADIUS: "in_radius",
+  NEAR: "near",
+  EXTENDED: "extended",
+  SAME_CITY: "same_city",
+  FAR: "far",
+} as const;
+export type HomeCareReach = (typeof HomeCareReaches)[keyof typeof HomeCareReaches];
+
+const HOME_CARE_REACH_RANK: Record<HomeCareReach, number> = {
+  [HomeCareReaches.IN_RADIUS]: 0,
+  [HomeCareReaches.NEAR]: 1,
+  [HomeCareReaches.EXTENDED]: 2,
+  [HomeCareReaches.SAME_CITY]: 3,
+  [HomeCareReaches.FAR]: 4,
+};
+
+/** A provider's own coverage radius, or the platform default when they haven't set one. */
+export function resolveCoverageRadiusKm(radiusKm?: number | null): number {
+  return radiusKm && radiusKm > 0 ? radiusKm : HOME_CARE_MATCH_RADIUS_KM;
+}
+
+/**
+ * `withinOwnRadius` is whether the patient's pin falls inside the provider's own coverage
+ * radius (any of their service areas).
+ */
+export function homeCareReach(
+  distanceKm: number | null | undefined,
+  inPatientCity: boolean,
+  withinOwnRadius = false,
+): HomeCareReach {
+  if (distanceKm != null && withinOwnRadius) return HomeCareReaches.IN_RADIUS;
+  if (distanceKm != null && distanceKm <= HOME_CARE_MATCH_RADIUS_KM) return HomeCareReaches.NEAR;
+  if (distanceKm != null && distanceKm <= HOME_CARE_EXTENDED_RADIUS_KM) {
+    return HomeCareReaches.EXTENDED;
+  }
+  return inPatientCity ? HomeCareReaches.SAME_CITY : HomeCareReaches.FAR;
+}
+
+/** Sorts by reach tier, then nearest first (unknown distance last within a tier). */
+export function compareHomeCareReach(
+  a: { reach: HomeCareReach; distanceKm?: number | null },
+  b: { reach: HomeCareReach; distanceKm?: number | null },
+): number {
+  const byTier = HOME_CARE_REACH_RANK[a.reach] - HOME_CARE_REACH_RANK[b.reach];
+  if (byTier) return byTier;
+  const da = a.distanceKm ?? Number.POSITIVE_INFINITY;
+  const db = b.distanceKm ?? Number.POSITIVE_INFINITY;
+  return da === db ? 0 : da - db;
+}
+
+/** True when the patient should be told travel and charges may need confirming. */
+export function isOutsideProviderCoverage(reach: HomeCareReach | null | undefined): boolean {
+  return !!reach && reach !== HomeCareReaches.IN_RADIUS;
+}
+
+/** The tier search starts from: the closest tier that has anyone in it. */
+export function bestHomeCareReach(rows: readonly { reach: HomeCareReach }[]): HomeCareReach | null {
+  let best: HomeCareReach | null = null;
+  for (const row of rows) {
+    if (best === null || HOME_CARE_REACH_RANK[row.reach] < HOME_CARE_REACH_RANK[best]) best = row.reach;
+  }
+  return best;
+}

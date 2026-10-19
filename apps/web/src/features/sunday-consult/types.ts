@@ -97,6 +97,10 @@ export type SundayDoctorRequestDto = {
   history: SundayHistoryAnswerDto[];
   affordabilityChoice: SundayAffordabilityChoice;
   createdAt: string;
+  /** Unpicked request whose Sunday already passed (older than a week). */
+  overdue: boolean;
+  /** Sunday the consult is scheduled on if picked — the board Sunday for overdue requests. */
+  consultDateKey: string;
   /** True when the signed-in doctor picked this request. */
   pickedByMe: boolean;
   appointmentId?: string;
@@ -111,6 +115,8 @@ export type SundayAdminRequestDto = {
   patientName: string;
   patientPhone: string;
   patientNotes?: string;
+  /** Medical history the patient answered when requesting (symptoms, meds, allergies…). */
+  history: SundayHistoryAnswerDto[];
   affordabilityChoice: SundayAffordabilityChoice;
   paymentId?: string;
   contributionFeePkr?: number;
@@ -118,6 +124,8 @@ export type SundayAdminRequestDto = {
   assignedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  /** True when an admin rejected the request (cancellationReason holds their note). */
+  rejectedByAdmin: boolean;
   cancellationReason?: string;
   appointmentId?: string;
   appointmentStatus?: AppointmentStatus;
@@ -142,5 +150,11 @@ export type SundayAdminRequestDto = {
     comment?: string;
     createdAt?: string;
     isVisible: boolean;
+  };
+  /** Patient's rating of ZindagiCare itself for this consult. */
+  platformReview?: {
+    rating: number;
+    comment?: string;
+    createdAt: string;
   };
 };

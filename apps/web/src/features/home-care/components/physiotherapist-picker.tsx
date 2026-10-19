@@ -2,12 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HOME_CARE_MATCH_RADIUS_KM, cn } from "@zindagi/shared";
+import {
+  isOutsideProviderCoverage,
+  bestHomeCareReach,
+  cn,
+  type HomeCareReach,
+} from "@zindagi/shared";
 import { MapPin, Navigation, Sparkles } from "lucide-react";
 import { PhysiotherapistAvatar } from "@/features/physiotherapist/components/physiotherapist-avatar";
 import { physiotherapistProfilePath } from "@/lib/physiotherapists/profile-path";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
 import type { PublicPhysiotherapist } from "@/server/services/public-physiotherapist.service";
+import { FarAwayNotice, FarBadge, reachTierDescription } from "./provider-reach";
 
 /** "nearest" lets the system auto-assign the closest available physiotherapist. */
 export type PhysiotherapistChoice = "nearest" | string;
@@ -40,7 +46,13 @@ export function PhysiotherapistPicker({
   const loading = geoKey !== null && result?.key !== geoKey;
   const [preselected, setPreselected] = useState<PublicPhysiotherapist | null>(null);
   const rows = geoKey && result?.key === geoKey ? result.rows : [];
-  const nearby = rows.filter((p) => p.withinRadius && p.homeVisitEnabled && p.isAvailable);
+  // Already ranked by the API: within 15 km, then 30 km, then the patient's city, then anywhere.
+  // Distance never rules anyone out — farther physios are flagged, not hidden.
+  const bookable = rows.filter((p) => p.homeVisitEnabled && p.isAvailable);
+  const tier = bestHomeCareReach(bookable.filter((p): p is RankedPhysio => !!p.reach));
+  const primary = bookable.filter((p) => p.reach === tier);
+  const farther = bookable.filter((p) => p.reach !== tier);
+  const [showFarther, setShowFarther] = useState(false);
   // Prefer the distance-annotated row for a physio chosen from their profile page.
   const preselectedRow = preselected
     ? (rows.find((p) => p.id === preselected.id) ?? preselected)
@@ -76,28 +88,26 @@ export function PhysiotherapistPicker({
     };
   }, [geo, geoKey]);
 
-  const selectedFee =
+  const selectedRow =
     value === "nearest"
-      ? (nearby[0]?.homeVisitFee ?? null)
-      : ([...nearby, ...(preselectedRow ? [preselectedRow] : [])].find((p) => p.id === value)
-          ?.homeVisitFee ?? null);
+      ? null
+      : (bookable.find((p) => p.id === value) ??
+        (preselectedRow?.id === value ? preselectedRow : null));
+  const selectedFee =
+    value === "nearest" ? (bookable[0]?.homeVisitFee ?? null) : (selectedRow?.homeVisitFee ?? null);
   useEffect(() => {
     onFeeChange?.(selectedFee);
   }, [selectedFee, onFeeChange]);
 
-  const selectedIsNearby = value === "nearest" || nearby.some((p) => p.id === value);
-  const selectedOutsideRadius =
-    geo && !loading && value !== "nearest" && !selectedIsNearby;
+  // Warn (never block) when the chosen physio is outside 15 km or the distance is unknown.
+  const selectedFar =
+    geo && !loading && selectedRow ? isOutsideProviderCoverage(selectedRow.reach) : false;
+  const farWarning = selectedRow && selectedFar ? <FarAwayNotice provider={selectedRow} /> : null;
 
   // Arriving from a profile page means the patient already picked someone, so show only that
-  // physio until they ask to change. Expand automatically if the pick can't visit this location.
+  // physio until they ask to change.
   const [showAll, setShowAll] = useState(!initialPhysioId);
-  const selectedRow =
-    value === "nearest"
-      ? null
-      : (nearby.find((p) => p.id === value) ??
-        (preselectedRow?.id === value ? preselectedRow : null));
-  const collapsed = !showAll && value !== "nearest" && !selectedOutsideRadius;
+  const collapsed = !showAll && value !== "nearest";
 
   if (collapsed) {
     return (
@@ -108,6 +118,7 @@ export function PhysiotherapistPicker({
         ) : (
           <p className="text-xs text-slate-500">Loading physiotherapist…</p>
         )}
+        {farWarning}
         <button
           type="button"
           onClick={() => setShowAll(true)}
@@ -125,7 +136,7 @@ export function PhysiotherapistPicker({
         <p className="text-sm font-medium text-slate-900">Choose your physiotherapist</p>
         <p className="text-xs text-slate-500">
           {geo
-            ? `Showing verified physiotherapists within ${HOME_CARE_MATCH_RADIUS_KM} km of your location, nearest first.`
+            ? reachTierDescription(tier, "physiotherapists")
             : "Set your home location above to see physiotherapists near you."}
         </p>
       </div>
@@ -148,11 +159,14 @@ export function PhysiotherapistPicker({
           <span className="block text-xs text-slate-500">
             We&apos;ll assign the closest verified physiotherapist who is free at your time. You
             pay that physiotherapist&apos;s own fee.
+            {geo && !loading && isOutsideProviderCoverage(tier)
+              ? " Nobody free covers your location, so they may be farther away — travel and any extra charges may need to be confirmed."
+              : ""}
           </span>
         </span>
       </button>
 
-      {preselectedRow && !nearby.some((p) => p.id === preselectedRow.id) && (
+      {preselectedRow && !bookable.some((p) => p.id === preselectedRow.id) && (
         <PhysioOption
           physio={preselectedRow}
           selected={value === preselectedRow.id}
@@ -162,15 +176,15 @@ export function PhysiotherapistPicker({
 
       {loading && <p className="text-xs text-slate-500">Finding physiotherapists near you…</p>}
 
-      {geo && !loading && nearby.length === 0 && (
+      {geo && !loading && bookable.length === 0 && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          No physiotherapists are available within {HOME_CARE_MATCH_RADIUS_KM} km right now. Keep
-          &ldquo;Nearest available&rdquo; selected and our team will arrange one for you.
+          No physiotherapists are taking home visits right now. Keep &ldquo;Nearest
+          available&rdquo; selected and our team will arrange one for you.
         </p>
       )}
 
       <div className="grid gap-2">
-        {nearby.map((physio) => (
+        {primary.map((physio) => (
           <PhysioOption
             key={physio.id}
             physio={physio}
@@ -178,16 +192,33 @@ export function PhysiotherapistPicker({
             onSelect={() => onChange(physio.id)}
           />
         ))}
+        {(showFarther || farther.some((p) => p.id === value)) &&
+          farther.map((physio) => (
+            <PhysioOption
+              key={physio.id}
+              physio={physio}
+              selected={value === physio.id}
+              onSelect={() => onChange(physio.id)}
+            />
+          ))}
       </div>
 
-      {selectedOutsideRadius && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {`${preselected?.name ?? "This physiotherapist"} is more than ${HOME_CARE_MATCH_RADIUS_KM} km from the location you set, so they can't visit. Choose someone from the list or “Nearest available”.`}
-        </p>
+      {farther.length > 0 && !showFarther && !farther.some((p) => p.id === value) && (
+        <button
+          type="button"
+          onClick={() => setShowFarther(true)}
+          className="text-xs font-medium text-brand hover:underline"
+        >
+          Show {farther.length} more physiotherapist{farther.length === 1 ? "" : "s"} farther away
+        </button>
       )}
+
+      {farWarning}
     </div>
   );
 }
+
+type RankedPhysio = PublicPhysiotherapist & { reach: HomeCareReach };
 
 function PhysioOption({
   physio,
@@ -201,7 +232,7 @@ function PhysioOption({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border p-3 transition",
+        "flex min-w-0 items-center gap-3 rounded-xl border p-3 transition",
         selected
           ? "border-brand bg-brand-muted/50 ring-2 ring-brand/20"
           : "border-white/60 bg-white/80 hover:border-brand/30",
@@ -223,6 +254,7 @@ function PhysioOption({
                 {physio.distanceKm.toFixed(1)} km away
               </span>
             )}
+            <FarBadge reach={physio.reach} />
             {physio.area && (
               <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3 w-3" />

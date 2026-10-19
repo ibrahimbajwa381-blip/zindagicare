@@ -18,6 +18,8 @@ export type DoctorHomeVisitDto = {
   enabled: boolean;
   area?: string;
   geo?: { lng: number; lat: number };
+  /** Preferred travel radius (km) — the platform default when the doctor hasn't set one. */
+  radiusKm: number;
 };
 
 export type DoctorProfileDto = {
@@ -48,7 +50,7 @@ export type DoctorProfileDto = {
   languages: string[];
   /** Doctor-authored public portfolio (headline, services, experience, …). */
   portfolio: DoctorPortfolio;
-  hospitals: Array<{ name: string; city: string; address?: string }>;
+  hospitals: Array<{ name: string; city: string; area?: string; address?: string }>;
   consultationFee: number;
   weeklyAvailability: WeeklyAvailabilityDto[];
   sundayConsult: SundayConsultDto;

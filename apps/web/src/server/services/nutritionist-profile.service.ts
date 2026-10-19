@@ -11,6 +11,7 @@ import {
 } from "@zindagi/shared";
 import type { UpdateNutritionistProfileInput } from "@zindagi/validators";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { mongoFilter } from "@/lib/mongo/query";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
 import {
@@ -24,6 +25,7 @@ import { ensureNutritionistProfile } from "./nutritionist-verification.service";
 export type NutritionistClinicDto = {
   name: string;
   city: string;
+  area?: string;
   address?: string;
   geo?: { lng: number; lat: number };
 };
@@ -148,6 +150,7 @@ export async function getNutritionistProfile(
     clinics: (profile.clinics ?? []).map((clinic) => ({
       name: clinic.name,
       city: clinic.city,
+      area: clinic.area ?? undefined,
       address: clinic.address ?? undefined,
       geo: mapGeo(clinic.geo as GeoLike),
     })),
@@ -251,6 +254,7 @@ export async function updateNutritionistProfile(
       data.clinics.map((clinic) => ({
         name: clinic.name,
         city: clinic.city,
+        area: resolveHospitalArea(clinic, profile.clinics),
         address: clinic.address,
         geo: clinic.geo
           ? {
@@ -261,7 +265,7 @@ export async function updateNutritionistProfile(
       })),
     );
     const cities = [...new Set(data.clinics.map((c) => c.city.trim()))];
-    profile.coverageCities = cities.length ? cities : ["Lahore"];
+    profile.coverageCities = cities;
   }
 
   if (data.weeklyAvailability !== undefined) {

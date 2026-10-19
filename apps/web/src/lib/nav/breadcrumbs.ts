@@ -103,6 +103,14 @@ const FULL_PATH_LABELS: Record<string, { name: string; labelKey?: string }> = {
     name: "Physiotherapist verifications",
     labelKey: "breadcrumbs.physioVerifications",
   },
+  "/admin/herbalists": {
+    name: "Herbalist verifications",
+    labelKey: "breadcrumbs.herbalistVerifications",
+  },
+  "/admin/nutritionists": {
+    name: "Nutritionist verifications",
+    labelKey: "breadcrumbs.nutritionistVerifications",
+  },
 };
 
 const HIDDEN_PATH_PREFIXES = [

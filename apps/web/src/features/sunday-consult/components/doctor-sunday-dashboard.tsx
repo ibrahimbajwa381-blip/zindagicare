@@ -34,9 +34,11 @@ export function DoctorSundayDashboard() {
   const [loading, setLoading] = useState(false);
 
   const loadQueue = useCallback(async () => {
-    const res = await fetch("/api/v1/sunday/doctor/queue");
-    const json = await res.json();
-    if (json.success) {
+    // Network failures (offline, dev-server reload) keep the last queue instead of throwing.
+    const res = await fetch("/api/v1/sunday/doctor/queue").catch(() => null);
+    if (!res) return;
+    const json = await res.json().catch(() => null);
+    if (json?.success) {
       setAppointments(json.data.appointments ?? []);
     }
   }, []);

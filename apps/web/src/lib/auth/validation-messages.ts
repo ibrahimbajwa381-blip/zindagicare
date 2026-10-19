@@ -26,8 +26,6 @@ export function authValidationMessage(
       return v.dateOfBirth;
     case "confirmPassword":
       return v.confirmPassword;
-    case "code":
-      return v.otp;
     default:
       return v.generic;
   }

@@ -29,6 +29,7 @@ import {
 import { VideoSessionService } from "@/server/services/video-session.service";
 import { logActivity } from "@/server/services/activity-log.service";
 import { sendPrescriptionIssued } from "@/lib/notifications/consult-notifications";
+import { cacheKey, cached, patientCacheTags } from "@/server/lib/cache";
 
 const ALLOWED_APPOINTMENT_STATUSES = new Set<string>([
   AppointmentStatuses.CONFIRMED,
@@ -269,6 +270,14 @@ export class PrescriptionService {
   }
 
   static async listForPatient(patientUserId: string): Promise<PrescriptionSummary[]> {
+    return cached(
+      cacheKey("patient-prescriptions", patientUserId),
+      { ttl: 300, tags: patientCacheTags(patientUserId), sensitive: true },
+      () => PrescriptionService.loadForPatient(patientUserId),
+    );
+  }
+
+  private static async loadForPatient(patientUserId: string): Promise<PrescriptionSummary[]> {
     await connectDatabase();
 
     const docs = await PrescriptionModel.find(

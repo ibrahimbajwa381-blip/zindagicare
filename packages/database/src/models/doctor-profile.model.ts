@@ -149,6 +149,8 @@ const doctorProfileSchema = new Schema(
       {
         name: { type: String, required: true },
         city: { type: String, required: true, index: true },
+        /** Neighbourhood within the city (asked for Lahore locations). */
+        area: String,
         address: String,
         geo: geoPointSchema,
       },
@@ -182,11 +184,16 @@ const doctorProfileSchema = new Schema(
         isActive: { type: Boolean, default: true },
       },
     ],
-    coverageCities: { type: [String], default: ["Lahore"] },
+    coverageCities: { type: [String], default: [] },
     homeVisitEnabled: { type: Boolean, default: false },
     homeVisitLocation: {
       area: String,
       geo: geoPointSchema,
+      /**
+       * How far the doctor prefers to travel (km). Ranks matching only — never blocks a
+       * booking. Unset means the platform default (15 km).
+       */
+      radiusKm: { type: Number, min: 1, max: 50 },
     },
     homeVisitFee: { type: Number, default: 0, min: 0 },
     /** Override for online/clinic consult revenue share (0–100). Null uses platform default. */

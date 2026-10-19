@@ -9,7 +9,7 @@ export default function AdminPlatformEarningsPage() {
       <AdminPageHeader
         eyebrow="Finances"
         title="ZindagiCare earnings"
-        description="What the platform has made in commission from each doctor's completed, paid consultations."
+        description="What the platform has made in commission from completed, paid consultations — plus visits booked outside the app and recorded manually."
       />
       <AdminPlatformEarnings />
     </>

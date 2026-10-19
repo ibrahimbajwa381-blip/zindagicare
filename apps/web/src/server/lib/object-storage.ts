@@ -17,7 +17,8 @@ export type StorageNamespace =
   | "payment-receipts"
   | "payout-receipts"
   | "prescriptions"
-  | "chat-attachments";
+  | "chat-attachments"
+  | "medical-qa-attachments";
 
 type StorageConfig = {
   url: string;

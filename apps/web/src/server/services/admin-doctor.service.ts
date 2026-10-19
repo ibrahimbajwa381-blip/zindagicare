@@ -29,6 +29,7 @@ import type {
   adminUpdateDoctorSchema,
 } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -540,8 +541,9 @@ export async function adminCreateDoctor(
     consultationFee: 2500,
     weeklyAvailability: DEFAULT_WEEKLY_AVAILABILITY,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
-    homeVisitEnabled: true,
-    coverageCities: ["Lahore"],
+    // Doctors start without home visits; they opt in from their profile.
+    homeVisitEnabled: false,
+    coverageCities: [input.city.trim()],
   } as Record<string, unknown>)) as DoctorProfileDocument;
 
   const slug = await generateUniqueDoctorSlug(input.name, profile._id.toString());
@@ -657,6 +659,7 @@ export async function adminUpdateDoctor(
     const hospitals = input.hospitals.map((h) => ({
       name: h.name.trim(),
       city: h.city.trim(),
+      area: resolveHospitalArea(h, refreshed.hospitals),
       address: h.address?.trim() || undefined,
     }));
     refreshed.set("hospitals", hospitals);
@@ -683,6 +686,8 @@ export async function adminUpdateDoctor(
           type: "Point",
           coordinates: [input.homeVisit.geo.lng, input.homeVisit.geo.lat],
         },
+        // Keep the doctor's own travel-radius preference.
+        radiusKm: refreshed.homeVisitLocation?.radiusKm ?? undefined,
       };
     } else if (!input.homeVisit.enabled) {
       refreshed.homeVisitLocation = undefined;

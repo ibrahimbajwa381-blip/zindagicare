@@ -1,4 +1,5 @@
 import {
+  HOME_CARE_EXTENDED_RADIUS_KM,
   HOME_CARE_MATCH_RADIUS_KM,
   PHYSIO_HOME_VISIT_FEE_MAX,
   PHYSIO_HOME_VISIT_FEE_MIN,
@@ -19,7 +20,6 @@ export const PHYSIO_GUIDE_EXAMPLES = [2800, 4000].map((fee) => {
 export const PHYSIO_GUIDE_FACTS = {
   physioPercent: SPLIT.physiotherapistPercent,
   platformPercent: SPLIT.platformPercent,
-  defaultFee: SPLIT.patientPays,
   feeMin: PHYSIO_HOME_VISIT_FEE_MIN,
   feeMax: PHYSIO_HOME_VISIT_FEE_MAX,
   radiusKm: HOME_CARE_MATCH_RADIUS_KM,
@@ -32,7 +32,7 @@ export const PHYSIO_GUIDE_FAQ = [
   },
   {
     q: "Can I set my own fee?",
-    a: `Yes. Set your fee per home visit in Profile, anywhere from ${formatRs(PHYSIO_HOME_VISIT_FEE_MIN)} to ${formatRs(PHYSIO_HOME_VISIT_FEE_MAX)}. If you leave it empty, the platform rate of ${formatRs(SPLIT.patientPays)} is used. Patients always pay your own fee, whether they book you from your profile or choose "nearest available" and are matched with you.`,
+    a: `Yes. Set your fee per home visit in Profile, anywhere from ${formatRs(PHYSIO_HOME_VISIT_FEE_MIN)} to ${formatRs(PHYSIO_HOME_VISIT_FEE_MAX)}. You set it when you create your profile and can change it any time. Patients always pay your own fee, whether they book you from your profile or choose "nearest available" and are matched with you.`,
   },
   {
     q: "When do I get paid?",
@@ -52,7 +52,7 @@ export const PHYSIO_GUIDE_FAQ = [
   },
   {
     q: "How are home visits assigned to me?",
-    a: `Two ways. Patients can pick you directly from your profile or the physiotherapist directory. And when a patient asks for the nearest available physiotherapist, ZindagiCare matches them to verified physios within ${HOME_CARE_MATCH_RADIUS_KM} km of their location — so keep your location and availability up to date.`,
+    a: `Two ways. Patients can pick you directly from your profile or the physiotherapist directory. And when a patient asks for the nearest available physiotherapist, ZindagiCare matches them to the closest free verified physio — within ${HOME_CARE_MATCH_RADIUS_KM} km first, then ${HOME_CARE_EXTENDED_RADIUS_KM} km, then the same city. Patients can also book physios farther away, so keep your location and availability up to date.`,
   },
   {
     q: "Can I stop receiving visits for a while?",

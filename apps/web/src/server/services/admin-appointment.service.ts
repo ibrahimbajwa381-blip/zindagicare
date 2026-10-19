@@ -23,7 +23,10 @@ import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators
 import { normalizePakistaniPhone } from "@/lib/auth/phone";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter } from "@/lib/mongo/query";
+import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
+import { sendBookingEmail } from "@/lib/notifications/booking-emails";
 import { getReferredPatientDoctorMap } from "@/server/services/commission.service";
+import { ReviewService } from "@/server/services/review.service";
 import {
   recordAdminActivity,
   type AdminActivityActor,
@@ -75,6 +78,10 @@ export type AdminAppointmentRow = {
   refundBankName?: string;
   patientJoinedAt?: string;
   doctorJoinedAt?: string;
+  /** Patient's rating of the doctor for this consult. */
+  doctorReview?: { rating: number; comment?: string; createdAt: string };
+  /** Patient's rating of ZindagiCare itself for this consult. */
+  platformReview?: { rating: number; comment?: string; createdAt: string };
 };
 
 const TYPE_FILTERS = {
@@ -129,11 +136,15 @@ export async function listAdminAppointments(filters?: {
   const referredPatientDoctorMap = await getReferredPatientDoctorMap(doctorProfileIds);
 
   const appointmentIds = appointments.map((a) => a._id.toString());
-  const videoSessions = appointmentIds.length
-    ? await VideoSessionModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
-        .select("appointmentId patientJoinedAt doctorJoinedAt")
-        .lean()
-    : [];
+  const [videoSessions, doctorReviews, platformReviews] = await Promise.all([
+    appointmentIds.length
+      ? VideoSessionModel.find(mongoFilter({ appointmentId: { $in: appointmentIds } }))
+          .select("appointmentId patientJoinedAt doctorJoinedAt")
+          .lean()
+      : Promise.resolve([]),
+    ReviewService.getReviewsForAppointments(appointmentIds),
+    ReviewService.getPlatformReviewsForAppointments(appointmentIds),
+  ]);
   const videoSessionByAppointment = new Map(
     videoSessions.map((session) => [session.appointmentId?.toString(), session]),
   );
@@ -227,6 +238,13 @@ export async function listAdminAppointments(filters?: {
       doctorJoinedAt: videoSessionByAppointment
         .get(a._id.toString())
         ?.doctorJoinedAt?.toISOString(),
+      doctorReview: (() => {
+        const review = doctorReviews.get(a._id.toString());
+        return review
+          ? { rating: review.rating, comment: review.comment, createdAt: review.createdAt }
+          : undefined;
+      })(),
+      platformReview: platformReviews.get(a._id.toString()),
     };
   });
 }
@@ -673,6 +691,22 @@ export async function adminCreateManualAppointment(input: {
       scheduledEnd: Date;
     };
   }
+
+  // Confirmed and saved — tell both sides. Never throws; a reused slot that
+  // was already emailed is deduplicated by the email idempotency key.
+  const appointmentId = appointment._id.toString();
+  await Promise.all([
+    sendBookingEmail({ appointmentId, recipient: "patient", expectedUserId: patient._id.toString() }),
+    ...(doctor.userId
+      ? [
+          sendBookingEmail({
+            appointmentId,
+            recipient: "doctor",
+            expectedUserId: resolveMongoRefId(doctor.userId),
+          }),
+        ]
+      : []),
+  ]);
 
   const doctorUser = doctor.userId as { name?: string; phone?: string } | null;
   return {

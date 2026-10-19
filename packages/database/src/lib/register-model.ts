@@ -1,4 +1,5 @@
 import mongoose, { type Model, type Schema } from "mongoose";
+import { attachWriteEvents } from "./write-events";
 
 function mergeMissingSchemaPaths<T>(existing: Model<T>, schema: Schema<T>) {
   const missing: Record<string, unknown> = {};
@@ -27,5 +28,6 @@ export function registerModel<T>(
     return existing;
   }
 
+  attachWriteEvents(schema as Schema, name);
   return mongoose.model<T>(name, schema);
 }

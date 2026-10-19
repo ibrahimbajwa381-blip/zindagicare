@@ -13,9 +13,14 @@ import { registerAction, type RegisterFormState } from "@/server/actions/auth.ac
 
 type RegisterFormProps = {
   accountType?: AccountType;
+  /** Where to send the user after they sign up and log in. */
+  callbackUrl?: string;
 };
 
-export function RegisterForm({ accountType: defaultAccountType = "patient" }: RegisterFormProps) {
+export function RegisterForm({
+  accountType: defaultAccountType = "patient",
+  callbackUrl,
+}: RegisterFormProps) {
   const t = useTranslations();
   const [state, action, pending] = useActionState<RegisterFormState | undefined, FormData>(
     registerAction,
@@ -162,10 +167,14 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
         <select
           id="city"
           name="city"
-          defaultValue="Lahore"
+          defaultValue=""
+          required
           aria-invalid={!!state?.fieldErrors?.city}
           className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm"
         >
+          <option value="" disabled>
+            Select your city
+          </option>
           {PAKISTAN_CITIES.map((city) => (
             <option key={city} value={city}>
               {city}
@@ -200,6 +209,7 @@ export function RegisterForm({ accountType: defaultAccountType = "patient" }: Re
           required
         />
         <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
+        {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
         <FieldError message={state?.fieldErrors?.dateOfBirth} />
       </div>
       <div>

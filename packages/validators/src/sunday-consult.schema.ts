@@ -98,3 +98,14 @@ export type ReleaseHoldInput = z.infer<typeof releaseHoldSchema>;
 export type UpsertTemplateInput = z.infer<typeof upsertTemplateSchema>;
 export type ToggleSundayInput = z.infer<typeof toggleSundaySchema>;
 export type AppointmentStatusInput = z.infer<typeof appointmentStatusSchema>;
+
+/** Admin rejects a Sunday free request outright; the note is shown to the patient. */
+export const sundayFreeRejectSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Add a short note explaining the rejection")
+    .max(500, "Keep the note under 500 characters"),
+});
+
+export type SundayFreeRejectInput = z.infer<typeof sundayFreeRejectSchema>;

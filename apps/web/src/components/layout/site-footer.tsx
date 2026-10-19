@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { SiteLogo } from "@/components/layout/site-logo";
+import { SocialLinks } from "@/components/shared/social-links";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { providerDirectoryLinks } from "@/lib/nav/provider-directories";
 import { AppDownloadBanner } from "@/components/pwa/app-download-banner";
@@ -225,6 +226,13 @@ export function SiteFooter() {
                   <span className="block font-medium text-white">{siteConfig.supportEmail}</span>
                 </span>
               </a>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-brand-lighter">
+                {t.footer.followUs}
+              </p>
+              <SocialLinks />
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">

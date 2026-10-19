@@ -42,3 +42,18 @@ export type ChatContactDto = {
   subtitle?: string;
   threadId?: string;
 };
+
+/** Read-only doctor–patient transcript shown to admins (they are not thread participants). */
+export type AdminChatTranscriptDto = {
+  threadId: string | null;
+  messages: {
+    id: string;
+    sender: "patient" | "doctor" | "system";
+    body: string;
+    attachmentUrl?: string;
+    attachmentMime?: string;
+    createdAt: string;
+  }[];
+  /** True when older messages were cut off by the limit. */
+  truncated: boolean;
+};

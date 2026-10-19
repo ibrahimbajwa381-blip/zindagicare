@@ -117,8 +117,8 @@ export function GeoLocationPicker({
             {description ?? (
               <>
                 Open Google Maps, share your clinic or home base location, and paste the link
-                below. We use this to match you with in-house visits within{" "}
-                {HOME_CARE_MATCH_RADIUS_KM} km.
+                below. We use this to match you with in-house visits — patients within{" "}
+                {HOME_CARE_MATCH_RADIUS_KM} km first.
               </>
             )}
           </p>

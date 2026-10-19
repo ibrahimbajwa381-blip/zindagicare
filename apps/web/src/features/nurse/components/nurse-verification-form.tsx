@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  HOME_CARE_MATCH_RADIUS_KM,
+  NURSE_HOME_VISIT_FEE_MAX,
+  NURSE_HOME_VISIT_FEE_MIN,
   MAX_NURSING_SPECIALTIES,
   NURSING_HOME_VISIT_SPLIT as SPLIT,
   NURSING_SPECIALTIES_ALPHABETICAL,
@@ -11,11 +12,14 @@ import {
 import { useSafeRouter } from "@/lib/navigation/safe-router";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { CitySelect } from "@/components/forms/city-select";
+import { CityAreaSelect } from "@/components/forms/city-area-select";
 import { GeoLocationPicker } from "@/components/forms/geo-location-picker";
 import { SpecialtyMultiSelect } from "@/components/forms/specialty-multi-select";
 import { VerificationDocumentUpload } from "@/components/forms/verification-document-upload";
 import { NurseProfilePhotoUpload } from "@/features/nurse/components/nurse-profile-photo-upload";
 import type { GeoCoordinates } from "@/lib/geo/parse-google-maps-url";
+import { cityAreaError } from "@/lib/geo/city-area-error";
 
 type NurseVerificationFormProps = {
   name: string;
@@ -24,6 +28,7 @@ type NurseVerificationFormProps = {
     licenseNumber?: string;
     qualification?: string;
     experienceYears?: number;
+    homeVisitFee?: number;
     city?: string;
     area?: string;
     bankAccount?: {
@@ -41,6 +46,8 @@ export function NurseVerificationForm({
 }: NurseVerificationFormProps) {
   const { push } = useSafeRouter();
   const [error, setError] = useState<string>();
+  const [city, setCity] = useState(defaults?.city ?? "");
+  const [area, setArea] = useState(defaults?.area ?? "");
   const [pending, setPending] = useState(false);
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
@@ -71,6 +78,13 @@ export function NurseVerificationForm({
       }
     }
 
+    const locationError = cityAreaError(city, area);
+    if (locationError) {
+      setError(locationError);
+      setPending(false);
+      return;
+    }
+
     if (homeVisitEnabled && !geo) {
       setError("Please add your Google Maps location for in-house visit matching.");
       setPending(false);
@@ -94,11 +108,12 @@ export function NurseVerificationForm({
       cnic: form.get("cnic"),
       qualification: form.get("qualification"),
       experienceYears: form.get("experienceYears"),
+      homeVisitFee: form.get("homeVisitFee"),
       specialties,
       avatarUrl,
       serviceArea: {
-        city: form.get("city"),
-        area: form.get("area"),
+        city: city.trim(),
+        area: area.trim(),
         homeVisitEnabled,
         geo: geo ?? undefined,
       },
@@ -204,6 +219,25 @@ export function NurseVerificationForm({
           />
         </div>
         <div>
+          <Label htmlFor="homeVisitFee">Your fee per general nursing visit (Rs.)</Label>
+          <Input
+            id="homeVisitFee"
+            name="homeVisitFee"
+            type="number"
+            inputMode="numeric"
+            min={NURSE_HOME_VISIT_FEE_MIN}
+            max={NURSE_HOME_VISIT_FEE_MAX}
+            step={50}
+            defaultValue={defaults?.homeVisitFee}
+            placeholder="e.g. 2000"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Required. Set your own fee between Rs. {NURSE_HOME_VISIT_FEE_MIN.toLocaleString()} and Rs.{" "}
+            {NURSE_HOME_VISIT_FEE_MAX.toLocaleString()}. Patients who book you for a nursing visit pay this amount (IV drips, injections and wound care use standard rates).
+          </p>
+        </div>
+        <div>
           <Label htmlFor="specialties">Specialties</Label>
           <SpecialtyMultiSelect
             id="specialties"
@@ -225,25 +259,18 @@ export function NurseVerificationForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="city">City</Label>
-            <Input
+            <CitySelect
               id="city"
-              name="city"
-              defaultValue={defaults?.city ?? "Lahore"}
-              required
-              minLength={2}
+              value={city}
+              onChange={(next) => {
+                // A new city makes the old area meaningless, so clear it.
+                if (next !== city) setArea("");
+                setCity(next);
+              }}
+              className="mt-1"
             />
           </div>
-          <div>
-            <Label htmlFor="area">Area / neighborhood</Label>
-            <Input
-              id="area"
-              name="area"
-              defaultValue={defaults?.area}
-              placeholder="e.g. DHA Phase 5, Gulberg"
-              required
-              minLength={2}
-            />
-          </div>
+          <CityAreaSelect id="area" city={city} value={area} onChange={setArea} />
         </div>
 
         <label className="flex items-start gap-3">
@@ -255,8 +282,7 @@ export function NurseVerificationForm({
           />
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              I am available for in-house visits within {HOME_CARE_MATCH_RADIUS_KM} km of my
-              area
+              I am available for in-house visits in my city
             </p>
             <p className="text-xs text-slate-600">
               When enabled, admin dispatch will auto-match you to nearby patient home visits

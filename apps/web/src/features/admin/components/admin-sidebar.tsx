@@ -19,6 +19,7 @@ import { HomeVisitProviderKinds, type HomeVisitProviderKind } from "@zindagi/sha
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  Apple,
   Bell,
   Banknote,
   CalendarDays,
@@ -26,6 +27,7 @@ import {
   ChevronRight,
   HeartPulse,
   Home,
+  Leaf,
   LayoutDashboard,
   ShieldCheck,
   Stethoscope,
@@ -191,6 +193,20 @@ const NAV_SECTIONS: AdminNavSection[] = [
         icon: Activity,
         countKey: "physiotherapists",
       },
+      {
+        href: "/admin/herbalists",
+        label: "Herbalist verifications",
+        description: "Review pending herbalist applications",
+        icon: Leaf,
+        countKey: "herbalists",
+      },
+      {
+        href: "/admin/nutritionists",
+        label: "Nutritionist verifications",
+        description: "Review pending nutritionist applications",
+        icon: Apple,
+        countKey: "nutritionists",
+      },
     ],
   },
   {
@@ -213,6 +229,18 @@ const NAV_SECTIONS: AdminNavSection[] = [
         label: "Physiotherapist management",
         description: "Manage approved physiotherapists",
         icon: Activity,
+      },
+      {
+        href: "/admin/herbalists/manage",
+        label: "Herbalist management",
+        description: "Manage herbalists",
+        icon: Leaf,
+      },
+      {
+        href: "/admin/nutritionists/manage",
+        label: "Nutritionist management",
+        description: "Manage nutritionists",
+        icon: Apple,
       },
       {
         href: "/admin/patients",
@@ -242,6 +270,14 @@ const NAV_SECTIONS: AdminNavSection[] = [
     ],
   },
 ];
+
+const VERIFICATION_QUEUE_ROOTS = new Set([
+  "/admin/doctors",
+  "/admin/nurses",
+  "/admin/physiotherapists",
+  "/admin/herbalists",
+  "/admin/nutritionists",
+]);
 
 const NAV_POLL_MS = 30_000;
 
@@ -319,20 +355,9 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
 
   function isActive(item: AdminNavItem): boolean {
     if (item.exact) return pathname === item.href;
-    if (item.href === "/admin/doctors") {
-      return (
-        pathname === "/admin/doctors" ||
-        pathname.startsWith("/admin/doctors/review")
-      );
-    }
-    if (item.href === "/admin/nurses") {
-      return pathname === "/admin/nurses" || pathname.startsWith("/admin/nurses/review");
-    }
-    if (item.href === "/admin/physiotherapists") {
-      return (
-        pathname === "/admin/physiotherapists" ||
-        pathname.startsWith("/admin/physiotherapists/review")
-      );
+    // Verification queues own their review pages but not the sibling /manage pages.
+    if (VERIFICATION_QUEUE_ROOTS.has(item.href)) {
+      return pathname === item.href || pathname.startsWith(`${item.href}/review`);
     }
     if (item.href === "/admin/doctors/manage") {
       return pathname === item.href || pathname.startsWith(`${item.href}/`);

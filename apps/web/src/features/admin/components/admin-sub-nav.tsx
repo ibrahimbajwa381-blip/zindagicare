@@ -10,6 +10,8 @@ const NAV = [
   { href: "/admin/doctors/manage", label: "Doctor management" },
   { href: "/admin/nurses/manage", label: "Nurse management" },
   { href: "/admin/physiotherapists/manage", label: "Physiotherapist management" },
+  { href: "/admin/herbalists/manage", label: "Herbalist management" },
+  { href: "/admin/nutritionists/manage", label: "Nutritionist management" },
   { href: "/admin/patients", label: "Patients" },
   { href: "/admin/appointments", label: "Appointments" },
   { href: "/admin/sunday-consult", label: "Sunday consult" },

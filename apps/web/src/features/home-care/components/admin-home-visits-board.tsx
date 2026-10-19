@@ -5,7 +5,11 @@ import {
   HomeVisitStatuses,
   HomeVisitServiceTypes,
   HOME_CARE_MATCH_RADIUS_KM,
+  HOME_CARE_EXTENDED_RADIUS_KM,
+  HomeCareReaches,
+  isOutsideProviderCoverage,
   cn,
+  type HomeCareReach,
   type HomeVisitProviderKind,
 } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
@@ -25,7 +29,7 @@ import type {
 } from "@/server/services/home-visit.service";
 import { Check, Copy, ExternalLink, FileText, MapPin, MessageSquareQuote, Phone, Star } from "lucide-react";
 
-type VisitStaffLists = Pick<VisitStaffCandidates, "nearby" | "all" | "radiusKm">;
+type VisitStaffLists = Pick<VisitStaffCandidates, "nearby" | "all" | "radiusKm" | "tier">;
 
 const SERVICE_LABELS: Record<string, string> = {
   [HomeVisitServiceTypes.DOCTOR_VISIT]: "Doctor home visit",
@@ -119,7 +123,7 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
         const data = json.data as VisitStaffCandidates;
         return [
           visit.id,
-          { nearby: data.nearby, all: data.all, radiusKm: data.radiusKm },
+          { nearby: data.nearby, all: data.all, radiusKm: data.radiusKm, tier: data.tier },
         ] as const;
       }),
     );
@@ -265,13 +269,17 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
     const allOptions = staffLists?.all ?? [];
     const options = override ? allOptions : nearbyOptions;
     const radiusKm = staffLists?.radiusKm ?? HOME_CARE_MATCH_RADIUS_KM;
+    // `nearby` is already the closest search tier with someone free (15 km, else 30 km,
+    // else the city), so auto-assign has a match whenever it is non-empty.
+    const autoDisabled = nearbyOptions.length === 0;
+    const tierLabel = staffTierLabel(staffLists?.tier ?? null, radiusKm, visit.address.city);
 
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap gap-3">
           <Button
             size="sm"
-            disabled={pending === visit.id || nearbyOptions.length === 0}
+            disabled={pending === visit.id || autoDisabled}
             onClick={() => assign(visit.id, true)}
           >
             Auto-assign nearest {config.providerNoun}
@@ -321,13 +329,15 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
               }
               className="rounded border-slate-300"
             />
-            Assign outside {radiusKm} km radius (manual override)
+            Show all {config.providerNounPlural} (any distance)
           </label>
           {!override && (
             <span>
-              {nearbyOptions.length} {config.providerNoun}(s) within {radiusKm} km
+              {nearbyOptions.length} {config.providerNoun}(s) {tierLabel}
               {nearbyOptions.length === 0 &&
-                ` — none match for ${visit.address.city}. Check the rules above, or enable override.`}
+                ` — none free for ${visit.address.city}. Check the rules above, or show all.`}
+              {isOutsideProviderCoverage(staffLists?.tier) &&
+                " — outside their own coverage radius, so confirm travel and any extra charges with them."}
             </span>
           )}
           {override && (
@@ -571,10 +581,12 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
       <div className="rounded-xl border border-brand/15 bg-brand-muted/30 p-4 text-sm text-slate-700">
         <p className="font-medium text-slate-900">How {config.providerNoun} dispatch works</p>
         <p className="mt-1">
-          By default, only {config.providerNounPlural} within {HOME_CARE_MATCH_RADIUS_KM} km of
-          the patient&apos;s Google Maps pin appear in the dropdown. Use auto-assign for the
-          closest match, pick from the list, or enable manual override to assign outside the
-          radius. After assignment, the {config.providerNoun} updates en route, arrived, and
+          The dropdown lists free {config.providerNounPlural} whose own coverage radius includes
+          the patient&apos;s Google Maps pin — or, when nobody&apos;s does, those within{" "}
+          {HOME_CARE_MATCH_RADIUS_KM} km, then {HOME_CARE_EXTENDED_RADIUS_KM} km, then the rest of
+          the city. Use auto-assign for the
+          closest match, pick from the list, or show all to assign anyone at any distance.
+          After assignment, the {config.providerNoun} updates en route, arrived, and
           completed status from their visits dashboard.
         </p>
 
@@ -750,4 +762,21 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
       )}
     </div>
   );
+}
+
+function staffTierLabel(tier: HomeCareReach | null, radiusKm: number, city: string): string {
+  switch (tier) {
+    case HomeCareReaches.IN_RADIUS:
+      return "who cover this location (inside their own radius)";
+    case HomeCareReaches.NEAR:
+      return `within ${radiusKm} km (none free who cover this location)`;
+    case HomeCareReaches.EXTENDED:
+      return `within ${HOME_CARE_EXTENDED_RADIUS_KM} km (none free within ${radiusKm} km)`;
+    case HomeCareReaches.SAME_CITY:
+      return `elsewhere in ${city} (none free within ${HOME_CARE_EXTENDED_RADIUS_KM} km)`;
+    case HomeCareReaches.FAR:
+      return `in other cities (none free in ${city})`;
+    default:
+      return `within ${radiusKm} km`;
+  }
 }

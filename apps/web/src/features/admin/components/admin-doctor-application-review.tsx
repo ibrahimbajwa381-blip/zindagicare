@@ -364,6 +364,7 @@ export function AdminDoctorApplicationReview({ profile }: Props) {
               <li key={`${h.name}-${h.city}`} className="p-4 text-sm">
                 <p className="font-medium text-slate-900">{h.name}</p>
                 <p className="text-slate-600">
+                  {h.area ? `${h.area}, ` : ""}
                   {h.city}
                   {h.address ? ` · ${h.address}` : ""}
                 </p>

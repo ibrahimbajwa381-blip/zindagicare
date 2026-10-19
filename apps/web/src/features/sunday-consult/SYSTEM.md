@@ -6,6 +6,8 @@ Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a
 
 Request lifecycle: `requested` → (doctor picks + time) `assigned` → `completed` / `cancelled`. A doctor may release an `assigned` request before the consult starts; it goes back to `requested` and the appointment is cancelled.
 
+Overdue requests: `requested` requests older than 7 days (no doctor ever picked them) also appear on the doctor board under "Waiting over a week". Picking one moves the request to the current board Sunday and schedules the consult there.
+
 ## 2. Data model
 
 | Collection | Purpose |

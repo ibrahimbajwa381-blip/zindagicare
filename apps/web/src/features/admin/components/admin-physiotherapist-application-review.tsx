@@ -126,6 +126,7 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
   const isApproved = profile.verificationStatus === VerificationStatuses.APPROVED;
   const isRejected = profile.verificationStatus === VerificationStatuses.REJECTED;
   const hasSubmitted = Boolean(profile.verificationSubmittedAt);
+  const hasLocation = profile.serviceArea.hasLocation;
 
   async function saveNotes() {
     setNotesSaving(true);
@@ -431,6 +432,15 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
             </p>
           </div>
         </div>
+        {!hasLocation && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-medium">Google Maps location missing</p>
+            <p className="mt-1">
+              Approval turns on in-house visits, which need a saved map location. Ask the
+              physiotherapist to add their location before approving.
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="space-y-3">
@@ -595,7 +605,7 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
 
           <div className="flex flex-wrap gap-3">
             <Button
-              disabled={!interviewConfirmed || actionPending}
+              disabled={!interviewConfirmed || !hasLocation || actionPending}
               onClick={() => decide("approve")}
             >
               <UserCheck className="h-4 w-4" />
