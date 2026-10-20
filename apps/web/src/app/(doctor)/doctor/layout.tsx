@@ -83,7 +83,7 @@ export default async function DoctorLayout({
   const doctorProfile = await DoctorProfileModel.findOne(
     mongoFilter({ userId: session.user.id }),
   )
-    .select("slug verificationStatus accountability")
+    .select("slug verificationStatus accountability communityJoinedAt")
     .populate("userId", "name avatarUrl")
     .lean();
 
@@ -114,6 +114,7 @@ export default async function DoctorLayout({
       doctorName={doctorUser?.name ?? session.user.name ?? "Doctor"}
       doctorAvatarUrl={doctorUser?.avatarUrl}
       accountabilityBanner={accountabilityBanner}
+      showCommunityInvite={Boolean(doctorProfile) && !doctorProfile?.communityJoinedAt}
     >
       {children}
     </DoctorShell>

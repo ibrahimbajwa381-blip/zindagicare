@@ -239,7 +239,7 @@ export function DoctorsConsultClient({
         key={doc.doctorId}
         href={doctorProfilePath(doc.slug, doc.doctorId)}
         name={doc.name}
-        specialty={doc.specialties[0] ?? ""}
+        specialty={doc.specialties.join(" · ")}
         hospital={doc.hospital ?? ""}
         rating={doc.ratingAvg}
         reviews={doc.ratingCount}

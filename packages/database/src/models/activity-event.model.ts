@@ -36,6 +36,8 @@ const activityEventSchema = new Schema(
 activityEventSchema.index({ userId: 1, createdAt: -1 });
 activityEventSchema.index({ action: 1, createdAt: -1 });
 activityEventSchema.index({ visitorId: 1, createdAt: -1 });
+/** Per-page traffic lookups, e.g. a doctor's profile analytics. */
+activityEventSchema.index({ action: 1, path: 1, createdAt: -1 });
 activityEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 });
 
 export type ActivityEventDocument = InferSchemaType<typeof activityEventSchema> & {

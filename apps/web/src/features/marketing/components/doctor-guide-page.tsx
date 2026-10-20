@@ -48,6 +48,7 @@ export function DoctorGuidePage() {
       <JoinSection />
       <PatientDemandSection />
       <WorkspaceSection />
+      <SundaySection />
       <AttendanceSection />
       <FaqSection />
       <CtaSection />
@@ -156,7 +157,7 @@ function EarningsSection() {
       <SectionHeader
         eyebrow="Compensation"
         title="You keep 70% of every paid consult"
-        description="Transparent rates, your own fee, and monthly payouts. Sunday free consults are unpaid volunteer work."
+        description="Transparent rates, your own fee, and monthly payouts. Sunday free consults are volunteer work — ZindagiCare charges those patients nothing."
       />
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
@@ -200,8 +201,11 @@ function EarningsSection() {
               <Sun className="h-5 w-5 text-brand" />
               <p className="mt-3 font-display text-base font-semibold">Sunday is volunteer</p>
               <p className="mt-1 text-sm text-slate-600">
-                Free Sunday consults are unpaid. Enable or disable them whenever
-                you choose. No paid chat on Sunday visits.
+                ZindagiCare takes no charge from Sunday free patients. If a patient
+                chooses to contribute, you get 70% of it.{" "}
+                <a href="#sunday" className="font-medium text-brand hover:text-brand-dark">
+                  Sunday rules
+                </a>
               </p>
             </div>
             <div className={`p-5 ${surfaceCard}`}>
@@ -395,10 +399,11 @@ function WorkspaceSection() {
         <GuideBlock
           title="6. Free Sunday consult"
           reverse
-          body="Unpaid volunteer care every Sunday for patients who cannot afford a paid visit. You control start time, end time, slot duration, and max patients — or disable the program entirely."
+          body="Volunteer care every Sunday for patients who cannot afford a paid visit. Pick waiting patients from the open board, choose a time, run the video consult, and tap Finish consultation when you are done. Full rules are in the Sunday free consult section below."
           howTo={[
-            "Set start/end (PK time), duration (for example 10 minutes), and max slots.",
-            "Tap Save & materialize next Sunday so the queue is created.",
+            "Open Sunday free consult, choose a time (PK) next to a waiting patient, and tap Pick patient.",
+            "Join the video from your Patient queue at that time — chat with the patient is open too.",
+            "When you are done, tap Finish consultation. Only then is it completed and reviewable.",
             "Use Disable Sunday consults whenever you cannot volunteer.",
           ]}
           shot={DOCTOR_GUIDE_SCREENSHOTS.sunday}
@@ -416,9 +421,9 @@ function WorkspaceSection() {
         <GuideBlock
           title="8. Patient messages"
           reverse
-          body="Secure chat after paid consultations. Sunday free consults do not include chat. Use this for follow-up questions, not for new unpaid diagnoses."
+          body="Secure chat after paid consultations, and during an open Sunday free consult. Sunday chat closes when you finish the consultation. Use this for follow-up questions, not for new unpaid diagnoses."
           howTo={[
-            "Select a patient from your paid-consult list.",
+            "Select a patient from your consult list.",
             "Search chats by name when your inbox grows.",
             "Issue a prescription from the workspace if the follow-up needs medication.",
           ]}
@@ -429,7 +434,7 @@ function WorkspaceSection() {
           body="A directory of everyone you have seen — completed, missed, upcoming, and reviewed. Open a card for visit counts, last contact, and a message button."
           howTo={[
             "Filter by Completed, Missed, or Awaiting review.",
-            "Message a patient only if they came through a paid consult.",
+            "Message a patient through a paid consult, or while their Sunday consult is still open.",
             "Check reviews so you know how patients rated the visit.",
           ]}
           shot={DOCTOR_GUIDE_SCREENSHOTS.patients}
@@ -454,6 +459,144 @@ function WorkspaceSection() {
           </div>
         </article>
       </div>
+    </PageSection>
+  );
+}
+
+function SundaySection() {
+  const steps = [
+    {
+      title: "Patient requests",
+      desc: "A patient asks for a free Sunday consult and answers a short medical history. They do not choose a doctor. Each patient can make one free request per week.",
+    },
+    {
+      title: "You pick the patient",
+      desc: "Open Sunday free consult in your workspace. Read the history on the open board, choose a time (Pakistan time) on that Sunday, and tap Pick patient. The patient is told who their doctor is and when.",
+    },
+    {
+      title: "Run the consult",
+      desc: "Join the video from your Patient queue. Video and chat stay open past the slot, so you or the patient can leave and rejoin. You can issue an e-prescription during or after the call.",
+    },
+    {
+      title: "Finish consultation",
+      desc: "When you are done, tap Finish consultation. This marks it completed, closes the video room and chat, and asks the patient to review you.",
+    },
+  ] as const;
+
+  const rules = [
+    {
+      title: "Video and chat stay open until you close it",
+      desc: "Leaving the call does not end the consult, and the system never completes a Sunday consult for you. If you do not tap Finish consultation, it stays open — it is not counted as completed and the patient cannot review you.",
+    },
+    {
+      title: "You must still join on time",
+      desc: "If you never join the video room by 15 minutes after the end of your chosen slot, it counts as a missed consult under the attendance rules below.",
+    },
+    {
+      title: "Release if you cannot make it",
+      desc: "Before the consult starts, tap Release on a picked patient. They go back to the open board so another doctor can pick them.",
+    },
+    {
+      title: "Patient no-shows",
+      desc: "If the patient does not turn up, tap No-show. This also closes video and chat. Patients with 3 no-shows are blocked from Sunday consults for 4 weeks.",
+    },
+    {
+      title: "Patients waiting over a week",
+      desc: "Requests that no doctor picked for more than 7 days appear under Waiting over a week. Picking one schedules it on the current Sunday.",
+    },
+    {
+      title: "Reviews count toward your profile",
+      desc: "Reviews from finished Sunday consults appear on your public profile like any other review — another reason to always tap Finish consultation.",
+    },
+  ] as const;
+
+  return (
+    <PageSection id="sunday" variant="accent" spacing="lg" flipBlur className="scroll-mt-28 sm:scroll-mt-32">
+      <SectionHeader
+        eyebrow="Volunteer care"
+        title="Sunday free consult — what you need to know"
+        description="Every Sunday, verified doctors volunteer short video consults for patients who cannot afford care. You choose whether to take part, which patients to see, and when."
+      />
+
+      <div className="mt-10 grid gap-4 lg:grid-cols-2">
+        <div className={`border-brand/20 bg-brand-muted/60 p-6 ${surfaceCard}`}>
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <Sun className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-semibold text-foreground">
+                Free for the patient — no ZindagiCare charge
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-slate-700">
+                ZindagiCare does not charge Sunday free patients anything: no
+                consultation fee and no platform fee. Patients who cannot afford
+                care are marked <span className="font-medium">Cannot afford paid care</span> on
+                the board.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className={`p-6 ${surfaceCard}`}>
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <Percent className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-semibold text-foreground">
+                If a patient chooses to pay, you get 70%
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                A patient who can afford it may choose to pay an optional
+                contribution of PKR 500. It goes to the doctor who treats them under
+                the normal 70% policy:{" "}
+                <span className="font-semibold text-foreground">PKR 350</span> to you,
+                PKR 150 to the platform. It appears in Earnings once the payment is
+                confirmed <span className="font-medium">and</span> you have tapped Finish
+                consultation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map((step, index) => (
+          <li key={step.title} className={`flex h-full flex-col p-6 ${surfaceCardInteractive}`}>
+            <span className="font-display text-4xl font-semibold text-brand/25">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <p className="mt-3 font-display text-lg font-semibold text-foreground">{step.title}</p>
+            <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">{step.desc}</p>
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+        <p className="flex items-center gap-2 font-display text-base font-semibold text-amber-900">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          Always tap Finish consultation
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-amber-900">
+          A Sunday consult is only completed when you close it, either from the Patient queue
+          on your Sunday free consult page or from the screen you see after leaving the video
+          call. Until then video and chat stay open, it is not counted as completed, any
+          contribution is not credited to your Earnings, and the patient cannot leave you a
+          review.
+        </p>
+      </div>
+
+      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+        {rules.map((rule) => (
+          <li key={rule.title} className={`p-5 ${surfaceCard}`}>
+            <p className="flex items-start gap-2 font-display text-base font-semibold text-foreground">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+              {rule.title}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">{rule.desc}</p>
+          </li>
+        ))}
+      </ul>
     </PageSection>
   );
 }

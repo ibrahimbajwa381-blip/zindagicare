@@ -99,7 +99,7 @@ export function DoctorCard({
               </span>
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="truncate text-sm text-brand/90">{specialty}</p>
+              <p className="text-sm leading-snug text-brand/90">{specialty}</p>
               {pmdcVerified ? (
                 <Badge
                   variant="secondary"

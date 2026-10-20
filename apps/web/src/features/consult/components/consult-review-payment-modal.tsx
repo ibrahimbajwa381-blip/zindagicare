@@ -9,7 +9,7 @@ import {
   paymentProviderLabel,
   usePaymentProviders,
 } from "@/features/consult/hooks/use-payment-providers";
-import { formatKarachiDate } from "@/lib/format/datetime";
+import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import type { PaymentProviderInput } from "@zindagi/validators";
 
@@ -153,7 +153,7 @@ export function ConsultReviewPaymentModal({
                     Date & time
                   </p>
                   <p className="mt-1 text-sm font-medium text-slate-800">
-                    {formatKarachiDate(slotStartAt)}
+                    {formatKarachiDateTime(slotStartAt)}
                   </p>
                 </div>
               </div>

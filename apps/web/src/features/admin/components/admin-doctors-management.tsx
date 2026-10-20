@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import {
+  Check,
   ChevronDown,
+  Copy,
   Eye,
   Plus,
   Search,
@@ -78,6 +80,20 @@ export function AdminDoctorsManagement() {
   const [deleteTarget, setDeleteTarget] = useState<AdminDoctorRow | null>(null);
   const [deleteInput, setDeleteInput] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+
+  const copyPhone = async (rowId: string, phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setCopiedPhoneId(rowId);
+      setTimeout(() => {
+        setCopiedPhoneId((current) => (current === rowId ? null : current));
+      }, 2000);
+    } catch {
+      // Clipboard API unavailable (e.g. non-HTTPS host) — let the admin copy manually.
+      window.prompt("Copy the phone number:", phone);
+    }
+  };
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -375,9 +391,26 @@ export function AdminDoctorsManagement() {
                           />
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-slate-900">{doc.name}</p>
-                            <p className="truncate text-xs text-slate-500">
-                              {[doc.email, doc.phone].filter(Boolean).join(" · ") || "—"}
-                            </p>
+                            {doc.phone ? (
+                              <div className="flex items-center gap-1 text-xs text-slate-500">
+                                <span className="select-all font-mono">{doc.phone}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => void copyPhone(doc.id, doc.phone!)}
+                                  className="rounded p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-brand"
+                                  aria-label={`Copy phone number of ${doc.name}`}
+                                  title={copiedPhoneId === doc.id ? "Copied" : "Copy phone number"}
+                                >
+                                  {copiedPhoneId === doc.id ? (
+                                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-500">—</p>
+                            )}
                             {!doc.isActive && (
                               <Badge variant="outline" className="mt-1 text-[10px]">
                                 Inactive

@@ -108,15 +108,18 @@ async function queryFeaturedDoctors(limit: number): Promise<FeaturedDoctorCard[]
   return doctors.map((doc) => {
     const user = doc.userId as { name?: string; avatarUrl?: string } | null;
     const name = user?.name ?? "Doctor";
+    const verified = doc.specialties ?? [];
+    const primary = resolveDisplaySpecialty({
+      primarySpecialty: doc.primarySpecialty,
+      specialties: verified,
+    });
 
     return {
       doctorId: doc._id.toString(),
       slug: resolveDoctorSlug(doc.slug, name),
       name,
-      specialty: resolveDisplaySpecialty({
-        primarySpecialty: doc.primarySpecialty,
-        specialties: doc.specialties,
-      }),
+      // Primary first, then every other verified specialty.
+      specialty: [primary, ...verified.filter((s) => s !== primary)].join(" · "),
       hospital: doc.hospitals?.[0]?.name ?? "",
       rating: doc.ratingAvg ?? 0,
       reviews: doc.ratingCount ?? 0,

@@ -7,6 +7,7 @@ import {
   Globe,
   Home,
   LayoutDashboard,
+  Sun,
   UserPlus,
   Video,
   Wallet,
@@ -22,6 +23,7 @@ const DOCTOR_TOC: readonly TocItem[] = [
   { href: "#earnings", id: "earnings", label: "Earnings", short: "Earnings", icon: Wallet },
   { href: "#join", id: "join", label: "How to join", short: "Join", icon: UserPlus },
   { href: "#workspace", id: "workspace", label: "How to use", short: "Use", icon: LayoutDashboard },
+  { href: "#sunday", id: "sunday", label: "Sunday free", short: "Sunday", icon: Sun },
   { href: "#attendance", id: "attendance", label: "Attendance", short: "Attend", icon: Clock },
   { href: "#faq", id: "faq", label: "FAQ", short: "FAQ", icon: CircleHelp },
 ];

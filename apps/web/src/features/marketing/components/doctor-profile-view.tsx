@@ -234,7 +234,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
 
       <ProfileSectionNav items={visibleNav} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
       <div className="min-w-0 space-y-6">
         {hasAbout && (
           <PortfolioSection id="about" icon={UserRound} eyebrow="Introduction" title={copy.about}>
@@ -408,7 +408,7 @@ export function DoctorProfileView({ doctor, reviews, reviewTotal, copy }: Props)
         )}
       </div>
 
-      <div id="book" className="scroll-mt-36 lg:self-stretch">
+      <div id="book" className="min-w-0 scroll-mt-36 lg:self-stretch">
         <DoctorProfileBookingPanel doctor={doctor} callbackUrl={callbackUrl} />
       </div>
       </div>

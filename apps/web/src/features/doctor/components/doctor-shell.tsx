@@ -6,6 +6,7 @@ import { cn } from "@zindagi/shared";
 import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { UnifiedHeader } from "@/components/layout/unified-header";
+import { DoctorCommunityBanner } from "@/features/doctor/components/doctor-community-banner";
 import { DoctorMobilePracticeNav } from "@/features/doctor/components/doctor-mobile-practice-nav";
 import { DoctorSidebar } from "@/features/doctor/components/doctor-sidebar";
 import { ProviderAgreementGate } from "@/features/legal/components/provider-agreement-gate";
@@ -25,6 +26,7 @@ type DoctorShellProps = {
   doctorName?: string;
   doctorAvatarUrl?: string | null;
   accountabilityBanner?: DoctorAccountabilityBanner | null;
+  showCommunityInvite?: boolean;
 };
 
 function AccountabilityBanner({ banner }: { banner: DoctorAccountabilityBanner }) {
@@ -71,6 +73,7 @@ export function DoctorShell({
   doctorName = "Doctor",
   doctorAvatarUrl,
   accountabilityBanner,
+  showCommunityInvite = false,
 }: DoctorShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const showPracticeNav = showFullNav;
@@ -117,6 +120,7 @@ export function DoctorShell({
             {accountabilityBanner && (
               <AccountabilityBanner banner={accountabilityBanner} />
             )}
+            {showCommunityInvite && <DoctorCommunityBanner />}
             {children}
           </div>
         </main>

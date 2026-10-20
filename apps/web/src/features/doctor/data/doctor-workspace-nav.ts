@@ -1,4 +1,5 @@
 import {
+  ChartColumn,
   CalendarClock,
   FileText,
   Gift,
@@ -113,6 +114,12 @@ export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         label: "My portfolio",
         description: "Your public profile website",
         icon: Sparkles,
+      },
+      {
+        href: "/doctor/analytics",
+        label: "Profile analytics",
+        description: "Visits, traffic sources & bookings",
+        icon: ChartColumn,
       },
       {
         href: "/doctor/earnings",

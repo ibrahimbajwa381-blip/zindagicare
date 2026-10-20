@@ -20,7 +20,11 @@ export const DOCTOR_GUIDE_FAQ = [
   },
   {
     q: "Is Sunday free consult paid?",
-    a: "No. Sunday free consultation is unpaid volunteer work. You choose whether to participate, set your Sunday hours and slot count, and can disable it at any time. Sunday visits do not include paid chat.",
+    a: "Sunday free consultation is volunteer work, and ZindagiCare does not charge these patients anything. A patient who can afford it may choose to pay an optional PKR 500 contribution. If they do, you receive 70% (PKR 350) under the normal policy, credited once the payment is confirmed and you have finished the consultation. You choose whether to take part and can disable it at any time.",
+  },
+  {
+    q: "Do I need to close a Sunday free consult?",
+    a: "Yes. Video and chat stay open, even if you or the patient leave the call, until you tap Finish consultation, either on your Sunday free consult page or on the screen after you leave the video call. Only then is the consult marked completed, any contribution credited to your Earnings, and the patient asked to review you.",
   },
   {
     q: "Where does ZindagiCare operate?",

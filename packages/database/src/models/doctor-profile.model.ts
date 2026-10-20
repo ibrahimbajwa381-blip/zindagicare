@@ -218,6 +218,8 @@ const doctorProfileSchema = new Schema(
      */
     referralCode: { type: String, unique: true, sparse: true, index: true },
     isListed: { type: Boolean, default: false },
+    /** When the doctor clicked through to the ZindagiCare Doctors' WhatsApp community; hides the invite banner. */
+    communityJoinedAt: { type: Date },
     /** Payout destination for admin-initiated manual payouts. */
     bankAccount: {
       accountTitle: String,
