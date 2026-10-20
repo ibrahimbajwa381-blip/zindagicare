@@ -154,6 +154,7 @@ async function buildRows(
     licenseNumber?: string | null;
     qualification?: string | null;
     experienceYears?: number | null;
+    gender?: string | null;
     specialties?: string[] | null;
     verificationStatus?: string | null;
     rejectionReason?: string | null;
@@ -212,6 +213,7 @@ async function buildRows(
       licenseNumber: p.licenseNumber ?? undefined,
       qualification: p.qualification ?? undefined,
       experienceYears: p.experienceYears ?? undefined,
+      gender: p.gender === "male" || p.gender === "female" ? p.gender : undefined,
       specialties: p.specialties ?? [],
       verificationStatus: p.verificationStatus ?? VerificationStatuses.PENDING,
       rejectionReason: p.rejectionReason ?? undefined,
@@ -331,6 +333,7 @@ export async function adminCreateNurse(
       licenseNumber: input.licenseNumber.trim(),
       qualification: input.qualification?.trim() || undefined,
       experienceYears: input.experienceYears,
+      gender: input.gender,
       specialties: input.specialties,
       languages: ["English", "Urdu"],
       serviceAreas: [
@@ -441,6 +444,7 @@ export async function adminUpdateNurse(
     staff.qualification = input.qualification.trim() || undefined;
   }
   if (input.experienceYears !== undefined) staff.experienceYears = input.experienceYears;
+  if (input.gender !== undefined) staff.set("gender", input.gender ?? undefined);
 
   if (input.city !== undefined || input.area !== undefined || input.radiusKm !== undefined) {
     const area = staff.serviceAreas?.[0];

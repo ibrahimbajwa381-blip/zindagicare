@@ -31,6 +31,13 @@ import { NurseAvatar } from "@/features/nurse/components/nurse-avatar";
 import { nurseProfilePath } from "@/lib/nurses/profile-path";
 import type { AdminNurseManageRow } from "@/features/admin/types/nurse-admin";
 import { cityAreaError } from "@/lib/geo/city-area-error";
+import {
+  DEFAULT_STAFF_FILTERS,
+  GenderQuickSelect,
+  matchesStaffFilters,
+  StaffFilterPanel,
+  type StaffFilters,
+} from "@/features/admin/components/admin-list-filters";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -44,6 +51,7 @@ const EMPTY_FORM = {
   experienceYears: "",
   city: "",
   area: "",
+  gender: "",
   homeVisitEnabled: true,
 };
 
@@ -110,6 +118,7 @@ export function AdminNursesManagement() {
   const [deleteInput, setDeleteInput] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<StaffFilters>(DEFAULT_STAFF_FILTERS);
 
   const copyPhone = async (rowId: string, phone: string) => {
     try {
@@ -176,6 +185,11 @@ export function AdminNursesManagement() {
       activeVisits: rows.reduce((sum, r) => sum + r.stats.activeVisits, 0),
     }),
     [rows],
+  );
+
+  const filteredRows = useMemo(
+    () => rows.filter((r) => matchesStaffFilters(r, filters)),
+    [rows, filters],
   );
 
   const updateRow = async (id: string, patch: Record<string, unknown>) => {
@@ -256,6 +270,7 @@ export function AdminNursesManagement() {
           specialties,
           city: form.city.trim(),
           area: form.area.trim() || undefined,
+          gender: form.gender || undefined,
           homeVisitEnabled: form.homeVisitEnabled,
         }),
       });
@@ -351,6 +366,15 @@ export function AdminNursesManagement() {
           </Button>
         </div>
       </div>
+
+      {rows.length > 0 && (
+        <StaffFilterPanel
+          rows={rows}
+          filters={filters}
+          onChange={setFilters}
+          shown={filteredRows.length}
+        />
+      )}
 
       {actionError && (
         <div className="flex items-start justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -469,6 +493,19 @@ export function AdminNursesManagement() {
                   onChange={(e) => setForm({ ...form, area: e.target.value })}
                 />
               </div>
+              <div>
+                <Label htmlFor="pt-gender">Gender</Label>
+                <select
+                  id="pt-gender"
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                >
+                  <option value="">Not set</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
               <div className="sm:col-span-2 lg:col-span-3">
                 <Label htmlFor="pt-specialties">Specialties</Label>
                 <SpecialtyMultiSelect
@@ -512,11 +549,13 @@ export function AdminNursesManagement() {
               Try again
             </Button>
           </div>
-        ) : rows.length === 0 ? (
+        ) : filteredRows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 p-16 text-center">
             <Activity className="h-10 w-10 text-slate-300" />
             <p className="text-sm text-slate-500">
-              {debouncedSearch
+              {rows.length > 0
+                ? "No results match these filters."
+                : debouncedSearch
                 ? "No nurses match your search."
                 : "No nurses yet. Approved applications appear here."}
             </p>
@@ -545,7 +584,7 @@ export function AdminNursesManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((row) => {
+                {filteredRows.map((row) => {
                   const isApproved = row.verificationStatus === VerificationStatuses.APPROVED;
                   return (
                     <Fragment key={row.id}>
@@ -581,7 +620,12 @@ export function AdminNursesManagement() {
                                 </div>
                               )}
                               <p className="truncate text-xs text-slate-400">
-                                {[row.area, row.city].filter(Boolean).join(", ")}
+                                {[
+                                  [row.area, row.city].filter(Boolean).join(", "),
+                                  row.gender === "male" ? "Male" : row.gender === "female" ? "Female" : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </p>
                               {!row.isActive && (
                                 <Badge variant="outline" className="mt-1 text-[10px]">
@@ -703,6 +747,12 @@ export function AdminNursesManagement() {
                                   ? "Disable home visits"
                                   : "Enable home visits"}
                               </Button>
+                              <GenderQuickSelect
+                                name={row.name}
+                                value={row.gender}
+                                disabled={pending === row.id}
+                                onChange={(gender) => updateRow(row.id, { gender })}
+                              />
                               <Button
                                 size="sm"
                                 variant="outline"

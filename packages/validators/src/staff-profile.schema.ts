@@ -245,6 +245,7 @@ export const adminCreatePhysiotherapistSchema = z.object({
   city: z.string().trim().min(2, "City is required"),
   area: z.string().trim().min(2).max(120).optional(),
   homeVisitEnabled: z.boolean().optional(),
+  gender: z.enum(["male", "female"]).optional(),
   /** Home visits only switch on when a real Google Maps location is given. */
   geo: physiotherapistAdminGeoSchema,
 });
@@ -260,6 +261,8 @@ const adminUpdateStaffObjectSchema = z.object({
     isAvailable: z.boolean().optional(),
     homeVisitEnabled: z.boolean().optional(),
     commissionPercent: z.number().min(0).max(100).nullable().optional(),
+    /** null clears it back to "not set". */
+    gender: z.enum(["male", "female"]).nullable().optional(),
 
     name: z.string().trim().min(2, "Name is required").max(100).optional(),
     phone: pakistaniPhoneSchema.optional(),

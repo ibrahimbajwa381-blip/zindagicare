@@ -101,6 +101,8 @@ const staffProfileSchema = new Schema(
     cnicLast4: { type: String },
     qualification: { type: String },
     experienceYears: { type: Number },
+    /** Admin-set; used for filtering in the admin console. Unset on older profiles. */
+    gender: { type: String, enum: ["male", "female"] },
     /** Nursing / physiotherapy sub-specialties. */
     specialties: [{ type: String }],
     /** Public profile — shown on /physiotherapists/[slug] or /nurses/[slug]. */

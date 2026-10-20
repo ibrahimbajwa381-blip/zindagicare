@@ -82,6 +82,7 @@ export type AdminPhysiotherapistManageRow = {
   licenseNumber?: string;
   qualification?: string;
   experienceYears?: number;
+  gender?: "male" | "female";
   specialties: string[];
   verificationStatus: string;
   rejectionReason?: string;

@@ -82,6 +82,7 @@ export type AdminNurseManageRow = {
   licenseNumber?: string;
   qualification?: string;
   experienceYears?: number;
+  gender?: "male" | "female";
   specialties: string[];
   verificationStatus: string;
   rejectionReason?: string;
