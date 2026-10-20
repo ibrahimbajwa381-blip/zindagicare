@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Copy,
   Eye,
+  Filter,
   Plus,
   Search,
   Settings2,
@@ -30,6 +31,97 @@ const DAYS = [1, 2, 3, 4, 5, 6, 0];
 
 function formatCurrency(amount: number) {
   return `PKR ${amount.toLocaleString("en-PK")}`;
+}
+
+type YesNoFilter = "all" | "yes" | "no";
+
+type DoctorFilters = {
+  city: string;
+  gender: "all" | "male" | "female" | "unset";
+  homeVisit: YesNoFilter;
+  sunday: YesNoFilter;
+  listed: YesNoFilter;
+  status: string;
+  specialty: string;
+};
+
+const DEFAULT_FILTERS: DoctorFilters = {
+  city: "all",
+  gender: "all",
+  homeVisit: "all",
+  sunday: "all",
+  listed: "all",
+  status: "all",
+  specialty: "all",
+};
+
+const YES_NO_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "yes", label: "Enabled" },
+  { value: "no", label: "Disabled" },
+];
+
+function matchesYesNo(filter: YesNoFilter, value: boolean) {
+  return filter === "all" || (filter === "yes") === value;
+}
+
+function matchesFilters(doc: AdminDoctorRow, filters: DoctorFilters) {
+  if (
+    filters.city !== "all" &&
+    !doc.cities.some((c) => c.toLowerCase() === filters.city.toLowerCase())
+  ) {
+    return false;
+  }
+  if (filters.gender === "unset" && doc.gender) return false;
+  if (
+    filters.gender !== "all" &&
+    filters.gender !== "unset" &&
+    doc.gender !== filters.gender
+  ) {
+    return false;
+  }
+  if (filters.status !== "all" && doc.verificationStatus !== filters.status) return false;
+  if (filters.specialty !== "all" && !doc.specialties.includes(filters.specialty)) return false;
+  return (
+    matchesYesNo(filters.homeVisit, doc.homeVisitEnabled) &&
+    matchesYesNo(filters.sunday, doc.sundayConsultEnabled) &&
+    matchesYesNo(filters.listed, doc.isListed)
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-slate-500">
+      {label}
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(
+            "w-full appearance-none rounded-lg border bg-white py-2 pl-3 pr-8 text-sm font-medium text-slate-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand",
+            value === "all" ? "border-slate-200" : "border-brand/50 bg-brand/[0.04]",
+          )}
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+      </div>
+    </label>
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -81,6 +173,9 @@ export function AdminDoctorsManagement() {
   const [deleteInput, setDeleteInput] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<DoctorFilters>(DEFAULT_FILTERS);
+  const setFilter = <K extends keyof DoctorFilters>(key: K, value: DoctorFilters[K]) =>
+    setFilters((current) => ({ ...current, [key]: value }));
 
   const copyPhone = async (rowId: string, phone: string) => {
     try {
@@ -103,6 +198,7 @@ export function AdminDoctorsManagement() {
     city: "",
     specialties: "",
     sundayConsultEnabled: false,
+    gender: "",
   });
 
   const hasLoadedRef = useRef(false);
@@ -132,6 +228,29 @@ export function AdminDoctorsManagement() {
     }),
     [doctors],
   );
+
+  const cityOptions = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const d of doctors) {
+      for (const c of d.cities) {
+        const key = c.toLowerCase();
+        if (!byKey.has(key)) byKey.set(key, c);
+      }
+    }
+    return [...byKey.values()].sort((a, b) => a.localeCompare(b));
+  }, [doctors]);
+
+  const specialtyOptions = useMemo(
+    () => [...new Set(doctors.flatMap((d) => d.specialties))].sort((a, b) => a.localeCompare(b)),
+    [doctors],
+  );
+
+  const filteredDoctors = useMemo(
+    () => doctors.filter((d) => matchesFilters(d, filters)),
+    [doctors, filters],
+  );
+
+  const activeFilterCount = Object.values(filters).filter((v) => v !== "all").length;
 
   const updateDoctor = async (id: string, patch: Record<string, unknown>) => {
     setPending(id);
@@ -167,6 +286,7 @@ export function AdminDoctorsManagement() {
         city: form.city.trim(),
         specialties: form.specialties.split(",").map((s) => s.trim()).filter(Boolean),
         sundayConsultEnabled: form.sundayConsultEnabled,
+        gender: form.gender || undefined,
       }),
     });
     setPending(null);
@@ -181,6 +301,7 @@ export function AdminDoctorsManagement() {
         city: "",
         specialties: "",
         sundayConsultEnabled: false,
+        gender: "",
       });
       await load();
     } else {
@@ -282,6 +403,100 @@ export function AdminDoctorsManagement() {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <Filter className="h-4 w-4 text-slate-400" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {activeFilterCount} active
+              </Badge>
+            )}
+          </p>
+          <div className="flex items-center gap-3 text-sm text-slate-500">
+            <span>
+              Showing {filteredDoctors.length} of {doctors.length}
+            </span>
+            {activeFilterCount > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setFilters(DEFAULT_FILTERS)}
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+          <FilterSelect
+            label="City"
+            value={filters.city}
+            onChange={(v) => setFilter("city", v)}
+            options={[
+              { value: "all", label: "All cities" },
+              ...cityOptions.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+          <FilterSelect
+            label="Gender"
+            value={filters.gender}
+            onChange={(v) => setFilter("gender", v as DoctorFilters["gender"])}
+            options={[
+              { value: "all", label: "All" },
+              { value: "male", label: "Male" },
+              { value: "female", label: "Female" },
+              { value: "unset", label: "Not set" },
+            ]}
+          />
+          <FilterSelect
+            label="Home visits"
+            value={filters.homeVisit}
+            onChange={(v) => setFilter("homeVisit", v as YesNoFilter)}
+            options={YES_NO_OPTIONS}
+          />
+          <FilterSelect
+            label="Sunday free consult"
+            value={filters.sunday}
+            onChange={(v) => setFilter("sunday", v as YesNoFilter)}
+            options={YES_NO_OPTIONS}
+          />
+          <FilterSelect
+            label="Listed publicly"
+            value={filters.listed}
+            onChange={(v) => setFilter("listed", v as YesNoFilter)}
+            options={[
+              { value: "all", label: "All" },
+              { value: "yes", label: "Listed" },
+              { value: "no", label: "Unlisted" },
+            ]}
+          />
+          <FilterSelect
+            label="Status"
+            value={filters.status}
+            onChange={(v) => setFilter("status", v)}
+            options={[
+              { value: "all", label: "All statuses" },
+              { value: VerificationStatuses.APPROVED, label: "Approved" },
+              { value: VerificationStatuses.RESTRICTED, label: "Restricted" },
+              { value: VerificationStatuses.REJECTED, label: "Rejected" },
+            ]}
+          />
+          <FilterSelect
+            label="Specialty"
+            value={filters.specialty}
+            onChange={(v) => setFilter("specialty", v)}
+            options={[
+              { value: "all", label: "All specialties" },
+              ...specialtyOptions.map((s) => ({ value: s, label: s })),
+            ]}
+          />
+        </div>
+      </div>
+
       {showForm && (
         <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
           <CardHeader>
@@ -329,6 +544,15 @@ export function AdminDoctorsManagement() {
                 onChange={(e) => setForm({ ...form, specialties: e.target.value })}
                 required
               />
+              <select
+                value={form.gender}
+                onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              >
+                <option value="">Gender (optional)</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
               <label className="flex items-center gap-2 text-sm sm:col-span-2 lg:col-span-3">
                 <input
                   type="checkbox"
@@ -350,10 +574,22 @@ export function AdminDoctorsManagement() {
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         {loading ? (
           <LoadingScreen message="Loading doctors…" size="md" />
-        ) : doctors.length === 0 ? (
+        ) : filteredDoctors.length === 0 ? (
           <div className="flex flex-col items-center gap-3 p-16 text-center">
             <Stethoscope className="h-10 w-10 text-slate-300" />
-            <p className="text-sm text-slate-500">No doctors found.</p>
+            <p className="text-sm text-slate-500">
+              {doctors.length === 0 ? "No doctors found." : "No doctors match these filters."}
+            </p>
+            {doctors.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setFilters(DEFAULT_FILTERS)}
+              >
+                Clear filters
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -379,7 +615,7 @@ export function AdminDoctorsManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {doctors.map((doc) => (
+                {filteredDoctors.map((doc) => (
                   <Fragment key={doc.id}>
                     <tr className="transition hover:bg-slate-50/60">
                       <td className="px-5 py-4">
@@ -410,6 +646,11 @@ export function AdminDoctorsManagement() {
                               </div>
                             ) : (
                               <p className="text-xs text-slate-500">—</p>
+                            )}
+                            {(doc.cities.length > 0 || doc.gender) && (
+                              <p className="truncate text-xs capitalize text-slate-400">
+                                {[doc.cities.join(", "), doc.gender].filter(Boolean).join(" · ")}
+                              </p>
                             )}
                             {!doc.isActive && (
                               <Badge variant="outline" className="mt-1 text-[10px]">
@@ -552,6 +793,19 @@ export function AdminDoctorsManagement() {
                             >
                               {doc.homeVisitEnabled ? "Disable home visits" : "Enable home visits"}
                             </Button>
+                            <select
+                              value={doc.gender ?? ""}
+                              disabled={pending === doc.id}
+                              onChange={(e) =>
+                                updateDoctor(doc.id, { gender: e.target.value || null })
+                              }
+                              aria-label={`Gender of ${doc.name}`}
+                              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
+                            >
+                              <option value="">Gender: not set</option>
+                              <option value="male">Gender: male</option>
+                              <option value="female">Gender: female</option>
+                            </select>
                             <Button
                               size="sm"
                               variant="outline"

@@ -142,7 +142,9 @@ const doctorProfileSchema = new Schema(
      */
     specialties: { type: [String], default: [], index: true },
     experienceYears: { type: Number, default: 0, min: 0 },
-    bio: { type: String, maxlength: 2000 },
+    /** Admin-set; used for filtering in the admin console. Unset on older profiles. */
+    gender: { type: String, enum: ["male", "female"] },
+    bio:{ type: String, maxlength: 2000 },
     languages: { type: [String], default: ["English", "Urdu"] },
     portfolio: { type: doctorPortfolioSchema, default: undefined },
     hospitals: [

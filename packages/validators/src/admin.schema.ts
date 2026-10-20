@@ -18,6 +18,7 @@ export const adminCreateDoctorSchema = z.object({
   /** First entry becomes primary; remainder additional + verified. */
   specialties: z.array(z.enum(SPECIALTIES)).min(1).max(5),
   sundayConsultEnabled: z.boolean().optional(),
+  gender: z.enum(["male", "female"]).optional(),
 });
 
 const adminHospitalSchema = z.object({
@@ -65,6 +66,8 @@ export const adminUpdateDoctorSchema = z
   .object({
     isListed: z.boolean().optional(),
     isActive: z.boolean().optional(),
+    /** null clears it back to "not set". */
+    gender: z.enum(["male", "female"]).nullable().optional(),
     homeVisitEnabled: z.boolean().optional(),
     homeVisitFee: z.number().min(0).max(50000).optional(),
     verificationStatus: z.enum(["approved", "rejected", "restricted"]).optional(),

@@ -99,6 +99,9 @@ export type AdminDoctorRow = {
   slug?: string;
   pmdcNumber?: string;
   specialties: string[];
+  gender?: "male" | "female";
+  /** Distinct cities from hospitals + coverage cities, for admin filtering. */
+  cities: string[];
   verificationStatus: string;
   isListed: boolean;
   isActive: boolean;
@@ -157,6 +160,9 @@ function mapDoctorRow(
     slug?: string;
     pmdcNumber?: string;
     specialties?: string[];
+    gender?: string | null;
+    hospitals?: { city?: string | null }[];
+    coverageCities?: string[];
     verificationStatus?: string;
     isListed?: boolean;
     sundayConsultEnabled?: boolean;
@@ -195,6 +201,16 @@ function mapDoctorRow(
     slug: profile.slug ?? undefined,
     pmdcNumber: revealPii(profile.pmdcNumber),
     specialties: profile.specialties ?? [],
+    gender:
+      profile.gender === "male" || profile.gender === "female" ? profile.gender : undefined,
+    cities: [
+      ...new Set(
+        [
+          ...(profile.hospitals ?? []).map((h) => h.city?.trim()),
+          ...(profile.coverageCities ?? []).map((c) => c?.trim()),
+        ].filter((c): c is string => Boolean(c)),
+      ),
+    ],
     verificationStatus: profile.verificationStatus ?? VerificationStatuses.PENDING,
     isListed: profile.isListed ?? false,
     isActive: user.isActive !== false,
@@ -541,6 +557,7 @@ export async function adminCreateDoctor(
     consultationFee: 2500,
     weeklyAvailability: DEFAULT_WEEKLY_AVAILABILITY,
     sundayConsultEnabled: input.sundayConsultEnabled ?? false,
+    gender: input.gender,
     // Doctors start without home visits; they opt in from their profile.
     homeVisitEnabled: false,
     coverageCities: [input.city.trim()],
@@ -630,6 +647,9 @@ export async function adminUpdateDoctor(
       );
     }
     refreshed.homeVisitEnabled = input.homeVisitEnabled;
+  }
+  if (input.gender !== undefined) {
+    refreshed.set("gender", input.gender ?? undefined);
   }
   if (input.homeVisitFee !== undefined) {
     refreshed.homeVisitFee = input.homeVisitFee;
