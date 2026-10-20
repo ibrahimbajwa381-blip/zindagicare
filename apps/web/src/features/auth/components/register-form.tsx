@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { PAKISTAN_CITIES } from "@zindagi/shared";
 import { pakistaniPhoneSchema, type AccountType } from "@zindagi/validators";
 import { siteConfig } from "@/config/site";
@@ -69,10 +69,12 @@ export function RegisterForm({
 
   return (
     <form
-      action={action}
       className="space-y-5"
       noValidate
       onSubmit={(e) => {
+        // Submit manually: a `<form action>` makes React reset every field after the
+        // action runs, so a server-side validation error would wipe what was typed.
+        e.preventDefault();
         const form = e.currentTarget;
         const phone = (form.elements.namedItem("phone") as HTMLInputElement)?.value ?? "";
         const password = (form.elements.namedItem("password") as HTMLInputElement)?.value ?? "";
@@ -99,9 +101,9 @@ export function RegisterForm({
         } else {
           setTermsError(undefined);
         }
-        if (blocked) {
-          e.preventDefault();
-        }
+        if (blocked) return;
+        const formData = new FormData(form);
+        startTransition(() => action(formData));
       }}
     >
       <div>

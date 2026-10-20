@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
@@ -28,7 +28,15 @@ export function LoginForm({
       </div>
       <AuthDividerClient />
 
-      <form action={action} className="space-y-4">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          // Submit manually so a failed sign-in doesn't reset the email field.
+          e.preventDefault();
+          const formData = new FormData(e.currentTarget);
+          startTransition(() => action(formData));
+        }}
+      >
         <input type="hidden" name="callbackUrl" value={callbackUrl ?? "/dashboard"} />
         <FormField label={t.auth.email} name="email" type="email" autoComplete="email" required />
         <div>

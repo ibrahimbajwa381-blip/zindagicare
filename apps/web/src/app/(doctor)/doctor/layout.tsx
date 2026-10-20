@@ -114,7 +114,7 @@ export default async function DoctorLayout({
       doctorName={doctorUser?.name ?? session.user.name ?? "Doctor"}
       doctorAvatarUrl={doctorUser?.avatarUrl}
       accountabilityBanner={accountabilityBanner}
-      showCommunityInvite={Boolean(doctorProfile) && !doctorProfile?.communityJoinedAt}
+      showCommunityInvite={showFullNav && Boolean(doctorProfile) && !doctorProfile?.communityJoinedAt}
     >
       {children}
     </DoctorShell>
