@@ -6,6 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import {
   getMySundayRequest,
+  getSundaySpecialties,
   submitSundayRequest,
   SUNDAY_CONTRIBUTION_FEE_PKR,
   SUNDAY_MATCH_WITHIN_MINUTES,
@@ -53,6 +54,8 @@ export default function SundayConsultScreen() {
   const [phone, setPhone] = useState("");
   const [history, setHistory] = useState<Record<string, string>>({});
   const [affordability, setAffordability] = useState<SundayAffordabilityChoice | null>(null);
+  const [specialtyOptions, setSpecialtyOptions] = useState<string[]>([]);
+  const [preferredSpecialty, setPreferredSpecialty] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,8 +68,13 @@ export default function SundayConsultScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [req, profile] = await Promise.allSettled([getMySundayRequest(), getPatientProfile()]);
+      const [req, profile, specialties] = await Promise.allSettled([
+        getMySundayRequest(),
+        getPatientProfile(),
+        getSundaySpecialties(),
+      ]);
       if (req.status === "fulfilled") setRequest(req.value);
+      if (specialties.status === "fulfilled") setSpecialtyOptions(specialties.value);
       if (profile.status === "fulfilled" && profile.value.user.phone) {
         setPhone((prev) => prev || profile.value.user.phone!);
       }
@@ -124,6 +132,7 @@ export default function SundayConsultScreen() {
         history: HISTORY_QUESTIONS.map((q) => ({ key: q.key, answer: (history[q.key] ?? "").trim() })),
         locale: "en",
         affordabilityChoice: affordability,
+        ...(preferredSpecialty ? { preferredSpecialty } : {}),
       });
 
       if (result.kind === "payment") {
@@ -268,6 +277,9 @@ export default function SundayConsultScreen() {
               We're matching you with an available doctor within {SUNDAY_MATCH_WITHIN_MINUTES} minutes. You'll
               see it here as soon as it's confirmed.
             </Text>
+            {request.preferredSpecialty ? (
+              <Text style={styles.hint}>Requested specialty: {request.preferredSpecialty}</Text>
+            ) : null}
             {request.patientNotes ? <Text style={styles.notesEcho}>“{request.patientNotes}”</Text> : null}
           </View>
         ) : request && request.status === "assigned" && request.doctor ? (
@@ -321,6 +333,34 @@ export default function SundayConsultScreen() {
               placeholderTextColor="#9AA5B1"
               accessibilityLabel="Phone number"
             />
+
+            {specialtyOptions.length > 0 ? (
+              <>
+                <Text style={styles.label}>Doctor specialty (optional)</Text>
+                <Text style={styles.hint}>
+                  Choose a specialty and only doctors in it will see your request. Keep &quot;Any doctor&quot; for the
+                  fastest match.
+                </Text>
+                <View style={styles.chipWrap}>
+                  {[null, ...specialtyOptions].map((option) => {
+                    const selected = preferredSpecialty === option;
+                    return (
+                      <Pressable
+                        key={option ?? "any"}
+                        style={[styles.chip, selected && styles.chipActive]}
+                        onPress={() => setPreferredSpecialty(option)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                      >
+                        <Text style={[styles.chipText, selected && styles.chipTextActive]}>
+                          {option ?? "Any doctor"}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
 
             <Text style={styles.label}>Your medical history</Text>
             <Text style={styles.hint}>
@@ -441,6 +481,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   choiceRowActive: { borderColor: colors.brand.DEFAULT, backgroundColor: colors.brand.muted },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.neutral.border,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  chipActive: { borderColor: colors.brand.DEFAULT, backgroundColor: colors.brand.muted },
+  chipText: { fontFamily: fonts.medium, fontSize: 13, color: colors.neutral.foreground },
+  chipTextActive: { color: colors.brand.mutedForeground },
   choiceTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.neutral.foreground },
   choiceHint: { fontFamily: fonts.regular, fontSize: 12, color: "#666", marginTop: 2 },
   primaryButton: {

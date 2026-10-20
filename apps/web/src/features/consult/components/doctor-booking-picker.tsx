@@ -11,6 +11,8 @@ export type BookingSlot = {
   startAt: string;
   endAt: string;
   status: string;
+  /** The signed-in patient's own unpaid checkout for this slot — selectable to resume payment. */
+  heldByYou?: boolean;
 };
 
 export const isSlotAvailable = (slot: BookingSlot) => slot.status === SlotStatuses.AVAILABLE;
@@ -209,6 +211,16 @@ export function BookingTimeGroups({
                     )}
                   >
                     {formatKarachiTime(slot.startAt)}
+                    {slot.heldByYou && (
+                      <span
+                        className={cn(
+                          "block text-[10px] font-semibold leading-tight",
+                          selected ? "text-white/85" : "text-amber-600",
+                        )}
+                      >
+                        Your hold
+                      </span>
+                    )}
                   </button>
                 );
               })}

@@ -29,6 +29,8 @@ export type SundayPatientRequestDto = {
   sundayDateKey: string;
   patientPhone: string;
   patientNotes?: string;
+  /** Specialty the patient asked for; only doctors verified in it see the request. */
+  preferredSpecialty?: string;
   affordabilityChoice: SundayAffordabilityChoice;
   paymentId?: string;
   contributionFeePkr?: number;
@@ -60,7 +62,14 @@ export type SundayFreeRequestInput = {
   history: SundayHistoryAnswerInput[];
   locale?: "en" | "ur";
   affordabilityChoice: SundayAffordabilityChoice;
+  /** Optional — omit to let any verified doctor pick the request. */
+  preferredSpecialty?: string;
 };
+
+/** Specialties a patient may ask for (held by at least one verified doctor). */
+export function getSundaySpecialties() {
+  return apiFetch<string[]>("/api/v1/sunday/specialties");
+}
 
 /** Returns null when the patient has no active/past request for the given Sunday. */
 export function getMySundayRequest(date?: string) {

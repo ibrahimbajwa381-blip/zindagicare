@@ -138,6 +138,9 @@ export function DoctorSundayRequests({ onChange }: Props) {
           <SundayHistoryList request={request} />
         </div>
         <div className="flex flex-wrap gap-1">
+          {request.preferredSpecialty && (
+            <Badge variant="default">Asked for {request.preferredSpecialty}</Badge>
+          )}
           {request.overdue && <Badge variant="accent">Waiting over a week</Badge>}
           {request.affordabilityChoice === SundayAffordabilityChoices.CANNOT_AFFORD && (
             <Badge variant="secondary">Cannot afford paid care</Badge>
@@ -177,7 +180,8 @@ export function DoctorSundayRequests({ onChange }: Props) {
         </CardTitle>
         <p className="text-sm text-slate-500">
           Pick a patient and choose a time. The consultation is free for the patient, and the
-          review they leave counts toward your profile.
+          review they leave counts toward your profile. Patients who asked for a specific
+          specialty are only shown to doctors verified in it.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -216,7 +220,14 @@ export function DoctorSundayRequests({ onChange }: Props) {
                 className={`flex flex-wrap items-center justify-between gap-2 p-3 ${surfaceInset}`}
               >
                 <div>
-                  <p className="font-medium">{request.patientName}</p>
+                  <p className="font-medium">
+                    {request.patientName}
+                    {request.preferredSpecialty ? (
+                      <span className="ml-2 text-xs font-normal text-slate-500">
+                        ({request.preferredSpecialty})
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {request.scheduledStart
                       ? `Scheduled ${formatKarachiTime(request.scheduledStart)}`

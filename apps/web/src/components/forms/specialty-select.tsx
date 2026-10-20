@@ -16,6 +16,11 @@ type SpecialtySelectProps = {
   /** Specialties to hide from the list (e.g. already chosen as additional). */
   exclude?: readonly string[];
   placeholder?: string;
+  /** Restrict the list to these specialties (defaults to every known specialty). */
+  options?: readonly string[];
+  /** Adds a first option that clears the value (e.g. "Any doctor"). */
+  emptyOptionLabel?: string;
+  disabled?: boolean;
 };
 
 export function SpecialtySelect({
@@ -28,6 +33,9 @@ export function SpecialtySelect({
   allowCustomValue = false,
   exclude = [],
   placeholder = "Select your specialty",
+  options: optionList,
+  emptyOptionLabel,
+  disabled = false,
 }: SpecialtySelectProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -38,12 +46,13 @@ export function SpecialtySelect({
   const excludeSet = useMemo(() => new Set(exclude), [exclude]);
 
   const options = useMemo(() => {
+    const known = optionList ?? SPECIALTIES_ALPHABETICAL;
     const base =
       allowCustomValue && value && !isKnownSpecialty(value)
-        ? [value, ...SPECIALTIES_ALPHABETICAL]
-        : [...SPECIALTIES_ALPHABETICAL];
+        ? [value, ...known]
+        : [...known];
     return base.filter((item) => item === value || !excludeSet.has(item));
-  }, [allowCustomValue, excludeSet, value]);
+  }, [allowCustomValue, excludeSet, optionList, value]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -100,14 +109,16 @@ export function SpecialtySelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
+        disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
           "flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 text-left text-sm shadow-sm transition",
           "hover:border-slate-300 focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25",
           !value && "text-slate-400",
+          disabled && "cursor-not-allowed opacity-60",
         )}
       >
-        <span className="truncate">{value || placeholder}</span>
+        <span className="truncate">{value || emptyOptionLabel || placeholder}</span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
       </button>
 
@@ -137,6 +148,24 @@ export function SpecialtySelect({
             aria-label="Specialties"
             className="max-h-60 overflow-y-auto overscroll-contain py-1"
           >
+            {emptyOptionLabel && !query.trim() ? (
+              <li role="option" aria-selected={!value}>
+                <button
+                  type="button"
+                  onClick={() => selectSpecialty("")}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition",
+                    !value ? "bg-brand/10 font-medium text-brand" : "text-slate-800 hover:bg-slate-50",
+                  )}
+                >
+                  <Check
+                    className={cn("h-4 w-4 shrink-0", !value ? "opacity-100" : "opacity-0")}
+                    aria-hidden
+                  />
+                  <span className="truncate">{emptyOptionLabel}</span>
+                </button>
+              </li>
+            ) : null}
             {filtered.length === 0 ? (
               <li className="px-3 py-3 text-sm text-slate-500">No specialty matches “{query.trim()}”.</li>
             ) : (

@@ -93,6 +93,8 @@ export type ConsultSlotView = {
   startAt: string;
   endAt: string;
   status: string;
+  /** The viewing patient's own unpaid checkout hold — they can reopen it to pay. */
+  heldByYou?: boolean;
 };
 
 export type OnlinePatientBookingDto = {
@@ -194,7 +196,7 @@ export class OnlineConsultService {
         scheduledEnd: { $gt: rangeStart },
       }),
     )
-      .select("doctorId scheduledStart scheduledEnd")
+      .select("doctorId patientId status scheduledStart scheduledEnd")
       .lean();
   }
 
@@ -509,7 +511,22 @@ export class OnlineConsultService {
     });
   }
 
-  static async getSlotsForDoctor(doctorId: string, dateKey?: string) {
+  /**
+   * An unpaid checkout the patient themselves started (e.g. they backed out of
+   * the payment page) — it must not lock them out of their own slot.
+   */
+  private static isOwnPendingHold(
+    appt: { patientId?: { toString(): string } | null; status?: string },
+    patientId?: string,
+  ) {
+    return (
+      !!patientId &&
+      appt.status === AppointmentStatuses.PENDING &&
+      appt.patientId?.toString() === patientId
+    );
+  }
+
+  static async getSlotsForDoctor(doctorId: string, dateKey?: string, viewerId?: string) {
     await OnlineConsultService.ensureConnected();
     await OnlineConsultService.expireStalePendingBookings();
 
@@ -571,14 +588,18 @@ export class OnlineConsultService {
     );
 
     const slots: ConsultSlotView[] = generated.map((slot) => {
-      const isBooked = booked.some((appt) =>
+      const blocking = booked.filter((appt) =>
         appointmentBlocksSlot(slot.startAt, slot.endAt, appt),
       );
+      const heldByYou =
+        blocking.length > 0 &&
+        blocking.every((appt) => OnlineConsultService.isOwnPendingHold(appt, viewerId));
       return {
         slotId: slot.slotId,
         startAt: slot.startAt.toISOString(),
         endAt: slot.endAt.toISOString(),
-        status: isBooked ? SlotStatuses.BOOKED : SlotStatuses.AVAILABLE,
+        status: blocking.length && !heldByYou ? SlotStatuses.BOOKED : SlotStatuses.AVAILABLE,
+        ...(heldByYou ? { heldByYou: true } : {}),
       };
     });
 
@@ -670,6 +691,9 @@ export class OnlineConsultService {
         status: { $in: ACTIVE_STATUSES },
         scheduledStart: { $lt: slotEnd },
         scheduledEnd: { $gt: slotStart },
+        // The patient's own unpaid hold isn't a conflict — initiateCheckout
+        // resumes it (same slot) or releases it (reconcilePatientPendingCheckout).
+        $nor: [{ patientId, status: AppointmentStatuses.PENDING }],
       }),
     ).lean();
 

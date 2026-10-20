@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   PAID_ONLINE_INTAKE_QUESTION_KEYS,
+  SPECIALTIES,
   SundayAffordabilityChoices,
 } from "@zindagi/shared";
 import { pakistaniPhoneSchema } from "./auth.schema";
@@ -30,6 +31,11 @@ export const sundayFreeRequestSchema = z.object({
     SundayAffordabilityChoices.CANNOT_AFFORD,
     SundayAffordabilityChoices.PAY_FEE,
   ]),
+  /** Optional — only doctors verified in this specialty see the request. Empty = any doctor. */
+  preferredSpecialty: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.enum(SPECIALTIES).optional(),
+  ),
 });
 
 export type SundayFreeRequestInput = z.infer<typeof sundayFreeRequestSchema>;

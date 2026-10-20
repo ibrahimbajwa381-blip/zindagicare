@@ -36,6 +36,11 @@ const sundayFreeRequestSchema = new Schema(
     /** Medical history — same questions as the paid online consult intake. */
     history: { type: [historyAnswerSchema], default: [] },
     historyLocale: { type: String, enum: ["en", "ur"], default: "en" },
+    /**
+     * Optional specialty the patient wants (e.g. "Gynecologist"). When set, only
+     * doctors with this admin-verified specialty see and can pick the request.
+     */
+    preferredSpecialty: { type: String, trim: true, index: true },
     affordabilityChoice: {
       type: String,
       enum: Object.values(SundayAffordabilityChoices),

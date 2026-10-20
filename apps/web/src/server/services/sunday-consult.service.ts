@@ -29,6 +29,7 @@ import {
   VideoSessionStatuses,
   getPaidOnlineIntakeQuestions,
   getSundayFreeJoinWindow,
+  isKnownSpecialty,
   normalizeIntakeLocale,
   type IntakeLocale,
 } from "@zindagi/shared";
@@ -96,6 +97,8 @@ type SundayPaymentMetadata = {
   /** Encrypted JSON of SundayHistoryAnswerDto[] — payment metadata is not field-encrypted. */
   historyEncrypted?: string;
   historyLocale?: IntakeLocale;
+  /** Specialty the patient asked for — copied onto the request once paid. */
+  preferredSpecialty?: string;
   sundayDateKey: string;
   affordabilityChoice: typeof SundayAffordabilityChoices.PAY_FEE;
   txnRefNo?: string;
@@ -1033,12 +1036,25 @@ export class SundayConsultService {
 
     const historyLocale = normalizeIntakeLocale(input.locale ?? user.metadata?.locale);
     const history = buildHistory(input.history, historyLocale);
+    const preferredSpecialty = input.preferredSpecialty;
+
+    if (preferredSpecialty) {
+      const available = await SundayConsultService.listRequestableSpecialties();
+      if (!available.includes(preferredSpecialty)) {
+        throw new AppError(
+          `No verified ${preferredSpecialty} is available for Sunday consults right now. Choose another specialty or leave it empty so any doctor can pick your request.`,
+          ErrorCodes.VALIDATION,
+          400,
+        );
+      }
+    }
 
     if (input.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE) {
       return SundayConsultService.initiateContributionCheckout(patientId, {
         patientPhone: input.patientPhone,
         history,
         historyLocale,
+        preferredSpecialty,
         sundayDateKey,
       });
     }
@@ -1047,6 +1063,7 @@ export class SundayConsultService {
       patientPhone: input.patientPhone,
       history,
       historyLocale,
+      preferredSpecialty,
       sundayDateKey,
       affordabilityChoice: SundayAffordabilityChoices.CANNOT_AFFORD,
     });
@@ -1060,6 +1077,7 @@ export class SundayConsultService {
       patientPhone: string;
       history: SundayHistoryAnswerDto[];
       historyLocale: IntakeLocale;
+      preferredSpecialty?: string;
       sundayDateKey: string;
       affordabilityChoice: SundayPatientRequestDto["affordabilityChoice"];
       paymentId?: string;
@@ -1074,6 +1092,7 @@ export class SundayConsultService {
         patientPhone: input.patientPhone,
         history: input.history,
         historyLocale: input.historyLocale,
+        ...(input.preferredSpecialty ? { preferredSpecialty: input.preferredSpecialty } : {}),
         sundayDateKey: input.sundayDateKey,
         affordabilityChoice: input.affordabilityChoice,
         paymentId: input.paymentId,
@@ -1108,23 +1127,28 @@ export class SundayConsultService {
     const requestId = doc._id.toString();
     const isPaid = input.affordabilityChoice === SundayAffordabilityChoices.PAY_FEE;
     const patientName = safeDisplayText(user?.name) ?? "A patient";
+    const specialtyNote = input.preferredSpecialty
+      ? ` Only ${input.preferredSpecialty} doctors can see it.`
+      : "";
     await notifyAdmins({
       title: isPaid
         ? "New Sunday consult request (paid contribution)"
         : "New Sunday free consult request",
       body: isPaid
-        ? `${patientName} paid Rs. ${SUNDAY_CONSULT_CONFIG.contributionFeePkr} and requested a Sunday consult. It is now on the doctors' open-requests board.`
-        : `${patientName} requested a free Sunday consult. It is now on the doctors' open-requests board.`,
+        ? `${patientName} paid Rs. ${SUNDAY_CONSULT_CONFIG.contributionFeePkr} and requested a Sunday consult. It is now on the doctors' open-requests board.${specialtyNote}`
+        : `${patientName} requested a free Sunday consult. It is now on the doctors' open-requests board.${specialtyNote}`,
       payload: { type: "sunday_free_requested", requestId, sundayDateKey: input.sundayDateKey },
     }).catch((err) => {
       console.error("[sunday-consult] admin notification failed", err);
     });
 
-    await SundayConsultService.notifyDoctorsOfOpenRequest(requestId, input.sundayDateKey).catch(
-      (err) => {
-        console.error("[sunday-consult] doctor notification failed", err);
-      },
-    );
+    await SundayConsultService.notifyDoctorsOfOpenRequest(
+      requestId,
+      input.sundayDateKey,
+      input.preferredSpecialty,
+    ).catch((err) => {
+      console.error("[sunday-consult] doctor notification failed", err);
+    });
 
     publishSundayEvent({
       type: "instance_updated",
@@ -1154,6 +1178,7 @@ export class SundayConsultService {
       patientPhone: string;
       history: SundayHistoryAnswerDto[];
       historyLocale: IntakeLocale;
+      preferredSpecialty?: string;
       sundayDateKey: string;
       paymentProvider?: PaymentProviderInput;
     },
@@ -1175,7 +1200,13 @@ export class SundayConsultService {
         $set: {
           "metadata.historyEncrypted": historyEncrypted,
           "metadata.historyLocale": input.historyLocale,
+          ...(input.preferredSpecialty
+            ? { "metadata.preferredSpecialty": input.preferredSpecialty }
+            : {}),
         },
+        ...(input.preferredSpecialty
+          ? {}
+          : { $unset: { "metadata.preferredSpecialty": "" } }),
       });
       const amount = pendingPayment.amount;
       const useManual =
@@ -1238,6 +1269,7 @@ export class SundayConsultService {
         patientPhone: input.patientPhone,
         historyEncrypted,
         historyLocale: input.historyLocale,
+        ...(input.preferredSpecialty ? { preferredSpecialty: input.preferredSpecialty } : {}),
         sundayDateKey: input.sundayDateKey,
         affordabilityChoice: SundayAffordabilityChoices.PAY_FEE,
         txnRefNo,
@@ -1406,6 +1438,7 @@ export class SundayConsultService {
       patientPhone: metadata.patientPhone,
       history: readPaymentHistory(metadata),
       historyLocale: normalizeIntakeLocale(metadata.historyLocale),
+      preferredSpecialty: metadata.preferredSpecialty,
       sundayDateKey: metadata.sundayDateKey,
       affordabilityChoice: SundayAffordabilityChoices.PAY_FEE,
       paymentId,
@@ -1620,6 +1653,7 @@ export class SundayConsultService {
           text: h.text,
           answer: h.answer,
         })),
+        preferredSpecialty: mapped.preferredSpecialty,
         affordabilityChoice: mapped.affordabilityChoice,
         paymentId: mapped.paymentId,
         contributionFeePkr: mapped.contributionFeePkr,
@@ -1771,12 +1805,20 @@ export class SundayConsultService {
     return { rejected: true };
   }
 
-  /** In-app + push heads-up to doctors who opted into Sunday consults. */
-  private static async notifyDoctorsOfOpenRequest(requestId: string, sundayDateKey: string) {
+  /**
+   * In-app + push heads-up to doctors who opted into Sunday consults. A request
+   * with a preferred specialty only alerts doctors verified in that specialty.
+   */
+  private static async notifyDoctorsOfOpenRequest(
+    requestId: string,
+    sundayDateKey: string,
+    preferredSpecialty?: string,
+  ) {
     const doctors = await DoctorProfileModel.find(
       mongoFilter({
         sundayConsultEnabled: true,
         verificationStatus: VerificationStatuses.APPROVED,
+        ...(preferredSpecialty ? { specialties: preferredSpecialty } : {}),
       }),
     )
       .select("userId")
@@ -1786,14 +1828,43 @@ export class SundayConsultService {
       doctors.map((doc) =>
         deliverUserNotification({
           userId: doc.userId.toString(),
-          title: "New Sunday free consult request",
-          body: "A patient is waiting for a free Sunday consultation. Pick them and choose a time to earn a review.",
+          title: preferredSpecialty
+            ? `New Sunday free consult request (${preferredSpecialty})`
+            : "New Sunday free consult request",
+          body: preferredSpecialty
+            ? `A patient asked for a ${preferredSpecialty} and is waiting for a free Sunday consultation. Pick them and choose a time to earn a review.`
+            : "A patient is waiting for a free Sunday consultation. Pick them and choose a time to earn a review.",
           payload: { type: "sunday_free_open_request", requestId, sundayDateKey },
           skipWhatsApp: true,
           skipEmail: true,
         }),
       ),
     );
+  }
+
+  /**
+   * Specialties a patient can ask for on a Sunday request: those held
+   * (admin-verified) by at least one approved doctor — the same doctors who
+   * can see the open-requests board. Alphabetical.
+   */
+  static async listRequestableSpecialties(): Promise<string[]> {
+    await connectDatabase();
+    const values = (await DoctorProfileModel.distinct(
+      "specialties",
+      mongoFilter({ verificationStatus: VerificationStatuses.APPROVED }),
+    )) as string[];
+    return values
+      .filter((value) => isKnownSpecialty(value))
+      .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+  }
+
+  /** Whether a doctor with these verified specialties may see / pick the request. */
+  private static doctorMatchesRequestSpecialty(
+    doctorSpecialties: readonly string[] | null | undefined,
+    preferredSpecialty: string | null | undefined,
+  ): boolean {
+    if (!preferredSpecialty) return true;
+    return (doctorSpecialties ?? []).includes(preferredSpecialty);
   }
 
   private static async requireApprovedDoctor(userId: string) {
@@ -1827,11 +1898,16 @@ export class SundayConsultService {
     await connectDatabase();
     const doctor = await SundayConsultService.requireApprovedDoctor(userId);
     const sundayDateKey = dateKey ?? formatSundayDateKey(getActiveOrNextSundayDate());
+    // Unpicked requests are only shown to doctors verified in the patient's
+    // preferred specialty; `null` in $in also matches requests without one.
+    const specialtyMatch = {
+      preferredSpecialty: { $in: [null, ...(doctor.specialties ?? [])] },
+    };
 
     const docs = await SundayFreeRequestModel.find(
       mongoFilter({
         $or: [
-          { sundayDateKey, status: SundayFreeRequestStatuses.REQUESTED },
+          { sundayDateKey, status: SundayFreeRequestStatuses.REQUESTED, ...specialtyMatch },
           {
             sundayDateKey,
             status: {
@@ -1842,6 +1918,7 @@ export class SundayConsultService {
           {
             status: SundayFreeRequestStatuses.REQUESTED,
             createdAt: { $lte: new Date(Date.now() - OVERDUE_REQUEST_AGE_MS) },
+            ...specialtyMatch,
           },
         ],
         deletedAt: null,
@@ -1873,6 +1950,7 @@ export class SundayConsultService {
           text: h.text,
           answer: h.answer,
         })),
+        preferredSpecialty: mapped.preferredSpecialty,
         affordabilityChoice: mapped.affordabilityChoice,
         createdAt: mapped.createdAt,
         overdue,
@@ -1909,6 +1987,18 @@ export class SundayConsultService {
         "Another doctor already picked this patient",
         ErrorCodes.CONFLICT,
         409,
+      );
+    }
+    if (
+      !SundayConsultService.doctorMatchesRequestSpecialty(
+        doctor.specialties,
+        request.preferredSpecialty,
+      )
+    ) {
+      throw new AppError(
+        `This patient asked for a ${request.preferredSpecialty}. Only doctors verified in that specialty can pick it.`,
+        ErrorCodes.FORBIDDEN,
+        403,
       );
     }
 
@@ -2190,6 +2280,7 @@ export class SundayConsultService {
     _id: { toString(): string };
     patientPhone: string;
     patientNotes?: string | null;
+    preferredSpecialty?: string | null;
     status: string;
     sundayDateKey: string;
     affordabilityChoice?: string | null;
@@ -2263,6 +2354,7 @@ export class SundayConsultService {
       sundayDateKey: doc.sundayDateKey,
       patientPhone: doc.patientPhone,
       patientNotes: doc.patientNotes ?? undefined,
+      preferredSpecialty: doc.preferredSpecialty || undefined,
       affordabilityChoice,
       paymentId: doc.paymentId?.toString(),
       contributionFeePkr:

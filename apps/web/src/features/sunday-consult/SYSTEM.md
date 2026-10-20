@@ -4,6 +4,8 @@
 
 Weekly free 10-minute consultations on Sundays (Asia/Karachi). Patients submit a request (no doctor picker). **Doctors pick requests themselves**: any verified doctor sees the open-requests board on `/doctor/sunday-consult`, picks a patient and chooses a time on that Sunday. The patient gets the consult free; the doctor earns the review. Admins only watch progress on `/admin/sunday-consult` (read-only, no assignment). One free request per patient per week, no-show bans. Legacy slot templates remain for doctor capacity/admin tooling.
 
+Preferred specialty (optional): the patient may pick a specialty (e.g. Gynecologist, Dermatologist) when requesting, chosen from `GET /api/v1/sunday/specialties` (specialties held by at least one approved doctor). The request stores it as `preferredSpecialty`; only doctors whose admin-verified `specialties` include it see the request on the board (including the overdue list), get the new-request notification, or can pick it (claim returns 403 otherwise). Requests without a specialty stay visible to every verified doctor. For paid contributions the choice travels in the payment metadata until the request is created.
+
 Request lifecycle: `requested` → (doctor picks + time) `assigned` → `completed` / `cancelled`. A doctor may release an `assigned` request before the consult starts; it goes back to `requested` and the appointment is cancelled.
 
 Closing a consult: video and chat stay open from the usual join-window opening (`VIDEO_CONSULT_CONFIG.joinEarlyMinutes` before the start) until the **doctor** presses "Finish consultation" (`PATCH /api/v1/sunday/doctor/appointment-status`). Leaving the call does not end it, and nothing auto-completes a Sunday consult. Only a completed consult can be reviewed. Finishing (or marking a no-show) closes the video session and the chat thread (unless the pair shares another open/paid consult) and notifies the patient to leave a review. The doctor-miss sweep still records a no-show if the doctor never joins.
@@ -16,7 +18,7 @@ Overdue requests: `requested` requests older than 7 days (no doctor ever picked 
 |------------|---------|
 | `SundaySlotTemplate` | Recurring rules per doctor (start/end, duration, max slots) |
 | `SundaySlotInstance` | One doc per doctor per Sunday; **embedded slots[]** for atomic updates |
-| `SundayFreeRequest` | Patient request; `assignedDoctorId` = the doctor who picked it |
+| `SundayFreeRequest` | Patient request; `assignedDoctorId` = the doctor who picked it; optional `preferredSpecialty` limits which doctors see it |
 | `Appointment` | Confirmed booking (`type: sunday_free`), created when a doctor picks a request |
 | `User` | `noShowCount`, `sundayBannedUntil`, `earlyAccessSunday` |
 
@@ -25,6 +27,7 @@ Overdue requests: `requested` requests older than 7 days (no doctor ever picked 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/v1/sunday/doctors` | Public | List Sunday doctors + availability |
+| GET | `/api/v1/sunday/specialties` | Public | Specialties a patient can request (held by an approved doctor) |
 | GET | `/api/v1/sunday/slots` | Public | Slots for doctor + date |
 | GET | `/api/v1/sunday/events` | Public | SSE realtime stream |
 | POST | `/api/v1/sunday/reserve` | Patient | Hold slot (5 min) |

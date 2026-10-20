@@ -315,6 +315,11 @@ function SundayRequestCard({
               ? `Paid Rs. ${request.contributionFeePkr ?? SUNDAY_CONSULT_CONFIG.contributionFeePkr}`
               : "Cannot afford (free)"}
           </Badge>
+          {request.preferredSpecialty && (
+            <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800">
+              {request.preferredSpecialty} only
+            </Badge>
+          )}
           <Badge variant="outline" className={stage.className}>
             {stage.label}
           </Badge>

@@ -32,6 +32,8 @@ export type SundayPatientRequestDto = {
   sundayDateKey: string;
   patientPhone: string;
   patientNotes?: string;
+  /** Specialty the patient asked for; only doctors verified in it see the request. */
+  preferredSpecialty?: string;
   affordabilityChoice: SundayAffordabilityChoice;
   paymentId?: string;
   contributionFeePkr?: number;
@@ -95,6 +97,8 @@ export type SundayDoctorRequestDto = {
   /** Legacy free-text notes on requests made before history was required. */
   patientNotes?: string;
   history: SundayHistoryAnswerDto[];
+  /** Specialty the patient asked for; only doctors verified in it see the request. */
+  preferredSpecialty?: string;
   affordabilityChoice: SundayAffordabilityChoice;
   createdAt: string;
   /** Unpicked request whose Sunday already passed (older than a week). */
@@ -117,6 +121,8 @@ export type SundayAdminRequestDto = {
   patientNotes?: string;
   /** Medical history the patient answered when requesting (symptoms, meds, allergies…). */
   history: SundayHistoryAnswerDto[];
+  /** Specialty the patient asked for; only doctors verified in it see the request. */
+  preferredSpecialty?: string;
   affordabilityChoice: SundayAffordabilityChoice;
   paymentId?: string;
   contributionFeePkr?: number;

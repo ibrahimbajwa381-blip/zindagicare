@@ -110,6 +110,14 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
         return;
       }
 
+      // Patient backed out of payment earlier — put them straight back on their held slot.
+      const held = loaded.find((s) => s.heldByYou);
+      if (held) {
+        setSelectedDateKey(getConsultSlotDateKey(held.slotId));
+        setSelectedSlotId(held.slotId);
+        return;
+      }
+
       // Default to the first day that actually has an open slot.
       const firstOpen = loaded
         .filter(isSlotAvailable)
@@ -180,6 +188,9 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
   );
 
   const selectedSlot = slots.find((s) => s.slotId === selectedSlotId);
+  const heldSlot = slots.find((s) => s.heldByYou);
+  // The profile's isFull count can't tell the patient's own hold apart — keep it pickable.
+  const bookingClosed = doctor.isFull && !heldSlot;
 
   const selectDate = (key: string) => {
     setSelectedDateKey(key);
@@ -275,11 +286,33 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
 
   const picker = (dense: boolean) => (
     <div className="space-y-4">
+      {!slotsLoading && heldSlot && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-900">
+          <p className="font-semibold">You have an unpaid booking</p>
+          <p className="mt-0.5 text-xs text-amber-800">
+            {describeDateKey(getConsultSlotDateKey(heldSlot.slotId)).label},{" "}
+            {formatKarachiTime(heldSlot.startAt)} is held for you — continue to payment to confirm it.
+          </p>
+          {heldSlot.slotId !== selectedSlotId && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDateKey(getConsultSlotDateKey(heldSlot.slotId));
+                setSelectedSlotId(heldSlot.slotId);
+              }}
+              className="mt-1.5 text-xs font-semibold text-amber-700 underline underline-offset-2"
+            >
+              Select it again
+            </button>
+          )}
+        </div>
+      )}
+
       {!slotsLoading && nextAvailable && nextAvailable.slotId !== selectedSlotId && (
         <button
           type="button"
           onClick={pickNextAvailable}
-          disabled={loading || doctor.isFull}
+          disabled={loading || bookingClosed}
           className="flex w-full items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2.5 text-left transition-colors hover:bg-emerald-50"
         >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
@@ -319,7 +352,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
           slots={slotsForSelectedDate}
           selectedSlotId={selectedSlotId}
           onSelect={setSelectedSlotId}
-          disabled={loading || doctor.isFull}
+          disabled={loading || bookingClosed}
           loading={slotsLoading}
           emptyMessage={
             doctor.isFull || !dateKeys.length
@@ -418,7 +451,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
                 variant="default"
                 size="lg"
                 className="w-full shrink-0 bg-brand text-white hover:bg-brand-dark sm:w-auto"
-                disabled={!selectedSlotId || loading || doctor.isFull}
+                disabled={!selectedSlotId || loading || bookingClosed}
                 onClick={() => proceedToReview(true)}
               >
                 {ctaLabel}
@@ -485,7 +518,7 @@ export function DoctorProfileBookingPanel({ doctor, callbackUrl }: Props) {
             variant="default"
             size="lg"
             className="w-full bg-brand text-white hover:bg-brand-dark"
-            disabled={!selectedSlotId || loading || doctor.isFull}
+            disabled={!selectedSlotId || loading || bookingClosed}
             onClick={() => proceedToReview(false)}
           >
             {ctaLabel}

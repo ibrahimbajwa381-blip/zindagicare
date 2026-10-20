@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { SpecialtySelect } from "@/components/forms/specialty-select";
 import { siteConfig } from "@/config/site";
 import { PatientSundayBookingCard } from "./patient-sunday-booking-card";
 import { SundayMatchingStatus } from "./sunday-matching-status";
@@ -100,6 +101,9 @@ export function SundayConsultClient() {
   const [patientPhone, setPatientPhone] = useState("");
   const [history, setHistory] = useState<Record<string, string>>({});
   const [showHistoryErrors, setShowHistoryErrors] = useState(false);
+  const [preferredSpecialty, setPreferredSpecialty] = useState("");
+  const [specialtyOptions, setSpecialtyOptions] = useState<string[]>([]);
+  const [requestedSpecialty, setRequestedSpecialty] = useState<string | undefined>();
   const [affordabilityChoice, setAffordabilityChoice] =
     useState<SundayAffordabilityChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +122,9 @@ export function SundayConsultClient() {
     const res = await fetch("/api/v1/sunday/request");
     const json = await res.json();
     if (json.success && json.data) {
-      setBooking(requestToBooking(json.data as SundayPatientRequestDto));
+      const request = json.data as SundayPatientRequestDto;
+      setRequestedSpecialty(request.preferredSpecialty);
+      setBooking(requestToBooking(request));
     } else {
       const fallback = await fetch("/api/v1/sunday/my-booking");
       const fallbackJson = await fallback.json();
@@ -142,6 +148,18 @@ export function SundayConsultClient() {
     loadMyRequest();
     loadProfilePhone();
   }, [loadMyRequest, loadProfilePhone, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/v1/sunday/specialties")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) setSpecialtyOptions(json.data);
+      })
+      .catch(() => {
+        // Optional field — without the list the patient can still request any doctor.
+      });
+  }, [status]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -207,6 +225,7 @@ export function SundayConsultClient() {
           })),
           locale: locale === "ur" ? "ur" : "en",
           affordabilityChoice,
+          ...(preferredSpecialty ? { preferredSpecialty } : {}),
         }),
       });
       const json = await res.json();
@@ -225,6 +244,7 @@ export function SundayConsultClient() {
       }
 
       const request = result as SundayPatientRequestDto & { kind: "request" };
+      setRequestedSpecialty(request.preferredSpecialty);
       const nextBooking = requestToBooking(request);
       setBooking(nextBooking);
 
@@ -295,6 +315,11 @@ export function SundayConsultClient() {
                     ? sundayCopy.matchingTitle
                     : dashboardCopy.sundayBooking.title}
                 </p>
+                {isMatching && requestedSpecialty && (
+                  <p className="mb-3 text-sm font-medium text-brand-dark">
+                    {sundayCopy.specialtyRequested.replace("{specialty}", requestedSpecialty)}
+                  </p>
+                )}
                 {isMatching ? (
                   <SundayMatchingStatus />
                 ) : (
@@ -352,6 +377,26 @@ export function SundayConsultClient() {
                         disabled={loading}
                       />
                     </div>
+                    {specialtyOptions.length > 0 && (
+                      <div>
+                        <label
+                          htmlFor="sunday-specialty"
+                          className="text-sm font-medium text-slate-700"
+                        >
+                          {sundayCopy.specialtyLabel}
+                        </label>
+                        <SpecialtySelect
+                          id="sunday-specialty"
+                          className="mt-1.5"
+                          value={preferredSpecialty}
+                          onChange={setPreferredSpecialty}
+                          options={specialtyOptions}
+                          emptyOptionLabel={sundayCopy.specialtyAny}
+                          disabled={loading}
+                        />
+                        <p className="mt-1 text-xs text-slate-500">{sundayCopy.specialtyHint}</p>
+                      </div>
+                    )}
                     <SundayHistoryFields
                       answers={history}
                       onChange={(key, value) =>

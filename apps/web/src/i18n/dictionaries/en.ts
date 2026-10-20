@@ -554,6 +554,11 @@ export const en = {
     closedMessage: "Sunday free consult requests open closer to the next Sunday (Pakistan time).",
     noDoctorPickHint:
       "You do not need to choose a doctor. Verified doctors see your request and one of them picks it and sets a time.",
+    specialtyLabel: "Doctor specialty (optional)",
+    specialtyAny: "Any doctor",
+    specialtyHint:
+      "Choose a specialty, e.g. Gynecologist or Dermatologist, and only doctors in that specialty will see your request. Leave it as \"Any doctor\" for the fastest match.",
+    specialtyRequested: "Requested specialty: {specialty}",
     howItWorks: "How it works",
     howItWorksDesc: "Three quick steps for your free Sunday consult.",
     rulesTitle: "Good to know",
