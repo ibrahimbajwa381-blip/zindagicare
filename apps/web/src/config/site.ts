@@ -49,6 +49,18 @@ export const siteConfig = {
   supportPhones: [
     { display: "0327 7661515", tel: "03277661515" },
   ] as const,
+  /** Legal entity registered with SECP — shown on /legal and in the footer. */
+  company: {
+    legalName: "ZindagiCare (Private) Limited",
+    registrar: "Securities and Exchange Commission of Pakistan (SECP)",
+    cuin: "0359421",
+    incorporatedOn: "2026-10-02",
+    registrationOffice: "Business Centre at Head Office, Islamabad",
+    companiesAct: "Companies Act, 2017 (XIX of 2017)",
+    companyType: "Private company limited by shares",
+    verifyUrl: "https://leap.secp.gov.pk/#/verify-company-info/0359421",
+    certificateImage: "/legal/secp-incorporation.png",
+  },
   /** JazzCash wallet for manual patient transfers (no payment gateway yet). */
   jazzCash: {
     number: "03074583567",
@@ -75,11 +87,15 @@ export const siteConfig = {
     registerDoctor: "/register/doctor",
     registerNurse: "/register/nurse",
     registerPhysiotherapist: "/register/physiotherapist",
+    registerHerbalist: "/register/herbalist",
+    registerNutritionist: "/register/nutritionist",
     forDoctors: "/for-doctors",
     forDoctorsGuide: "/for-doctors/guide",
     forNurses: "/for-nurses",
     forPhysiotherapists: "/for-physiotherapists",
     forPhysiotherapistsGuide: "/for-physiotherapists/guide",
+    about: "/about",
+    legal: "/legal",
     privacy: "/privacy",
     terms: "/terms",
     refundPolicy: "/refund-policy",

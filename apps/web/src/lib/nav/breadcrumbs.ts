@@ -42,6 +42,8 @@ const SEGMENT_LABELS: Record<string, { name: string; labelKey?: string }> = {
   messages: { name: "Messages", labelKey: "header.actions.messages" },
   assistant: { name: "Health Assistant", labelKey: "copilot.navLabel" },
   dashboard: { name: "Dashboard", labelKey: "breadcrumbs.dashboard" },
+  about: { name: "About us" },
+  legal: { name: "Legal & company", labelKey: "breadcrumbs.legal" },
   privacy: { name: "Privacy policy", labelKey: "breadcrumbs.privacy" },
   terms: { name: "Terms of service", labelKey: "breadcrumbs.terms" },
   "refund-policy": { name: "Refund policy", labelKey: "breadcrumbs.refundPolicy" },

@@ -26,6 +26,8 @@ const MARKETING_ROUTES = [
   "/for-physiotherapists/guide",
   "/get-app",
   "/reviews",
+  "/about",
+  "/legal",
   "/privacy",
   "/terms",
   "/refund-policy",

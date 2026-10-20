@@ -203,6 +203,53 @@ function textBlock(rows: [string, string][]): string {
   return rows.map(([label, value]) => `${label}: ${value}`).join("\n");
 }
 
+/** Reminder to a doctor who signed up but never submitted the verification form. */
+export function doctorCompleteProfileReminderEmail(input: {
+  name?: string;
+  verificationUrl: string;
+  support: { email: string; phone: string };
+}) {
+  const greeting = input.name ? `Dear ${input.name},` : "Dear Doctor,";
+  const intro = `Thank you for signing up with ${BRAND}. Your doctor profile is not complete yet, so we can't review your application or list you for patients.`;
+  const steps = [
+    "Sign in to your ZindagiCare account",
+    "Fill in your specialty, PMDC number and experience",
+    "Upload your PMDC certificate and CNIC",
+    "Submit the form for review",
+  ];
+  const outro = "Once you submit, our team will review your documents and contact you for the next step.";
+  const support = supportLine(input.support);
+
+  const bodyHtml = `
+    ${paragraph(greeting)}
+    ${paragraph(intro)}
+    <ol style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.7;color:#334155;">
+      ${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
+    </ol>
+    <p style="margin:0 0 20px;">${button("Complete my profile", input.verificationUrl)}</p>
+    ${paragraph(outro)}
+    ${support.html}
+  `;
+
+  const subject = `Complete your profile to join ${BRAND}`;
+  return {
+    subject,
+    html: layout({
+      heading: "Complete your doctor profile",
+      bodyHtml,
+      preheader: "A few minutes is all it takes to finish your registration.",
+    }),
+    text: [
+      greeting,
+      intro,
+      steps.map((s, i) => `${i + 1}. ${s}`).join("\n"),
+      `Complete your profile: ${input.verificationUrl}`,
+      outro,
+      support.text,
+    ].join("\n\n"),
+  };
+}
+
 /** Patient-facing "your consultation is confirmed" email. */
 export function patientBookingConfirmationEmail(input: {
   patientName?: string;

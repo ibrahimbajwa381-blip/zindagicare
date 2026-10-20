@@ -106,3 +106,75 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
     };
   }
 }
+
+const RESEND_BATCH_URL = "https://api.resend.com/emails/batch";
+/** Resend accepts at most 100 messages per batch call. */
+export const EMAIL_BATCH_LIMIT = 100;
+const BATCH_TIMEOUT_MS = 15000;
+
+export type BatchEmailMessage = {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+};
+
+/**
+ * Send up to EMAIL_BATCH_LIMIT separate emails in one Resend call. Each
+ * message is delivered individually, so recipients never see each other.
+ *
+ * Never throws — same contract as sendEmail.
+ */
+export async function sendEmailBatch(
+  messages: BatchEmailMessage[],
+  options: { idempotencyKey?: string } = {},
+): Promise<EmailSendResult> {
+  if (process.env.NODE_ENV === "test") {
+    return { ok: false, skipped: true };
+  }
+
+  const config = resendConfig();
+  if (!config) {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[email][dev-skip] batch", messages.length);
+    }
+    return { ok: false, skipped: true };
+  }
+  if (messages.length === 0) return { ok: false, error: "no_recipient" };
+  if (messages.length > EMAIL_BATCH_LIMIT) return { ok: false, error: "batch_too_large" };
+
+  try {
+    const res = await fetch(RESEND_BATCH_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+        ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
+      },
+      body: JSON.stringify(
+        messages.map((m) => ({
+          from: config.from,
+          to: [m.to.trim()],
+          subject: m.subject,
+          html: m.html,
+          text: m.text,
+        })),
+      ),
+      signal: AbortSignal.timeout(BATCH_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error("[email] batch send failed", res.status, errText.slice(0, 500));
+      return { ok: false, error: `resend_${res.status}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === "TimeoutError";
+    console.error("[email] batch send error", err);
+    return {
+      ok: false,
+      error: isTimeout ? "timeout" : err instanceof Error ? err.message : "send_failed",
+    };
+  }
+}

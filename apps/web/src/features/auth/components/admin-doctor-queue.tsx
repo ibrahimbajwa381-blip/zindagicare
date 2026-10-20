@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Check, Copy, Eye } from "lucide-react";
+import { Check, Copy, Eye, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -56,6 +56,56 @@ type PendingDoctor = {
     avatarUrl?: string;
   };
 };
+
+type ReminderResult = { incomplete: number; sent: number; failed: number; noEmail: number };
+
+function RemindIncompleteButton({ incompleteCount }: { incompleteCount: number }) {
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string }>();
+
+  async function send() {
+    if (
+      !window.confirm(
+        `Send a "complete your profile" email to ${incompleteCount} incomplete doctor${incompleteCount === 1 ? "" : "s"}?`,
+      )
+    ) {
+      return;
+    }
+    setSending(true);
+    setNotice(undefined);
+    try {
+      const res = await fetch("/api/v1/admin/doctors/remind-incomplete", { method: "POST" });
+      const json = await res.json();
+      if (!json.success) {
+        setNotice({ tone: "error", text: json?.error?.message ?? "Failed to send reminders" });
+        return;
+      }
+      const r = json.data as ReminderResult;
+      const parts = [`Sent to ${r.sent} doctor${r.sent === 1 ? "" : "s"}.`];
+      if (r.failed) parts.push(`${r.failed} failed.`);
+      if (r.noEmail) parts.push(`${r.noEmail} skipped (no email on file).`);
+      setNotice({ tone: r.failed && !r.sent ? "error" : "ok", text: parts.join(" ") });
+    } catch {
+      setNotice({ tone: "error", text: "Failed to send reminders" });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end">
+      {notice ? (
+        <p className={cn("text-sm", notice.tone === "ok" ? "text-emerald-700" : "text-red-600")}>
+          {notice.text}
+        </p>
+      ) : null}
+      <Button onClick={send} disabled={sending || incompleteCount === 0}>
+        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+        Email incomplete doctors ({incompleteCount})
+      </Button>
+    </div>
+  );
+}
 
 export function AdminDoctorQueue() {
   const [doctors, setDoctors] = useState<PendingDoctor[]>([]);
@@ -126,6 +176,8 @@ export function AdminDoctorQueue() {
           </p>
         </div>
       </div>
+
+      <RemindIncompleteButton incompleteCount={doctors.length - submitted} />
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="overflow-x-auto">
