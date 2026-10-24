@@ -21,7 +21,11 @@ export type ConsultProviderRoleConfig = {
   /** Eyebrow / field name, e.g. "Herbal medicine". */
   field: string;
   specialties: readonly string[];
+  /** Specialties surfaced as quick filters on the directory and landing page. */
+  popularSpecialties: readonly string[];
   directoryDescription: string;
+  /** Provider sign-up page for this role. */
+  registerPath: string;
   aboutFallback: (name: string, city: string) => string;
 };
 
@@ -35,6 +39,15 @@ export const CONSULT_PROVIDER_ROLES: Record<ConsultProviderRole, ConsultProvider
     profilePath: herbalistProfilePath,
     field: "Herbal medicine",
     specialties: HERBALIST_SPECIALTIES_ALPHABETICAL,
+    popularSpecialties: [
+      "Unani Medicine (Tibb-e-Unani)",
+      "Digestive & Gut Health",
+      "Herbal Dermatology",
+      "Women's Health & Fertility",
+      "Chronic Pain & Inflammation",
+      "Respiratory & Immune Support",
+    ],
+    registerPath: siteConfig.links.registerHerbalist,
     directoryDescription:
       "Verified hakeems and herbal medicine practitioners. Compare qualifications, experience and consultation hours, then consult online from home.",
     aboutFallback: (name, city) =>
@@ -49,6 +62,15 @@ export const CONSULT_PROVIDER_ROLES: Record<ConsultProviderRole, ConsultProvider
     profilePath: nutritionistProfilePath,
     field: "Nutrition & dietetics",
     specialties: NUTRITIONIST_SPECIALTIES_ALPHABETICAL,
+    popularSpecialties: [
+      "Weight Management",
+      "Diabetes Management",
+      "Maternal & Prenatal Nutrition",
+      "Pediatric Nutrition",
+      "Sports Nutrition",
+      "Gastrointestinal Nutrition",
+    ],
+    registerPath: siteConfig.links.registerNutritionist,
     directoryDescription:
       "Verified nutritionists and dietitians for weight management, diabetes, pregnancy and more. Compare profiles, then consult online from home.",
     aboutFallback: (name, city) =>
@@ -60,4 +82,16 @@ export const CONSULT_PROVIDER_ROLES: Record<ConsultProviderRole, ConsultProvider
 export function consultRequestWhatsAppHref(role: ConsultProviderRole, name: string): string {
   const text = `Hi ${siteConfig.name}, I'd like to book an online consultation with ${name} (${CONSULT_PROVIDER_ROLES[role].noun}).`;
   return `https://wa.me/${siteConfig.supportWhatsApp}?text=${encodeURIComponent(text)}`;
+}
+
+/** WhatsApp link asking the team to match the patient with any provider of this role. */
+export function consultMatchWhatsAppHref(role: ConsultProviderRole, specialty?: string): string {
+  const noun = CONSULT_PROVIDER_ROLES[role].noun;
+  const text = `Hi ${siteConfig.name}, I'd like an online consultation with a ${noun}${specialty ? ` for ${specialty}` : ""}. Please help me find one.`;
+  return `https://wa.me/${siteConfig.supportWhatsApp}?text=${encodeURIComponent(text)}`;
+}
+
+/** Same filter link the directory's specialty select produces. */
+export function consultSpecialtyHref(role: ConsultProviderRole, specialty: string): string {
+  return `${CONSULT_PROVIDER_ROLES[role].directoryPath}?specialty=${encodeURIComponent(specialty)}`;
 }

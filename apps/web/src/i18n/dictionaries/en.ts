@@ -1290,6 +1290,29 @@ export const en = {
     homeVisitsIn: "Home visits · {place}",
     onlineConsultsIn: "Online consults · {place}",
   },
+  consultProviders: {
+    eyebrow: "Herbal & nutrition care",
+    title: "Consult herbalists & nutritionists online",
+    description:
+      "Verified hakeems, herbal medicine practitioners and nutritionists — compare profiles and consult from home over secure video.",
+    herbalist: {
+      title: "Herbalists",
+      description:
+        "Unani, Ayurvedic and herbal medicine practitioners for digestive, skin, women's health and long-term conditions.",
+      cta: "Find a herbalist",
+      join: "Join as herbalist",
+    },
+    nutritionist: {
+      title: "Nutritionists",
+      description:
+        "Personal diet plans for weight management, diabetes, pregnancy, children and sports — guided by verified nutritionists.",
+      cta: "Find a nutritionist",
+      join: "Join as nutritionist",
+    },
+    popular: "Popular:",
+    verifiedCount: "{count} verified {role}",
+    onboarding: "Now onboarding — request a consult and we'll match you",
+  },
   doctors: {
     eyebrow: "Online consultation",
     title: "Top doctors in Pakistan",
