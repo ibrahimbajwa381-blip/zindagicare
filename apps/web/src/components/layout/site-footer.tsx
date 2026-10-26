@@ -291,19 +291,6 @@ export function SiteFooter() {
               © <span suppressHydrationWarning>{new Date().getFullYear()}</span> {t.site.name}.{" "}
               {t.site.rights}
             </p>
-            <p className="text-sm text-slate-400">
-              {t.footer.productOfBefore}
-              {t.footer.productOfBefore ? " " : null}
-              <Link
-                href="https://techcognify.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-slate-200 underline decoration-white/30 underline-offset-2 hover:text-brand-lighter"
-              >
-                {t.footer.productOfCompany}
-              </Link>
-              {t.footer.productOfAfter ? ` ${t.footer.productOfAfter}` : null}
-            </p>
           </div>
         </div>
       </div>
