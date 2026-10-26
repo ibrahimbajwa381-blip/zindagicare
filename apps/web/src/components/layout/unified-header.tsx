@@ -107,11 +107,12 @@ export function UnifiedHeader({
       children: providerDirectoryLinks(t.nav),
     },
     { label: t.nav.homeServices, href: siteConfig.links.homeServices },
-    {
-      label: t.nav.askDoctor,
-      href: siteConfig.links.askDoctor,
-      badge: t.nav.freeBadge,
-    },
+    // Hidden for now: Ask a Doctor (Q&A) not launched yet.
+    // {
+    //   label: t.nav.askDoctor,
+    //   href: siteConfig.links.askDoctor,
+    //   badge: t.nav.freeBadge,
+    // },
     {
       label: t.nav.urgentCare,
       href: siteConfig.links.urgentCare,
