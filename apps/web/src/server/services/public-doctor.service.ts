@@ -200,7 +200,7 @@ export class PublicDoctorService {
     try {
       return await cached(
         cacheKey("doctors-featured", limit),
-        { ttl: 300, tags: [CacheTags.DOCTORS] },
+        { ttl: 900, tags: [CacheTags.DOCTORS] },
         () => queryFeaturedDoctors(limit),
       );
     } catch {
@@ -209,7 +209,7 @@ export class PublicDoctorService {
   }
 
   static async listPublicDoctorSlugs(): Promise<string[]> {
-    return cached(cacheKey("doctor-slugs"), { ttl: 600, tags: [CacheTags.DOCTORS] }, () =>
+    return cached(cacheKey("doctor-slugs"), { ttl: 900, tags: [CacheTags.DOCTORS] }, () =>
       PublicDoctorService.loadPublicDoctorSlugs(),
     );
   }

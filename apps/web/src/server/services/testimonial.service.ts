@@ -43,7 +43,7 @@ export class TestimonialService {
   static async listPublic(limit = 12): Promise<PublicTestimonialDto[]> {
     return cached(
       cacheKey("testimonials", limit),
-      { ttl: 600, tags: [CacheTags.TESTIMONIALS] },
+      { ttl: 900, tags: [CacheTags.TESTIMONIALS] },
       () => TestimonialService.loadPublic(limit),
     );
   }

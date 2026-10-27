@@ -50,7 +50,7 @@ export function HerbalistAvatar({
           fill
           className="object-cover object-top"
           sizes={imageSizes[size]}
-          unoptimized
+          unoptimized={!String(avatarUrl).startsWith("/")}
         />
       </span>
     );

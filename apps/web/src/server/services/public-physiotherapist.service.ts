@@ -185,7 +185,7 @@ export class PublicPhysiotherapistService {
     if (options.near) return PublicPhysiotherapistService.load(options);
     return cached(
       cacheKey("physiotherapists", options.city, options.specialty),
-      { ttl: 300, tags: [CacheTags.PHYSIOTHERAPISTS] },
+      { ttl: 900, tags: [CacheTags.PHYSIOTHERAPISTS] },
       () => PublicPhysiotherapistService.load(options),
     );
   }
@@ -196,14 +196,11 @@ export class PublicPhysiotherapistService {
     near?: { lng: number; lat: number };
     nearbyOnly?: boolean;
   }): Promise<PublicPhysiotherapist[]> {
-    await connectDatabase();
     const city = options.city?.trim();
     const specialty = options.specialty?.trim().toLowerCase();
     const patientCity = options.near ? nearestCity(options.near) : undefined;
 
-    const docs = await StaffProfileModel.find(PUBLIC_FILTER)
-      .populate("userId", `name avatarUrl ${USER_VISIBILITY_FIELDS}`)
-      .lean();
+    const { docs, ratings } = await PublicPhysiotherapistService.loadCandidates();
 
     const mapped = await Promise.all(
       docs
@@ -222,9 +219,8 @@ export class PublicPhysiotherapistService {
 
     let rows = mapped.filter((row): row is PublicPhysiotherapist => row !== null);
 
-    const ratings = await HomeVisitReviewService.ratingsByStaff(rows.map((r) => r.id));
     rows = rows.map((r) => {
-      const rating = ratings.get(r.id);
+      const rating = ratings[r.id];
       return { ...r, ratingAvg: rating?.ratingAvg, reviewCount: rating?.total ?? 0 };
     });
 
@@ -254,11 +250,32 @@ export class PublicPhysiotherapistService {
   }
 
   /**
+   * Every listable physio profile plus ratings, cached once so location searches (which
+   * can't be cached per-visitor) only do in-memory distance math. Private fields are
+   * excluded so Redis never holds bank/license data.
+   */
+  private static async loadCandidates() {
+    return cached(cacheKey("physiotherapists-candidates"), { ttl: 900, tags: [CacheTags.PHYSIOTHERAPISTS] }, async () => {
+      await connectDatabase();
+      const docs = await StaffProfileModel.find(PUBLIC_FILTER)
+        .select("-bankAccount -licenseNumber -rejectionReason -adminNotes")
+        .populate("userId", `name avatarUrl ${USER_VISIBILITY_FIELDS}`)
+        .lean();
+      const userIds = docs.flatMap((d) => {
+        const user = d.userId as unknown as PopulatedUser | null;
+        return user?._id ? [user._id.toString()] : [];
+      });
+      const ratings = await HomeVisitReviewService.ratingsByStaff(userIds);
+      return { docs, ratings: Object.fromEntries(ratings) };
+    });
+  }
+
+  /**
    * Cities offered in the directory filter: every city served by a physiotherapist the
    * directory would list, deduplicated case-insensitively and title-cased for display.
    */
   static async listCities(): Promise<string[]> {
-    return cached(cacheKey("physiotherapists-cities"), { ttl: 600, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
+    return cached(cacheKey("physiotherapists-cities"), { ttl: 900, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
       PublicPhysiotherapistService.loadCities(),
     );
   }
@@ -285,7 +302,7 @@ export class PublicPhysiotherapistService {
 
   /** Look up by public slug or by User id (used by ?physio= deep links). */
   static async get(slugOrId: string): Promise<PublicPhysiotherapist | null> {
-    return cached(cacheKey("physiotherapist", slugOrId), { ttl: 300, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
+    return cached(cacheKey("physiotherapist", slugOrId), { ttl: 900, tags: [CacheTags.PHYSIOTHERAPISTS] }, () =>
       PublicPhysiotherapistService.loadOne(slugOrId),
     );
   }

@@ -40,7 +40,7 @@ export function ProfilePortrait({ name, src }: { name: string; src?: string }) {
             className="object-cover object-top"
             sizes="(min-width: 1024px) 256px, (min-width: 640px) 224px, 176px"
             priority
-            unoptimized
+            unoptimized={!String(src).startsWith("/")}
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center font-display text-6xl font-semibold text-white/90">

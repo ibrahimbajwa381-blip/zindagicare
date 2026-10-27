@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@zindagi/shared";
@@ -68,6 +68,8 @@ export function UnifiedHeader({
   closeMenuLabel,
 }: UnifiedHeaderProps) {
   const t = useTranslations();
+  // Menu whose link was just clicked — kept shut until the pointer leaves, since hover/focus would hold it open.
+  const [dismissed, setDismissed] = useState<string | null>(null);
   const { data: session } = useSession();
   const isLoggedIn = !!session?.user;
   const { chatUnread, notificationUnread, refresh } = useHeaderBadges(isLoggedIn);
@@ -198,14 +200,28 @@ export function UnifiedHeader({
               if (!item.children) return link;
               // Opens on hover and on keyboard focus (focus-within), no JS state needed.
               return (
-                <div key={item.label} className="group relative">
+                <div
+                  key={item.label}
+                  className="group relative"
+                  onMouseLeave={() => setDismissed(null)}
+                >
                   {link}
-                  <div className="invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                  <div
+                    className={cn(
+                      "invisible absolute left-0 top-full z-50 pt-1 opacity-0 transition-opacity",
+                      dismissed !== item.label &&
+                        "group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100",
+                    )}
+                  >
                     <ul className="min-w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
                       {item.children.map((child) => (
                         <li key={child.label}>
                           <Link
                             href={child.href ?? "#"}
+                            onClick={(e) => {
+                              e.currentTarget.blur();
+                              setDismissed(item.label);
+                            }}
                             className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-brand-muted hover:text-brand-dark"
                           >
                             {child.label}

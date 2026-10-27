@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { Quote, Star, User } from "lucide-react";
 import { cn } from "@zindagi/shared";
@@ -59,11 +60,13 @@ export function TestimonialCard({ item }: { item: TestimonialCardData }) {
       )}
       <div className="mt-1 flex items-center gap-3">
         {item.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={item.avatarUrl}
             alt=""
+            width={40}
+            height={40}
             className="h-10 w-10 shrink-0 rounded-full object-cover"
+            unoptimized={!item.avatarUrl.startsWith("/")}
           />
         ) : (
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-muted/40 text-brand-dark">

@@ -65,7 +65,7 @@ export async function ProviderOnboardingPreview() {
                   src={card.image.src}
                   alt={card.image.alt}
                   fill
-                  unoptimized
+                  unoptimized={!String(card.image.src).startsWith("/")}
                   sizes="(max-width: 640px) 100vw, 22vw"
                   className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
                 />

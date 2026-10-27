@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: Params) {
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": contentTypeFromKey(storageKey),
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": "public, max-age=86400, s-maxage=31536000, immutable",
       },
     });
   } catch (error) {

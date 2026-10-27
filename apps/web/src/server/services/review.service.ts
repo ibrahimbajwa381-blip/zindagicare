@@ -202,7 +202,7 @@ export class ReviewService {
   ): Promise<{ reviews: DoctorReviewDto[]; total: number; hasMore: boolean }> {
     return cached(
       cacheKey("doctor-reviews", doctorProfileId, options.page, options.limit),
-      { ttl: 300, tags: [CacheTags.REVIEWS] },
+      { ttl: 900, tags: [CacheTags.REVIEWS] },
       () => ReviewService.loadDoctorReviews(doctorProfileId, options),
     );
   }

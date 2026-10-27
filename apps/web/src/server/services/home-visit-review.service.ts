@@ -222,7 +222,7 @@ export class HomeVisitReviewService {
     if (!Types.ObjectId.isValid(staffUserId)) return { reviews: [], total: 0, ratingAvg: 0 };
     return cached(
       cacheKey("staff-reviews", staffUserId, options.limit),
-      { ttl: 300, tags: [CacheTags.REVIEWS] },
+      { ttl: 900, tags: [CacheTags.REVIEWS] },
       () => HomeVisitReviewService.loadStaffReviews(staffUserId, options),
     );
   }

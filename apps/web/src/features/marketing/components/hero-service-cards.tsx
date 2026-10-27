@@ -125,7 +125,7 @@ export function HeroServiceCards({
                       src={service.image}
                       alt={service.imageAlt}
                       fill
-                      unoptimized
+                      unoptimized={!String(service.image).startsWith("/")}
                       sizes="(max-width: 640px) 42vw, 20vw"
                       className={cn(
                         "object-cover transition-transform duration-300 group-hover:scale-105",
