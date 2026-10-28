@@ -9,6 +9,7 @@
  * Only Supabase network I/O is mocked with buildObjectStorageDouble.
  */
 import { MongoMemoryServer } from "mongodb-memory-server";
+import { NextRequest } from "next/server";
 import { randomBytes } from "crypto";
 import { buildObjectStorageDouble } from "../helpers/object-storage-double";
 import {
@@ -940,6 +941,110 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
       expect(await ChatService.totalUnreadCount(docA._id.toString())).toBe(0);
       await ChatService.sendMessage(threadA, patientId, "reply");
       expect(await ChatService.totalUnreadCount(docA._id.toString())).toBe(1);
+    });
+  });
+
+  describe("voice note send — retry safety", () => {
+    test("resending the same uploaded attachment returns the original message, no duplicate", async () => {
+      const patient = await createPatientUser("Retry Patient");
+      const patientId = patient._id.toString();
+      const { profile } = await createDoctorUser("Retry Doctor");
+      const { appointment } = await createPaidAppointment(patientId, profile._id.toString());
+      const threadId = await ChatService.ensureAppointmentThread(appointment._id.toString());
+      const attachment = { url: `/api/v1/chat/attachments/${threadId}%2Fretry.m4a`, mime: "audio/mp4" };
+
+      const first = await ChatService.sendMessage(threadId, patientId, "", "en", attachment);
+      // Client lost the first response (timeout) and retries with the same upload.
+      const second = await ChatService.sendMessage(threadId, patientId, "", "en", attachment);
+
+      expect(second.id).toBe(first.id);
+      expect(second.attachmentUrl).toBe(attachment.url);
+      expect(
+        await ChatMessageModel.countDocuments({ threadId, attachmentUrl: attachment.url }),
+      ).toBe(1);
+
+      // A different upload is a different message.
+      const other = await ChatService.sendMessage(threadId, patientId, "", "en", {
+        url: `/api/v1/chat/attachments/${threadId}%2Fother.m4a`,
+        mime: "audio/mp4",
+      });
+      expect(other.id).not.toBe(first.id);
+    });
+
+    test("upload route returns storage rejections as client errors, not 500", async () => {
+      const patient = await createPatientUser("Reject Patient");
+      const patientId = patient._id.toString();
+      const { profile } = await createDoctorUser("Reject Doctor");
+      const { appointment } = await createPaidAppointment(patientId, profile._id.toString());
+      const threadId = await ChatService.ensureAppointmentThread(appointment._id.toString());
+
+      const { AppError } = await import("@zindagi/shared");
+      const spy = jest
+        .spyOn(objectStorageDouble, "putObject")
+        .mockRejectedValueOnce(new AppError("Storage does not accept this file type", "UNSUPPORTED_MEDIA_TYPE", 415));
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const form = new FormData();
+        form.set("threadId", threadId);
+        form.set("file", new File([new Uint8Array([1, 2, 3])], "voice-note.m4a", { type: "audio/mp4" }));
+        const res = await uploadRoute.POST(
+          new Request("http://localhost/api/v1/chat/attachments/upload", {
+            method: "POST",
+            headers: { authorization: (await authHeaders(patientId)).authorization },
+            body: form,
+          }),
+        );
+        expect(res.status).toBe(415);
+        expect(errorSpy).toHaveBeenCalledWith(
+          "[chat-upload] failed",
+          expect.objectContaining({ threadId, stage: "storage", status: 415 }),
+        );
+        expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("voice-note.m4a");
+      } finally {
+        spy.mockRestore();
+        errorSpy.mockRestore();
+      }
+    });
+  });
+
+  describe("listThreads — missing participant", () => {
+    test("skips a thread whose other participant no longer exists instead of failing the list", async () => {
+      const patient = await createPatientUser("Orphan Patient");
+      const patientId = patient._id.toString();
+      const { profile: liveProfile } = await createDoctorUser("Live Doctor");
+      const { user: goneDoc, profile: goneProfile } = await createDoctorUser("Gone Doctor");
+
+      const { appointment: liveAppt } = await createPaidAppointment(
+        patientId,
+        liveProfile._id.toString(),
+      );
+      const { appointment: goneAppt } = await createPaidAppointment(
+        patientId,
+        goneProfile._id.toString(),
+      );
+      const liveThread = await ChatService.ensureAppointmentThread(liveAppt._id.toString());
+      const goneThread = await ChatService.ensureAppointmentThread(goneAppt._id.toString());
+
+      await UserModel.deleteOne({ _id: goneDoc._id });
+
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const threads = await ChatService.listThreads(patientId);
+        expect(threads.map((t) => t.id)).toEqual([liveThread]);
+        expect(errorSpy).toHaveBeenCalledWith(
+          "[chat] listThreads skipped thread with missing participant",
+          { threadId: goneThread },
+        );
+
+        const res = await threadsRoute.GET(
+          new NextRequest("http://localhost/api/v1/chat/threads", {
+            headers: await authHeaders(patientId),
+          }),
+        );
+        expect(res.status).toBe(200);
+      } finally {
+        errorSpy.mockRestore();
+      }
     });
   });
 

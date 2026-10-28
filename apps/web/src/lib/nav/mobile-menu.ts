@@ -87,11 +87,12 @@ export function buildMarketingMobileNav(
       label: labels.homePhysio,
     },
     { href: siteConfig.links.doctors, label: labels.onlineConsult },
-    {
-      href: siteConfig.links.askDoctor,
-      label: labels.askDoctor,
-      badge: labels.freeBadge,
-    },
+    // Hidden for now: Ask a Doctor (Q&A) not launched yet.
+    // {
+    //   href: siteConfig.links.askDoctor,
+    //   label: labels.askDoctor,
+    //   badge: labels.freeBadge,
+    // },
     {
       href: siteConfig.links.sundayConsult,
       label: labels.sundayConsult,

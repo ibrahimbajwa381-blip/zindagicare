@@ -72,13 +72,10 @@ export default function MessagesThreadScreen() {
     }
   };
 
+  // Errors propagate to VoiceRecorderButton, which keeps the recording and offers retry.
   const sendVoiceNote = async (attachment: { url: string; mime: string }) => {
-    try {
-      await sendChatMessage(threadId, "", attachment);
-      await load();
-    } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to send voice note");
-    }
+    await sendChatMessage(threadId, "", attachment);
+    await load();
   };
 
   const sendFile = async (attachment: { url: string; mime: string }) => {
@@ -106,7 +103,7 @@ export default function MessagesThreadScreen() {
             <Text style={styles.error}>{error}</Text>
           </View>
         ) : (
-          <BrandLoadingScreen />
+          <View style={styles.centered} />
         )}
       </>
     );

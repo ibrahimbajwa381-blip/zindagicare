@@ -745,21 +745,25 @@ export class ChatService {
       batchVideoAppointmentInfo(appointmentIds),
     ]);
 
-    return threadRows.map((thread) => {
+    return threadRows.flatMap((thread) => {
       const otherId = thread.participantIds
         .map((participant) => participant.toString())
         .find((id) => id !== userId);
       const otherParticipant = otherId ? participantsById.get(otherId) : undefined;
 
+      // One orphaned thread (e.g. deleted account) must not blank the whole inbox.
       if (!otherParticipant) {
-        throw new AppError("Invalid chat participants", "INVALID_STATE", 500);
+        console.error("[chat] listThreads skipped thread with missing participant", {
+          threadId: thread._id.toString(),
+        });
+        return [];
       }
 
       const videoInfo = thread.appointmentId
         ? videoInfoById.get(thread.appointmentId.toString())
         : undefined;
 
-      return {
+      return [{
         id: thread._id.toString(),
         type: thread.type,
         appointmentId: thread.appointmentId?.toString(),
@@ -771,7 +775,7 @@ export class ChatService {
         unreadCount: unreadByThreadId.get(thread._id.toString()) ?? 0,
         isClosed: !!thread.isClosed,
         otherParticipant,
-      };
+      }];
     });
   }
 
@@ -1207,6 +1211,29 @@ export class ChatService {
     const trimmed = body.trim();
     if (!trimmed && !attachment) {
       throw new AppError("Message cannot be empty", "VALIDATION", 400);
+    }
+
+    // Each upload gets a unique storage URL, so a resend with the same URL is a
+    // client retry after a lost response: return the original, don't duplicate.
+    // shortcut: two truly concurrent identical sends can both insert; needs a unique index to close.
+    if (attachment) {
+      const existing = await ChatMessageModel.findOne(
+        mongoFilter({ threadId, senderId, attachmentUrl: attachment.url, deletedAt: null }),
+      ).lean();
+      if (existing) {
+        return {
+          id: existing._id.toString(),
+          threadId,
+          senderId,
+          kind: existing.kind,
+          body: existing.body ?? "",
+          attachmentUrl: existing.attachmentUrl ?? undefined,
+          attachmentMime: existing.attachmentMime ?? undefined,
+          createdAt: existing.createdAt.toISOString(),
+          isMine: true,
+          readBy: (existing.readBy ?? []).map((r) => String(r.userId)),
+        };
+      }
     }
 
     const message = await ChatMessageModel.create({

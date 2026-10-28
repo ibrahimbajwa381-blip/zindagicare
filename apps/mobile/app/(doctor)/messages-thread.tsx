@@ -13,7 +13,6 @@ import { ApiRequestError } from "@/api/client";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { useChatRealtime } from "@/hooks/use-chat-realtime";
 import { useAuth } from "@/lib/auth-context";
-import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { AttachmentBubble } from "@/components/chat/attachment-bubble";
 import { FileAttachmentButton } from "@/components/chat/file-attachment-button";
 import { VoiceRecorderButton } from "@/components/chat/voice-recorder-button";
@@ -71,13 +70,10 @@ export default function DoctorMessagesThreadScreen() {
     }
   };
 
+  // Errors propagate to VoiceRecorderButton, which keeps the recording and offers retry.
   const sendVoiceNote = async (attachment: { url: string; mime: string }) => {
-    try {
-      await sendChatMessage(threadId, "", attachment);
-      await load();
-    } catch (e) {
-      setError(e instanceof ApiRequestError ? e.message : "Failed to send voice note");
-    }
+    await sendChatMessage(threadId, "", attachment);
+    await load();
   };
 
   const sendFile = async (attachment: { url: string; mime: string }) => {
@@ -98,7 +94,7 @@ export default function DoctorMessagesThreadScreen() {
             <Text style={styles.error}>{error}</Text>
           </View>
         ) : (
-          <BrandLoadingScreen />
+          <View style={styles.centered} />
         )}
       </>
     );

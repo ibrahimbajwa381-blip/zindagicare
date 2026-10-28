@@ -61,6 +61,8 @@ export default async function PatientAssistantPage() {
             urgentBannerBody: t.copilot.urgentBannerBody,
             callEmergency: t.copilot.callEmergency,
             thinking: t.copilot.thinking,
+            checkingTools: t.copilot.checkingTools,
+            retry: t.copilot.retry,
             loading: t.copilot.loading,
             micLabel: t.copilot.micLabel,
             stopMicLabel: t.copilot.stopMicLabel,

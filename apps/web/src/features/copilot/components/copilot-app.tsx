@@ -34,6 +34,8 @@ type CopilotCopy = {
   urgentBannerBody: string;
   callEmergency: string;
   thinking: string;
+  checkingTools: string;
+  retry: string;
   loading: string;
   micLabel: string;
   stopMicLabel: string;

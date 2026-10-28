@@ -5,7 +5,6 @@ import { Text } from "@/components/ui/text";
 import { listChatThreads } from "@/api/chat";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { useChatRealtime } from "@/hooks/use-chat-realtime";
-import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
 import { resolveMediaUrl } from "@/lib/config";
 import { timeAgo } from "@/lib/format-date";
@@ -39,7 +38,7 @@ export default function DoctorMessagesScreen() {
         <Text style={styles.error}>{error}</Text>
       </View>
     ) : (
-      <BrandLoadingScreen />
+      <View style={styles.centered} />
     );
   }
 

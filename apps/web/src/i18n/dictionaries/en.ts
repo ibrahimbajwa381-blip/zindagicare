@@ -300,6 +300,13 @@ export const en = {
     goHome: "Back to home",
     browseDoctors: "Browse doctors",
   },
+  errorPage: {
+    title: "Something went wrong",
+    description: "This page couldn't load right now. Please try again in a moment.",
+    retry: "Try again",
+    goHome: "Back to home",
+    reference: "Reference",
+  },
   agentFloat: {
     badgeTitle: "AI Health Agent",
     badgeLive: "Live",
@@ -1952,6 +1959,8 @@ export const en = {
       "If symptoms worsen or you feel unsafe waiting, use urgent care or emergency services.",
     callEmergency: "Call 1122",
     thinking: "Thinking…",
+    checkingTools: "Checking doctors and your records…",
+    retry: "Try again",
     loading: "Loading chats…",
     micLabel: "Tap to speak",
     stopMicLabel: "Stop listening",

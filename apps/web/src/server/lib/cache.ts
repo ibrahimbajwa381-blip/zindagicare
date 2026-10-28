@@ -212,6 +212,23 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
   });
 }
 
+/**
+ * After a Redis timeout/failure, entry reads and writes skip Redis for this long
+ * and go straight to the loader (the database), so an unhealthy Redis costs one
+ * timeout per cooldown instead of one per request. Tag invalidations are never
+ * skipped: dropping them would let stale entries look fresh after recovery.
+ */
+const BREAKER_COOLDOWN_MS = 30_000;
+let breakerOpenUntil = 0;
+
+function redisBypassed() {
+  return Date.now() < breakerOpenUntil;
+}
+
+function tripBreaker() {
+  breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
+}
+
 function cacheDisabled() {
   return process.env.NODE_ENV === "test" || process.env.CACHE_DISABLED === "true";
 }
@@ -228,25 +245,33 @@ export async function cached<T>(
   options: CacheOptions,
   loader: () => Promise<T>,
 ): Promise<T> {
-  if (cacheDisabled()) return loader();
+  if (cacheDisabled() || redisBypassed()) return loader();
 
   const fullKey = entryKey(key);
   const tagKeys = options.tags.map(tagKey);
 
   let backend: Backend;
   let versions: Record<string, number> = {};
+  let raw: string | null;
   try {
     backend = await getBackend();
-    const [raw, ...tagValues] = await withTimeout(backend.mget([fullKey, ...tagKeys]));
+    let tagValues: (string | null)[];
+    [raw, ...tagValues] = await withTimeout(backend.mget([fullKey, ...tagKeys]));
     versions = Object.fromEntries(options.tags.map((t, i) => [t, Number(tagValues[i] ?? 0)]));
+  } catch (err) {
+    tripBreaker();
+    logOnce(`read failed for ${key}`, err);
+    return loader();
+  }
 
+  try {
     if (raw) {
       const entry = JSON.parse(isEncrypted(raw) ? decryptField(raw) : raw) as Entry;
       const fresh = options.tags.every((t) => (entry.v[t] ?? 0) === versions[t]);
       if (fresh) return entry.d as T;
     }
   } catch (err) {
-    logOnce(`read failed for ${key}`, err);
+    logOnce(`decode failed for ${key}`, err);
     return loader();
   }
 
@@ -258,9 +283,10 @@ export async function cached<T>(
     try {
       const json = JSON.stringify({ v: versions, d: data } satisfies Entry);
       const payload = options.sensitive ? encryptField(json) : json;
-      withTimeout(backend.set(fullKey, payload, options.ttl)).catch((err) =>
-        logOnce(`write failed for ${key}`, err),
-      );
+      withTimeout(backend.set(fullKey, payload, options.ttl)).catch((err) => {
+        tripBreaker();
+        logOnce(`write failed for ${key}`, err);
+      });
     } catch (err) {
       logOnce(`serialize failed for ${key}`, err);
     }
@@ -300,6 +326,8 @@ export async function invalidateCacheTags(tags: readonly CacheTag[]): Promise<vo
     const backend = await getBackend();
     await withTimeout(Promise.all([...new Set(tags)].map((t) => backend.incr(tagKey(t)))));
   } catch (err) {
+    // Tag versions may now lag behind the DB, so stop trusting Redis reads for a while.
+    tripBreaker();
     logOnce(`invalidate failed for ${tags.join(",")}`, err);
   }
 }

@@ -157,140 +157,143 @@ function toGeminiPayload(messages: LlmMessage[], tools?: LlmTool[]) {
   return body;
 }
 
-function parseCompletionResponse(json: {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
-}): LlmCompletionResult {
-  const parts = json.candidates?.[0]?.content?.parts ?? [];
-  let content = "";
-  const toolCalls: LlmToolCall[] = [];
+/** User-facing message for a Gemini call that ran past its time budget. */
+export const GEMINI_TIMEOUT_MESSAGE =
+  "The assistant took too long to respond. Please try again.";
 
-  for (const part of parts) {
-    if (part.text) content += part.text;
-    if (part.functionCall?.name) {
-      toolCalls.push({
-        id: `${part.functionCall.name}-${toolCalls.length}`,
-        type: "function",
-        function: {
-          name: part.functionCall.name,
-          arguments: JSON.stringify(part.functionCall.args ?? {}),
-        },
-      });
-    }
-  }
+/** Max silence (no response headers / no stream chunk) before a Gemini call is aborted. */
+const GEMINI_IDLE_TIMEOUT_MS = 20_000;
 
-  return {
-    content: content.trim(),
-    toolCalls,
-  };
+export type LlmTurnResult = LlmCompletionResult & { finishReason?: string };
+
+/**
+ * Opt-in only: allowed thinkingBudget values differ per Gemini model, so the
+ * model default is kept unless GEMINI_THINKING_BUDGET is explicitly set.
+ */
+function thinkingConfig(): Record<string, unknown> | undefined {
+  const raw = process.env.GEMINI_THINKING_BUDGET?.trim();
+  if (!raw) return undefined;
+  const budget = Number(raw);
+  return Number.isInteger(budget) ? { thinkingBudget: budget } : undefined;
 }
 
-export async function createGeminiCompletion(
+/**
+ * One model turn over streamGenerateContent: text parts are forwarded to
+ * `onText` as they arrive, function calls are collected and returned.
+ */
+export async function streamGeminiTurn(
   messages: LlmMessage[],
-  options?: {
+  options: {
     tools?: LlmTool[];
     temperature?: number;
     maxTokens?: number;
-  },
-): Promise<LlmCompletionResult> {
-  const body = toGeminiPayload(messages, options?.tools);
+    signal?: AbortSignal;
+    onText?: (text: string) => void;
+  } = {},
+): Promise<LlmTurnResult> {
+  const body = toGeminiPayload(messages, options.tools);
   const generationConfig = body.generationConfig as Record<string, unknown>;
-  if (options?.temperature !== undefined) {
+  if (options.temperature !== undefined) {
     generationConfig.temperature = options.temperature;
   }
-  if (options?.maxTokens !== undefined) {
+  if (options.maxTokens !== undefined) {
     generationConfig.maxOutputTokens = options.maxTokens;
   }
+  const thinking = thinkingConfig();
+  if (thinking) generationConfig.thinkingConfig = thinking;
 
-  const model = getGeminiModel();
-  const res = await fetch(
-    `${GEMINI_API_BASE}/models/${model}:generateContent?key=${getApiKey()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
+  const idle = new AbortController();
+  let idleTimer = setTimeout(() => idle.abort(), GEMINI_IDLE_TIMEOUT_MS);
+  const resetIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => idle.abort(), GEMINI_IDLE_TIMEOUT_MS);
+  };
+  const signal = options.signal ? AbortSignal.any([options.signal, idle.signal]) : idle.signal;
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new AppError(
-      `AI service error (${res.status})${errText ? `: ${errText.slice(0, 200)}` : ""}`,
-      "UPSTREAM_ERROR",
-      502,
-    );
-  }
+  let content = "";
+  const toolCalls: LlmToolCall[] = [];
+  let finishReason: string | undefined;
 
-  const json = (await res.json()) as Parameters<typeof parseCompletionResponse>[0];
-  return parseCompletionResponse(json);
-}
+  const handleLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") return;
 
-export async function* streamGeminiCompletion(
-  messages: LlmMessage[],
-  options?: {
-    temperature?: number;
-    maxTokens?: number;
-  },
-): AsyncGenerator<string> {
-  const body = toGeminiPayload(messages);
-  const generationConfig = body.generationConfig as Record<string, unknown>;
-  if (options?.temperature !== undefined) {
-    generationConfig.temperature = options.temperature;
-  }
-  if (options?.maxTokens !== undefined) {
-    generationConfig.maxOutputTokens = options.maxTokens;
-  }
-
-  const model = getGeminiModel();
-  const res = await fetch(
-    `${GEMINI_API_BASE}/models/${model}:streamGenerateContent?alt=sse&key=${getApiKey()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new AppError(
-      `AI service error (${res.status})${errText ? `: ${errText.slice(0, 200)}` : ""}`,
-      "UPSTREAM_ERROR",
-      502,
-    );
-  }
-
-  if (!res.body) {
-    throw new AppError("AI service returned empty stream", "UPSTREAM_ERROR", 502);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const payload = trimmed.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
-
-      try {
-        const parsed = JSON.parse(payload) as {
-          candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
-        };
-        for (const part of parsed.candidates?.[0]?.content?.parts ?? []) {
-          if (part.text) yield part.text;
-        }
-      } catch {
-        // Ignore malformed SSE chunks.
+    let parsed: { candidates?: Array<{ content?: { parts?: GeminiPart[] }; finishReason?: string }> };
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      return; // Ignore malformed SSE chunks.
+    }
+    const candidate = parsed.candidates?.[0];
+    if (candidate?.finishReason) finishReason = candidate.finishReason;
+    for (const part of candidate?.content?.parts ?? []) {
+      if (part.text) {
+        content += part.text;
+        options.onText?.(part.text);
+      }
+      if (part.functionCall?.name) {
+        toolCalls.push({
+          id: `${part.functionCall.name}-${toolCalls.length}`,
+          type: "function",
+          function: {
+            name: part.functionCall.name,
+            arguments: JSON.stringify(part.functionCall.args ?? {}),
+          },
+        });
       }
     }
+  };
+
+  try {
+    const model = getGeminiModel();
+    const res = await fetch(
+      `${GEMINI_API_BASE}/models/${model}:streamGenerateContent?alt=sse&key=${getApiKey()}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal,
+      },
+    );
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new AppError(
+        `AI service error (${res.status})${errText ? `: ${errText.slice(0, 200)}` : ""}`,
+        "UPSTREAM_ERROR",
+        502,
+      );
+    }
+
+    if (!res.body) {
+      throw new AppError("AI service returned empty stream", "UPSTREAM_ERROR", 502);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      resetIdle();
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      lines.forEach(handleLine);
+    }
+    handleLine(buffer);
+  } catch (error) {
+    if (idle.signal.aborted && !options.signal?.aborted) {
+      throw new AppError(GEMINI_TIMEOUT_MESSAGE, "UPSTREAM_TIMEOUT", 504);
+    }
+    throw error;
+  } finally {
+    clearTimeout(idleTimer);
   }
+
+  return { content: content.trim(), toolCalls, finishReason };
 }

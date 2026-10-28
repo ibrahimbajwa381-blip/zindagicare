@@ -52,7 +52,7 @@ export function DoctorAvatar({
           fill
           className="object-cover object-top"
           sizes={imageSizes[size]}
-          unoptimized
+          unoptimized={!String(src).startsWith("/")}
         />
       </span>
     );

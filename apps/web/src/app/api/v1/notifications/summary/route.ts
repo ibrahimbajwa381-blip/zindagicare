@@ -8,7 +8,7 @@ export const GET = withApiHandler(
     const userId = session!.user!.id;
     const roles = session!.user!.roles ?? [];
     if (roles.includes("doctor")) {
-      void AppointmentReminderService.processDueReminders().catch(() => null);
+      AppointmentReminderService.triggerFromNavigation();
     }
 
     const [summary, chatUnreadCount] = await Promise.all([

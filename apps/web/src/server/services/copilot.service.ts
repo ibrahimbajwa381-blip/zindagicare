@@ -19,9 +19,8 @@ import {
   type CopilotToolState,
 } from "@/server/services/copilot-tools";
 import {
-  createGeminiCompletion,
   isCopilotEnabled,
-  streamGeminiCompletion,
+  streamGeminiTurn,
   type LlmMessage,
 } from "@/server/services/gemini.service";
 import { getPatientProfile } from "@/server/services/patient-profile.service";
@@ -70,6 +69,7 @@ export type CopilotMessageDto = {
 export type CopilotStreamEvent =
   | { type: "token"; text: string }
   | { type: "metadata"; metadata: CopilotMessageMetadata }
+  | { type: "status"; stage: "thinking" | "tools"; tools?: string[]; reset?: boolean }
   | { type: "done"; message: CopilotMessageDto }
   | { type: "error"; message: string };
 
@@ -382,11 +382,11 @@ export class CopilotService {
     const rows = await CopilotMessageModel.find(
       mongoFilter({ sessionId, role: { $ne: CopilotMessageRoles.TOOL } }),
     )
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
-    return rows.map(toMessageDto);
+    return rows.reverse().map(toMessageDto);
   }
 
   static async sendMessageStream(
@@ -394,6 +394,7 @@ export class CopilotService {
     sessionId: string,
     input: SendCopilotMessageInput,
     onEvent: (event: CopilotStreamEvent) => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     await CopilotService.ensureEnabled();
     // Rate limit is enforced by the caller (route) before the SSE stream
@@ -414,9 +415,7 @@ export class CopilotService {
         refusal,
       );
       await CopilotService.touchSession(sessionId, trimmed);
-      for (const char of refusal) {
-        onEvent({ type: "token", text: char });
-      }
+      onEvent({ type: "token", text: refusal });
       onEvent({ type: "done", message: assistantMsg });
       return;
     }
@@ -438,19 +437,21 @@ export class CopilotService {
       );
       await CopilotService.touchSession(sessionId, trimmed);
 
-      for (const char of emergencyText) {
-        onEvent({ type: "token", text: char });
-      }
+      onEvent({ type: "token", text: emergencyText });
       onEvent({ type: "metadata", metadata: { triageLevel: "emergency" } });
       onEvent({ type: "done", message: assistantMsg });
       return;
     }
 
-    await CopilotService.saveMessage(sessionId, CopilotMessageRoles.USER, trimmed);
-    await CopilotService.touchSession(sessionId, trimmed);
-
-    const profile = await getPatientProfile(userId);
-    const history = await CopilotService.loadChatHistory(sessionId, replyLanguage);
+    // History is read before the question is stored so Gemini sees it exactly once.
+    const [profile, history] = await Promise.all([
+      getPatientProfile(userId),
+      CopilotService.loadChatHistory(sessionId, replyLanguage),
+    ]);
+    await Promise.all([
+      CopilotService.saveMessage(sessionId, CopilotMessageRoles.USER, trimmed),
+      CopilotService.touchSession(sessionId, trimmed),
+    ]);
     const toolState: CopilotToolState = {};
     const toolCtx = {
       userId,
@@ -481,19 +482,19 @@ export class CopilotService {
               ? "Yeh rahi aap ki maloomat."
               : "Here is what I found for you.");
 
-        for (const char of responseText) {
-          onEvent({ type: "token", text: char });
-        }
+        onEvent({ type: "token", text: responseText });
         if (Object.keys(metadata).length > 0) {
           onEvent({ type: "metadata", metadata });
         }
-        const assistantMsg = await CopilotService.saveMessage(
-          sessionId,
-          CopilotMessageRoles.ASSISTANT,
-          responseText,
-          metadata,
-        );
-        await CopilotService.touchSession(sessionId, responseText.slice(0, 120));
+        const [assistantMsg] = await Promise.all([
+          CopilotService.saveMessage(
+            sessionId,
+            CopilotMessageRoles.ASSISTANT,
+            responseText,
+            metadata,
+          ),
+          CopilotService.touchSession(sessionId, responseText.slice(0, 120)),
+        ]);
         onEvent({ type: "done", message: assistantMsg });
         return;
       }
@@ -516,53 +517,72 @@ export class CopilotService {
       { role: "user", content: trimmed },
     ];
 
+    onEvent({ type: "status", stage: "thinking" });
+    const streamText = (text: string) => onEvent({ type: "token", text });
+
+    let fullText = "";
+    let lastRoundHadTools = false;
     const maxToolRounds = 8;
     for (let round = 0; round < maxToolRounds; round += 1) {
-      const result = await createGeminiCompletion(llmMessages, { tools: COPILOT_TOOLS });
+      const result = await streamGeminiTurn(llmMessages, {
+        tools: COPILOT_TOOLS,
+        signal,
+        onText: streamText,
+      });
+      lastRoundHadTools = result.toolCalls.length > 0;
 
-      if (result.toolCalls.length > 0) {
+      if (!lastRoundHadTools) {
+        fullText = result.content;
+        break;
+      }
+
+      // Any preamble text streamed in this round is discarded client-side (reset).
+      onEvent({
+        type: "status",
+        stage: "tools",
+        tools: result.toolCalls.map((call) => call.function.name),
+        reset: true,
+      });
+      llmMessages.push({
+        role: "assistant",
+        content: result.content || null,
+        tool_calls: result.toolCalls,
+      });
+
+      // Sequential on purpose: booking tools mutate state and depend on order.
+      for (const toolCall of result.toolCalls) {
+        const toolResult = await executeCopilotTool(
+          toolCall.function.name,
+          toolCall.function.arguments,
+          toolCtx,
+          toolState,
+        );
+
         llmMessages.push({
-          role: "assistant",
-          content: result.content || null,
-          tool_calls: result.toolCalls,
+          role: "tool",
+          content: sanitizeToolResultForModel(toolResult),
+          tool_call_id: toolCall.id,
+          name: toolCall.function.name,
         });
-
-        for (const toolCall of result.toolCalls) {
-          const toolResult = await executeCopilotTool(
-            toolCall.function.name,
-            toolCall.function.arguments,
-            toolCtx,
-            toolState,
-          );
-
-          llmMessages.push({
-            role: "tool",
-            content: sanitizeToolResultForModel(toolResult),
-            tool_call_id: toolCall.id,
-            name: toolCall.function.name,
-          });
-        }
-        continue;
       }
+      signal?.throwIfAborted();
+    }
 
-      if (result.content) {
-        llmMessages.push({ role: "assistant", content: result.content });
-      }
-      break;
+    if (!fullText) {
+      // Tool rounds exhausted or a blank turn: one final answer without tools.
+      if (lastRoundHadTools) onEvent({ type: "status", stage: "thinking", reset: true });
+      fullText = (await streamGeminiTurn(llmMessages, { signal, onText: streamText })).content;
     }
 
     const metadata = metadataFromToolState(toolState);
 
-    let fullText = "";
-    const lastAssistant = [...llmMessages].reverse().find((m) => m.role === "assistant");
-    const hasCompletionContent = Boolean(lastAssistant?.content?.length);
-
-    if (hasCompletionContent && lastAssistant) {
-      fullText = lastAssistant.content ?? "";
-    } else {
-      for await (const token of streamGeminiCompletion(llmMessages)) {
-        fullText += token;
-      }
+    // Blank answer (e.g. MAX_TOKENS spent on thinking) and no tool results to fall back on.
+    if (!fullText.trim() && Object.keys(metadata).length === 0) {
+      throw new AppError(
+        "The assistant could not complete an answer. Please try again.",
+        "UPSTREAM_EMPTY",
+        502,
+      );
     }
 
     if (
@@ -570,11 +590,8 @@ export class CopilotService {
       containsEncryptedPayload(fullText) ||
       !fullText.trim()
     ) {
+      // The `done` message below carries the sanitized text, replacing what was streamed.
       fullText = buildCopilotResponseText(fullText, metadata, replyLanguage);
-    }
-
-    for (const char of fullText) {
-      onEvent({ type: "token", text: char });
     }
 
     const responseText =
@@ -589,14 +606,15 @@ export class CopilotService {
       onEvent({ type: "metadata", metadata });
     }
 
-    const assistantMsg = await CopilotService.saveMessage(
-      sessionId,
-      CopilotMessageRoles.ASSISTANT,
-      responseText,
-      metadata,
-    );
-
-    await CopilotService.touchSession(sessionId, responseText.slice(0, 120));
+    const [assistantMsg] = await Promise.all([
+      CopilotService.saveMessage(
+        sessionId,
+        CopilotMessageRoles.ASSISTANT,
+        responseText,
+        metadata,
+      ),
+      CopilotService.touchSession(sessionId, responseText.slice(0, 120)),
+    ]);
     onEvent({ type: "done", message: assistantMsg });
   }
 
@@ -610,11 +628,11 @@ export class CopilotService {
         role: { $in: [CopilotMessageRoles.USER, CopilotMessageRoles.ASSISTANT] },
       }),
     )
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .limit(40)
       .lean();
 
-    return rows.map((row) => {
+    return rows.reverse().map((row) => {
       const role = row.role === CopilotMessageRoles.USER ? "user" : "assistant";
       const raw = row.content ?? "";
       const content =
@@ -643,18 +661,16 @@ export class CopilotService {
   }
 
   private static async touchSession(sessionId: string, preview: string) {
-    const now = new Date();
-    const session = await CopilotSessionModel.findById(sessionId).lean();
-
-    await CopilotSessionModel.updateOne(
-      mongoFilter({ _id: sessionId }),
-      {
-        $set: {
-          lastMessageAt: now,
-          ...(!session?.title ? { title: preview.slice(0, 80) } : {}),
-        },
-      },
-    );
+    await Promise.all([
+      CopilotSessionModel.updateOne(
+        mongoFilter({ _id: sessionId }),
+        { $set: { lastMessageAt: new Date() } },
+      ),
+      CopilotSessionModel.updateOne(
+        mongoFilter({ _id: sessionId, $or: [{ title: { $exists: false } }, { title: null }, { title: "" }] }),
+        { $set: { title: preview.slice(0, 80) } },
+      ),
+    ]);
   }
 }
 

@@ -112,7 +112,7 @@ export async function getSystemSettings(): Promise<SystemSettingsDto> {
 
   const value = await cached(
     cacheKey("system-settings"),
-    { ttl: 600, tags: [CacheTags.SETTINGS] },
+    { ttl: 900, tags: [CacheTags.SETTINGS] },
     async () => {
       await connectDatabase();
       const doc = await SystemSettingsModel.findOne({ key: "global" }).lean();

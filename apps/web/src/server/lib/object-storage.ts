@@ -104,23 +104,61 @@ export function contentTypeFromKey(storageKey: string): string {
   }
 }
 
+/**
+ * Upper bound on waiting for Supabase to accept an upload. 20 MB (the largest
+ * attachment we allow) needs well under 30s on a healthy link, and failing here
+ * returns a clear 504 long before the platform's function timeout. storage-js
+ * `upload()` takes no AbortSignal, so this stops *waiting* only: the upload may
+ * still complete in the background (an orphaned object, never a chat message).
+ */
+export const PUT_OBJECT_TIMEOUT_MS = 30_000;
+
 export async function putObject(
   namespace: StorageNamespace,
   storageKey: string,
   body: Buffer,
   contentType: string,
+  timeoutMs = PUT_OBJECT_TIMEOUT_MS,
 ): Promise<void> {
   const { bucket } = getConfig();
   const path = objectKey(namespace, storageKey);
 
-  const { error } = await getClient().storage.from(bucket).upload(path, body, {
-    contentType,
-    upsert: false,
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new AppError("File upload timed out. Please try again.", "STORAGE_TIMEOUT", 504)),
+      timeoutMs,
+    );
   });
 
-  if (error) {
-    throw new Error(error.message);
+  try {
+    const { error } = await Promise.race([
+      getClient().storage.from(bucket).upload(path, body, { contentType, upsert: false }),
+      timeout,
+    ]);
+    if (error) {
+      throw mapUploadError(error);
+    }
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/** Bucket limits are configured in Supabase, so surface them as client errors (not 500s). */
+export function mapUploadError(error: unknown): Error {
+  const err = error as { statusCode?: number | string; status?: number; message?: string };
+  const status = Number(err?.statusCode ?? err?.status);
+  const message = (err?.message ?? "").toLowerCase();
+  if (status === 413 || message.includes("maximum allowed size") || message.includes("too large")) {
+    return new AppError("File is larger than storage allows", "FILE_TOO_LARGE", 413);
+  }
+  if (status === 415 || message.includes("mime type") || message.includes("invalid_mime_type")) {
+    // Keep Supabase's reason (names the rejected type) for the route's failure log.
+    return Object.assign(new AppError("Storage does not accept this file type", "UNSUPPORTED_MEDIA_TYPE", 415), {
+      cause: err?.message,
+    });
+  }
+  return new Error(err?.message || "Storage upload failed");
 }
 
 const DOWNLOAD_RETRY_ATTEMPTS = 3;

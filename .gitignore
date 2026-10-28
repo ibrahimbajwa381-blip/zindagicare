@@ -15,3 +15,5 @@ dist
 bugs.txt
 # TypeScript incremental build cache
 *.tsbuildinfo
+claude.md
+Agent.md

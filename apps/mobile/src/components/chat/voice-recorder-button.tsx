@@ -9,6 +9,13 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { uploadChatVoiceNote } from "@/api/chat";
+import { ApiRequestError } from "@/api/client";
+import { UploadTimeoutError } from "@/lib/file-upload";
+
+/** Network/timeouts (no status), 408, 429 and 5xx may succeed on retry; other 4xx won't. */
+function isRetryableStatus(status: number) {
+  return status === 0 || status === 408 || status === 429 || status >= 500;
+}
 import { colors, fonts } from "@/lib/theme";
 import { formatDuration } from "@/lib/format-duration";
 
@@ -31,9 +38,16 @@ export function VoiceRecorderButton({
       Alert.alert("Microphone access needed", "Enable microphone access in Settings to send voice notes.");
       return;
     }
-    await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
+    try {
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+    } catch {
+      Alert.alert(
+        "Couldn't start recording",
+        "Make sure no other app is using the microphone, then try again.",
+      );
+    }
   };
 
   const cancelRecording = async () => {
@@ -46,14 +60,35 @@ export function VoiceRecorderButton({
     if (!recorder.isRecording) return;
     await recorder.stop();
     const uri = recorder.uri;
-    if (!uri) return;
+    if (!uri) {
+      Alert.alert("Nothing was recorded", "Please try again.");
+      return;
+    }
+    await upload(uri);
+  };
 
+  // RecordingPresets.HIGH_QUALITY writes AAC in an .m4a (MPEG-4) container on iOS and Android.
+  // `uploaded` is passed back on retry so a finished upload is reused; the server
+  // treats a resend with the same attachment URL as the original message (no duplicate).
+  const upload = async (uri: string, uploaded?: { url: string; mimeType: string }) => {
     setIsUploading(true);
     try {
-      const uploaded = await uploadChatVoiceNote(threadId, uri, "audio/mp4");
+      uploaded ??= await uploadChatVoiceNote(threadId, uri, "audio/mp4");
       await onUploaded({ url: uploaded.url, mime: uploaded.mimeType });
-    } catch {
-      Alert.alert("Couldn't send voice note", "Please try again.");
+    } catch (e) {
+      const message =
+        e instanceof ApiRequestError || e instanceof UploadTimeoutError ? e.message : "Please try again.";
+      if (e instanceof ApiRequestError && !isRetryableStatus(e.status)) {
+        // Wrong type/size or auth: the same recording can't succeed on retry.
+        Alert.alert("Voice note not sent", message);
+      } else {
+        // Keep the recorded file so the user can retry without re-recording.
+        const done = uploaded;
+        Alert.alert("Couldn't send voice note", message, [
+          { text: "Discard", style: "cancel" },
+          { text: "Retry", onPress: () => void upload(uri, done) },
+        ]);
+      }
     } finally {
       setIsUploading(false);
     }

@@ -185,7 +185,7 @@ export class PublicNurseService {
     if (options.near) return PublicNurseService.load(options);
     return cached(
       cacheKey("nurses", options.city, options.specialty),
-      { ttl: 300, tags: [CacheTags.NURSES] },
+      { ttl: 900, tags: [CacheTags.NURSES] },
       () => PublicNurseService.load(options),
     );
   }
@@ -260,7 +260,7 @@ export class PublicNurseService {
    * directory would list, deduplicated case-insensitively and title-cased for display.
    */
   static async listCities(): Promise<string[]> {
-    return cached(cacheKey("nurses-cities"), { ttl: 600, tags: [CacheTags.NURSES] }, () =>
+    return cached(cacheKey("nurses-cities"), { ttl: 900, tags: [CacheTags.NURSES] }, () =>
       PublicNurseService.loadCities(),
     );
   }
@@ -287,7 +287,7 @@ export class PublicNurseService {
 
   /** Look up by public slug or by User id (used by ?nurse= deep links). */
   static async get(slugOrId: string): Promise<PublicNurse | null> {
-    return cached(cacheKey("nurse", slugOrId), { ttl: 300, tags: [CacheTags.NURSES] }, () =>
+    return cached(cacheKey("nurse", slugOrId), { ttl: 900, tags: [CacheTags.NURSES] }, () =>
       PublicNurseService.loadOne(slugOrId),
     );
   }

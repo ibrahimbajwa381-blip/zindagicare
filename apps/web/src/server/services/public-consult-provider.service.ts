@@ -214,7 +214,7 @@ export class PublicConsultProviderService {
   ): Promise<PublicConsultProvider[]> {
     return cached(
       cacheKey(`${role}s`, options.city, options.specialty, options.limit),
-      { ttl: 300, tags: [ROLE_CACHE_TAG[role]] },
+      { ttl: 900, tags: [ROLE_CACHE_TAG[role]] },
       () => PublicConsultProviderService.load(role, options),
     );
   }
@@ -273,7 +273,7 @@ export class PublicConsultProviderService {
     role: ConsultProviderRole,
     slugOrId: string,
   ): Promise<PublicConsultProvider | null> {
-    return cached(cacheKey(role, slugOrId), { ttl: 300, tags: [ROLE_CACHE_TAG[role]] }, () =>
+    return cached(cacheKey(role, slugOrId), { ttl: 900, tags: [ROLE_CACHE_TAG[role]] }, () =>
       PublicConsultProviderService.loadOne(role, slugOrId),
     );
   }
