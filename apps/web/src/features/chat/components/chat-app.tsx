@@ -9,6 +9,7 @@ import {
   fetchMessages,
   fetchThreads,
 } from "@/features/chat/lib/chat-api";
+import { createThreadListLoader } from "@/features/chat/lib/thread-list-loader";
 import { useChatRealtime } from "@/features/chat/hooks/use-chat-realtime";
 import {
   dispatchChatUnreadTotal,
@@ -95,18 +96,12 @@ export function ChatApp({
     [threads, activeThreadId],
   );
 
-  const loadThreads = useCallback(async () => {
-    setLoadingThreads(true);
-    try {
-      const rows = await fetchThreads();
-      setThreads(rows);
-    } catch {
-      // Keep the inbox usable when the API is temporarily unavailable.
-      setThreads([]);
-    } finally {
-      setLoadingThreads(false);
-    }
-  }, []);
+  // loadingThreads starts true and is only ever cleared, so the empty state is
+  // hidden until the first load; background refreshes update the list in place.
+  const { load: loadThreads, loadFresh: loadThreadsFresh } = useMemo(
+    () => createThreadListLoader(fetchThreads, setThreads, () => setLoadingThreads(false)),
+    [],
+  );
 
   useEffect(() => {
     void loadThreads();
@@ -126,7 +121,7 @@ export function ChatApp({
       try {
         const thread = await createDirectThread(initialParticipantId);
         if (cancelled) return;
-        await loadThreads();
+        await loadThreadsFresh();
         if (cancelled) return;
         setThreads((prev) =>
           prev.some((row) => row.id === thread.id) ? prev : [thread, ...prev],
@@ -148,7 +143,7 @@ export function ChatApp({
     return () => {
       cancelled = true;
     };
-  }, [initialParticipantId, loadThreads]);
+  }, [initialParticipantId, loadThreadsFresh]);
 
   const loadMessages = useCallback(async (threadId: string) => {
     const result = await fetchMessages(threadId);
@@ -319,7 +314,8 @@ export function ChatApp({
   }, []);
 
   function handleThreadCreated(threadId: string) {
-    void loadThreads().then(() => {
+    // Fresh load: a poll already in flight may predate the new thread.
+    void loadThreadsFresh().then(() => {
       setActiveThreadId(threadId);
       setView("conversation");
     });

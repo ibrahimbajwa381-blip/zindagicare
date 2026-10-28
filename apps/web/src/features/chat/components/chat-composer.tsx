@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Paperclip, Send, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@zindagi/shared";
+import {
+  recordingErrorMessage,
+  voiceNoteMimeType,
+} from "@/features/chat/lib/voice-note-format";
+import { ChatRequestError } from "@/features/chat/lib/chat-api";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 const ACCEPTED_FILE_TYPES =
@@ -36,6 +41,9 @@ export function ChatComposer({
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  // Kept after a failed send so the user can retry without re-recording.
+  const [failedVoiceNote, setFailedVoiceNote] = useState<Blob | null>(null);
+  const [voiceSendError, setVoiceSendError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -95,6 +103,12 @@ export function ChatComposer({
   async function startRecording() {
     if (disabled || !onSendVoiceNote) return;
     setMicError(null);
+    setFailedVoiceNote(null);
+    setVoiceSendError(null);
+    if (!window.isSecureContext || !navigator.mediaDevices || typeof MediaRecorder === "undefined") {
+      setMicError(recordingErrorMessage(null, window.isSecureContext));
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -112,8 +126,9 @@ export function ChatComposer({
       timerRef.current = setInterval(() => {
         setRecordSeconds((s) => s + 1);
       }, 1000);
-    } catch {
-      setMicError("Microphone access denied");
+    } catch (error) {
+      stopStream();
+      setMicError(recordingErrorMessage(error, window.isSecureContext));
     }
   }
 
@@ -133,9 +148,10 @@ export function ChatComposer({
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
 
+    const mimeType = voiceNoteMimeType(recorder.mimeType || chunksRef.current[0]?.type);
     const blob = await new Promise<Blob>((resolve) => {
       recorder.onstop = () => {
-        resolve(new Blob(chunksRef.current, { type: "audio/webm" }));
+        resolve(new Blob(chunksRef.current, { type: mimeType ?? "" }));
       };
       recorder.stop();
     });
@@ -144,14 +160,40 @@ export function ChatComposer({
     mediaRecorderRef.current = null;
     setIsRecording(false);
 
-    if (blob.size === 0) return;
+    if (!mimeType) {
+      setMicError("This browser records voice in an unsupported format");
+      return;
+    }
+    if (blob.size === 0) {
+      setMicError("Nothing was recorded. Please try again");
+      return;
+    }
+    await sendVoiceNote(blob);
+  }
+
+  async function sendVoiceNote(blob: Blob) {
+    if (!onSendVoiceNote) return;
     setSending(true);
+    setFailedVoiceNote(null);
+    setVoiceSendError(null);
     try {
-      await onSendVoiceNote?.(blob);
+      await onSendVoiceNote(blob);
+    } catch (error) {
+      if (error instanceof ChatRequestError && !error.retryable) {
+        // Wrong type/size or auth: retrying the same recording can't succeed.
+        setVoiceSendError(`Voice note not sent: ${error.message}`);
+      } else {
+        setVoiceSendError(
+          error instanceof ChatRequestError ? `Voice note failed to send. ${error.message}` : "Voice note failed to send",
+        );
+        setFailedVoiceNote(blob);
+      }
     } finally {
       setSending(false);
     }
   }
+
+  const errorMessage = voiceSendError ?? micError ?? fileError;
 
   if (isRecording) {
     return (
@@ -187,6 +229,37 @@ export function ChatComposer({
   }
 
   return (
+    <>
+    {errorMessage && (
+      <div
+        role="alert"
+        className="flex shrink-0 items-center gap-3 border-t border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700"
+      >
+        <span className="flex-1">{errorMessage}</span>
+        {failedVoiceNote && (
+          <>
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => void sendVoiceNote(failedVoiceNote)}
+              className="font-medium underline disabled:opacity-50"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFailedVoiceNote(null);
+                setVoiceSendError(null);
+              }}
+              className="text-red-500"
+            >
+              Discard
+            </button>
+          </>
+        )}
+      </div>
+    )}
     <form
       onSubmit={handleSubmit}
       className="flex shrink-0 items-end gap-2 border-t border-slate-200/80 bg-[#f0f2f5] px-3 py-3 sm:px-4"
@@ -216,7 +289,7 @@ export function ChatComposer({
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={micError ?? fileError ?? placeholder}
+        placeholder={placeholder}
         rows={1}
         disabled={disabled}
         onKeyDown={(e) => {
@@ -255,5 +328,6 @@ export function ChatComposer({
         )
       )}
     </form>
+    </>
   );
 }

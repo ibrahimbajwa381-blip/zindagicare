@@ -63,7 +63,7 @@ export default function MessagesScreen() {
             <Text style={styles.error}>{error}</Text>
           </View>
         ) : (
-          <BrandLoadingScreen />
+          <View style={styles.centered} />
         )}
       </>
     );

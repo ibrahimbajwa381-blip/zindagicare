@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Search } from "lucide-react";
 import { cn } from "@zindagi/shared";
-import { LoadingScreen } from "@/components/ui/loading-screen";
 import type { ChatContactDto } from "@/features/chat/types";
 import { createDirectThread, fetchContacts } from "@/features/chat/lib/chat-api";
 import { ChatAvatar } from "./chat-avatar";
@@ -93,9 +92,7 @@ export function ChatNewContactPanel({
       </div>
 
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
-        {loading ? (
-          <LoadingScreen message="Loading…" size="md" />
-        ) : contacts.length === 0 ? (
+        {loading ? null : contacts.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-slate-500">{emptyTitle}</div>
         ) : (
           contacts.map((contact) => (

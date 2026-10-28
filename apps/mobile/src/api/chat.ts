@@ -1,4 +1,4 @@
-import { apiFetch, ApiRequestError } from "./client";
+import { apiFetch, ApiRequestError, refreshAccessTokenShared } from "./client";
 import { API_URL } from "@/lib/config";
 import { getStoredTokens } from "@/lib/token-storage";
 import { uploadFileMultipart } from "@/lib/file-upload";
@@ -75,16 +75,23 @@ async function uploadChatAttachment(
   fileUri: string,
   mimeType: string,
 ): Promise<VoiceNoteUpload> {
-  const { accessToken } = await getStoredTokens();
-
-  const { status, json } = await uploadFileMultipart<
+  type UploadReply =
     | { success: true; data: VoiceNoteUpload; error: null }
-    | { success: false; data: null; error: { code: string; message: string } }
-  >(`${API_URL}/api/v1/chat/attachments/upload`, fileUri, {
-    mimeType,
-    parameters: { threadId },
-    accessToken,
-  });
+    | { success: false; data: null; error: { code: string; message: string } };
+  const send = (accessToken: string | null | undefined) =>
+    uploadFileMultipart<UploadReply>(`${API_URL}/api/v1/chat/attachments/upload`, fileUri, {
+      mimeType,
+      parameters: { threadId },
+      accessToken,
+    });
+
+  const { accessToken } = await getStoredTokens();
+  let { status, json } = await send(accessToken);
+  // Same silent refresh apiFetch does: the 1h access token may have expired.
+  if (status === 401) {
+    const refreshed = await refreshAccessTokenShared();
+    if (refreshed) ({ status, json } = await send(refreshed));
+  }
 
   if (!json.success) {
     throw new ApiRequestError(json.error.message, json.error.code, status);

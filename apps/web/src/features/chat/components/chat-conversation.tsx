@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { ChatMessageDto, ChatThreadDto } from "@/features/chat/types";
 import { useLocale, useTranslations } from "@/i18n/locale-provider";
 import { ChatAvatar } from "./chat-avatar";
@@ -53,6 +53,7 @@ export function ChatConversation({
   const { locale } = useLocale();
   const t = useTranslations();
   const listRef = useRef<HTMLDivElement>(null);
+  const uploadedVoiceNotes = useRef(new WeakMap<Blob, { url: string; mimeType: string }>());
   const loadingOlderRef = useRef(false);
   const onThreadReadRef = useRef(onThreadRead);
   useEffect(() => {
@@ -116,6 +117,9 @@ export function ChatConversation({
   }
 
   async function handleSendVoiceNote(blob: Blob) {
+    // A retry of the same recording reuses its finished upload, and the server
+    // treats a resend with the same attachment URL as the original message.
+    let uploaded = uploadedVoiceNotes.current.get(blob);
     const tempId = `pending-${Date.now()}`;
     const tempUrl = URL.createObjectURL(blob);
     const optimisticMessage: ChatMessageDto = {
@@ -135,15 +139,19 @@ export function ChatConversation({
     scrollToBottom("auto");
 
     try {
-      const uploaded = await uploadVoiceNote(thread.id, blob);
+      if (!uploaded) {
+        uploaded = await uploadVoiceNote(thread.id, blob);
+        uploadedVoiceNotes.current.set(blob, uploaded);
+      }
       const message = await sendMessage(thread.id, "", locale, {
         url: uploaded.url,
         mime: uploaded.mimeType,
       });
       onMessageReplaced(tempId, message);
       scrollToBottom("smooth");
-    } catch {
+    } catch (error) {
       onMessageFailed(tempId);
+      throw error; // composer shows the failure (and offers retry for voice notes)
     } finally {
       URL.revokeObjectURL(tempUrl);
     }
@@ -176,8 +184,9 @@ export function ChatConversation({
       });
       onMessageReplaced(tempId, message);
       scrollToBottom("smooth");
-    } catch {
+    } catch (error) {
       onMessageFailed(tempId);
+      throw error; // composer shows the failure (and offers retry for voice notes)
     } finally {
       URL.revokeObjectURL(tempUrl);
     }
@@ -239,11 +248,7 @@ export function ChatConversation({
           }
         }}
       >
-        {loadingMessages ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-brand" />
-          </div>
-        ) : (
+        {loadingMessages ? null : (
           <div className="space-y-2">
             {hasMore && (
               <p className="text-center text-xs text-slate-500">Scroll up for older messages</p>
