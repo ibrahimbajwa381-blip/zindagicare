@@ -2,17 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
-import { fetchThreads } from "@/features/chat/lib/chat-api";
 import {
   DOCTOR_WORKSPACE_ACTIONS,
   doctorNavBadgeCount,
-  summaryToNavStats,
-  type DoctorNavStats,
 } from "@/features/doctor/data/doctor-workspace-nav";
-import { CHAT_UNREAD_EVENT } from "@/lib/chat/unread-events";
-import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
+import { useDoctorNavStats } from "@/features/doctor/hooks/use-doctor-nav-stats";
 
 const SHORT_LABELS: Record<string, string> = {
   "/doctor/messages": "Messages",
@@ -30,57 +25,7 @@ type Props = {
 
 export function DoctorMobilePracticeNav({ className }: Props) {
   const pathname = usePathname();
-  const [stats, setStats] = useState<DoctorNavStats>({
-    unreadMessages: 0,
-    pendingRequests: 0,
-    sundayQueue: 0,
-    homeVisits: 0,
-    urgentCalls: 0,
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const refresh = async () => {
-      const [unreadMessages, summaryRes] = await Promise.all([
-        fetchThreads()
-          .then((threads) =>
-            threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0),
-          )
-          .catch(() => 0),
-        fetch("/api/v1/doctor/summary")
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null),
-      ]);
-
-      if (cancelled) return;
-
-      const summary = summaryRes?.success
-        ? (summaryRes.data as DoctorDashboardSummary)
-        : null;
-
-      if (summary) {
-        setStats(summaryToNavStats(summary, unreadMessages));
-      } else {
-        setStats((prev) => ({ ...prev, unreadMessages }));
-      }
-    };
-
-    void refresh();
-
-    const onChatUnread = (event: Event) => {
-      const total = (event as CustomEvent<{ total: number }>).detail?.total;
-      if (typeof total === "number") {
-        setStats((prev) => ({ ...prev, unreadMessages: total }));
-      }
-    };
-
-    window.addEventListener(CHAT_UNREAD_EVENT, onChatUnread);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(CHAT_UNREAD_EVENT, onChatUnread);
-    };
-  }, []);
+  const stats = useDoctorNavStats();
 
   return (
     <nav

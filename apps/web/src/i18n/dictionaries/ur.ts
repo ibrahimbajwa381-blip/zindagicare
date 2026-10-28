@@ -271,6 +271,13 @@ export const ur: Dictionary = {
     goHome: "گھر واپس جائیں",
     browseDoctors: "ڈاکٹرز دیکھیں",
   },
+  errorPage: {
+    title: "کچھ غلط ہو گیا",
+    description: "یہ صفحہ ابھی لوڈ نہیں ہو سکا۔ براہ کرم تھوڑی دیر بعد دوبارہ کوشش کریں۔",
+    retry: "دوبارہ کوشش کریں",
+    goHome: "گھر واپس جائیں",
+    reference: "حوالہ",
+  },
   pwa: {
     offlineTitle: "آپ آف لائن ہیں",
     offlineDescription:
@@ -1889,6 +1896,8 @@ export const ur: Dictionary = {
       "اگر علامات بڑھیں یا انتظار محفوظ نہ لگے تو فوری دیکھ بھال یا ایمرجنسی خدمات استعمال کریں۔",
     callEmergency: "1122 پر کال کریں",
     thinking: "سوچ رہا ہے…",
+    checkingTools: "ڈاکٹرز اور آپ کا ریکارڈ دیکھ رہا ہے…",
+    retry: "دوبارہ کوشش کریں",
     loading: "گفتگو لوڈ ہو رہی ہے…",
     micLabel: "بولنے کے لیے دبائیں",
     stopMicLabel: "سننا بند کریں",

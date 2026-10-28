@@ -21,5 +21,6 @@ export type CopilotMessageDto = {
 export type CopilotStreamEvent =
   | { type: "token"; text: string }
   | { type: "metadata"; metadata: CopilotMessageMetadata }
+  | { type: "status"; stage: "thinking" | "tools"; tools?: string[]; reset?: boolean }
   | { type: "done"; message: CopilotMessageDto }
   | { type: "error"; message: string };

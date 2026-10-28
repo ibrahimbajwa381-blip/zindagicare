@@ -54,7 +54,31 @@ function isSundayMorningKarachi(now = new Date()) {
   return weekday === "Sun" && hour >= 7 && hour < 11;
 }
 
+/** Navigation-triggered scans run at most this often per server instance. */
+const NAVIGATION_SCAN_INTERVAL_MS = 60_000;
+let lastNavigationScanAt = 0;
+let navigationScan: Promise<unknown> | null = null;
+
 export class AppointmentReminderService {
+  /**
+   * Fire-and-forget reminder scan for page/API traffic: skipped when one ran in
+   * the last minute or is still running, so overlapping scans on this instance
+   * can't both see a reminder as unsent. The internal cron route calls
+   * processDueReminders() directly and is not throttled.
+   */
+  static triggerFromNavigation(now = Date.now()): boolean {
+    if (navigationScan || now - lastNavigationScanAt < NAVIGATION_SCAN_INTERVAL_MS) {
+      return false;
+    }
+    lastNavigationScanAt = now;
+    navigationScan = AppointmentReminderService.processDueReminders()
+      .catch(() => null)
+      .finally(() => {
+        navigationScan = null;
+      });
+    return true;
+  }
+
   static async processDueReminders() {
     await connectDatabase();
 

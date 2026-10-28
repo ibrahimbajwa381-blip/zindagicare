@@ -4,6 +4,9 @@ import { CopilotService } from "@/server/services/copilot.service";
 import { AppError, canAccessHealthAssistant, type Role } from "@zindagi/shared";
 import { listCopilotMessagesQuerySchema, sendCopilotMessageSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
+import { GEMINI_TIMEOUT_MESSAGE } from "@/server/services/gemini.service";
+
+const COPILOT_DEADLINE_MS = 60_000;
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -48,14 +51,25 @@ export async function POST(req: Request, { params }: Params) {
     const json = await req.json();
     const body = sendCopilotMessageSchema.parse(json);
 
+    // Whole-question budget across all Gemini rounds and tool calls.
+    const deadline = AbortSignal.timeout(COPILOT_DEADLINE_MS);
+    const disconnected = new AbortController();
+    const signal = AbortSignal.any([req.signal, deadline, disconnected.signal]);
+
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
+        let closed = false;
 
         const send = (event: string, data: unknown) => {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-          );
+          if (closed) return;
+          try {
+            controller.enqueue(
+              encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+            );
+          } catch {
+            closed = true; // Client went away; stop writing.
+          }
         };
 
         try {
@@ -66,15 +80,26 @@ export async function POST(req: Request, { params }: Params) {
             (evt) => {
               send(evt.type, evt);
             },
+            signal,
           );
         } catch (error) {
           send("error", {
             type: "error",
-            message: error instanceof Error ? error.message : "Something went wrong",
+            message: deadline.aborted
+              ? GEMINI_TIMEOUT_MESSAGE
+              : error instanceof Error
+                ? error.message
+                : "Something went wrong",
           });
         } finally {
-          controller.close();
+          if (!closed) {
+            closed = true;
+            controller.close();
+          }
         }
+      },
+      cancel() {
+        disconnected.abort();
       },
     });
 

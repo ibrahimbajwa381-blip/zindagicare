@@ -2,24 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { cn } from "@zindagi/shared";
 import { VerificationStatuses } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { ChevronRight, ExternalLink, ShieldCheck, X } from "lucide-react";
 import { DoctorAvatar } from "@/features/doctor/components/doctor-avatar";
-import { fetchThreads } from "@/features/chat/lib/chat-api";
 import {
   DOCTOR_APPROVED_NAV_SECTIONS,
   DOCTOR_ONBOARDING_NAV_SECTIONS,
   doctorNavBadgeCount,
-  summaryToNavStats,
-  type DoctorNavStats,
   type DoctorWorkspaceNavItem,
 } from "@/features/doctor/data/doctor-workspace-nav";
+import { useDoctorNavStats } from "@/features/doctor/hooks/use-doctor-nav-stats";
 import { doctorProfilePath } from "@/lib/doctors/profile-path";
-import { CHAT_UNREAD_EVENT } from "@/lib/chat/unread-events";
-import type { DoctorDashboardSummary } from "@/server/services/doctor-dashboard.service";
 
 type DoctorSidebarProps = {
   mobileOpen: boolean;
@@ -64,66 +59,11 @@ export function DoctorSidebar({
   doctorAvatarUrl,
 }: DoctorSidebarProps) {
   const pathname = usePathname();
-  const [navStats, setNavStats] = useState<DoctorNavStats>({
-    unreadMessages: 0,
-    pendingRequests: 0,
-    sundayQueue: 0,
-    homeVisits: 0,
-    urgentCalls: 0,
+  const navStats = useDoctorNavStats({
+    enabled: showFullNav,
+    refreshOnFocus: true,
+    refreshKey: pathname,
   });
-
-  useEffect(() => {
-    if (!showFullNav) return;
-
-    let cancelled = false;
-
-    const refresh = async () => {
-      const [unreadMessages, summaryRes] = await Promise.all([
-        fetchThreads()
-          .then((threads) =>
-            threads.reduce((sum, t) => sum + (t.unreadCount ?? 0), 0),
-          )
-          .catch(() => 0),
-        fetch("/api/v1/doctor/summary")
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null),
-      ]);
-
-      if (cancelled) return;
-
-      const summary = summaryRes?.success
-        ? (summaryRes.data as DoctorDashboardSummary)
-        : null;
-
-      if (summary) {
-        setNavStats(summaryToNavStats(summary, unreadMessages));
-      } else {
-        setNavStats((prev) => ({ ...prev, unreadMessages }));
-      }
-    };
-
-    void refresh();
-
-    const onFocus = () => {
-      void refresh();
-    };
-
-    const onChatUnread = (event: Event) => {
-      const total = (event as CustomEvent<{ total: number }>).detail?.total;
-      if (typeof total === "number") {
-        setNavStats((prev) => ({ ...prev, unreadMessages: total }));
-      }
-    };
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener(CHAT_UNREAD_EVENT, onChatUnread);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener(CHAT_UNREAD_EVENT, onChatUnread);
-    };
-  }, [showFullNav, pathname]);
 
   function isActive(item: DoctorWorkspaceNavItem) {
     if (item.exact) return pathname === item.href;

@@ -22,6 +22,7 @@ import { CopilotComposer } from "./copilot-composer";
 import { CopilotDisclaimer } from "./copilot-disclaimer";
 import { CopilotMessageBubble } from "./copilot-message-bubble";
 import { useCopilotStream } from "@/features/copilot/hooks/use-copilot-stream";
+import { Button } from "@/components/ui/button";
 
 type CopilotCopy = {
   messagePlaceholder: string;
@@ -38,6 +39,8 @@ type CopilotCopy = {
   urgentBannerBody: string;
   callEmergency: string;
   thinking: string;
+  checkingTools: string;
+  retry: string;
   micLabel: string;
   stopMicLabel: string;
   doctorReferralTitle: string;
@@ -99,6 +102,12 @@ export function CopilotConversation({
   const [messages, setMessages] = useState<CopilotMessageDto[]>(initialMessages);
   const [streaming, setStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  const [statusLabel, setStatusLabel] = useState<string | null>(null);
+  const [failedSend, setFailedSend] = useState<{
+    content: string;
+    options?: SendOptions;
+    messageIds: string[];
+  } | null>(null);
   const [pendingMetadata, setPendingMetadata] = useState<CopilotMessageDto["metadata"]>();
 
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -228,6 +237,8 @@ export function CopilotConversation({
       setMessages((prev) => [...prev, tempUser]);
       setStreaming(true);
       setStreamingText("");
+      setStatusLabel(null);
+      setFailedSend(null);
       setPendingMetadata(undefined);
 
       const tempAssistantId = `pending-assistant-${Date.now()}`;
@@ -240,6 +251,10 @@ export function CopilotConversation({
           {
             onToken: (text) => {
               setStreamingText((prev) => prev + text);
+            },
+            onStatus: (event) => {
+              if (event.reset) setStreamingText("");
+              setStatusLabel(event.stage === "tools" ? copy.checkingTools : copy.thinking);
             },
             onMetadata: (metadata) => {
               setPendingMetadata(metadata);
@@ -283,6 +298,7 @@ export function CopilotConversation({
               ]);
               setStreaming(false);
               setStreamingText("");
+              setFailedSend({ content, options, messageIds: [tempUser.id, tempAssistantId] });
             },
           },
           inputMode,
@@ -291,7 +307,7 @@ export function CopilotConversation({
         setStreaming(false);
       }
     },
-    [openBooking, runCheckout, sendMessage, sessionId, speakText],
+    [copy.checkingTools, copy.thinking, openBooking, runCheckout, sendMessage, sessionId, speakText],
   );
 
   useEffect(() => {
@@ -376,10 +392,28 @@ export function CopilotConversation({
               <CopilotMessageBubble
                 message={streamingMessage}
                 isStreaming
-                streamingContent={streamingText || copy.thinking}
+                streamingContent={streamingText || statusLabel || copy.thinking}
                 labels={labels}
                 onBook={openBooking}
               />
+            ) : null}
+
+            {!streaming && failedSend ? (
+              <div className="flex justify-start">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full px-4"
+                  onClick={() => {
+                    const { content, options, messageIds } = failedSend;
+                    setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
+                    void handleSend(content, options);
+                  }}
+                >
+                  {copy.retry}
+                </Button>
+              </div>
             ) : null}
             </div>
           </div>

@@ -118,31 +118,42 @@ async function findDoctorsWithMatchingSlots(
     matchedPreference: boolean;
   }> = [];
 
-  for (const doctor of doctors.slice(0, 12)) {
-    if (
-      resolvedSpecialty &&
-      !doctorId &&
-      !doctorName &&
-      !matchDoctorSpecialty(doctor.specialties, resolvedSpecialty)
-    ) {
-      continue;
+  const candidates = doctors
+    .slice(0, 12)
+    .filter(
+      (doctor) =>
+        !resolvedSpecialty ||
+        doctorId ||
+        doctorName ||
+        matchDoctorSpecialty(doctor.specialties, resolvedSpecialty),
+    );
+
+  // Read-only slot lookups, a few at a time; batches keep the original doctor order.
+  const SLOT_LOOKUP_CONCURRENCY = 4;
+  for (let i = 0; i < candidates.length && matches.length < limit; i += SLOT_LOOKUP_CONCURRENCY) {
+    const batch = candidates.slice(i, i + SLOT_LOOKUP_CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((doctor) => OnlineConsultService.getSlotsForDoctor(doctor.doctorId)),
+    );
+
+    for (const [index, doctor] of batch.entries()) {
+      if (matches.length >= limit) break;
+      const result = results[index];
+      // Only surface failures for doctors the sequential scan would have reached.
+      if (result.status === "rejected") throw result.reason;
+      const available = result.value.slots.filter((s) => s.status === SlotStatuses.AVAILABLE);
+      if (!available.length) continue;
+
+      const strict = filterSlotsByPreference(available, preference);
+      const slot = strict[0] ?? pickPreferredSlot(available, preference);
+      if (!slot) continue;
+
+      matches.push({
+        doctor,
+        slot,
+        matchedPreference: strict.length > 0,
+      });
     }
-
-    const { slots } = await OnlineConsultService.getSlotsForDoctor(doctor.doctorId);
-    const available = slots.filter((s) => s.status === SlotStatuses.AVAILABLE);
-    if (!available.length) continue;
-
-    const strict = filterSlotsByPreference(available, preference);
-    const slot = strict[0] ?? pickPreferredSlot(available, preference);
-    if (!slot) continue;
-
-    matches.push({
-      doctor,
-      slot,
-      matchedPreference: strict.length > 0,
-    });
-
-    if (matches.length >= limit) break;
   }
 
   return matches;

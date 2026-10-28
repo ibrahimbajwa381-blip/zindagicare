@@ -98,7 +98,7 @@ export default async function DoctorLayout({
   const showFullNav = verificationStatus === VerificationStatuses.APPROVED;
 
   if (showFullNav) {
-    void AppointmentReminderService.processDueReminders().catch(() => null);
+    AppointmentReminderService.triggerFromNavigation();
   }
 
   const accountabilityBanner = buildAccountabilityBanner(
