@@ -20,7 +20,7 @@ import {
 import type { AccountType } from "@zindagi/validators";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { syncAdminRoleFromAllowlist } from "@/lib/auth/admin-allowlist";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import { logActivity } from "@/server/services/activity-log.service";
 import { createRateLimiter, enforceRateLimit } from "@/server/lib/rate-limit";
@@ -208,7 +208,7 @@ export async function verifyCredentialsLogin(email: string, password: string) {
 
 export async function findUserByPhone(phone: string) {
   await connectDatabase();
-  const normalized = normalizePakistaniPhone(phone);
+  const normalized = normalizePhone(phone);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(phone));
 
   return UserModel.findOne({
@@ -237,7 +237,7 @@ export async function registerWithCredentials(
   const city = input.city.trim();
   const dateOfBirth = new Date(input.dateOfBirth);
   const email = input.email.toLowerCase();
-  const phone = normalizePakistaniPhone(input.phone);
+  const phone = normalizePhone(input.phone);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
 
   const existingByEmail = await UserModel.findOne({
@@ -335,7 +335,7 @@ export async function findOrCreatePhoneUser(
   referredByDoctorId?: string | null,
 ) {
   await connectDatabase();
-  const normalized = normalizePakistaniPhone(phone);
+  const normalized = normalizePhone(phone);
   let user = await UserModel.findOne({ phoneLookup: phoneLookupHash(normalized) });
 
   if (!user) {
@@ -519,7 +519,7 @@ export async function completeOnboarding(
   }
 
   if (data.phone) {
-    const phone = normalizePakistaniPhone(data.phone);
+    const phone = normalizePhone(data.phone);
     const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(data.phone));
     const existingByPhone = await UserModel.findOne({
       _id: { $ne: user._id },

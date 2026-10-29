@@ -28,9 +28,9 @@ import type {
   adminCreateDoctorSchema,
   adminUpdateDoctorSchema,
 } from "@zindagi/validators";
-import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { normalizePhoneDigits, parsePhoneNumber, toPakistaniLocalPhone } from "@zindagi/validators";
 import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import { mapUserPii, revealPii } from "@/server/lib/decrypt-pii";
@@ -76,7 +76,7 @@ function formatPhoneForDisplay(phone?: string | null): string | undefined {
   if (!phone) return undefined;
   const digits = normalizePhoneDigits(phone);
   if (!digits) return undefined;
-  return toPakistaniLocalPhone(digits);
+  return parsePhoneNumber(phone) ?? toPakistaniLocalPhone(digits);
 }
 
 export type AdminDoctorStats = {
@@ -798,7 +798,7 @@ export async function adminUpdateDoctor(
     userDirty = true;
   }
   if (input.phone !== undefined) {
-    const normalized = normalizePakistaniPhone(input.phone);
+    const normalized = normalizePhone(input.phone);
     const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
     if (normalized !== user.phone && phoneLocal !== user.phone) {
       const existing = await UserModel.findOne({

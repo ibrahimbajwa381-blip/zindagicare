@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { pakistaniPhoneSchema } from "./auth.schema";
+import { phoneSchema } from "./auth.schema";
 import { paymentProviderSchema } from "./payment.schema";
 
 export const urgentCareRequestSchema = z.object({
-  patientPhone: pakistaniPhoneSchema,
+  patientPhone: phoneSchema,
   patientNotes: z.string().max(1000).optional(),
   paymentProvider: paymentProviderSchema.optional(),
 });

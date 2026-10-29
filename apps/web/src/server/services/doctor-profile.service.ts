@@ -23,7 +23,7 @@ import type {
 } from "@/features/doctor/types";
 import { formatDayOfWeek } from "@/features/doctor/types";
 import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { getNextSundayDate } from "@/lib/sunday/date-utils";
 import { mongoFilter } from "@/lib/mongo/query";
 import { SundayConsultService } from "./sunday-consult.service";
@@ -260,7 +260,7 @@ export async function updateDoctorProfile(
   }
 
   if (data.phone !== undefined) {
-    const normalized = normalizePakistaniPhone(data.phone);
+    const normalized = normalizePhone(data.phone);
     const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(data.phone));
     if (normalized !== user.phone && phoneLocal !== user.phone) {
       const existing = await UserModel.findOne({

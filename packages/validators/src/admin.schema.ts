@@ -4,7 +4,7 @@ import {
   SPECIALTIES,
 } from "@zindagi/shared";
 import { z } from "zod";
-import { pakistaniPhoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
+import { phoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
 import { geoPointInputSchema } from "./geo.schema";
 import { verifiedSpecialtiesSchema } from "./specialty.schema";
 
@@ -90,7 +90,7 @@ export const adminUpdateDoctorSchema = z
 
     /** Profile identity / content (same fields doctors can self-edit). */
     name: z.string().min(2).max(100).optional(),
-    phone: pakistaniPhoneSchema.optional(),
+    phone: phoneSchema.optional(),
     avatarUrl: z.string().min(1).optional(),
     bio: z.string().max(2000).optional().nullable(),
     consultationFee: z.coerce.number().min(0).optional(),
@@ -201,7 +201,7 @@ export const adminRescheduleAppointmentSchema = z
 export const adminCreateManualAppointmentSchema = z
   .object({
     patientId: z.string().min(1).optional(),
-    patientPhone: pakistaniPhoneSchema.optional(),
+    patientPhone: phoneSchema.optional(),
     patientName: z.string().min(2).max(100).optional(),
     doctorId: z.string().min(1),
     type: z.enum(["clinic", "online", "home_visit"]),

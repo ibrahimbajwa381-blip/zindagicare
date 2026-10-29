@@ -11,12 +11,12 @@ import {
   PORTFOLIO_MIN_YEAR,
 } from "@zindagi/shared";
 import { geoPointInputSchema } from "./geo.schema";
-import { pakistaniPhoneSchema } from "./auth.schema";
+import { phoneSchema } from "./auth.schema";
 
 /** Profile fields every home-visit staff role (nurse, physiotherapist) can edit. */
 const baseStaffProfileSchema = z.object({
   name: z.string().min(2, "Name is required").optional(),
-  phone: pakistaniPhoneSchema.optional(),
+  phone: phoneSchema.optional(),
   city: z.string().min(2, "City is required").optional(),
   area: z.string().min(2, "Area / neighborhood is required").optional(),
   geo: geoPointInputSchema.optional(),
@@ -233,7 +233,7 @@ export const adminCreatePhysiotherapistSchema = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
-  phone: pakistaniPhoneSchema.optional(),
+  phone: phoneSchema.optional(),
   licenseNumber: z
     .string()
     .trim()
@@ -265,7 +265,7 @@ const adminUpdateStaffObjectSchema = z.object({
     gender: z.enum(["male", "female"]).nullable().optional(),
 
     name: z.string().trim().min(2, "Name is required").max(100).optional(),
-    phone: pakistaniPhoneSchema.optional(),
+    phone: phoneSchema.optional(),
     city: z.string().trim().min(2, "City is required").optional(),
     area: z.string().trim().max(120).optional(),
     radiusKm: z

@@ -23,7 +23,7 @@ import {
   type UpdatePhysiotherapistPortfolioInput,
   type UpdatePhysiotherapistProfileInput,
 } from "@zindagi/validators";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import {
   mapPhysiotherapistPortfolio,
@@ -234,7 +234,7 @@ export async function updatePhysiotherapistProfile(
   const staff = await ensureStaffProfile(user);
 
   if (data.phone !== undefined) {
-    const normalized = normalizePakistaniPhone(data.phone);
+    const normalized = normalizePhone(data.phone);
     const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(data.phone));
     if (normalized !== user.phone && phoneLocal !== user.phone) {
       const existing = await UserModel.findOne({

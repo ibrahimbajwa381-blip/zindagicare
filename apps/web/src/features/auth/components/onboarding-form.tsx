@@ -1,6 +1,6 @@
 "use client";
 
-import { pakistaniPhoneSchema } from "@zindagi/validators";
+import { phoneSchema } from "@zindagi/validators";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export function OnboardingForm({ needsPhone = false, callbackUrl }: OnboardingFo
   const [pending, setPending] = useState(false);
 
   function validatePhone(value: string) {
-    const result = pakistaniPhoneSchema.safeParse(value);
+    const result = phoneSchema.safeParse(value);
     if (!result.success) {
       setPhoneError(t.auth.validation.phone);
       return null;
@@ -119,7 +119,7 @@ export function OnboardingForm({ needsPhone = false, callbackUrl }: OnboardingFo
             id="phone"
             name="phone"
             type="tel"
-            inputMode="numeric"
+            inputMode="tel"
             autoComplete="tel"
             placeholder={t.auth.phonePlaceholder}
             className="h-12 text-base"

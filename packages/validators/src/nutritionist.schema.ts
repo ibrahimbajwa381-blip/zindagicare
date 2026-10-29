@@ -4,7 +4,7 @@ import {
   normalizeAdditionalSpecialties,
 } from "@zindagi/shared";
 import { z } from "zod";
-import { pakistaniPhoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
+import { phoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
 import { geoPointInputSchema } from "./geo.schema";
 
 const nutritionistSpecialtyEnum = z.enum(NUTRITIONIST_SPECIALTIES);
@@ -77,7 +77,7 @@ export type NutritionistVerificationInput = z.infer<
 export const updateNutritionistProfileSchema = z
   .object({
     name: z.string().min(2, "Name is required").optional(),
-    phone: pakistaniPhoneSchema.optional(),
+    phone: phoneSchema.optional(),
     avatarUrl: z.string().min(1, "Invalid profile photo URL").optional(),
     bio: z.string().max(2000).optional().nullable(),
     consultationFee: z.coerce
@@ -167,7 +167,7 @@ export const adminUpdateNutritionistSchema = z
 
     /** Profile identity / content (same fields nutritionists can self-edit). */
     name: z.string().min(2).max(100).optional(),
-    phone: pakistaniPhoneSchema.optional(),
+    phone: phoneSchema.optional(),
     avatarUrl: z.string().min(1).optional(),
     bio: z.string().max(2000).optional().nullable(),
     consultationFee: z.coerce.number().min(0).optional(),

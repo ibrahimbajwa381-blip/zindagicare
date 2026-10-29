@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { PAKISTAN_CITIES } from "@zindagi/shared";
-import { pakistaniPhoneSchema, type AccountType } from "@zindagi/validators";
+import { phoneSchema, type AccountType } from "@zindagi/validators";
 import { siteConfig } from "@/config/site";
 import { useTranslations } from "@/i18n/locale-provider";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export function RegisterForm({
   const [clientPhoneError, setClientPhoneError] = useState<string>();
   const [termsError, setTermsError] = useState<string>();
   const [confirmPasswordError, setConfirmPasswordError] = useState<string>();
+  const [ageError, setAgeError] = useState<string>();
   const [accountType, setAccountType] = useState<AccountType>(defaultAccountType);
   const [dateOfBirth, setDateOfBirth] = useState("");
 
@@ -58,7 +59,7 @@ export function RegisterForm({
   ];
 
   function validatePhoneValue(value: string) {
-    const result = pakistaniPhoneSchema.safeParse(value);
+    const result = phoneSchema.safeParse(value);
     if (!result.success) {
       setClientPhoneError(t.auth.validation.phone);
       return false;
@@ -87,7 +88,10 @@ export function RegisterForm({
           blocked = true;
         }
         if (!dateOfBirth) {
+          setAgeError(t.auth.validation.age);
           blocked = true;
+        } else {
+          setAgeError(undefined);
         }
         if (password !== confirmPassword) {
           setConfirmPasswordError(t.auth.validation.confirmPassword);
@@ -147,7 +151,7 @@ export function RegisterForm({
         hint={t.auth.phoneHint}
         name="phone"
         type="tel"
-        inputMode="numeric"
+        inputMode="tel"
         autoComplete="tel"
         placeholder={t.auth.phonePlaceholder}
         error={phoneError}
@@ -198,8 +202,9 @@ export function RegisterForm({
           max={120}
           placeholder="e.g. 28"
           className="h-12 text-base"
-          aria-invalid={!!state?.fieldErrors?.dateOfBirth}
+          aria-invalid={!!(ageError ?? state?.fieldErrors?.dateOfBirth)}
           onChange={(e) => {
+            if (ageError) setAgeError(undefined);
             const age = Number(e.target.value);
             if (!e.target.value || !Number.isInteger(age) || age < 13 || age > 120) {
               setDateOfBirth("");
@@ -212,7 +217,7 @@ export function RegisterForm({
         />
         <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
         {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
-        <FieldError message={state?.fieldErrors?.dateOfBirth} />
+        <FieldError message={ageError ?? state?.fieldErrors?.dateOfBirth} />
       </div>
       <div>
         <Label htmlFor="password" className="text-base font-semibold text-slate-800">

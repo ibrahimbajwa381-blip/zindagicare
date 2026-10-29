@@ -60,8 +60,28 @@ export function parsePakistaniLocalPhone(raw: string): string | null {
   return toPakistaniLocalPhone(digits);
 }
 
+/**
+ * Pakistani mobile → 03XXXXXXXXX; any other country, written with a leading + or 00
+ * and its country code → E.164 (+447911123456). Returns null when neither fits.
+ */
+export function parsePhoneNumber(raw: string): string | null {
+  const trimmed = raw.trim();
+  const digits = digitsOnlyPhone(trimmed);
+  const hasCountryPrefix = trimmed.startsWith("+") || digits.startsWith("00");
+  const international = digits.startsWith("00") ? digits.slice(2) : digits;
+
+  // Checked before the Pakistani heuristics, which would misread e.g. +33 6… as 03….
+  if (hasCountryPrefix && !international.startsWith("92")) {
+    return /^[1-9]\d{7,14}$/.test(international) ? `+${international}` : null;
+  }
+  return parsePakistaniLocalPhone(trimmed);
+}
+
 export const PAKISTANI_PHONE_HINT =
   "Start with 03 — for example 03001234567 (11 digits)";
 
 export const PAKISTANI_PHONE_ERROR =
   "Enter a valid Pakistani mobile number (11 digits, starting with 03)";
+
+export const PHONE_ERROR =
+  "Enter a valid mobile number — 03XXXXXXXXX, or your country code for international (e.g. +44…)";

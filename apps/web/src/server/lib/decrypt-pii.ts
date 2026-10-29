@@ -1,5 +1,5 @@
 import { decryptField, isEncrypted } from "@zindagi/shared/crypto/field-encryption";
-import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { normalizePhoneDigits, parsePhoneNumber, toPakistaniLocalPhone } from "@zindagi/validators";
 
 /** Decrypt a single PII field when populate/lean skipped mongoose hooks. */
 export function revealPii(value?: string | null): string | undefined {
@@ -19,7 +19,7 @@ export function formatPhoneForDisplay(phone?: string | null): string | undefined
   if (!revealed) return undefined;
   const digits = normalizePhoneDigits(revealed);
   if (!digits) return undefined;
-  return toPakistaniLocalPhone(digits);
+  return parsePhoneNumber(revealed) ?? toPakistaniLocalPhone(digits);
 }
 
 export function mapUserPii(user: {

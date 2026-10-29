@@ -1,5 +1,5 @@
 import { connectDatabase, UserModel } from "@zindagi/database";
-import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { normalizePhoneDigits, parsePhoneNumber, toPakistaniLocalPhone } from "@zindagi/validators";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter } from "@/lib/mongo/query";
 
@@ -31,7 +31,7 @@ function formatPhone(phone?: string | null): string | undefined {
   if (!revealed) return undefined;
   const digits = normalizePhoneDigits(revealed);
   if (!digits) return undefined;
-  return toPakistaniLocalPhone(digits);
+  return parsePhoneNumber(revealed) ?? toPakistaniLocalPhone(digits);
 }
 
 export type UserAnalyticsSummary = {

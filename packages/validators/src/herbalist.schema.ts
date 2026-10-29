@@ -5,7 +5,7 @@ import {
   normalizeAdditionalSpecialties,
 } from "@zindagi/shared";
 import { z } from "zod";
-import { pakistaniPhoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
+import { phoneSchema, weeklyAvailabilityEntrySchema } from "./auth.schema";
 import { geoPointInputSchema } from "./geo.schema";
 
 const herbalistSpecialtyEnum = z.enum(HERBALIST_SPECIALTIES);
@@ -78,7 +78,7 @@ export type HerbalistVerificationInput = z.infer<
 export const updateHerbalistProfileSchema = z
   .object({
     name: z.string().min(2, "Name is required").optional(),
-    phone: pakistaniPhoneSchema.optional(),
+    phone: phoneSchema.optional(),
     avatarUrl: z.string().min(1, "Invalid profile photo URL").optional(),
     bio: z.string().max(2000).optional().nullable(),
     consultationFee: z.coerce
@@ -168,7 +168,7 @@ export const adminUpdateHerbalistSchema = z
 
     /** Profile identity / content (same fields herbalists can self-edit). */
     name: z.string().min(2).max(100).optional(),
-    phone: pakistaniPhoneSchema.optional(),
+    phone: phoneSchema.optional(),
     avatarUrl: z.string().min(1).optional(),
     bio: z.string().max(2000).optional().nullable(),
     consultationFee: z.coerce.number().min(0).optional(),

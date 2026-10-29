@@ -2,6 +2,7 @@
 
 import { Search, MessageCirclePlus } from "lucide-react";
 import { cn } from "@zindagi/shared";
+import { Spinner } from "@/components/ui/spinner";
 import type { ChatThreadDto } from "@/features/chat/types";
 import { ChatThreadItem } from "./chat-thread-item";
 
@@ -77,7 +78,11 @@ export function ChatInbox({
       </div>
 
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto">
-        {loading ? null : filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Spinner size="lg" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-medium text-slate-700">{emptyTitle}</p>
             <p className="mt-1 text-sm text-slate-500">{emptyDescription}</p>

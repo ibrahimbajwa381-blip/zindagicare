@@ -20,7 +20,7 @@ import {
   withDoctorTitle,
 } from "@zindagi/shared";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
@@ -574,7 +574,7 @@ export async function adminDeleteAppointment(appointmentId: string, actor: Admin
 }
 
 async function findOrCreatePatientByPhone(phone: string, name?: string) {
-  const normalized = normalizePakistaniPhone(phone);
+  const normalized = normalizePhone(phone);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(phone));
 
   const existing = await UserModel.findOne({

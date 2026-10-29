@@ -19,7 +19,7 @@ import type {
   AdminUpdateNutritionistInput,
 } from "@zindagi/validators";
 import type { HydratedDocument } from "mongoose";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
@@ -269,7 +269,7 @@ export async function adminCreateNutritionist(
   const user = await UserModel.create({
     name: input.name.trim(),
     email,
-    phone: input.phone ? normalizePakistaniPhone(input.phone) : undefined,
+    phone: input.phone ? normalizePhone(input.phone) : undefined,
     passwordHash: await bcrypt.hash(password, 10),
     roles: [Roles.NUTRITIONIST],
     onboardingCompleted: true,
@@ -320,7 +320,7 @@ export async function adminUpdateNutritionist(
   if (!user) throw new AppError("User not found", "NOT_FOUND", 404);
 
   if (data.name !== undefined) user.name = data.name.trim();
-  if (data.phone !== undefined) user.phone = normalizePakistaniPhone(data.phone);
+  if (data.phone !== undefined) user.phone = normalizePhone(data.phone);
   let previousAvatarUrl: string | undefined;
   if (data.avatarUrl !== undefined) {
     if (!isNutritionistAvatarUrlForUser(user._id.toString(), data.avatarUrl)) {

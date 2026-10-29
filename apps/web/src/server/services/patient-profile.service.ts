@@ -9,7 +9,7 @@ import {
   toPakistaniLocalPhone,
   type UpdatePatientProfileInput,
 } from "@zindagi/validators";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { mongoFilter } from "@/lib/mongo/query";
 import {
   formatPhoneForDisplay,
@@ -134,7 +134,7 @@ export async function updatePatientProfile(
   }
 
   if (data.phone !== undefined) {
-    const normalized = normalizePakistaniPhone(data.phone);
+    const normalized = normalizePhone(data.phone);
     const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(data.phone));
     if (normalized !== user.phone && phoneLocal !== user.phone) {
       const existing = await UserModel.findOne({

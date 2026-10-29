@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@zindagi/shared";
-import { pakistaniPhoneSchema } from "@zindagi/validators";
+import { phoneSchema } from "@zindagi/validators";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -100,7 +100,7 @@ export function PatientProfileSection({ initialProfile }: Props) {
     const phone = String(form.get("phone") ?? "").trim();
 
     if (phone) {
-      const result = pakistaniPhoneSchema.safeParse(phone);
+      const result = phoneSchema.safeParse(phone);
       if (!result.success) {
         setPhoneError(t.auth.validation.phone);
         setPending(false);
@@ -214,7 +214,7 @@ export function PatientProfileSection({ initialProfile }: Props) {
                     id="phone"
                     name="phone"
                     type="tel"
-                    inputMode="numeric"
+                    inputMode="tel"
                     autoComplete="tel"
                     defaultValue={profile.user.phone ?? ""}
                     placeholder={t.auth.phonePlaceholder}

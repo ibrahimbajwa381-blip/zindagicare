@@ -33,7 +33,7 @@ import {
   type WeeklyWindow,
 } from "@/lib/consult/slot-utils";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
 import { phoneLookupHash } from "@zindagi/shared";
@@ -729,7 +729,7 @@ export class OnlineConsultService {
       );
     }
 
-    const normalized = normalizePakistaniPhone(phone);
+    const normalized = normalizePhone(phone);
     const normalizedLocal = toPakistaniLocalPhone(normalizePhoneDigits(phone));
     const existing = await UserModel.findOne({
       _id: { $ne: user._id },

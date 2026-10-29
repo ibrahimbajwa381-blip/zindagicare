@@ -1,12 +1,12 @@
-import { parsePakistaniLocalPhone } from "@zindagi/validators";
+import { parsePhoneNumber } from "@zindagi/validators";
 
-/** Normalize Pakistani mobile to E.164 (+923xxxxxxxxx). */
-export function normalizePakistaniPhone(input: string): string {
-  const local = parsePakistaniLocalPhone(input);
-  if (!local) {
-    throw new Error("Invalid Pakistani phone number");
+/** Normalize a Pakistani (+923xxxxxxxxx) or international mobile to E.164. */
+export function normalizePhone(input: string): string {
+  const parsed = parsePhoneNumber(input);
+  if (!parsed) {
+    throw new Error("Invalid phone number");
   }
-  return `+92${local.slice(1)}`;
+  return parsed.startsWith("+") ? parsed : `+92${parsed.slice(1)}`;
 }
 
 export function maskPhone(e164: string): string {

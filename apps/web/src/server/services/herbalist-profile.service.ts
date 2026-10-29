@@ -10,7 +10,7 @@ import {
   phoneLookupHash,
 } from "@zindagi/shared";
 import type { UpdateHerbalistProfileInput } from "@zindagi/validators";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { resolveHospitalArea } from "@/lib/doctors/hospital-area";
 import { mongoFilter } from "@/lib/mongo/query";
 import { mapUserPii } from "@/server/lib/decrypt-pii";
@@ -189,7 +189,7 @@ export async function updateHerbalistProfile(
   }
 
   if (data.phone !== undefined) {
-    const normalized = normalizePakistaniPhone(data.phone);
+    const normalized = normalizePhone(data.phone);
     if (normalized !== user.phone) {
       const existing = await UserModel.findOne({
         _id: { $ne: user._id },

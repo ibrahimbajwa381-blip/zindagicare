@@ -82,6 +82,8 @@ export function normalizeEmailForLookup(email: string): string {
 export function normalizePhoneForLookup(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (!digits) return phone.trim();
+  // Already E.164 (e.g. international numbers) — don't apply the Pakistani guesses below.
+  if (phone.trim().startsWith("+")) return `+${digits}`;
   if (digits.startsWith("92") && digits.length >= 12) return `+${digits}`;
   if (digits.startsWith("0") && digits.length === 11) return `+92${digits.slice(1)}`;
   if (digits.length === 10) return `+92${digits}`;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { cn } from "@zindagi/shared";
+import { Spinner } from "@/components/ui/spinner";
 import type { ChatMessageDto, ChatThreadDto } from "@/features/chat/types";
 import {
   createDirectThread,
@@ -523,6 +524,10 @@ export function ChatApp({
               backLabel={copy.backLabel}
               isDoctorView={isDoctorView}
             />
+          ) : loadingThreads && !openingParticipant ? (
+            <div className="flex h-full items-center justify-center bg-[#f8faf9]">
+              <Spinner size="xl" />
+            </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center bg-[#f8faf9] px-6 text-center">
               <div className="mb-4 rounded-full bg-brand-muted p-5 text-brand">

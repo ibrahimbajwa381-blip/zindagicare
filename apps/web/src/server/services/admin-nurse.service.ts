@@ -23,7 +23,7 @@ import {
   type AdminCreateNurseInput,
   type AdminUpdateNurseInput,
 } from "@zindagi/validators";
-import { normalizePakistaniPhone } from "@/lib/auth/phone";
+import { normalizePhone } from "@/lib/auth/phone";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 import { mapUserPii, safeDisplayText } from "@/server/lib/decrypt-pii";
 import type {
@@ -272,7 +272,7 @@ export async function listNursesForManagement(
 }
 
 async function assertPhoneAvailable(phoneInput: string, excludeUserId?: string) {
-  const normalized = normalizePakistaniPhone(phoneInput);
+  const normalized = normalizePhone(phoneInput);
   const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(phoneInput));
   const existing = await UserModel.findOne(
     mongoFilter({
@@ -415,7 +415,7 @@ export async function adminUpdateNurse(
     userChanged = true;
   }
   if (input.phone !== undefined) {
-    const normalized = normalizePakistaniPhone(input.phone);
+    const normalized = normalizePhone(input.phone);
     const phoneLocal = toPakistaniLocalPhone(normalizePhoneDigits(input.phone));
     const currentPhone = safeDisplayText(user.phone);
     if (normalized !== currentPhone && phoneLocal !== currentPhone) {

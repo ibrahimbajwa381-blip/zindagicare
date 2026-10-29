@@ -3,6 +3,8 @@ import {
   isValidPakistaniMobile,
   normalizePhoneDigits,
   PAKISTANI_PHONE_ERROR,
+  parsePhoneNumber,
+  PHONE_ERROR,
   toPakistaniLocalPhone,
 } from "./pakistan-phone";
 import { geoPointInputSchema } from "./geo.schema";
@@ -20,7 +22,22 @@ export const pakistaniPhoneSchema = z
   .refine(isValidPakistaniMobile, { message: PAKISTANI_PHONE_ERROR })
   .transform(toPakistaniLocalPhone);
 
-const pakistaniPhone = pakistaniPhoneSchema;
+/**
+ * Pakistani or international mobile. Pakistani numbers come out as 03XXXXXXXXX (same as
+ * {@link pakistaniPhoneSchema}); international ones (+ or 00 prefix) as E.164.
+ */
+export const phoneSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter your mobile number")
+  .transform((value, ctx) => {
+    const parsed = parsePhoneNumber(value);
+    if (!parsed) {
+      ctx.addIssue({ code: "custom", message: PHONE_ERROR });
+      return z.NEVER;
+    }
+    return parsed;
+  });
 
 export const loginSchema = z.object({
   email: z
@@ -85,7 +102,7 @@ export const registerSchema = z
       .string()
       .min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Confirm your password"),
-    phone: pakistaniPhone,
+    phone: phoneSchema,
     accountType: z.enum(accountTypes).default("patient"),
     city: z.string().trim().min(2, "City is required"),
     dateOfBirth: dateOfBirthSchema,
@@ -110,7 +127,7 @@ export const onboardingSchema = z.object({
     .optional()
     .transform((value) => (value === "" ? undefined : value)),
   /** Required when the account has no phone yet (e.g. Google signup). */
-  phone: pakistaniPhone.optional(),
+  phone: phoneSchema.optional(),
 });
 
 const timeLocalSchema = z

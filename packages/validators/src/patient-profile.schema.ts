@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pakistaniPhoneSchema } from "./auth.schema";
+import { phoneSchema } from "./auth.schema";
 
 export const updatePatientProfileSchema = z.object({
   name: z.string().min(2, "Name is required").optional(),
@@ -9,7 +9,7 @@ export const updatePatientProfileSchema = z.object({
     .toLowerCase()
     .email("Invalid email address")
     .optional(),
-  phone: pakistaniPhoneSchema.optional(),
+  phone: phoneSchema.optional(),
   city: z.string().min(2, "City is required").optional(),
   locale: z.enum(["en", "ur"]).optional(),
   dateOfBirth: z

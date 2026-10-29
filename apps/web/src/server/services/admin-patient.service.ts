@@ -18,7 +18,7 @@ import {
 } from "@zindagi/shared";
 import type { z } from "zod";
 import type { adminUpdatePatientSchema } from "@zindagi/validators";
-import { normalizePhoneDigits, toPakistaniLocalPhone } from "@zindagi/validators";
+import { normalizePhoneDigits, parsePhoneNumber, toPakistaniLocalPhone } from "@zindagi/validators";
 import { mapUserPii, revealPii } from "@/server/lib/decrypt-pii";
 import { mongoFilter, mongoObjectIds } from "@/lib/mongo/query";
 
@@ -34,7 +34,7 @@ function formatPhoneForDisplay(phone?: string | null): string | undefined {
   if (!phone) return undefined;
   const digits = normalizePhoneDigits(phone);
   if (!digits) return undefined;
-  return toPakistaniLocalPhone(digits);
+  return parsePhoneNumber(phone) ?? toPakistaniLocalPhone(digits);
 }
 
 function formatDateForDisplay(value?: Date | string | null): string | undefined {

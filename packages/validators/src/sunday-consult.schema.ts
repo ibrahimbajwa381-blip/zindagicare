@@ -4,7 +4,7 @@ import {
   SPECIALTIES,
   SundayAffordabilityChoices,
 } from "@zindagi/shared";
-import { pakistaniPhoneSchema } from "./auth.schema";
+import { phoneSchema } from "./auth.schema";
 
 /**
  * Medical history — same question set as the paid online consult
@@ -24,7 +24,7 @@ export const sundayFreeHistorySchema = z
   );
 
 export const sundayFreeRequestSchema = z.object({
-  patientPhone: pakistaniPhoneSchema,
+  patientPhone: phoneSchema,
   history: sundayFreeHistorySchema,
   locale: z.enum(["en", "ur"]).optional(),
   affordabilityChoice: z.enum([
