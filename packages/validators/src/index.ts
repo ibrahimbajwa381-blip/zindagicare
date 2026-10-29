@@ -24,3 +24,4 @@ export * from "./push.schema";
 export * from "./copilot.schema";
 export * from "./patient-appointment.schema";
 export * from "./medical-qa.schema";
+export * from "./planning.schema";

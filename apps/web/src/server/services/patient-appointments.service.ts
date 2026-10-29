@@ -13,7 +13,6 @@ import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-ima
 import { mongoFilter } from "@/lib/mongo/query";
 import { ReviewService, type PlatformReviewState } from "@/server/services/review.service";
 import { PrescriptionService } from "@/server/services/prescription.service";
-import { VideoSessionService } from "@/server/services/video-session.service";
 import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
 import { cacheKey, cached, patientCacheTags } from "@/server/lib/cache";
 
@@ -126,12 +125,6 @@ type HistoryRow = Omit<
   paymentStatus?: string;
 };
 
-const TERMINAL_STATUSES: string[] = [
-  AppointmentStatuses.COMPLETED,
-  AppointmentStatuses.CANCELLED,
-  AppointmentStatuses.NO_SHOW,
-];
-
 export class PatientAppointmentsService {
   static async ensureConnected() {
     await connectDatabase();
@@ -158,20 +151,11 @@ export class PatientAppointmentsService {
       rows.map((row) => row.appointmentId),
     );
 
-    // Join/missed/review/cancel flags depend on the current time, and an
-    // attended consult is finalized lazily here — so both run on every
-    // request, never from the cache. Finalizing writes the appointment,
-    // which invalidates this patient's cached rows.
+    // Join/missed/review/cancel flags depend on the current time, so they run
+    // on every request, never from the cache.
     return Promise.all(
       rows.map(async ({ rawType, paymentStatus, ...row }) => {
-        let status = row.status;
-        if (!TERMINAL_STATUSES.includes(status)) {
-          const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
-            row.appointmentId,
-          );
-          if (finalized) status = AppointmentStatuses.COMPLETED;
-        }
-
+        const status = row.status;
         const scheduledStart = new Date(row.scheduledStart);
         const scheduledEnd = new Date(row.scheduledEnd);
         const { isMissed, canJoin } = resolveHistoryFlags(

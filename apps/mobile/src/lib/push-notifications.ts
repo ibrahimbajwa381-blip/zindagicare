@@ -165,6 +165,16 @@ function routeForNotificationData(data: Record<string, unknown> | undefined) {
       router.push("/notifications");
       return;
     }
+    case "video_call_ring": {
+      // Video consults run on the web app; open the call page there.
+      const appointmentId = typeof data?.appointmentId === "string" ? data.appointmentId : undefined;
+      if (appointmentId && /^[a-f0-9]{24}$/i.test(appointmentId)) {
+        void Linking.openURL(`${API_URL}/consult/video/${appointmentId}`).catch(() => router.push("/(tabs)/appointments"));
+        return;
+      }
+      router.push("/(tabs)/appointments");
+      return;
+    }
     default:
       router.push("/notifications");
   }

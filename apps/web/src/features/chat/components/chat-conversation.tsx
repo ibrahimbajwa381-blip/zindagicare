@@ -194,7 +194,7 @@ export function ChatConversation({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-[#e5ddd5]">
-      <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-[#f0f2f5] px-3 py-3 sm:px-4">
+      <header className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-[#f0f2f5] px-2 py-2 sm:gap-3 sm:px-4 sm:py-3">
         {onBack && (
           <button
             type="button"
@@ -223,15 +223,18 @@ export function ChatConversation({
             scheduledStart={thread.scheduledStart}
             scheduledEnd={thread.scheduledEnd}
             label={t.chat.startConsultation}
-            size="sm"
+            size="icon"
+            iconOnly
+            className="h-10 w-10 shrink-0 rounded-full"
+            iconClassName="h-5 w-5"
             urgent
           />
         )}
       </header>
 
       {isDoctorView && thread.appointmentId && (
-        <div className="shrink-0 border-b border-slate-200 bg-[#f0f2f5] px-3 pb-2 sm:px-4">
-          <DoctorIntakeSummary appointmentId={thread.appointmentId} />
+        <div className="shrink-0 border-b border-slate-200 bg-[#f0f2f5] px-3 py-1.5 sm:px-4">
+          <DoctorIntakeSummary appointmentId={thread.appointmentId} compact />
         </div>
       )}
 

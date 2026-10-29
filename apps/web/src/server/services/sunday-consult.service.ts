@@ -26,9 +26,7 @@ import {
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
   VerificationStatuses,
-  VideoSessionStatuses,
   getPaidOnlineIntakeQuestions,
-  getSundayFreeJoinWindow,
   isKnownSpecialty,
   normalizeIntakeLocale,
   type IntakeLocale,
@@ -40,6 +38,7 @@ import { safeDisplayText } from "@/server/lib/decrypt-pii";
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
 import { ChatService } from "@/server/services/chat.service";
 import { ReviewService } from "@/server/services/review.service";
+import { VideoSessionService } from "@/server/services/video-session.service";
 import {
   canBookNow,
   canRequestSundayNow,
@@ -761,12 +760,8 @@ export class SundayConsultService {
     };
   }
 
-  static async updateAppointmentStatus(
-    userId: string,
-    appointmentId: string,
-    status: "completed" | "no_show" | "cancelled",
-    doctorNotes?: string,
-  ) {
+  /** Doctor cancels a Sunday consult. Finish and no-show go through ConsultationLifecycleService. */
+  static async cancelAppointment(userId: string, appointmentId: string, doctorNotes?: string) {
     await SundayConsultService.ensureConnected();
     const profile = await DoctorProfileModel.findOne(mongoFilter({ userId }));
     if (!profile) {
@@ -796,20 +791,34 @@ export class SundayConsultService {
       );
     }
 
-    if (
-      status === "completed" &&
-      !getSundayFreeJoinWindow(appointment.scheduledStart).canJoin
-    ) {
-      throw new AppError(
-        "You can finish this consultation once it has started.",
-        ErrorCodes.VALIDATION,
-        400,
-      );
-    }
+    appointment.status = AppointmentStatuses.CANCELLED;
+    if (doctorNotes) appointment.doctorNotes = doctorNotes;
+    await appointment.save();
+    await SundayFreeRequestModel.updateOne(
+      mongoFilter({ appointmentId: appointment._id }),
+      {
+        $set: {
+          status: SundayFreeRequestStatuses.CANCELLED,
+          cancelledAt: new Date(),
+        },
+      },
+    );
+    await VideoSessionService.endSession(appointment._id.toString());
 
-    if (status === "completed") {
-      appointment.status = AppointmentStatuses.COMPLETED;
-      appointment.completedAt = new Date();
+    return appointment;
+  }
+
+  /** Sunday-specific follow-up once a consult is finished (completed or patient no-show). */
+  static async onConsultClosed(
+    appointment: {
+      _id: { toString(): string };
+      patientId: { toString(): string };
+      sundaySlotInstanceId?: { toString(): string } | null;
+      sundaySlotId?: string | null;
+    },
+    outcome: "completed" | "no_show",
+  ) {
+    if (outcome === "completed") {
       await SundayFreeRequestModel.updateOne(
         mongoFilter({ appointmentId: appointment._id }),
         {
@@ -819,22 +828,7 @@ export class SundayConsultService {
           },
         },
       );
-    } else if (status === "cancelled") {
-      appointment.status = AppointmentStatuses.CANCELLED;
-      await SundayFreeRequestModel.updateOne(
-        mongoFilter({ appointmentId: appointment._id }),
-        {
-          $set: {
-            status: SundayFreeRequestStatuses.CANCELLED,
-            cancelledAt: new Date(),
-          },
-        },
-      );
-    } else if (status === "no_show") {
-      appointment.status = AppointmentStatuses.NO_SHOW;
-      appointment.noShowMarkedAt = new Date();
-      appointment.set("missedBy", "patient");
-
+    } else {
       const patient = await UserModel.findById(appointment.patientId);
       if (patient) {
         patient.noShowCount = (patient.noShowCount ?? 0) + 1;
@@ -846,74 +840,22 @@ export class SundayConsultService {
         }
         await patient.save();
       }
-
-      if (appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
-        await SundaySlotInstanceModel.updateOne(
-          mongoFilter({
-            _id: appointment.sundaySlotInstanceId,
-            "slots.slotId": appointment.sundaySlotId,
-          }),
-          { $set: { "slots.$.status": SlotStatuses.NO_SHOW } },
-        );
-      }
     }
 
-    if (doctorNotes) appointment.doctorNotes = doctorNotes;
-    await appointment.save();
-
-    if (status === "completed" && appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
+    if (appointment.sundaySlotInstanceId && appointment.sundaySlotId) {
       await SundaySlotInstanceModel.updateOne(
         mongoFilter({
           _id: appointment.sundaySlotInstanceId,
           "slots.slotId": appointment.sundaySlotId,
         }),
-        { $set: { "slots.$.status": SlotStatuses.COMPLETED } },
+        {
+          $set: {
+            "slots.$.status":
+              outcome === "completed" ? SlotStatuses.COMPLETED : SlotStatuses.NO_SHOW,
+          },
+        },
       );
     }
-
-    // The room and chat stay open until now; closing the consult closes both.
-    await SundayConsultService.closeConsultRoom(appointment._id.toString());
-    await ChatService.closeSundayConsultThread(appointment._id.toString()).catch((err) => {
-      console.error("[sunday-consult] chat close failed", err);
-    });
-
-    if (status === "completed") {
-      await deliverUserNotification({
-        userId: appointment.patientId.toString(),
-        title: "Your free consultation is complete",
-        body: "Your doctor has finished your Sunday free consultation. Please take a moment to rate your doctor.",
-        payload: { type: "sunday_free_completed", appointmentId: appointment._id.toString() },
-      }).catch((err) => {
-        console.error("[sunday-consult] completion notification failed", err);
-      });
-    }
-
-    return appointment;
-  }
-
-  /** Ends the video session (if any) of a Sunday consult the doctor just closed. */
-  private static async closeConsultRoom(appointmentId: string) {
-    const session = await VideoSessionModel.findOne(
-      mongoFilter({
-        appointmentId,
-        status: { $nin: [VideoSessionStatuses.COMPLETED, VideoSessionStatuses.CANCELLED] },
-      }),
-    )
-      .select("startedAt createdAt")
-      .lean();
-    if (!session) return;
-
-    const endedAt = new Date();
-    const startedAt = session.startedAt ?? session.createdAt;
-    await VideoSessionModel.updateOne(mongoFilter({ _id: session._id }), {
-      $set: {
-        status: VideoSessionStatuses.COMPLETED,
-        endedAt,
-        durationSeconds: startedAt
-          ? Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000))
-          : 0,
-      },
-    });
   }
 
   static async getPatientBooking(

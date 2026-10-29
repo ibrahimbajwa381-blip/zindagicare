@@ -12,6 +12,8 @@ import { useTranslations } from "@/i18n/locale-provider";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { VisitStatusStepper } from "./visit-status-stepper";
+import { VisitChatLink } from "./visit-chat-link";
+import { AUTH_ROUTES } from "@/lib/auth/routes";
 import {
   HomeVisitReviewSection,
   isHomeVisitReviewEligible,
@@ -210,6 +212,12 @@ export function PatientVisitsSection() {
                   >
                     Cancel request
                   </Button>
+                )}
+                {visit.canMessage && visit.assignedStaff && (
+                  <VisitChatLink
+                    audience="provider"
+                    href={`${AUTH_ROUTES.messages}?doctor=${encodeURIComponent(visit.assignedStaff.id)}`}
+                  />
                 )}
               </div>
             </CardContent>

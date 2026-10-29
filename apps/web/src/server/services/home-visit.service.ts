@@ -64,6 +64,8 @@ import {
   notifyStaffHomeVisitAssigned,
 } from "@/lib/notifications/home-visit-notifications";
 import { safeDisplayText } from "@/server/lib/decrypt-pii";
+import { homeVisitAccess } from "@/server/services/care/policy";
+import { ChatService } from "@/server/services/chat.service";
 import { withLeaseLock } from "@/server/lib/mongo-lease-lock";
 import { generateTxnRefNo } from "@/lib/payments/jazzcash";
 import {
@@ -212,6 +214,8 @@ export type HomeVisitDto = {
   };
   completedAt?: string;
   createdAt: string;
+  /** Patient and assigned staff can open their chat (read-only once completed). */
+  canMessage: boolean;
 };
 
 function haversineKm(
@@ -381,6 +385,12 @@ function serializeVisit(
       ? (doc.completedAt as Date).toISOString()
       : undefined,
     createdAt: (doc.createdAt as Date).toISOString(),
+    canMessage:
+      homeVisitAccess({
+        status: doc.status as string,
+        scheduledAt: doc.scheduledAt as Date,
+        assignedStaffId: doc.assignedStaffId,
+      }) !== "none",
   };
 }
 
@@ -1704,6 +1714,14 @@ export class HomeVisitService {
         { $set: { amount: updated.pricing.total } },
       );
     }
+
+    // The patient ↔ provider chat opens with the assignment, so it shows in both inboxes.
+    await ChatService.ensureHomeVisitThread(visitId).catch((error: unknown) => {
+      console.error("[home-visit] chat thread setup failed", {
+        visitId,
+        error: error instanceof Error ? error.name : "unknown",
+      });
+    });
 
     return updated;
   }

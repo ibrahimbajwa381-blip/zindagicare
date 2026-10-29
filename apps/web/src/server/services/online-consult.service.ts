@@ -62,7 +62,6 @@ import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { mongoFilter } from "@/lib/mongo/query";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { ChatService } from "@/server/services/chat.service";
-import { VideoSessionService } from "@/server/services/video-session.service";
 import { randomUUID } from "crypto";
 
 const ACTIVE_STATUSES = [
@@ -1223,15 +1222,6 @@ export class OnlineConsultService {
       })
       .populate("paymentId", "amount status")
       .lean();
-
-    for (const appointment of appointments) {
-      const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
-        appointment._id.toString(),
-      );
-      if (finalized) {
-        appointment.status = AppointmentStatuses.COMPLETED;
-      }
-    }
 
     const appointment = OnlineConsultService.pickPrimaryPatientBooking(appointments, now);
     return OnlineConsultService.toPatientBookingDto(appointment);

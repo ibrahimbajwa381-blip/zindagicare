@@ -70,6 +70,9 @@ describe("Video-session concurrency (real local MongoDB, mocked Zoom API only)",
   let doctorUserId: string;
   let doctorProfileId: string;
   let slotCounter = 0;
+  // Fixed once: offsetting a moving Date.now() by the counter can repeat a
+  // timestamp, which the unique (doctorId, scheduledStart) index rejects.
+  const seedBase = Date.now();
 
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
@@ -137,7 +140,7 @@ describe("Video-session concurrency (real local MongoDB, mocked Zoom API only)",
     status: (typeof AppointmentStatuses)[keyof typeof AppointmentStatuses],
   ) {
     slotCounter += 1;
-    const scheduledStart = new Date(Date.now() - 2 * 60 * 1000 - slotCounter); // started 2 min ago, unique per call
+    const scheduledStart = new Date(seedBase - 2 * 60 * 1000 - slotCounter); // started ~2 min ago, unique per call
     const scheduledEnd = new Date(scheduledStart.getTime() + 20 * 60 * 1000);
     const appt = await AppointmentModel.create({
       type: AppointmentTypes.ONLINE,

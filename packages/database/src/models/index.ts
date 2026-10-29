@@ -21,6 +21,7 @@ export * from "./sunday-free-request.model";
 export * from "./payment.model";
 export * from "./doctor-payout.model";
 export * from "./manual-earning.model";
+export * from "./planning-item.model";
 export * from "./medical-intake.model";
 export * from "./audit-log.model";
 export * from "./activity-event.model";

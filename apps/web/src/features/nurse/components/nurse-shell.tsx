@@ -14,6 +14,7 @@ import {
   Home,
   IdCard,
   LayoutDashboard,
+  MessageCircle,
   ShieldCheck,
   UserCog,
   Wallet,
@@ -45,6 +46,12 @@ const NURSE_APPROVED_NAV_ITEMS: NurseNavItem[] = [
     description: "In-house visits assigned to you",
     icon: Home,
     showActiveBadge: true,
+  },
+  {
+    href: "/nurse/messages",
+    label: "Messages",
+    description: "Chat with patients you visit",
+    icon: MessageCircle,
   },
   {
     href: "/nurse/earnings",

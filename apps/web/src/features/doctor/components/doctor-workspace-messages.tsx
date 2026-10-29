@@ -29,7 +29,7 @@ export function DoctorWorkspaceMessages({
         title: copy.title,
         searchPlaceholder: copy.searchPlaceholder,
         emptyTitle: copy.emptyTitle,
-        emptyDescription: copy.emptyDescription,
+        emptyDescription: copy.doctorEmptyDescription,
         newChatLabel: copy.newChatLabel,
         newChatTitle: copy.newChatTitle,
         newChatSearchPlaceholder: copy.doctorNewChatSearchPlaceholder,

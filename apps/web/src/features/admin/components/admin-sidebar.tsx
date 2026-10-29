@@ -33,6 +33,7 @@ import {
   Stethoscope,
   Star,
   Sun,
+  Target,
   UserCheck,
   Users,
   X,
@@ -130,6 +131,13 @@ const NAV_SECTIONS: AdminNavSection[] = [
         label: "Overview",
         description: "Platform health and queues",
         icon: LayoutDashboard,
+        exact: true,
+      },
+      {
+        href: "/admin/planning",
+        label: "Planning & growth",
+        description: "Targets, city plans, partnerships, wins",
+        icon: Target,
         exact: true,
       },
       {

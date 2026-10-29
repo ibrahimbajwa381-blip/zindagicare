@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/config/site";
 import { ConsultJoinAction } from "@/features/doctor/components/consult-join-action";
+import { FinishConsultButton } from "@/features/consult/components/finish-consult-button";
 import { formatDateTime } from "@/features/doctor/components/doctor-workspace-panels";
 import type {
   DoctorRequestOutcome,
@@ -482,6 +483,9 @@ export function DoctorConsultRequestsPanel({ requests }: Props) {
                         scheduledStart={request.scheduledStart}
                         scheduledEnd={joinWindowEnd(request)}
                       />
+                      {request.canFinish ? (
+                        <FinishConsultButton appointmentId={request.id} />
+                      ) : null}
                       <Button size="sm" variant="outline" asChild className="gap-1">
                         <Link href={`/doctor/intake/${request.id}`}>
                           <ClipboardList className="h-3.5 w-3.5" />

@@ -1266,6 +1266,10 @@ export const en = {
     markEnRoute: "Mark en route",
     markArrived: "Mark arrived",
     markCompleted: "Mark completed",
+    visitChat: {
+      messagePatient: "Message patient",
+      messageProvider: "Message provider",
+    },
     visitSummary: {
       label: "Session report",
       hint: "Required to complete the visit. Describe the treatment given, the patient's condition and progress, and any advice or follow-up. Only the ZindagiCare team sees this.",
@@ -1501,6 +1505,22 @@ export const en = {
         "I got a free online consultation with a verified doctor on ZindagiCare. Try it too:",
       linkCopied: "Link copied!",
     },
+    callRing: {
+      ringPatient: "Ring patient",
+      ringDoctor: "Ring doctor",
+      ringing: "Ringing…",
+      ringingName: "Ringing {name}…",
+      stopRinging: "Stop ringing",
+      ringHint: "Not joined yet? Ring their phone like a call.",
+      answered: "They're joining now",
+      declined: "Call declined",
+      missed: "No answer — try ringing again",
+      incomingTitle: "Incoming video call",
+      incomingFromDoctor: "Your doctor is calling you to join the video consultation",
+      incomingFromPatient: "Your patient is calling you to join the video consultation",
+      accept: "Join",
+      decline: "Decline",
+    },
     videoSession: {
       loading: "Loading your consultation…",
       loadingSession: "Loading video session…",
@@ -1534,15 +1554,13 @@ export const en = {
       zoomNotConfiguredDesc:
         "Video consultations are being set up on our side. Please try again later or contact support on WhatsApp.",
       doctorEnded: {
-        title: "Consultation ended",
-        description: "Issue a digital prescription for your patient if clinically appropriate.",
         issuePrescription: "Issue prescription",
         backToDashboard: "Back to dashboard",
       },
-      sundayDoctorOpen: {
-        title: "This free consultation is still open",
+      doctorOpen: {
+        title: "This consultation is still open",
         description:
-          "You left the video call, but the consultation is not finished. Video and chat stay open so you or the patient can rejoin. When you are done, press Finish consultation — only then is it marked completed and the patient can review you.",
+          "You left the video call, but the consultation is not finished. Chat stays open and either of you can rejoin while the video room is open. When you are done, press Finish consultation — only then is it marked completed and the patient can review you.",
         finish: "Finish consultation",
         confirm:
           "Finish this consultation? The video room and chat will close and the patient will be asked to review you.",
@@ -1551,10 +1569,10 @@ export const en = {
         finishedTitle: "Consultation completed",
         finishedDescription: "The video room and chat are closed. The patient has been asked to review you.",
       },
-      sundayPatientOpen: {
+      patientOpen: {
         title: "You left the video call",
         description:
-          "Your free consultation stays open until your doctor finishes it, so you can rejoin the video or keep chatting. You can rate your doctor once they close the consultation.",
+          "Your consultation stays open until your doctor finishes it, so you can keep chatting and rejoin while the video room is open. You can rate your doctor once they close the consultation.",
         rejoin: "Rejoin video",
       },
       errors: {
@@ -1797,28 +1815,30 @@ export const en = {
   chat: {
     pageTitle: "Messages",
     pageDescription:
-      "Chat with doctors after a paid consultation. Sunday free consult chats stay open until your doctor finishes the consultation.",
+      "Chat with your doctor from booking until the consultation is completed, for paid and Sunday free consultations alike.",
     title: "Chats",
     searchPlaceholder: "Search chats",
     emptyTitle: "No conversations yet",
     emptyDescription:
-      "Book a paid online consultation to message your doctor. Sunday free slots are video-only.",
+      "Book a consultation (paid or Sunday free) to message your doctor.",
     newChatLabel: "New chat",
     newChatTitle: "Message a doctor",
-    newChatSearchPlaceholder: "Search doctors from your paid consultations",
-    newChatEmpty: "No paid consultations found. Book a paid consult to unlock chat.",
+    newChatSearchPlaceholder: "Search doctors from your consultations",
+    newChatEmpty: "No consultations found. Book a consultation to unlock chat.",
     selectChatTitle: "ZindagiCare Messages",
     selectChatDescription:
-      "Select a chat from your paid consultations. Messaging is not included with Sunday free consults.",
+      "Select a chat from your consultations. Chats become read-only once the consultation is completed.",
     messagePlaceholder: "Type a message",
     backLabel: "Back",
     doctorPageTitle: "Patient messages",
     doctorPageDescription:
-      "Reply to patients who completed a paid consultation. Sunday free patients cannot be messaged here.",
-    doctorNewChatSearchPlaceholder: "Search paid-consult patients by name or phone",
-    doctorNewChatEmpty: "No paid-consult patients found.",
+      "Chat with your patients from booking until the consultation or visit is completed.",
+    doctorEmptyDescription:
+      "Patients appear here once they book a consultation or you are assigned to their visit.",
+    doctorNewChatSearchPlaceholder: "Search your patients by name or phone",
+    doctorNewChatEmpty: "No patients found.",
     doctorSelectChatDescription:
-      "Select a patient from your paid consultations. Sunday free consults do not include chat.",
+      "Select a patient. Chats become read-only once the consultation or visit is completed.",
     openChatFailedTitle: "Unable to open chat",
     openingChatTitle: "Opening conversation…",
     openingChatDescription: "Connecting you now.",

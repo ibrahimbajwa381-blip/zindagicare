@@ -9,6 +9,8 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { VisitStatusStepper } from "@/features/home-care/components/visit-status-stepper";
+import { VisitChatLink } from "@/features/home-care/components/visit-chat-link";
+import { AUTH_ROUTES } from "@/lib/auth/routes";
 import type { HomeVisitDto } from "@/server/services/home-visit.service";
 
 const NEXT_STATUS: Partial<Record<string, string>> = {
@@ -79,6 +81,12 @@ function DoctorVisitCard({ visit, pending, onUpdateStatus, history }: VisitCardP
           >
             {pending === visit.id ? "Updating…" : STATUS_LABELS[visit.status]}
           </Button>
+        ) : null}
+        {visit.canMessage && visit.patient?.id ? (
+          <VisitChatLink
+            audience="patient"
+            href={`${AUTH_ROUTES.doctorMessages}?patient=${encodeURIComponent(visit.patient.id)}`}
+          />
         ) : null}
       </CardContent>
     </Card>

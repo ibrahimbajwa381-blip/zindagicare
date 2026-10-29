@@ -27,3 +27,6 @@ export const HERBALIST_SPECIALTIES_ALPHABETICAL: readonly HerbalistSpecialty[] =
 
 /** Licensing bodies a Pakistani herbalist / hakeem is typically registered with. */
 export const HERBALIST_COUNCIL_LABEL = "NCT / Tibb council registration number";
+
+/** The only qualifications accepted at herbalist registration. */
+export const HERBALIST_DEGREES = ["BEMS", "FTJ"] as const;

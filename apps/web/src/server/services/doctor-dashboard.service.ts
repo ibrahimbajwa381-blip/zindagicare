@@ -36,7 +36,7 @@ import {
   getReferredPatientIdSet,
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
-import { VideoSessionService } from "./video-session.service";
+import { canFinishConsult } from "./consultation/finish-policy";
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -229,6 +229,8 @@ export type DoctorRequestRow = {
   patient: { id: string; name: string; phone?: string };
   patientNotes?: string;
   canJoin: boolean;
+  /** The doctor may press Finish (open online consult that has started). */
+  canFinish: boolean;
   hasPrescription: boolean;
   review?: {
     rating: number;
@@ -1041,24 +1043,6 @@ export async function listDoctorConsultRequests(
 
   if (appointments.length === 0) return [];
 
-  const staleAfterMs = 2 * 60 * 60 * 1000;
-  for (const apt of appointments) {
-    if (apt.status !== AppointmentStatuses.IN_PROGRESS) continue;
-    const { joinClosesAt } = getVideoJoinWindow(
-      apt.scheduledStart,
-      effectiveVideoEnd(apt.type, apt.scheduledStart, apt.scheduledEnd),
-      now,
-    );
-    if (now.getTime() <= joinClosesAt.getTime() + staleAfterMs) continue;
-
-    const finalized = await VideoSessionService.finalizeAppointmentIfAttended(
-      apt._id.toString(),
-    );
-    if (finalized) {
-      apt.status = AppointmentStatuses.COMPLETED;
-    }
-  }
-
   const appointmentIds = appointments.map((apt) => apt._id.toString());
 
   const [reviews, prescriptions] = await Promise.all([
@@ -1136,6 +1120,7 @@ export async function listDoctorConsultRequests(
         apt.scheduledEnd,
         now,
       ),
+      canFinish: canFinishConsult(apt, now),
       hasPrescription: prescriptionAppointmentIds.has(id),
       review: reviewByAppointment.get(id),
     };

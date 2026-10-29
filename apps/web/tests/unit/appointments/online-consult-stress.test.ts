@@ -80,12 +80,6 @@ jest.mock("@/server/services/chat.service", () => ({
   },
 }));
 
-jest.mock("@/server/services/video-session.service", () => ({
-  VideoSessionService: {
-    finalizeAppointmentIfAttended: jest.fn(),
-  },
-}));
-
 // This file's concurrency scenarios deliberately fire 25-50+ near-simultaneous
 // checkout requests from one mocked session to prove DB-level idempotency
 // (unique-index/race handling) — a different concern from per-user abuse

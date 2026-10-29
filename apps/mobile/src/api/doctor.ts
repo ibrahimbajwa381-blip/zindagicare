@@ -46,6 +46,8 @@ export type DoctorRequestRow = {
   patient: { id: string; name: string; phone?: string };
   patientNotes?: string;
   canJoin: boolean;
+  /** Open online consult that has started; absent on older servers. */
+  canFinish?: boolean;
   hasPrescription: boolean;
   review?: {
     rating: number;
@@ -55,6 +57,17 @@ export type DoctorRequestRow = {
 
 export function listDoctorRequests() {
   return apiFetch<DoctorRequestRow[]>("/api/v1/doctor/requests");
+}
+
+/** Provider ends an online consult (paid, urgent or Sunday free). */
+export function finishConsultation(
+  appointmentId: string,
+  outcome: "completed" | "no_show" = "completed",
+) {
+  return apiFetch<{ status: string }>(`/api/v1/appointments/${appointmentId}/finish`, {
+    method: "POST",
+    body: JSON.stringify({ outcome }),
+  });
 }
 
 export type WeeklyAvailabilityDto = {

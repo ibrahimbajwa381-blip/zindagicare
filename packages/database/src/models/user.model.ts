@@ -1,6 +1,7 @@
 import {
   normalizeEmailForLookup,
   normalizePhoneForLookup,
+  roleSetViolation,
   Roles,
   type Role,
 } from "@zindagi/shared";
@@ -27,13 +28,25 @@ const userSchema = new Schema(
     avatarUrl: { type: String },
     /**
      * Patient XOR exactly one clinical staff role (doctor, nurse, physiotherapist,
-     * herbalist, nutritionist) per account — see auth.service.ts registerWithCredentials.
+     * herbalist, nutritionist) per account — enforced by roleSetViolation.
      * Rider/admin/lab/other are unaffected by this invariant.
      */
     roles: {
       type: [String],
       enum: Object.values(Roles),
       default: [Roles.PATIENT],
+      validate: {
+        // Checked when roles are set or changed, so legacy accounts awaiting
+        // scripts/normalize-account-roles.ts can still save unrelated fields.
+        validator(this: { isNew?: boolean; isModified?: (path: string) => boolean }, roles: Role[]) {
+          if (typeof this.isModified === "function" && !this.isNew && !this.isModified("roles")) {
+            return true;
+          }
+          return roleSetViolation(roles) === null;
+        },
+        message: (props: { value: Role[] }) =>
+          roleSetViolation(props.value) ?? "Invalid roles",
+      },
     },
     authProviders: {
       type: [String],

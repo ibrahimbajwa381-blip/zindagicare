@@ -1,5 +1,4 @@
 import { listChatContactsQuerySchema } from "@zindagi/validators";
-import { Roles } from "@zindagi/shared";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { ChatService } from "@/server/services/chat.service";
 
@@ -9,14 +8,7 @@ export const GET = withApiHandler(
       q: searchParams.get("q") ?? undefined,
     });
 
-    const userId = session!.user!.id;
-    const roles = session!.user!.roles ?? [];
-
-    if (roles.includes(Roles.DOCTOR)) {
-      return ChatService.listDoctorContacts(userId, query.q);
-    }
-
-    return ChatService.listPatientContacts(userId, query.q);
+    return ChatService.listContacts(session!.user!.id, query.q);
   },
   { auth: true },
 );

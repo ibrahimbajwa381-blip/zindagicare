@@ -14,6 +14,8 @@ type Props = {
   className?: string;
   /** Render the Q&A expanded by default. */
   defaultOpen?: boolean;
+  /** Single-line header and a height-capped body, for the chat screen. */
+  compact?: boolean;
 };
 
 /**
@@ -24,6 +26,7 @@ export function DoctorIntakeSummary({
   appointmentId,
   className,
   defaultOpen = false,
+  compact = false,
 }: Props) {
   const t = useTranslations();
   const copy = t.intake;
@@ -59,7 +62,8 @@ export function DoctorIntakeSummary({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border shadow-sm",
+        "overflow-hidden border shadow-sm",
+        compact ? "rounded-xl" : "rounded-2xl",
         completed
           ? "border-emerald-200/80 bg-gradient-to-br from-emerald-50/90 via-white to-white"
           : "border-slate-200/80 bg-white/90",
@@ -69,32 +73,43 @@ export function DoctorIntakeSummary({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left sm:px-5"
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center justify-between text-left",
+          compact ? "gap-2 px-3 py-1.5" : "gap-3 px-4 py-3.5 sm:px-5",
+        )}
       >
-        <span className="flex min-w-0 items-center gap-3">
+        <span className={cn("flex min-w-0 items-center", compact ? "gap-2" : "gap-3")}>
           <span
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
+              "flex shrink-0 items-center justify-center shadow-sm",
+              compact ? "h-7 w-7 rounded-lg" : "h-10 w-10 rounded-xl",
               completed
                 ? "bg-emerald-500 text-white"
                 : "bg-brand-muted text-brand",
             )}
           >
             {completed ? (
-              <CheckCircle2 className="h-5 w-5" aria-hidden />
+              <CheckCircle2 className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
             ) : (
-              <ClipboardList className="h-5 w-5" aria-hidden />
+              <ClipboardList className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
             )}
           </span>
           <span className="min-w-0">
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-slate-900">
+            <span className={cn("flex items-center gap-2", !compact && "flex-wrap")}>
+              <span
+                className={cn(
+                  "font-semibold text-slate-900",
+                  compact ? "truncate text-xs sm:text-sm" : "text-sm",
+                )}
+              >
                 {copy.doctorSummaryTitle}
               </span>
               <Badge
                 variant={completed ? "secondary" : "outline"}
                 className={cn(
-                  "text-[11px]",
+                  "shrink-0",
+                  compact ? "px-1.5 py-0 text-[10px]" : "text-[11px]",
                   completed
                     ? "border-emerald-200 bg-emerald-100 text-emerald-800"
                     : "border-amber-300 bg-amber-50 text-amber-700",
@@ -103,7 +118,7 @@ export function DoctorIntakeSummary({
                 {completed ? copy.doctorSummaryReady : copy.statusPending}
               </Badge>
             </span>
-            {completed && answered.length > 0 ? (
+            {compact ? null : completed && answered.length > 0 ? (
               <span className="mt-0.5 block text-xs text-emerald-700">
                 {formatMessage(copy.doctorSummaryAnswers, { count: answered.length })}
                 <span className="text-slate-500"> · {copy.doctorSummaryPreview}</span>
@@ -122,7 +137,7 @@ export function DoctorIntakeSummary({
         )}
       </button>
 
-      {!open && completed && answered.length > 0 && (
+      {!compact && !open && completed && answered.length > 0 && (
         <div className="flex flex-wrap gap-1.5 border-t border-emerald-100/80 px-4 py-3 sm:px-5">
           {answered.map((question) => {
             const meta = getQuestionMeta(question.key);
@@ -144,7 +159,14 @@ export function DoctorIntakeSummary({
       )}
 
       {open && (
-        <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
+        <div
+          className={cn(
+            "border-t border-slate-100",
+            compact
+              ? "max-h-[35svh] overflow-y-auto overscroll-contain px-3 py-3"
+              : "px-4 py-4 sm:px-5",
+          )}
+        >
           {answered.length === 0 ? (
             <p className="text-sm text-slate-500">{copy.doctorSummaryPending}</p>
           ) : (

@@ -26,7 +26,6 @@ import {
   prescriptionDownloadUrl,
   savePrescriptionPdf,
 } from "@/server/services/prescription.storage";
-import { VideoSessionService } from "@/server/services/video-session.service";
 import { logActivity } from "@/server/services/activity-log.service";
 import { sendPrescriptionIssued } from "@/lib/notifications/consult-notifications";
 import { cacheKey, cached, patientCacheTags } from "@/server/lib/cache";
@@ -232,8 +231,6 @@ export class PrescriptionService {
       medications: input.medications,
       notes: input.notes,
     } as Record<string, unknown>)) as { _id: { toString(): string } };
-
-    await VideoSessionService.finalizeAppointmentIfAttended(appointment._id.toString());
 
     await sendPrescriptionIssued({
       userId: appointment.patientId.toString(),

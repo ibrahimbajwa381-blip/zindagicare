@@ -22,7 +22,7 @@ const herbalistProfileSchema = new Schema(
     licenseVerified: { type: Boolean, default: false },
     cnicHash: { type: String, select: false },
     cnicLast4: { type: String },
-    /** Primary qualification, e.g. BEMS, BAMS, DHMS. */
+    /** Primary qualification, BEMS or FTJ at registration (see HERBALIST_DEGREES). */
     degree: { type: String, trim: true },
     /** Postgraduate / additional qualifications. */
     qualifications: { type: [String], default: [] },

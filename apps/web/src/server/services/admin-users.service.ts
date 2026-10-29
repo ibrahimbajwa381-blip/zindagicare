@@ -224,6 +224,8 @@ export async function revokeAdminAccess(
   } else {
     target.roles = target.roles.filter((r) => r !== Roles.ADMIN);
   }
+  // An admin-only account must keep a role; it falls back to a plain patient.
+  if (target.roles.length === 0) target.roles = [Roles.PATIENT];
 
   await target.save();
 

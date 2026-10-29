@@ -14,6 +14,7 @@ import {
   Home,
   IdCard,
   LayoutDashboard,
+  MessageCircle,
   ShieldCheck,
   UserCog,
   Wallet,
@@ -45,6 +46,12 @@ const Physiotherapist_APPROVED_NAV_ITEMS: PhysiotherapistNavItem[] = [
     description: "In-house visits assigned to you",
     icon: Home,
     showActiveBadge: true,
+  },
+  {
+    href: "/physiotherapist/messages",
+    label: "Messages",
+    description: "Chat with patients you visit",
+    icon: MessageCircle,
   },
   {
     href: "/physiotherapist/earnings",

@@ -7,6 +7,9 @@ import { getWhatsAppSupportUrl } from "@/lib/support-contact";
 import { WhatsAppIcon } from "@/components/shared/whatsapp-cta-button";
 import { cn } from "@zindagi/shared";
 
+// Full-screen chat pages, where the floating button would cover the composer.
+const CHAT_PAGE = /^\/(?:(?:herbalist|nutritionist)\/)?(?:messages|assistant)(?:\/|$)/;
+
 export function WhatsAppFloatButton() {
   const mounted = useMounted();
   const pathname = usePathname();
@@ -14,7 +17,7 @@ export function WhatsAppFloatButton() {
   const href = getWhatsAppSupportUrl(t.common.whatsappPrefill);
 
   if (!mounted) return null;
-  if (pathname?.startsWith("/doctor")) return null;
+  if (pathname?.startsWith("/doctor") || (pathname && CHAT_PAGE.test(pathname))) return null;
 
   return (
     <a

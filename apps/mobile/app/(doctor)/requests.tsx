@@ -1,9 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { Ionicons } from "@expo/vector-icons";
-import { listDoctorRequests, type DoctorRequestOutcome, type DoctorRequestRow } from "@/api/doctor";
+import { ApiRequestError } from "@/api/client";
+import {
+  finishConsultation,
+  listDoctorRequests,
+  type DoctorRequestOutcome,
+  type DoctorRequestRow,
+} from "@/api/doctor";
 import { useFocusLoader } from "@/hooks/use-focus-loader";
 import { BrandLoadingScreen } from "@/components/ui/brand-loading-screen";
 import { colors, fonts, cardShadow } from "@/lib/theme";
@@ -69,6 +75,29 @@ export default function DoctorRequestsScreen() {
     setIsRefreshing(true);
     await load();
     setIsRefreshing(false);
+  };
+
+  const [finishingId, setFinishingId] = useState<string | null>(null);
+  const confirmFinish = (appointmentId: string) => {
+    Alert.alert(
+      "Finish consultation?",
+      "The video room will close, the chat becomes read-only, and the patient will be asked to review you.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Finish",
+          onPress: () => {
+            setFinishingId(appointmentId);
+            finishConsultation(appointmentId)
+              .then(() => load())
+              .catch((e) =>
+                Alert.alert("Couldn't finish", e instanceof ApiRequestError ? e.message : "Please try again"),
+              )
+              .finally(() => setFinishingId(null));
+          },
+        },
+      ],
+    );
   };
 
   const filtered = useMemo(
@@ -206,6 +235,20 @@ export default function DoctorRequestsScreen() {
                 >
                   <Ionicons name="document-text-outline" size={14} color={colors.brand.foreground} />
                   <Text style={styles.prescribeButtonText}>Write prescription</Text>
+                </Pressable>
+              ) : null}
+              {item.canFinish ? (
+                <Pressable
+                  style={styles.prescribeButton}
+                  onPress={() => confirmFinish(item.id)}
+                  disabled={finishingId === item.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ busy: finishingId === item.id }}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={14} color={colors.brand.foreground} />
+                  <Text style={styles.prescribeButtonText}>
+                    {finishingId === item.id ? "Finishing…" : "Finish consultation"}
+                  </Text>
                 </Pressable>
               ) : null}
             </View>

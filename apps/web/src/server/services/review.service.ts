@@ -31,7 +31,6 @@ import type { DoctorReviewDto } from "@/features/marketing/types/doctor-public";
 import type { AppointmentPrescriptionLink } from "@/features/prescriptions/types";
 import { mongoFilter } from "@/lib/mongo/query";
 import { PrescriptionService } from "@/server/services/prescription.service";
-import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
 function formatPatientName(name: string) {
@@ -567,25 +566,7 @@ export class ReviewService {
       createdAt: Date;
     };
 
-    if (
-      appointment.status !== AppointmentStatuses.COMPLETED &&
-      (new Date() > appointment.scheduledEnd || options.afterVideoLeave)
-    ) {
-      await AppointmentModel.updateOne(
-        mongoFilter({ _id: appointment._id }),
-        {
-          $set: {
-            status: AppointmentStatuses.COMPLETED,
-            completedAt: appointment.completedAt ?? new Date(),
-          },
-        },
-      );
-    }
-
-    if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
-      await UrgentConsultService.tryCompleteByAppointmentId(appointment._id.toString());
-    }
-
+    // A review never ends the consult; only ConsultationLifecycleService does.
     await ReviewService.refreshDoctorRatingAggregates(appointment.doctorId.toString());
 
     return {

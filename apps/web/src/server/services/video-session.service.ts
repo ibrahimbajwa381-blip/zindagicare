@@ -23,7 +23,6 @@ import { getPublicZoomSdkKey, getZoomSdkSignatureCredentials, isZoomConfigured }
 import { generateZoomMeetingSdkSignature } from "@/lib/zoom/signature";
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { mongoFilter } from "@/lib/mongo/query";
-import { UrgentConsultService } from "@/server/services/urgent-consult.service";
 
 const ONLINE_TYPES = ["online", "sunday_free", "urgent_online"] as const;
 
@@ -45,7 +44,7 @@ type ParticipantContext = {
   role: VideoParticipantRole;
 };
 
-function getJoinWindow(appointment: AppointmentRow) {
+export function getJoinWindow(appointment: AppointmentRow) {
   const urgentWhileActive =
     appointment.type === "urgent_online" &&
     (appointment.status === AppointmentStatuses.CONFIRMED ||
@@ -80,64 +79,48 @@ export class VideoSessionService {
     await connectDatabase();
   }
 
-  /** Mark attended online consults complete once the patient joined or received care. */
-  static async finalizeAppointmentIfAttended(appointmentId: string): Promise<boolean> {
+  /** True when either side joined the call or a prescription was issued for it. */
+  static async wasAttended(appointmentId: string): Promise<boolean> {
     await VideoSessionService.ensureConnected();
 
-    const appointment = await AppointmentModel.findById(appointmentId).lean();
-    if (
-      !appointment ||
-      // Only the doctor completes a Sunday free consult (so the patient can review it).
-      appointment.type === AppointmentTypes.SUNDAY_FREE ||
-      appointment.status === AppointmentStatuses.COMPLETED ||
-      appointment.status === AppointmentStatuses.CANCELLED ||
-      appointment.status === AppointmentStatuses.NO_SHOW
-    ) {
-      return false;
-    }
-
     const [session, hasPrescription] = await Promise.all([
-      VideoSessionModel.findOne(mongoFilter({ appointmentId: appointment._id.toString() }))
-        .select("patientJoinedAt doctorJoinedAt status")
+      VideoSessionModel.findOne(mongoFilter({ appointmentId }))
+        .select("patientJoinedAt doctorJoinedAt")
         .lean(),
-      PrescriptionModel.exists(
-        mongoFilter({ appointmentId: appointment._id, deletedAt: null }),
-      ),
+      PrescriptionModel.exists(mongoFilter({ appointmentId, deletedAt: null })),
     ]);
 
-    const slotWindow = getVideoJoinWindow(
-      appointment.scheduledStart,
-      appointment.scheduledEnd,
-    );
-    const staleAfterMs = 2 * 60 * 60 * 1000;
-    const windowStale = Date.now() > slotWindow.joinClosesAt.getTime() + staleAfterMs;
-
-    const attended = Boolean(
-      session?.patientJoinedAt ||
-        hasPrescription ||
-        session?.status === VideoSessionStatuses.COMPLETED ||
-        (windowStale && session?.doctorJoinedAt),
-    );
-    if (!attended) return false;
-
-    const completedAt = appointment.completedAt ?? new Date();
-    await AppointmentModel.updateOne(mongoFilter({ _id: appointment._id }), {
-      $set: {
-        status: AppointmentStatuses.COMPLETED,
-        completedAt,
-      },
-    });
-
-    if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
-      await UrgentConsultService.tryCompleteByAppointmentId(
-        appointment._id.toString(),
-      );
-    }
-
-    return true;
+    return Boolean(session?.patientJoinedAt || session?.doctorJoinedAt || hasPrescription);
   }
 
-  private static async resolveParticipant(
+  /** Ends the consult's video session, if one is still running. */
+  static async endSession(appointmentId: string) {
+    await VideoSessionService.ensureConnected();
+
+    const session = await VideoSessionModel.findOne(
+      mongoFilter({
+        appointmentId,
+        status: { $nin: [VideoSessionStatuses.COMPLETED, VideoSessionStatuses.CANCELLED] },
+      }),
+    )
+      .select("startedAt createdAt")
+      .lean();
+    if (!session) return;
+
+    const endedAt = new Date();
+    const startedAt = session.startedAt ?? session.createdAt;
+    await VideoSessionModel.updateOne(mongoFilter({ _id: session._id }), {
+      $set: {
+        status: VideoSessionStatuses.COMPLETED,
+        endedAt,
+        durationSeconds: startedAt
+          ? Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000))
+          : 0,
+      },
+    });
+  }
+
+  static async resolveParticipant(
     userId: string,
     appointmentId: string,
   ): Promise<ParticipantContext> {
@@ -413,76 +396,12 @@ export class VideoSessionService {
     }
   }
 
+  /**
+   * Leaving never ends a consult: either side can rejoin until the provider
+   * finishes it (ConsultationLifecycleService). Only checks the caller may be here.
+   */
   static async recordLeave(userId: string, appointmentId: string) {
-    const { appointment } = await VideoSessionService.resolveParticipant(
-      userId,
-      appointmentId,
-    );
-
-    const session = await VideoSessionModel.findOne(
-      mongoFilter({ appointmentId: appointment._id.toString() }),
-    );
-    if (!session || session.status === VideoSessionStatuses.COMPLETED) {
-      return;
-    }
-
-    // Leaving a Sunday free consult keeps the room open so either side can rejoin;
-    // the doctor ends it from the Sunday dashboard ("Finish consultation").
-    if (appointment.type === AppointmentTypes.SUNDAY_FREE) {
-      return;
-    }
-
-    const endedAt = new Date();
-    const startedAt = session.startedAt ?? session.createdAt;
-    const durationSeconds = startedAt
-      ? Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000))
-      : 0;
-
-    await VideoSessionModel.updateOne(
-      mongoFilter({ _id: session._id }),
-      {
-        $set: {
-          status: VideoSessionStatuses.COMPLETED,
-          endedAt,
-          durationSeconds,
-        },
-      },
-    );
-
-    if (appointment.type === AppointmentTypes.URGENT_ONLINE) {
-      const completed = await UrgentConsultService.tryCompleteByAppointmentId(
-        appointment._id.toString(),
-      );
-      if (!completed) {
-        await VideoSessionService.finalizeAppointmentIfAttended(
-          appointment._id.toString(),
-        );
-      }
-      return;
-    }
-
-    if (session.patientJoinedAt && appointment.status !== AppointmentStatuses.COMPLETED) {
-      // Conditioned on the appointment still being active (CONFIRMED or
-      // IN_PROGRESS — the only two statuses resolveParticipant allows this
-      // far), not just filtered by _id: a concurrent cancellation (e.g. an
-      // admin cancelling mid-call) could otherwise land in between and get
-      // silently overwritten back to COMPLETED by this write — same TOCTOU
-      // shape as recordJoin above, reproduced against a real MongoDB
-      // instance. If it doesn't match, something else already resolved it.
-      await AppointmentModel.updateOne(
-        mongoFilter({
-          _id: appointment._id,
-          status: { $in: [AppointmentStatuses.CONFIRMED, AppointmentStatuses.IN_PROGRESS] },
-        }),
-        {
-          $set: {
-            status: AppointmentStatuses.COMPLETED,
-            completedAt: endedAt,
-          },
-        },
-      );
-
-    }
+    await VideoSessionService.resolveParticipant(userId, appointmentId);
   }
 
   static async getSessionStatus(userId: string, appointmentId: string) {

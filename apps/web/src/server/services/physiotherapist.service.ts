@@ -14,6 +14,7 @@ import {
   Roles,
   VerificationStatuses,
   phoneLookupHash,
+  withClinicalRole,
 } from "@zindagi/shared";
 import {
   normalizePhoneDigits,
@@ -745,7 +746,7 @@ export async function convertDoctorApplicationToPhysiotherapist(
     adminNotes: `Moved from doctor application ${doctorProfile._id.toString()} by admin ${adminUserId}.`,
   });
 
-  user.roles = [...user.roles.filter((r) => r !== Roles.DOCTOR), Roles.PHYSIOTHERAPIST];
+  user.roles = withClinicalRole(user.roles, Roles.PHYSIOTHERAPIST);
   await user.save();
 
   doctorProfile.verificationStatus = VerificationStatuses.REJECTED;

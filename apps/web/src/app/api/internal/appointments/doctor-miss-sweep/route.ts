@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DoctorAccountabilityService } from "@/server/services/doctor-accountability.service";
+import { ConsultationLifecycleService } from "@/server/services/consultation/consultation-lifecycle.service";
 
 function isAuthorized(req: NextRequest): boolean {
   if (process.env.NODE_ENV !== "production") return true;
@@ -17,7 +18,9 @@ export async function POST(req: NextRequest) {
   }
 
   const results = await DoctorAccountabilityService.processMissedAppointments();
-  return NextResponse.json({ success: true, results });
+  // Same daily run: complete attended consults the provider never finished.
+  const finalized = await ConsultationLifecycleService.finalizeStale();
+  return NextResponse.json({ success: true, results, finalized });
 }
 
 // Allow Vercel Cron (GET) to trigger the same sweep.

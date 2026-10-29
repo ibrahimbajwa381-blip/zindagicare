@@ -7,9 +7,20 @@ export type DashboardMenuLink = {
   label: string;
 };
 
+/** Each provider role's own messages page; everyone else uses the patient inbox. */
+const PROVIDER_MESSAGES_HREF: [Role, string][] = [
+  [Roles.DOCTOR, AUTH_ROUTES.doctorMessages],
+  [Roles.HERBALIST, AUTH_ROUTES.herbalistMessages],
+  [Roles.NUTRITIONIST, AUTH_ROUTES.nutritionistMessages],
+  [Roles.NURSE, AUTH_ROUTES.nurseMessages],
+  [Roles.PHYSIOTHERAPIST, AUTH_ROUTES.physiotherapistMessages],
+];
+
 export function messagesHref(roles?: Role[]) {
-  if (roles?.includes(Roles.DOCTOR)) return AUTH_ROUTES.doctorMessages;
-  return AUTH_ROUTES.messages;
+  return (
+    PROVIDER_MESSAGES_HREF.find(([role]) => roles?.includes(role))?.[1] ??
+    AUTH_ROUTES.messages
+  );
 }
 
 export function dashboardHref(roles?: Role[]) {

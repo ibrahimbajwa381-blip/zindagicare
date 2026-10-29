@@ -14,6 +14,10 @@ export type WebPushPayload = {
   body: string;
   url: string;
   tag?: string;
+  /** "call" makes the service worker show a ringing, call-style notification. */
+  kind?: "call";
+  appointmentId?: string;
+  ringId?: string;
 };
 
 function getVapidConfig() {

@@ -3,13 +3,12 @@ import {
   ChatMessageModel,
   ChatThreadModel,
   connectDatabase,
-  DoctorProfileModel,
+  HomeVisitModel,
   PaymentModel,
   UserModel,
 } from "@zindagi/database";
 import {
   AppError,
-  AppointmentStatuses,
   AppointmentTypes,
   buildChatDirectKey,
   ChatMessageKinds,
@@ -19,11 +18,19 @@ import {
   getReturningPatientConsultMessage,
   IntakeSources,
   normalizeIntakeLocale,
-  PaymentStatuses,
-  Roles,
-  VerificationStatuses,
 } from "@zindagi/shared";
 import { MedicalIntakeService } from "@/server/services/medical-intake.service";
+import { CareService } from "@/server/services/care/care.service";
+import { accessForAppointment } from "@/server/services/care/sources/appointment.source";
+import { homeVisitAccess } from "@/server/services/care/policy";
+import {
+  providerUserIdForProfileId,
+  providerUserIdOf,
+  type AppointmentProviderRef,
+  type ProviderProfile,
+  type ProviderRole,
+} from "@/server/services/care/provider-registry";
+import type { CareLink } from "@/server/services/care/types";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
 import type {
   AdminChatTranscriptDto,
@@ -37,21 +44,6 @@ import { mongoFilter } from "@/lib/mongo/query";
 import { formatPhoneForDisplay, safeDisplayText } from "@/server/lib/decrypt-pii";
 import { Types } from "mongoose";
 
-/** Consult types that unlock doctor–patient chat. */
-const CHAT_ELIGIBLE_APPOINTMENT_TYPES = [
-  AppointmentTypes.ONLINE,
-  AppointmentTypes.URGENT_ONLINE,
-  AppointmentTypes.CLINIC,
-  AppointmentTypes.HOME_VISIT,
-  AppointmentTypes.SUNDAY_FREE,
-] as const;
-
-const CHAT_ACTIVE_APPOINTMENT_STATUSES = [
-  AppointmentStatuses.CONFIRMED,
-  AppointmentStatuses.IN_PROGRESS,
-  AppointmentStatuses.COMPLETED,
-] as const;
-
 function previewText(body: string) {
   const trimmed = body.trim();
   return trimmed.length > 200 ? `${trimmed.slice(0, 197)}...` : trimmed;
@@ -61,252 +53,76 @@ function toIso(date?: Date | null) {
   return date ? date.toISOString() : undefined;
 }
 
-async function resolveDoctorUserId(doctorProfileId: string): Promise<string> {
-  const profile = await DoctorProfileModel.findById(doctorProfileId).lean();
-  if (!profile?.userId) {
-    throw new AppError("Doctor not found", "NOT_FOUND", 404);
+async function requireProviderUserId(appointment: AppointmentProviderRef): Promise<string> {
+  const userId = await providerUserIdOf(appointment);
+  if (!userId) {
+    throw new AppError("Provider not found", "NOT_FOUND", 404);
   }
-  return profile.userId.toString();
-}
-
-async function resolveDoctorProfileId(doctorUserId: string): Promise<string> {
-  const profile = await DoctorProfileModel.findOne(
-    mongoFilter({ userId: doctorUserId }),
-  ).lean();
-  if (!profile) {
-    throw new AppError("Doctor profile not found", "NOT_FOUND", 404);
-  }
-  return profile._id.toString();
+  return userId;
 }
 
 /**
- * Chat deep links may pass either a user id or a doctor profile id.
- * Prefer an existing user; otherwise map a DoctorProfile `_id` to its `userId`.
+ * Chat deep links may pass either a user id or a provider profile id.
+ * Prefer an existing user; otherwise map the profile `_id` to its `userId`.
  */
 async function resolveChatParticipantUserId(participantId: string): Promise<string | null> {
   if (!Types.ObjectId.isValid(participantId)) return null;
   const user = await UserModel.findById(participantId).select("_id").lean();
   if (user) return user._id.toString();
-
-  const profile = await DoctorProfileModel.findById(participantId)
-    .select("userId")
-    .lean();
-  return profile?.userId?.toString() ?? null;
+  return providerUserIdForProfileId(participantId);
 }
 
-type AppointmentEligibilityRow = {
-  type: string;
-  status: string;
-  paymentId?: { toString(): string } | null;
-  doctorId?: { toString(): string };
-  patientId?: { toString(): string };
+const PROVIDER_LABELS: Record<ProviderRole, string> = {
+  doctor: "Doctor",
+  herbalist: "Herbalist",
+  nutritionist: "Nutritionist",
+  nurse: "Nurse",
+  physiotherapist: "Physiotherapist",
 };
 
-function isPaidAppointmentChatEligibleSync(
-  appointment: AppointmentEligibilityRow,
-  paidByPaymentId: Map<string, boolean>,
-): boolean {
-  if (
-    !CHAT_ELIGIBLE_APPOINTMENT_TYPES.includes(
-      appointment.type as (typeof CHAT_ELIGIBLE_APPOINTMENT_TYPES)[number],
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    !CHAT_ACTIVE_APPOINTMENT_STATUSES.includes(
-      appointment.status as (typeof CHAT_ACTIVE_APPOINTMENT_STATUSES)[number],
-    )
-  ) {
-    return false;
-  }
-
-  // Sunday free chat lasts until the doctor finishes the consultation.
-  if (
-    appointment.type === AppointmentTypes.SUNDAY_FREE &&
-    appointment.status === AppointmentStatuses.COMPLETED
-  ) {
-    return false;
-  }
-
-  if (appointment.paymentId) {
-    return paidByPaymentId.get(appointment.paymentId.toString()) ?? false;
-  }
-
-  return (
-    appointment.type !== AppointmentTypes.ONLINE &&
-    appointment.type !== AppointmentTypes.URGENT_ONLINE
-  );
-}
-
-async function batchPaidStatusByPaymentId(
-  paymentIds: string[],
-): Promise<Map<string, boolean>> {
-  if (paymentIds.length === 0) return new Map();
-
-  const payments = await PaymentModel.find(
-    mongoFilter({ _id: { $in: paymentIds } }),
-  )
-    .select("status")
-    .lean();
-
-  return new Map(
-    payments.map((payment) => [
-      payment._id.toString(),
-      payment.status === PaymentStatuses.PAID,
-    ]),
-  );
-}
-
-function collectPaymentIds(appointments: AppointmentEligibilityRow[]) {
-  return [
-    ...new Set(
-      appointments
-        .map((appointment) => appointment.paymentId?.toString())
-        .filter((id): id is string => !!id),
-    ),
-  ];
-}
-
-async function isPaidAppointmentChatEligible(
-  appointment: AppointmentEligibilityRow,
-): Promise<boolean> {
-  if (!appointment.paymentId) {
-    return isPaidAppointmentChatEligibleSync(appointment, new Map());
-  }
-
-  const paidByPaymentId = await batchPaidStatusByPaymentId([
-    appointment.paymentId.toString(),
-  ]);
-  return isPaidAppointmentChatEligibleSync(appointment, paidByPaymentId);
-}
-
-async function buildEligibleDoctorUserIdsForPatient(
-  patientUserId: string,
-): Promise<Set<string>> {
-  const appointments = await AppointmentModel.find(
-    mongoFilter({
-      patientId: patientUserId,
-      type: { $in: CHAT_ELIGIBLE_APPOINTMENT_TYPES },
-      status: { $in: CHAT_ACTIVE_APPOINTMENT_STATUSES },
-      deletedAt: null,
-    }),
-  )
-    .select("type status paymentId doctorId")
-    .lean();
-
-  if (appointments.length === 0) return new Set();
-
-  // Payment status and doctor profiles are independent lookups, so fetch them
-  // together and filter to the eligible doctors afterwards (saves a round trip).
-  const candidateDoctorProfileIds = [
-    ...new Set(appointments.map((appointment) => appointment.doctorId.toString())),
-  ];
-  const [paidByPaymentId, profiles] = await Promise.all([
-    batchPaidStatusByPaymentId(collectPaymentIds(appointments)),
-    DoctorProfileModel.find(
-      mongoFilter({ _id: { $in: candidateDoctorProfileIds } }),
-    )
-      .select("userId")
-      .lean(),
-  ]);
-
-  const eligibleDoctorProfileIds = new Set<string>();
-  for (const appointment of appointments) {
-    if (!isPaidAppointmentChatEligibleSync(appointment, paidByPaymentId)) {
-      continue;
-    }
-    eligibleDoctorProfileIds.add(appointment.doctorId.toString());
-  }
-
-  return new Set(
-    profiles
-      .filter((profile) => eligibleDoctorProfileIds.has(profile._id.toString()))
-      .map((profile) => profile.userId.toString()),
-  );
-}
-
-async function buildEligiblePatientIdsForDoctor(
-  doctorProfileId: string,
-): Promise<Set<string>> {
-  const appointments = await AppointmentModel.find(
-    mongoFilter({
-      doctorId: doctorProfileId,
-      type: { $in: CHAT_ELIGIBLE_APPOINTMENT_TYPES },
-      status: { $in: CHAT_ACTIVE_APPOINTMENT_STATUSES },
-      deletedAt: null,
-    }),
-  )
-    .select("type status paymentId patientId")
-    .lean();
-
-  const paidByPaymentId = await batchPaidStatusByPaymentId(
-    collectPaymentIds(appointments),
-  );
-
-  const eligiblePatientIds = new Set<string>();
-  for (const appointment of appointments) {
-    if (isPaidAppointmentChatEligibleSync(appointment, paidByPaymentId)) {
-      eligiblePatientIds.add(appointment.patientId.toString());
-    }
-  }
-
-  return eligiblePatientIds;
+function providerDisplay(
+  user: { name: string; avatarUrl?: string | null },
+  provider: ProviderProfile,
+) {
+  return {
+    name: user.name,
+    avatarUrl:
+      provider.role === "doctor"
+        ? resolveDoctorPortrait(user.name, user.avatarUrl)
+        : (user.avatarUrl ?? undefined),
+    subtitle: provider.specialties.slice(0, 2).join(", ") || PROVIDER_LABELS[provider.role],
+  };
 }
 
 async function batchEnrichParticipants(
-  userIds: string[],
-  viewerId: string,
+  links: CareLink[],
 ): Promise<Map<string, ChatParticipantDto>> {
-  if (userIds.length === 0) return new Map();
+  if (links.length === 0) return new Map();
 
-  const users = await UserModel.find(mongoFilter({ _id: { $in: userIds } }))
-    .select("name avatarUrl roles")
+  const linkByUserId = new Map(links.map((link) => [link.counterpartUserId, link]));
+  const users = await UserModel.find(mongoFilter({ _id: { $in: [...linkByUserId.keys()] } }))
+    .select("name avatarUrl")
     .lean();
-
-  const doctorUserIds = users
-    .filter((user) => user.roles.includes(Roles.DOCTOR))
-    .map((user) => user._id.toString());
-
-  const doctorProfiles =
-    doctorUserIds.length > 0
-      ? await DoctorProfileModel.find(
-          mongoFilter({ userId: { $in: doctorUserIds } }),
-        )
-          .select("userId specialties")
-          .lean()
-      : [];
-
-  const profileByUserId = new Map(
-    doctorProfiles.map((profile) => [profile.userId.toString(), profile]),
-  );
 
   const participants = new Map<string, ChatParticipantDto>();
   for (const user of users) {
     const id = user._id.toString();
-    const isDoctor = user.roles.includes(Roles.DOCTOR);
+    const link = linkByUserId.get(id);
+    if (!link) continue;
 
-    if (isDoctor) {
-      const profile = profileByUserId.get(id);
-      const specialties = profile?.specialties?.slice(0, 2).join(", ");
-      participants.set(id, {
-        id,
-        name: user.name,
-        avatarUrl: resolveDoctorPortrait(user.name, user.avatarUrl),
-        role: "doctor",
-        subtitle: specialties || "Doctor",
-      });
-      continue;
-    }
-
-    participants.set(id, {
+    // `role` is the side of the consult: "doctor" covers every provider type.
+    participants.set(
       id,
-      name: user.name,
-      avatarUrl: user.avatarUrl ?? undefined,
-      role: "patient",
-      subtitle: id === viewerId ? "You" : "Patient",
-    });
+      link.counterpartIsProvider
+        ? { id, ...providerDisplay(user, link.provider), role: "doctor" }
+        : {
+            id,
+            name: user.name,
+            avatarUrl: user.avatarUrl ?? undefined,
+            role: "patient",
+            subtitle: "Patient",
+          },
+    );
   }
 
   return participants;
@@ -371,31 +187,6 @@ async function batchCountUnread(
   return new Map(rows.map((row) => [row._id.toString(), row.count]));
 }
 
-async function findLatestEligibleAppointment(
-  patientUserId: string,
-  doctorProfileId: string,
-) {
-  const appointments = await AppointmentModel.find(
-    mongoFilter({
-      patientId: patientUserId,
-      doctorId: doctorProfileId,
-      type: { $in: CHAT_ELIGIBLE_APPOINTMENT_TYPES },
-      status: { $in: CHAT_ACTIVE_APPOINTMENT_STATUSES },
-      deletedAt: null,
-    }),
-  )
-    .sort({ scheduledStart: -1 })
-    .lean();
-
-  for (const appointment of appointments) {
-    if (await isPaidAppointmentChatEligible(appointment)) {
-      return appointment;
-    }
-  }
-
-  return null;
-}
-
 async function assertThreadParticipant(threadId: string, userId: string) {
   if (!Types.ObjectId.isValid(threadId) || !Types.ObjectId.isValid(userId)) {
     throw new AppError("Chat not found", "NOT_FOUND", 404);
@@ -410,40 +201,6 @@ async function assertThreadParticipant(threadId: string, userId: string) {
   }
 
   return thread;
-}
-
-async function enrichParticipant(
-  userId: Types.ObjectId | string,
-  viewerId: string,
-): Promise<ChatParticipantDto> {
-  const id = userId.toString();
-  const user = await UserModel.findById(id).lean();
-  if (!user) {
-    throw new AppError("User not found", "NOT_FOUND", 404);
-  }
-
-  const isDoctor = user.roles.includes(Roles.DOCTOR);
-  if (isDoctor) {
-    const profile = await DoctorProfileModel.findOne(
-      mongoFilter({ userId: user._id }),
-    ).lean();
-    const specialties = profile?.specialties?.slice(0, 2).join(", ");
-    return {
-      id,
-      name: user.name,
-      avatarUrl: resolveDoctorPortrait(user.name, user.avatarUrl),
-      role: "doctor",
-      subtitle: specialties || "Doctor",
-    };
-  }
-
-  return {
-    id,
-    name: user.name,
-    avatarUrl: user.avatarUrl ?? undefined,
-    role: "patient",
-    subtitle: id === viewerId ? "You" : "Patient",
-  };
 }
 
 async function findExistingDirectThread(
@@ -467,70 +224,33 @@ async function findExistingDirectThread(
     .lean();
 }
 
-function pickNewerThread(current: ThreadRow, candidate: ThreadRow) {
+type PairThread = {
+  participantIds: Array<{ toString(): string }>;
+  lastMessageAt?: Date | null;
+};
+
+function pickNewerThread<T extends PairThread>(current: T, candidate: T) {
   const currentTime = current.lastMessageAt?.getTime() ?? 0;
   const candidateTime = candidate.lastMessageAt?.getTime() ?? 0;
   return candidateTime > currentTime ? candidate : current;
 }
 
-async function mapThreadsByDoctorUserId(
-  threads: ThreadRow[],
-  patientId: string,
-) {
-  const threadByDoctorUser = new Map<string, string>();
-
+/** Newest thread per counterpart; legacy duplicates may exist until consolidated. */
+function latestThreadByCounterpart<T extends PairThread>(threads: T[], viewerId: string) {
+  const byCounterpart = new Map<string, T>();
   for (const thread of threads) {
-    const doctorUserId = thread.participantIds
-      .map((participant) => participant.toString())
-      .find((id) => id !== patientId);
-    if (!doctorUserId) continue;
-
-    const existingThreadId = threadByDoctorUser.get(doctorUserId);
-    if (!existingThreadId) {
-      threadByDoctorUser.set(doctorUserId, thread._id.toString());
-      continue;
-    }
-
-    const existing = threads.find(
-      (row) => row._id.toString() === existingThreadId,
-    );
-    if (existing) {
-      const preferred = pickNewerThread(existing, thread);
-      threadByDoctorUser.set(doctorUserId, preferred._id.toString());
-    }
+    const counterpartId = otherParticipantId(thread, viewerId);
+    if (!counterpartId) continue;
+    const existing = byCounterpart.get(counterpartId);
+    byCounterpart.set(counterpartId, existing ? pickNewerThread(existing, thread) : thread);
   }
-
-  return threadByDoctorUser;
+  return byCounterpart;
 }
 
-async function mapThreadsByPatientUserId(
-  threads: ThreadRow[],
-  doctorUserId: string,
-) {
-  const threadByPatientUser = new Map<string, string>();
-
-  for (const thread of threads) {
-    const patientUserId = thread.participantIds
-      .map((participant) => participant.toString())
-      .find((id) => id !== doctorUserId);
-    if (!patientUserId) continue;
-
-    const existingThreadId = threadByPatientUser.get(patientUserId);
-    if (!existingThreadId) {
-      threadByPatientUser.set(patientUserId, thread._id.toString());
-      continue;
-    }
-
-    const existing = threads.find(
-      (row) => row._id.toString() === existingThreadId,
-    );
-    if (existing) {
-      const preferred = pickNewerThread(existing, thread);
-      threadByPatientUser.set(patientUserId, preferred._id.toString());
-    }
-  }
-
-  return threadByPatientUser;
+function otherParticipantId(thread: PairThread, viewerId: string) {
+  return thread.participantIds
+    .map((participant) => participant.toString())
+    .find((id) => id !== viewerId);
 }
 
 /** A failed unique-index build scans the whole collection, so retry it at most this often. */
@@ -631,22 +351,19 @@ type ThreadRow = {
 async function toThreadDto(
   thread: ThreadRow,
   viewerId: string,
+  link: CareLink,
 ): Promise<ChatThreadDto> {
-  const otherId = thread.participantIds
-    .map((p) => p.toString())
-    .find((id) => id !== viewerId);
-
-  if (!otherId) {
-    throw new AppError("Invalid chat participants", "INVALID_STATE", 500);
-  }
-
-  const [otherParticipant, unreadCount, videoInfoById] = await Promise.all([
-    enrichParticipant(otherId, viewerId),
+  const [participantsById, unreadCount, videoInfoById] = await Promise.all([
+    batchEnrichParticipants([link]),
     countUnread(thread._id.toString(), viewerId),
     thread.appointmentId
       ? batchVideoAppointmentInfo([thread.appointmentId.toString()])
       : Promise.resolve(new Map<string, VideoAppointmentInfo>()),
   ]);
+  const otherParticipant = participantsById.get(link.counterpartUserId);
+  if (!otherParticipant) {
+    throw new AppError("User not found", "NOT_FOUND", 404);
+  }
   const videoInfo = thread.appointmentId
     ? videoInfoById.get(thread.appointmentId.toString())
     : undefined;
@@ -661,61 +378,115 @@ async function toThreadDto(
     lastMessageAt: toIso(thread.lastMessageAt),
     lastMessagePreview: thread.lastMessagePreview ?? undefined,
     unreadCount,
-    isClosed: !!thread.isClosed,
+    isClosed: !link.writable,
     otherParticipant,
   };
 }
 
-async function loadViewerAndThreads(userId: string) {
-  await connectDatabase();
-
-  const [viewer, threads] = await Promise.all([
-    UserModel.findById(userId).select("roles").lean(),
-    ChatThreadModel.find(mongoFilter({ participantIds: userId, deletedAt: null }))
-      .sort({ lastMessageAt: -1, updatedAt: -1 })
-      .lean(),
-  ]);
-
-  return { viewer, threads };
+function findUserThreads(userId: string): Promise<ThreadRow[]> {
+  return ChatThreadModel.find(mongoFilter({ participantIds: userId, deletedAt: null }))
+    .sort({ lastMessageAt: -1, updatedAt: -1 })
+    .lean();
 }
 
-async function buildEligibleOtherIdsForViewer(
-  userId: string,
-  viewerRoles: readonly string[],
-): Promise<Set<string>> {
-  return viewerRoles.includes(Roles.DOCTOR)
-    ? buildEligiblePatientIdsForDoctor(await resolveDoctorProfileId(userId))
-    : buildEligibleDoctorUserIdsForPatient(userId);
-}
-
-async function listEligibleThreadRowsForUser(userId: string): Promise<ThreadRow[]> {
-  const { viewer, threads } = await loadViewerAndThreads(userId);
-  if (!viewer) return [];
-
-  const eligibleOtherIds = await buildEligibleOtherIdsForViewer(userId, viewer.roles);
-  return dedupeEligibleThreads(threads, userId, eligibleOtherIds);
-}
-
-function dedupeEligibleThreads(
+/** One thread per linked counterpart; threads with people the user shares no consult with are hidden. */
+function pairThreadsWithLinks(
   threads: ThreadRow[],
+  links: Map<string, CareLink>,
   userId: string,
-  eligibleOtherIds: Set<string>,
-): ThreadRow[] {
-  const deduped = new Map<string, ThreadRow>();
-  for (const thread of threads) {
-    const otherId = thread.participantIds
-      .map((participant) => participant.toString())
-      .find((id) => id !== userId);
-    if (!otherId || !eligibleOtherIds.has(otherId)) continue;
+): { thread: ThreadRow; link: CareLink }[] {
+  const rows: { thread: ThreadRow; link: CareLink }[] = [];
+  for (const [counterpartId, thread] of latestThreadByCounterpart(threads, userId)) {
+    const link = links.get(counterpartId);
+    if (link) rows.push({ thread, link });
+  }
+  return rows;
+}
 
-    const existing = deduped.get(otherId);
-    deduped.set(
-      otherId,
-      existing ? pickNewerThread(existing, thread) : thread,
+/**
+ * Finds or creates the pair's single thread. With an appointment, the thread
+ * is pointed at it (and taken off any other thread); without one (home visits)
+ * the thread keeps whatever appointment it already had.
+ */
+async function ensurePairThread(
+  patientUserId: string,
+  providerUserId: string,
+  appointmentId?: string,
+): Promise<string> {
+  const directKey = buildChatDirectKey(patientUserId, providerUserId);
+
+  let thread = await findExistingDirectThread(patientUserId, providerUserId);
+
+  if (!thread) {
+    await ensureThreadUniqueIndexes();
+    try {
+      const created = await ChatThreadModel.create({
+        type: ChatThreadTypes.DIRECT,
+        directKey,
+        ...(appointmentId ? { appointmentId } : {}),
+        participantIds: [patientUserId, providerUserId],
+      });
+      thread = created.toObject();
+    } catch (err: unknown) {
+      if ((err as { code?: number })?.code === 11000) {
+        const existing = await findExistingDirectThread(patientUserId, providerUserId);
+        if (existing) {
+          thread = existing;
+        } else {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
+  } else {
+    if (appointmentId) {
+      await ChatThreadModel.updateMany(
+        mongoFilter({ appointmentId, _id: { $ne: thread._id } }),
+        { $unset: { appointmentId: "" } },
+      );
+    }
+    await ChatThreadModel.updateOne(
+      mongoFilter({ _id: thread._id }),
+      {
+        $set: {
+          directKey,
+          ...(appointmentId ? { appointmentId } : {}),
+          type: ChatThreadTypes.DIRECT,
+        },
+      },
+    );
+    await consolidateDuplicateThreads(
+      thread._id.toString(),
+      patientUserId,
+      providerUserId,
     );
   }
 
-  return [...deduped.values()];
+  return thread._id.toString();
+}
+
+/** Finds or creates the pair's thread and points it (and the appointment) at this consult. */
+async function attachThreadToAppointment(appointment: {
+  _id: { toString(): string };
+  patientId: { toString(): string };
+} & AppointmentProviderRef): Promise<string> {
+  const appointmentId = appointment._id.toString();
+  const providerUserId = await providerUserIdOf(appointment);
+  if (!providerUserId) {
+    throw new AppError("Provider not found", "NOT_FOUND", 404);
+  }
+
+  const threadId = await ensurePairThread(
+    appointment.patientId.toString(),
+    providerUserId,
+    appointmentId,
+  );
+  await AppointmentModel.updateOne(
+    mongoFilter({ _id: appointmentId }),
+    { $set: { chatThreadId: threadId } },
+  );
+  return threadId;
 }
 
 export class ChatService {
@@ -726,30 +497,24 @@ export class ChatService {
   static async listThreads(userId: string): Promise<ChatThreadDto[]> {
     await ChatService.ensureConnected();
 
-    const threadRows = await listEligibleThreadRowsForUser(userId);
-    const otherIds = threadRows
-      .map((thread) =>
-        thread.participantIds
-          .map((participant) => participant.toString())
-          .find((id) => id !== userId),
-      )
-      .filter((id): id is string => !!id);
-    const threadIds = threadRows.map((thread) => thread._id.toString());
-    const appointmentIds = threadRows
-      .map((thread) => thread.appointmentId?.toString())
+    const [links, threads] = await Promise.all([
+      CareService.linksFor(userId),
+      findUserThreads(userId),
+    ]);
+    const rows = pairThreadsWithLinks(threads, links, userId);
+    const threadIds = rows.map(({ thread }) => thread._id.toString());
+    const appointmentIds = rows
+      .map(({ thread }) => thread.appointmentId?.toString())
       .filter((id): id is string => !!id);
 
     const [participantsById, unreadByThreadId, videoInfoById] = await Promise.all([
-      batchEnrichParticipants(otherIds, userId),
+      batchEnrichParticipants(rows.map(({ link }) => link)),
       batchCountUnread(threadIds, userId),
       batchVideoAppointmentInfo(appointmentIds),
     ]);
 
-    return threadRows.flatMap((thread) => {
-      const otherId = thread.participantIds
-        .map((participant) => participant.toString())
-        .find((id) => id !== userId);
-      const otherParticipant = otherId ? participantsById.get(otherId) : undefined;
+    return rows.flatMap(({ thread, link }) => {
+      const otherParticipant = participantsById.get(link.counterpartUserId);
 
       // One orphaned thread (e.g. deleted account) must not blank the whole inbox.
       if (!otherParticipant) {
@@ -773,7 +538,7 @@ export class ChatService {
         lastMessageAt: toIso(thread.lastMessageAt),
         lastMessagePreview: thread.lastMessagePreview ?? undefined,
         unreadCount: unreadByThreadId.get(thread._id.toString()) ?? 0,
-        isClosed: !!thread.isClosed,
+        isClosed: !link.writable,
         otherParticipant,
       }];
     });
@@ -782,14 +547,11 @@ export class ChatService {
   static async totalUnreadCount(userId: string): Promise<number> {
     await ChatService.ensureConnected();
 
-    const { viewer, threads } = await loadViewerAndThreads(userId);
-    if (!viewer) return 0;
-
-    // Count unread across all of the viewer's threads while eligibility is
-    // resolved, then sum only the eligible (deduped) threads. Same result as
-    // counting eligible threads alone, one fewer sequential round trip.
-    const [eligibleOtherIds, unreadByThreadId] = await Promise.all([
-      buildEligibleOtherIdsForViewer(userId, viewer.roles),
+    // Count unread across all of the viewer's threads while their consults are
+    // resolved, then sum only the linked threads (one fewer sequential round trip).
+    const threads = await findUserThreads(userId);
+    const [links, unreadByThreadId] = await Promise.all([
+      CareService.linksFor(userId),
       batchCountUnread(
         threads.map((thread) => thread._id.toString()),
         userId,
@@ -797,7 +559,7 @@ export class ChatService {
     ]);
 
     let total = 0;
-    for (const thread of dedupeEligibleThreads(threads, userId, eligibleOtherIds)) {
+    for (const { thread } of pairThreadsWithLinks(threads, links, userId)) {
       total += unreadByThreadId.get(thread._id.toString()) ?? 0;
     }
     return total;
@@ -814,162 +576,52 @@ export class ChatService {
       throw new AppError("User not found", "NOT_FOUND", 404);
     }
 
-    const [initiator, other] = await Promise.all([
-      UserModel.findById(initiatorId).lean(),
-      UserModel.findById(resolvedOtherUserId).lean(),
-    ]);
-
-    if (!initiator || !other) {
-      throw new AppError("User not found", "NOT_FOUND", 404);
-    }
-
-    const initiatorIsDoctor = initiator.roles.includes(Roles.DOCTOR);
-    const initiatorIsPatient = initiator.roles.includes(Roles.PATIENT);
-    const otherIsDoctor = other.roles.includes(Roles.DOCTOR);
-    const otherIsPatient = other.roles.includes(Roles.PATIENT);
-
-    if (
-      !(
-        (initiatorIsDoctor && otherIsPatient) ||
-        (initiatorIsPatient && otherIsDoctor)
-      )
-    ) {
-      throw new AppError("Chats are only between doctors and patients", "FORBIDDEN", 403);
-    }
-
-    // Dual-role clinical accounts include Roles.PATIENT. Do not resolve sides from
-    // independent role flags — that maps both IDs to the initiator and breaks
-    // doctor "Message patient" deep links. Try each valid pairing and keep the
-    // first with an eligible paid appointment (doctor-as-initiator first).
-    type PairAttempt = { doctorUserId: string; patientUserId: string };
-    const pairAttempts: PairAttempt[] = [];
-    if (initiatorIsDoctor && otherIsPatient) {
-      pairAttempts.push({
-        doctorUserId: initiatorId,
-        patientUserId: resolvedOtherUserId,
-      });
-    }
-    if (initiatorIsPatient && otherIsDoctor) {
-      pairAttempts.push({
-        doctorUserId: resolvedOtherUserId,
-        patientUserId: initiatorId,
-      });
-    }
-
-    let doctorUserId = "";
-    let patientUserId = "";
-    let paidAppointment: Awaited<ReturnType<typeof findLatestEligibleAppointment>> = null;
-    let sawApprovedListedDoctor = false;
-
-    for (const attempt of pairAttempts) {
-      const doctorProfile = await DoctorProfileModel.findOne(
-        mongoFilter({ userId: attempt.doctorUserId }),
-      ).lean();
-
-      if (
-        !doctorProfile?.isListed ||
-        doctorProfile.verificationStatus !== VerificationStatuses.APPROVED
-      ) {
-        continue;
-      }
-
-      sawApprovedListedDoctor = true;
-      const appointment = await findLatestEligibleAppointment(
-        attempt.patientUserId,
-        doctorProfile._id.toString(),
-      );
-
-      if (appointment) {
-        doctorUserId = attempt.doctorUserId;
-        patientUserId = attempt.patientUserId;
-        paidAppointment = appointment;
-        break;
-      }
-    }
-
-    if (!paidAppointment || !doctorUserId || !patientUserId) {
-      if (!sawApprovedListedDoctor) {
-        throw new AppError("Doctor is not available for chat", "FORBIDDEN", 403);
-      }
+    const link = await CareService.linkBetween(initiatorId, resolvedOtherUserId);
+    if (!link) {
       throw new AppError(
-        "Chat is available after a paid consultation booking, or during an open Sunday free consultation.",
+        "Chat is available once you have a booked consultation together.",
         "FORBIDDEN",
         403,
       );
     }
-
-    const existingThread = await findExistingDirectThread(
-      patientUserId,
-      doctorUserId,
-    );
-
-    if (existingThread) {
-      await ChatThreadModel.updateMany(
-        mongoFilter({ appointmentId: paidAppointment._id, _id: { $ne: existingThread._id } }),
-        { $unset: { appointmentId: "" } },
-      );
-      await ChatThreadModel.updateOne(
-        mongoFilter({ _id: existingThread._id }),
-        {
-          $set: {
-            directKey: buildChatDirectKey(patientUserId, doctorUserId),
-            appointmentId: paidAppointment._id,
-            type: ChatThreadTypes.DIRECT,
-            isClosed: false,
-          },
-        },
-      );
-      await AppointmentModel.updateOne(
-        mongoFilter({ _id: paidAppointment._id }),
-        { $set: { chatThreadId: existingThread._id } },
-      );
-      await consolidateDuplicateThreads(
-        existingThread._id.toString(),
-        patientUserId,
-        doctorUserId,
-      );
-      const refreshed = await ChatThreadModel.findById(existingThread._id).lean();
-      if (!refreshed) {
-        throw new AppError("Chat not found", "NOT_FOUND", 404);
-      }
-      return toThreadDto(refreshed, initiatorId);
+    if (!link.provider.available) {
+      throw new AppError("This provider is not available for chat", "FORBIDDEN", 403);
     }
 
-    const threadId = await ChatService.ensureAppointmentThread(
-      paidAppointment._id.toString(),
-    );
+    let threadId: string;
+    if (link.appointmentId) {
+      const appointment = await AppointmentModel.findById(link.appointmentId).lean();
+      if (!appointment) {
+        throw new AppError("Appointment not found", "NOT_FOUND", 404);
+      }
+      threadId = await attachThreadToAppointment(appointment);
+    } else {
+      // Only home visits link them: no appointment to anchor the thread to.
+      threadId = await ensurePairThread(
+        link.counterpartIsProvider ? initiatorId : resolvedOtherUserId,
+        link.provider.userId,
+      );
+    }
     const thread = await ChatThreadModel.findById(threadId).lean();
     if (!thread) {
       throw new AppError("Chat not found", "NOT_FOUND", 404);
     }
 
-    return toThreadDto(thread, initiatorId);
+    return toThreadDto(thread, initiatorId, link);
   }
 
-  /**
-   * Closes the chat of a Sunday free consult the doctor just finished, unless the
-   * pair still shares another consult that keeps chat open.
-   */
-  static async closeSundayConsultThread(appointmentId: string) {
+  /** Opens the patient ↔ assigned staff thread for a home visit; null when the visit gives no chat access. */
+  static async ensureHomeVisitThread(visitId: string): Promise<string | null> {
     await ChatService.ensureConnected();
 
-    const appointment = await AppointmentModel.findById(appointmentId).lean();
-    if (!appointment) return;
+    const visit = Types.ObjectId.isValid(visitId)
+      ? await HomeVisitModel.findById(visitId)
+          .select("patientId assignedStaffId status scheduledAt")
+          .lean()
+      : null;
+    if (!visit?.assignedStaffId || homeVisitAccess(visit) === "none") return null;
 
-    const doctorUserId = await resolveDoctorUserId(appointment.doctorId.toString());
-    const patientUserId = appointment.patientId.toString();
-    const thread = await findExistingDirectThread(patientUserId, doctorUserId);
-    if (!thread || thread.isClosed) return;
-
-    const stillEligible = await findLatestEligibleAppointment(
-      patientUserId,
-      appointment.doctorId.toString(),
-    );
-    if (stillEligible) return;
-
-    await ChatThreadModel.updateOne(mongoFilter({ _id: thread._id }), {
-      $set: { isClosed: true },
-    });
+    return ensurePairThread(visit.patientId.toString(), visit.assignedStaffId.toString());
   }
 
   static async ensureAppointmentThread(appointmentId: string) {
@@ -980,74 +632,18 @@ export class ChatService {
       throw new AppError("Appointment not found", "NOT_FOUND", 404);
     }
 
-    if (!(await isPaidAppointmentChatEligible(appointment))) {
+    if ((await accessForAppointment(appointment)) === "none") {
       throw new AppError(
-        "Chat is only available for paid consultations",
+        "Chat is only available for booked consultations",
         "FORBIDDEN",
         403,
       );
     }
 
-    const doctorUserId = await resolveDoctorUserId(appointment.doctorId.toString());
-    const patientUserId = appointment.patientId.toString();
-    const directKey = buildChatDirectKey(patientUserId, doctorUserId);
-
-    let thread = await findExistingDirectThread(patientUserId, doctorUserId);
-
-    if (!thread) {
-      await ensureThreadUniqueIndexes();
-      try {
-        const created = await ChatThreadModel.create({
-          type: ChatThreadTypes.DIRECT,
-          directKey,
-          appointmentId,
-          participantIds: [patientUserId, doctorUserId],
-        });
-        thread = created.toObject();
-      } catch (err: unknown) {
-        if ((err as { code?: number })?.code === 11000) {
-          const existing = await findExistingDirectThread(patientUserId, doctorUserId);
-          if (existing) {
-            thread = existing;
-          } else {
-            throw err;
-          }
-        } else {
-          throw err;
-        }
-      }
-    } else {
-      await ChatThreadModel.updateMany(
-        mongoFilter({ appointmentId, _id: { $ne: thread._id } }),
-        { $unset: { appointmentId: "" } },
-      );
-      await ChatThreadModel.updateOne(
-        mongoFilter({ _id: thread._id }),
-        {
-          $set: {
-            directKey,
-            appointmentId,
-            type: ChatThreadTypes.DIRECT,
-            isClosed: false,
-          },
-        },
-      );
-      await consolidateDuplicateThreads(
-        thread._id.toString(),
-        patientUserId,
-        doctorUserId,
-      );
-      const refreshed = await ChatThreadModel.findById(thread._id).lean();
-      if (refreshed) thread = refreshed;
-    }
-
-    await AppointmentModel.updateOne(
-      mongoFilter({ _id: appointmentId }),
-      { $set: { chatThreadId: thread._id } },
-    );
+    const threadId = await attachThreadToAppointment(appointment);
 
     const priorCompleted = await MedicalIntakeService.findLatestCompletedWithDoctor(
-      patientUserId,
+      appointment.patientId.toString(),
       appointment.doctorId.toString(),
       appointmentId,
     );
@@ -1058,7 +654,7 @@ export class ChatService {
       );
     }
 
-    return thread._id.toString();
+    return threadId;
   }
 
   static async listMessages(
@@ -1134,19 +730,14 @@ export class ChatService {
     }
 
     const appointment = await AppointmentModel.findById(appointmentId)
-      .select("patientId doctorId chatThreadId")
+      .select("patientId doctorId providerRole providerProfileId chatThreadId")
       .lean();
     if (!appointment) {
       throw new AppError("Appointment not found", "NOT_FOUND", 404);
     }
 
     const patientUserId = appointment.patientId.toString();
-    let doctorUserId: string | undefined;
-    try {
-      doctorUserId = await resolveDoctorUserId(appointment.doctorId.toString());
-    } catch {
-      doctorUserId = undefined;
-    }
+    const doctorUserId = (await providerUserIdOf(appointment)) ?? undefined;
 
     let threadId = appointment.chatThreadId?.toString();
     if (!threadId) {
@@ -1204,7 +795,11 @@ export class ChatService {
     await ChatService.ensureConnected();
 
     const thread = await assertThreadParticipant(threadId, senderId);
-    if (thread.isClosed) {
+    const counterpartId = otherParticipantId(thread, senderId);
+    const link = counterpartId
+      ? await CareService.linkBetween(senderId, counterpartId)
+      : null;
+    if (!link?.writable) {
       throw new AppError("This chat is closed", "FORBIDDEN", 403);
     }
 
@@ -1426,7 +1021,7 @@ export class ChatService {
     }
 
     const threadId = await ChatService.ensureAppointmentThread(appointmentId);
-    const doctorUserId = await resolveDoctorUserId(appointment.doctorId.toString());
+    const doctorUserId = await requireProviderUserId(appointment);
 
     const payment = await PaymentModel.findOne(
       mongoFilter({ appointmentId }),
@@ -1534,176 +1129,49 @@ export class ChatService {
     return { ok: true };
   }
 
-  static async listPatientContacts(
-    patientId: string,
+  /** People the user can message: everyone they share a consult with, either side. */
+  static async listContacts(
+    userId: string,
     query?: string,
   ): Promise<ChatContactDto[]> {
     await ChatService.ensureConnected();
 
-    const [appointments, threads] = await Promise.all([
-      AppointmentModel.find(
-        mongoFilter({
-          patientId,
-          type: { $in: CHAT_ELIGIBLE_APPOINTMENT_TYPES },
-          status: { $in: CHAT_ACTIVE_APPOINTMENT_STATUSES },
-          deletedAt: null,
-        }),
-      )
-        .sort({ scheduledStart: -1 })
-        .select("type status paymentId doctorId")
-        .lean(),
-      ChatThreadModel.find(mongoFilter({ participantIds: patientId, deletedAt: null }))
+    const [links, threads] = await Promise.all([
+      CareService.linksFor(userId),
+      ChatThreadModel.find(mongoFilter({ participantIds: userId, deletedAt: null }))
         .select("participantIds lastMessageAt")
         .lean(),
     ]);
+    if (links.size === 0) return [];
 
-    const threadByDoctorUser = await mapThreadsByDoctorUserId(threads, patientId);
-    const paidByPaymentId = await batchPaidStatusByPaymentId(
-      collectPaymentIds(appointments),
-    );
-
-    const seenDoctors = new Set<string>();
-    const doctorProfileIds: string[] = [];
-
-    for (const appointment of appointments) {
-      if (!isPaidAppointmentChatEligibleSync(appointment, paidByPaymentId)) continue;
-
-      const doctorProfileId = appointment.doctorId.toString();
-      if (seenDoctors.has(doctorProfileId)) continue;
-      seenDoctors.add(doctorProfileId);
-      doctorProfileIds.push(doctorProfileId);
-    }
-
-    if (doctorProfileIds.length === 0) return [];
-
-    const profiles = await DoctorProfileModel.find(
-      mongoFilter({ _id: { $in: doctorProfileIds } }),
-    )
-      .populate("userId", "name avatarUrl")
-      .lean();
-
-    const contacts: ChatContactDto[] = [];
-    const q = query?.trim().toLowerCase();
-
-    for (const profile of profiles) {
-      const user = profile.userId as {
-        _id: Types.ObjectId;
-        name?: string;
-        avatarUrl?: string;
-      } | null;
-      if (!user) continue;
-
-      const doctorUserId = user._id.toString();
-      const name = user.name ?? "Doctor";
-      if (q) {
-        const specialtyMatch = profile.specialties?.some((specialty) =>
-          specialty.toLowerCase().includes(q),
-        );
-        if (!name.toLowerCase().includes(q) && !specialtyMatch) continue;
-      }
-
-      contacts.push({
-        id: doctorUserId,
-        name,
-        avatarUrl: resolveDoctorPortrait(name, user.avatarUrl),
-        subtitle: profile.specialties?.slice(0, 2).join(", ") || "Doctor",
-        threadId: threadByDoctorUser.get(doctorUserId),
-      });
-    }
-
-    return contacts;
-  }
-
-  static async listDoctorContacts(
-    doctorUserId: string,
-    query?: string,
-  ): Promise<ChatContactDto[]> {
-    await ChatService.ensureConnected();
-
-    const doctorProfileId = await resolveDoctorProfileId(doctorUserId);
-
-    const [appointments, threads] = await Promise.all([
-      AppointmentModel.find(
-        mongoFilter({
-          doctorId: doctorProfileId,
-          type: { $in: CHAT_ELIGIBLE_APPOINTMENT_TYPES },
-          status: { $in: CHAT_ACTIVE_APPOINTMENT_STATUSES },
-          deletedAt: null,
-        }),
-      )
-        .sort({ scheduledStart: -1 })
-        .select("type status paymentId patientId")
-        .lean(),
-      ChatThreadModel.find(
-        mongoFilter({
-          participantIds: doctorUserId,
-          deletedAt: null,
-        }),
-      )
-        .select("participantIds lastMessageAt")
-        .lean(),
-    ]);
-
-    const threadByPatientUser = await mapThreadsByPatientUserId(
-      threads,
-      doctorUserId,
-    );
-    const paidByPaymentId = await batchPaidStatusByPaymentId(
-      collectPaymentIds(appointments),
-    );
-
-    const seenPatients = new Set<string>();
-    const patientIds: string[] = [];
-
-    for (const appointment of appointments) {
-      if (!isPaidAppointmentChatEligibleSync(appointment, paidByPaymentId)) {
-        continue;
-      }
-
-      const patientId = appointment.patientId.toString();
-      if (seenPatients.has(patientId)) continue;
-      seenPatients.add(patientId);
-      patientIds.push(patientId);
-    }
-
-    if (patientIds.length === 0) return [];
-
-    const patients = await UserModel.find(mongoFilter({ _id: { $in: patientIds } }))
+    const threadByCounterpart = latestThreadByCounterpart(threads, userId);
+    const users = await UserModel.find(mongoFilter({ _id: { $in: [...links.keys()] } }))
       .select("name avatarUrl phone")
       .lean();
 
-    const patientById = new Map(
-      patients.map((patient) => [patient._id.toString(), patient]),
-    );
-
-    const contacts: ChatContactDto[] = [];
     const q = query?.trim().toLowerCase();
+    const contacts: ChatContactDto[] = [];
 
-    for (const patientId of patientIds) {
-      const patient = patientById.get(patientId);
-      if (!patient) continue;
+    for (const user of users) {
+      const id = user._id.toString();
+      const link = links.get(id);
+      if (!link) continue;
 
-      if (q) {
-        const patientName = safeDisplayText(patient.name) ?? "";
-        const patientPhone = formatPhoneForDisplay(patient.phone) ?? "";
-        if (
-          !patientName.toLowerCase().includes(q) &&
-          !patientPhone.toLowerCase().includes(q)
-        ) {
-          continue;
-        }
+      let contact: Omit<ChatContactDto, "threadId">;
+      let searchable: string[];
+      if (link.counterpartIsProvider) {
+        const display = providerDisplay(user, link.provider);
+        contact = { id, name: display.name, avatarUrl: display.avatarUrl, subtitle: display.subtitle };
+        searchable = [display.name, ...link.provider.specialties];
+      } else {
+        const name = safeDisplayText(user.name) ?? "Patient";
+        const phone = formatPhoneForDisplay(user.phone);
+        contact = { id, name, avatarUrl: user.avatarUrl ?? undefined, subtitle: phone ?? "Patient" };
+        searchable = [name, phone ?? ""];
       }
 
-      const displayName = safeDisplayText(patient.name) ?? "Patient";
-      const displayPhone = formatPhoneForDisplay(patient.phone);
-
-      contacts.push({
-        id: patientId,
-        name: displayName,
-        avatarUrl: patient.avatarUrl ?? undefined,
-        subtitle: displayPhone ?? "Patient",
-        threadId: threadByPatientUser.get(patientId),
-      });
+      if (q && !searchable.some((text) => text.toLowerCase().includes(q))) continue;
+      contacts.push({ ...contact, threadId: threadByCounterpart.get(id)?._id.toString() });
     }
 
     return contacts.sort((a, b) => a.name.localeCompare(b.name));

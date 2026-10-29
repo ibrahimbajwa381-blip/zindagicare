@@ -54,7 +54,7 @@ describe("Chat SSE Real-Time Layer — P0 Security & Concurrency Audit", () => {
       name,
       email: nextEmail(),
       phone: `+92301${Math.floor(1000000 + Math.random() * 9000000)}`,
-      roles: [Roles.DOCTOR, Roles.PATIENT],
+      roles: [Roles.DOCTOR],
     });
 
     const profile = await DoctorProfileModel.create({
@@ -85,6 +85,8 @@ describe("Chat SSE Real-Time Layer — P0 Security & Concurrency Audit", () => {
       amount: 2000,
       status: PaymentStatuses.PAID,
       provider: "jazzcash",
+      // (provider, externalTransactionId) is unique; null collides once the index is built.
+      externalTransactionId: `sse-txn-${counter++}`,
     });
 
     await AppointmentModel.updateOne(

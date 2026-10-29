@@ -85,11 +85,24 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
-  let payload: { title?: string; body?: string; url?: string; tag?: string };
+  let payload: {
+    title?: string;
+    body?: string;
+    url?: string;
+    tag?: string;
+    kind?: "call";
+    appointmentId?: string;
+    ringId?: string;
+  };
   try {
     payload = event.data.json() as typeof payload;
   } catch {
     payload = { title: "ZindagiCare", body: event.data.text() };
+  }
+
+  if (payload.kind === "call") {
+    event.waitUntil(showIncomingCall(payload));
+    return;
   }
 
   const title = payload.title ?? "ZindagiCare";
@@ -105,10 +118,77 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+/** Matches INCOMING_CALL_MESSAGE in features/consult/incoming-call.ts. */
+const INCOMING_CALL_MESSAGE = "zindagi:incoming-call";
+
+/**
+ * Video-call ring. An open, visible app window shows its own full-screen
+ * ringing screen (with ringtone), so it only gets a message; otherwise a
+ * WhatsApp-style notification buzzes the phone. The caller re-sends the push
+ * every few seconds and `renotify` makes each one alert again, which is what
+ * keeps a closed PWA "ringing".
+ */
+async function showIncomingCall(payload: {
+  title?: string;
+  body?: string;
+  url?: string;
+  appointmentId?: string;
+  ringId?: string;
+}) {
+  const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of windowClients) {
+    client.postMessage({ type: INCOMING_CALL_MESSAGE, appointmentId: payload.appointmentId });
+  }
+  if (windowClients.some((client) => client.visibilityState === "visible")) return;
+
+  // vibrate/renotify/actions are not in TypeScript's NotificationOptions yet.
+  const options: NotificationOptions & {
+    vibrate: number[];
+    renotify: boolean;
+    actions: { action: string; title: string }[];
+  } = {
+    body: payload.body ?? "",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    tag: `call-${payload.appointmentId ?? "consult"}`,
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [800, 400, 800, 400, 800, 400, 800],
+    actions: [
+      { action: "join", title: "Join" },
+      { action: "decline", title: "Decline" },
+    ],
+    data: {
+      url: payload.url ?? "/dashboard",
+      appointmentId: payload.appointmentId,
+      ringId: payload.ringId,
+    },
+  };
+  await self.registration.showNotification(payload.title ?? "Incoming video call", options);
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl =
-    (event.notification.data as { url?: string } | undefined)?.url ?? "/dashboard";
+  const data = event.notification.data as
+    | { url?: string; appointmentId?: string; ringId?: string }
+    | undefined;
+
+  if (event.action === "decline" && data?.appointmentId && data.ringId) {
+    event.waitUntil(
+      fetch(`/api/v1/video/sessions/${data.appointmentId}/ring`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "decline", ringId: data.ringId }),
+      }).then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return;
+  }
+
+  const targetUrl = data?.url ?? "/dashboard";
 
   event.waitUntil(
     (async () => {

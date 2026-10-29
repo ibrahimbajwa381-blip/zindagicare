@@ -87,7 +87,7 @@ describe("Public Medical Q&A API (real local MongoDB)", () => {
   const makePatient = (name = "Synthetic Patient") => makeUser([Roles.PATIENT], name);
 
   async function makeDoctor(status: "approved" | "pending" | "restricted" | "rejected" = "approved") {
-    const user = await makeUser([Roles.DOCTOR, Roles.PATIENT], "Dr. Synthetic");
+    const user = await makeUser([Roles.DOCTOR], "Dr. Synthetic");
     await db.DoctorProfileModel.create({
       userId: user._id,
       pmdcNumber: `PMDC-${uniq()}`,

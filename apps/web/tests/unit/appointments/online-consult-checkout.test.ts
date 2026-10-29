@@ -103,13 +103,6 @@ jest.mock("@/server/services/chat.service", () => ({
   },
 }));
 
-const mockFinalizeAppointmentIfAttended = jest.fn();
-jest.mock("@/server/services/video-session.service", () => ({
-  VideoSessionService: {
-    finalizeAppointmentIfAttended: (...args: unknown[]) => mockFinalizeAppointmentIfAttended(...args),
-  },
-}));
-
 // ---------------------------------------------------------------------------
 // Generic Mongoose-chain mock: supports .populate()/.select()/.sort()
 // (each returns itself) terminated by .lean() (resolves finalValue), and

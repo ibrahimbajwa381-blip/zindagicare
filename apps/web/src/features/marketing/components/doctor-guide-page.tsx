@@ -421,7 +421,7 @@ function WorkspaceSection() {
         <GuideBlock
           title="8. Patient messages"
           reverse
-          body="Secure chat after paid consultations, and during an open Sunday free consult. Sunday chat closes when you finish the consultation. Use this for follow-up questions, not for new unpaid diagnoses."
+          body="Secure chat for every consultation, paid or Sunday free, from booking until you tap Finish consultation (or 72 hours after the slot if you never do). After that the chat stays readable but closed. Use this for follow-up questions, not for new unpaid diagnoses."
           howTo={[
             "Select a patient from your consult list.",
             "Search chats by name when your inbox grows.",
@@ -486,7 +486,7 @@ function SundaySection() {
   const rules = [
     {
       title: "Video and chat stay open until you close it",
-      desc: "Leaving the call does not end the consult, and the system never completes a Sunday consult for you. If you do not tap Finish consultation, it stays open — it is not counted as completed and the patient cannot review you.",
+      desc: "Leaving the call does not end the consult — the same rule as paid consults. If you do not tap Finish consultation, it stays open, is not counted as completed, and the patient cannot review you. If the patient attended, the system completes it 72 hours after the slot.",
     },
     {
       title: "You must still join on time",
@@ -578,11 +578,11 @@ function SundaySection() {
           Always tap Finish consultation
         </p>
         <p className="mt-1 text-sm leading-relaxed text-amber-900">
-          A Sunday consult is only completed when you close it, either from the Patient queue
-          on your Sunday free consult page or from the screen you see after leaving the video
-          call. Until then video and chat stay open, it is not counted as completed, any
-          contribution is not credited to your Earnings, and the patient cannot leave you a
-          review.
+          A consult (paid or Sunday free) is completed when you close it, from your consult
+          requests, the Patient queue on your Sunday free consult page, or the screen you see
+          after leaving the video call. Until then chat stays open, it is not counted as
+          completed, earnings are not credited, and the patient cannot leave you a review. If
+          you forget, an attended consult is completed automatically 72 hours after the slot.
         </p>
       </div>
 

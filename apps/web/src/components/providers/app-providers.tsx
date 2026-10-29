@@ -8,6 +8,7 @@ import { WhatsAppFloatButton } from "@/components/layout/whatsapp-float-button";
 // import { AgentFloatButton } from "@/components/layout/agent-float-button";
 import { NavigationLoadingProvider } from "@/components/providers/navigation-loading";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { IncomingCallListener } from "@/features/consult/components/incoming-call-listener";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/en";
@@ -39,6 +40,7 @@ export function AppProviders({
           {/* Temporarily hidden — restore agent float mic later */}
           {/* <AgentFloatButton /> */}
           <InstallPrompt />
+          <IncomingCallListener />
         </AuthSessionProvider>
       </LocaleProvider>
     </SerwistProvider>

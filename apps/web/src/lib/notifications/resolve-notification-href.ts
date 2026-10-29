@@ -109,6 +109,7 @@ export function resolveNotificationHref(
     case "sunday_booking_confirmed":
     case "sunday_free_released":
     case "sunday_free_completed":
+    case "consult_completed":
     case "patient_doctor_missed":
       return "/dashboard";
 

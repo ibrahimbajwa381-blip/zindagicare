@@ -1,4 +1,5 @@
 import {
+  HERBALIST_DEGREES,
   HERBALIST_SPECIALTIES,
   MAX_HERBALIST_SPECIALTIES,
   normalizeAdditionalSpecialties,
@@ -28,7 +29,7 @@ export const herbalistVerificationSchema = z.object({
   cnic: z
     .string()
     .regex(/^[0-9]{5}-[0-9]{7}-[0-9]$/, "CNIC must be XXXXX-XXXXXXX-X"),
-  degree: z.string().min(2, "Qualification is required"),
+  degree: z.enum(HERBALIST_DEGREES, "Qualification must be BEMS or FTJ"),
   qualifications: z
     .array(z.string().trim().min(2).max(80))
     .max(12, "Add up to 12 additional qualifications")

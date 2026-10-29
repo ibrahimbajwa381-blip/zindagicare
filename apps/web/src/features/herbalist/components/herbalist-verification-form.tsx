@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  HERBALIST_DEGREES,
   HERBALIST_SPECIALTIES_ALPHABETICAL,
   MAX_HERBALIST_SPECIALTIES,
 } from "@zindagi/shared";
@@ -213,13 +214,23 @@ export function HerbalistVerificationForm({ name, defaults }: Props) {
         <h2 className="text-sm font-semibold text-slate-900">Qualifications</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="degree">Qualification (e.g. BEMS, BAMS, DHMS)</Label>
-            <Input
+            <Label htmlFor="degree">Qualification</Label>
+            <select
               id="degree"
               name="degree"
-              defaultValue={defaults?.degree}
+              defaultValue={
+                HERBALIST_DEGREES.find((d) => d === defaults?.degree) ?? ""
+              }
               required
-            />
+              className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-base text-foreground shadow-sm focus:border-brand-light focus:outline-none focus:ring-2 focus:ring-brand-light/25 sm:h-10 sm:rounded-lg sm:px-3 sm:text-sm"
+            >
+              <option value="">Select your qualification</option>
+              {HERBALIST_DEGREES.map((degree) => (
+                <option key={degree} value={degree}>
+                  {degree}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label htmlFor="institute">Institute / college</Label>

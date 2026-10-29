@@ -81,7 +81,7 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
       name,
       email: nextEmail(),
       phone: `+92301${Math.floor(1000000 + Math.random() * 9000000)}`,
-      roles: [Roles.DOCTOR, Roles.PATIENT],
+      roles: [Roles.DOCTOR],
     });
 
     const profile = await DoctorProfileModel.create({
@@ -114,6 +114,8 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
       amount: 1500,
       status: PaymentStatuses.PAID,
       provider: "jazzcash",
+      // (provider, externalTransactionId) is unique; null collides once the index is built.
+      externalTransactionId: `chat-txn-${counter++}`,
     });
 
     await AppointmentModel.updateOne(

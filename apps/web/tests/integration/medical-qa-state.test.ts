@@ -115,7 +115,7 @@ describe("Medical Q&A state transitions (real local MongoDB)", () => {
   const makeAdmin = () => makeUser([Roles.ADMIN]);
 
   async function makeDoctor(status: "approved" | "pending" = "approved") {
-    const user = await makeUser([Roles.DOCTOR, Roles.PATIENT]);
+    const user = await makeUser([Roles.DOCTOR]);
     await db.DoctorProfileModel.create({
       userId: user._id,
       pmdcNumber: `PMDC-${uniq()}`,

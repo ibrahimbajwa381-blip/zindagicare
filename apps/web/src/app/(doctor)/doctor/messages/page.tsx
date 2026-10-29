@@ -24,15 +24,11 @@ export default async function DoctorMessagesPage({ searchParams }: PageProps) {
   const t = getDictionary(locale);
 
   return (
-    <div className="-mx-4 -my-6 flex h-[calc(100svh-4rem-4.75rem+3rem)] flex-col overflow-hidden sm:-mx-6 sm:-my-8 sm:h-[calc(100svh-4rem-4.75rem+4rem)] lg:-mx-8 lg:-my-10 lg:h-[calc(100svh-4rem+5rem)]">
-      <div className="shrink-0 border-b border-slate-200/80 bg-white/95 px-4 py-3 sm:px-6 lg:px-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Communications
-        </p>
-        <h1 className="font-display text-lg font-semibold text-foreground sm:text-xl">
-          {t.chat.doctorPageTitle}
-        </h1>
-      </div>
+    // The chat is pinned between the sticky header (h-16 / sm:h-[4.75rem]) and the
+    // fixed practice nav (below lg) or the viewport bottom, beside the lg sidebar,
+    // so the composer is always on screen whatever breadcrumbs/banners sit above it.
+    <div className="fixed inset-x-0 top-[calc(4rem+1px+env(safe-area-inset-top))] bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 flex flex-col overflow-hidden bg-white sm:top-[calc(4.75rem+1px+env(safe-area-inset-top))] lg:bottom-0 lg:left-[17.5rem]">
+      <h1 className="sr-only">{t.chat.doctorPageTitle}</h1>
       <div className="min-h-0 flex-1">
         <DoctorWorkspaceMessages
           fillViewport

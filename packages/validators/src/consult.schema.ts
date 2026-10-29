@@ -17,6 +17,13 @@ export const bookConsultSchema = z.object({
   locale: z.enum(["en", "ur"]).optional(),
 });
 
+/** Provider ends an online consult (any type: paid, urgent, Sunday free). */
+export const finishConsultSchema = z.object({
+  outcome: z.enum(["completed", "no_show"]).default("completed"),
+  doctorNotes: z.string().max(2000).optional(),
+});
+
 export type ListConsultDoctorsQuery = z.infer<typeof listConsultDoctorsQuerySchema>;
 export type ListConsultSlotsQuery = z.infer<typeof listConsultSlotsQuerySchema>;
 export type BookConsultInput = z.infer<typeof bookConsultSchema>;
+export type FinishConsultInput = z.infer<typeof finishConsultSchema>;

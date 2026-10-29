@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
+  BellRing,
   CheckCircle2,
   Clock,
   FileText,
@@ -25,6 +26,9 @@ import { PostConsultReviewPrompt } from "@/features/consult/components/post-cons
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { AppointmentStatuses, AppointmentTypes } from "@zindagi/shared";
 import { videoConsultPath } from "@/features/consult/paths";
+import { finishConsult } from "@/features/consult/finish-consult";
+import { useOutgoingCallRing } from "@/features/consult/hooks/use-outgoing-call-ring";
+import { postCallRingAction } from "@/features/consult/incoming-call";
 import { useTranslations } from "@/i18n/locale-provider";
 import { formatMessage } from "@/i18n/messages";
 
@@ -70,8 +74,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const t = useTranslations();
   const copy = t.consult.videoSession;
   const videoLeftCopy = t.consult.videoLeft;
-  const sundayDoctorCopy = copy.sundayDoctorOpen;
-  const sundayPatientCopy = copy.sundayPatientOpen;
+  const doctorOpenCopy = copy.doctorOpen;
+  const patientOpenCopy = copy.patientOpen;
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
   /** When sessionStatus was fetched; refreshed by the 30s status poll. */
   const [statusCheckedAt, setStatusCheckedAt] = useState(0);
@@ -88,6 +92,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [rxPanelOpen, setRxPanelOpen] = useState(false);
   const rxAutoOpenedRef = useRef(false);
   const joinAttemptedRef = useRef(false);
+  const outgoingRing = useOutgoingCallRing(appointmentId);
+  const ringCopy = t.consult.callRing;
 
   const supportUrl = getWhatsAppSupportUrl(copy.supportPrefill);
   const joiningTips = [copy.joiningTip1, copy.joiningTip2, copy.joiningTip3];
@@ -143,6 +149,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
       }
       setJoinPayload(json.data as VideoJoinPayload);
       setInCall(true);
+      // Joining answers any ring the other side started.
+      void postCallRingAction(appointmentId, { action: "answer" }).catch(() => undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : copy.couldNotJoin);
     } finally {
@@ -176,6 +184,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   }, [sessionStatus?.canJoin, inCall, joining, startCall]);
 
   const handleLeave = async () => {
+    outgoingRing.cancel();
     await fetch(`/api/v1/video/sessions/${appointmentId}/leave`, { method: "POST" });
     setInCall(false);
     setJoinPayload(null);
@@ -188,9 +197,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   };
 
   const isSundayFree = sessionStatus?.appointmentType === AppointmentTypes.SUNDAY_FREE;
-  /** Sunday free consults stay open (video + chat) until the doctor finishes them. */
-  const sundayStillOpen =
-    isSundayFree &&
+  /** Every online consult stays open (chat, and video within its window) until the doctor finishes it. */
+  const stillOpen =
     !finished &&
     (sessionStatus?.appointmentStatus === AppointmentStatuses.CONFIRMED ||
       sessionStatus?.appointmentStatus === AppointmentStatuses.IN_PROGRESS);
@@ -206,19 +214,14 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     void loadStatus();
   };
 
-  const finishSundayConsult = async () => {
-    if (!window.confirm(sundayDoctorCopy.confirm)) return;
+  const finishConsultation = async () => {
+    if (!window.confirm(doctorOpenCopy.confirm)) return;
     setFinishing(true);
     setFinishError(null);
-    const res = await fetch("/api/v1/sunday/doctor/appointment-status", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appointmentId, status: "completed" }),
-    }).catch(() => null);
-    const json = await res?.json().catch(() => null);
+    const error = await finishConsult(appointmentId);
     setFinishing(false);
-    if (!res?.ok) {
-      setFinishError(json?.error?.message ?? sundayDoctorCopy.finishError);
+    if (error) {
+      setFinishError(error);
       return;
     }
     setFinished(true);
@@ -235,18 +238,18 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   if (
     (showPostConsultReview || leftSession) &&
     sessionStatus?.role === "patient" &&
-    sundayStillOpen
+    stillOpen
   ) {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="font-display text-xl font-semibold text-foreground">
-          {sundayPatientCopy.title}
+          {patientOpenCopy.title}
         </h1>
-        <p className="mt-2 text-sm text-slate-600">{sundayPatientCopy.description}</p>
+        <p className="mt-2 text-sm text-slate-600">{patientOpenCopy.description}</p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button className="gap-1.5" onClick={rejoin}>
             <Video className="h-4 w-4" />
-            {sundayPatientCopy.rejoin}
+            {patientOpenCopy.rejoin}
           </Button>
           <Button asChild variant="outline">
             <Link href={dashboardHref}>{videoLeftCopy.backToDashboard}</Link>
@@ -260,18 +263,14 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
     return <PostConsultReviewPrompt appointmentId={appointmentId} />;
   }
 
-  if (
-    (showDoctorPostConsult || leftSession || finished) &&
-    sessionStatus?.role === "doctor" &&
-    isSundayFree
-  ) {
+  if ((showDoctorPostConsult || leftSession || finished) && sessionStatus?.role === "doctor") {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="font-display text-xl font-semibold text-foreground">
-          {sundayStillOpen ? sundayDoctorCopy.title : sundayDoctorCopy.finishedTitle}
+          {stillOpen ? doctorOpenCopy.title : doctorOpenCopy.finishedTitle}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          {sundayStillOpen ? sundayDoctorCopy.description : sundayDoctorCopy.finishedDescription}
+          {stillOpen ? doctorOpenCopy.description : doctorOpenCopy.finishedDescription}
         </p>
         {finishError && (
           <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -279,45 +278,24 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
           </p>
         )}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-          {sundayStillOpen && (
+          {stillOpen && (
             <>
               <Button
                 className="gap-1.5"
-                onClick={() => void finishSundayConsult()}
+                onClick={() => void finishConsultation()}
                 disabled={finishing}
                 loading={finishing}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {sundayDoctorCopy.finish}
+                {doctorOpenCopy.finish}
               </Button>
               <Button variant="outline" className="gap-1.5" onClick={rejoin}>
                 <Video className="h-4 w-4" />
-                {sundayDoctorCopy.rejoin}
+                {doctorOpenCopy.rejoin}
               </Button>
             </>
           )}
           <Button asChild variant="outline">
-            <Link href={`/doctor/prescriptions/new?appointmentId=${appointmentId}`}>
-              {copy.doctorEnded.issuePrescription}
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href={dashboardHref}>{copy.doctorEnded.backToDashboard}</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (showDoctorPostConsult && sessionStatus?.role === "doctor") {
-    return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="font-display text-xl font-semibold text-foreground">
-          {copy.doctorEnded.title}
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">{copy.doctorEnded.description}</p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button asChild>
             <Link href={`/doctor/prescriptions/new?appointmentId=${appointmentId}`}>
               {copy.doctorEnded.issuePrescription}
             </Link>
@@ -416,6 +394,33 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className={`gap-1.5 border-white/20 bg-transparent text-white hover:bg-white/10 ${
+                outgoingRing.state === "ringing" ? "animate-pulse border-emerald-400/70 bg-emerald-500/20" : ""
+              }`}
+              onClick={() =>
+                outgoingRing.state === "ringing" ? outgoingRing.cancel() : void outgoingRing.start()
+              }
+              title={ringCopy.ringHint}
+              aria-label={
+                outgoingRing.state === "ringing"
+                  ? ringCopy.stopRinging
+                  : isDoctor
+                    ? ringCopy.ringPatient
+                    : ringCopy.ringDoctor
+              }
+            >
+              <BellRing className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">
+                {outgoingRing.state === "ringing"
+                  ? ringCopy.ringing
+                  : isDoctor
+                    ? ringCopy.ringPatient
+                    : ringCopy.ringDoctor}
+              </span>
+            </Button>
             {isDoctor && (
               <Button
                 variant="outline"
@@ -440,6 +445,22 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
           </div>
         </header>
         <div className="relative flex min-h-0 flex-1">
+          {(outgoingRing.state !== "idle" || outgoingRing.error) && (
+            <p
+              role="status"
+              className="pointer-events-none absolute inset-x-0 top-3 z-30 mx-auto w-fit max-w-[90%] rounded-full bg-slate-950/85 px-4 py-1.5 text-center text-xs font-medium text-white shadow-lg"
+            >
+              {outgoingRing.error ??
+                {
+                  ringing: formatMessage(ringCopy.ringingName, {
+                    name: joinPayload.counterpartName,
+                  }),
+                  answered: ringCopy.answered,
+                  declined: ringCopy.declined,
+                  missed: ringCopy.missed,
+                }[outgoingRing.state as "ringing" | "answered" | "declined" | "missed"]}
+            </p>
+          )}
           <div
             className={`min-h-0 min-w-0 transition-[flex] duration-200 ${
               isDoctor && rxPanelOpen ? "flex-1" : "h-full w-full flex-1"

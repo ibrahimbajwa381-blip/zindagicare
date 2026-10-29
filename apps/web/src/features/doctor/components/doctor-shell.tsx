@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, Menu, ShieldAlert } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { AutoBreadcrumbs } from "@/components/layout/auto-breadcrumbs";
@@ -77,6 +78,8 @@ export function DoctorShell({
 }: DoctorShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const showPracticeNav = showFullNav;
+  // The messages page fills the viewport like a chat app, so no footer below it.
+  const showFooter = usePathname() !== "/doctor/messages";
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -124,7 +127,7 @@ export function DoctorShell({
             {children}
           </div>
         </main>
-        <SiteFooter />
+        {showFooter && <SiteFooter />}
         {showPracticeNav ? (
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
             <DoctorMobilePracticeNav />

@@ -13,6 +13,7 @@ import { useTranslations } from "@/i18n/locale-provider";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { VisitStatusStepper } from "./visit-status-stepper";
+import { VisitChatLink } from "./visit-chat-link";
 import type { HomeVisitDto } from "@/server/services/home-visit.service";
 import { Upload } from "lucide-react";
 
@@ -42,9 +43,12 @@ export type AssignedHomeVisitsServiceLabels = Record<
  */
 export function AssignedHomeVisitsDashboard({
   serviceLabels,
+  messagesHref,
   requireVisitSummary = false,
 }: {
   serviceLabels: AssignedHomeVisitsServiceLabels;
+  /** This portal's messages page; visits link to the patient chat there. */
+  messagesHref: string;
   /** Completing a visit first asks for a written session report (sent with the status change). */
   requireVisitSummary?: boolean;
 }) {
@@ -244,6 +248,13 @@ export function AssignedHomeVisitsDashboard({
                       {h.viewReport}
                     </a>
                   </Button>
+                )}
+
+                {visit.canMessage && visit.patient?.id && (
+                  <VisitChatLink
+                    audience="patient"
+                    href={`${messagesHref}?patient=${encodeURIComponent(visit.patient.id)}`}
+                  />
                 )}
               </div>
             </CardContent>

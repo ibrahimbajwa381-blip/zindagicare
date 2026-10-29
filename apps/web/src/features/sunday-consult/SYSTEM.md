@@ -8,7 +8,7 @@ Preferred specialty (optional): the patient may pick a specialty (e.g. Gynecolog
 
 Request lifecycle: `requested` → (doctor picks + time) `assigned` → `completed` / `cancelled`. A doctor may release an `assigned` request before the consult starts; it goes back to `requested` and the appointment is cancelled.
 
-Closing a consult: video and chat stay open from the usual join-window opening (`VIDEO_CONSULT_CONFIG.joinEarlyMinutes` before the start) until the **doctor** presses "Finish consultation" (`PATCH /api/v1/sunday/doctor/appointment-status`). Leaving the call does not end it, and nothing auto-completes a Sunday consult. Only a completed consult can be reviewed. Finishing (or marking a no-show) closes the video session and the chat thread (unless the pair shares another open/paid consult) and notifies the patient to leave a review. The doctor-miss sweep still records a no-show if the doctor never joins.
+Closing a consult: follows the shared consult lifecycle (`src/server/services/consultation/consultation-lifecycle.service.ts`), the same as paid and urgent consults. Video stays open from the usual join-window opening (`VIDEO_CONSULT_CONFIG.joinEarlyMinutes` before the start) until the **doctor** presses "Finish consultation" or "No-show" (`POST /api/v1/appointments/:id/finish`; the older `PATCH /api/v1/sunday/doctor/appointment-status` forwards to it). Leaving the call does not end it. Only a completed consult can be reviewed. Closing ends the video session, runs the Sunday follow-up (`SundayConsultService.onConsultClosed`: request/slot status, no-show ban, review notification), and makes chat read-only on its own (care policy; the pair's chat reopens if they share another open consult). If the doctor never closes it, the daily sweep completes it 72h after the slot when either side joined; the doctor-miss sweep still records a no-show if the doctor never joins.
 
 Overdue requests: `requested` requests older than 7 days (no doctor ever picked them) also appear on the doctor board under "Waiting over a week". Picking one moves the request to the current board Sunday and schedules the consult there.
 
@@ -41,7 +41,7 @@ Overdue requests: `requested` requests older than 7 days (no doctor ever picked 
 | POST | `/api/v1/sunday/doctor/requests/{id}/claim` | Doctor | Pick request at `startTimeLocal` (HH:mm PK) |
 | POST | `/api/v1/sunday/doctor/requests/{id}/release` | Doctor | Hand a picked request back to the board |
 | GET | `/api/v1/admin/sunday/requests` | Admin | Read-only request progress |
-| PATCH | `/api/v1/sunday/doctor/appointment-status` | Doctor | Complete / no-show |
+| PATCH | `/api/v1/sunday/doctor/appointment-status` | Doctor | Cancel; complete / no-show forward to `POST /api/v1/appointments/:id/finish` |
 | POST | `/api/internal/sunday/materialize` | Cron | Materialize 4 weeks |
 | POST | `/api/internal/seed-sunday` | Dev | Demo doctors |
 

@@ -53,7 +53,7 @@ export default async function PatientDashboardPage() {
       loadPatientOnlineBooking(session.user.id),
       PatientAppointmentsService.listHistory(session.user.id),
       PrescriptionService.listForPatient(session.user.id),
-      ChatService.listPatientContacts(session.user.id),
+      ChatService.listContacts(session.user.id),
       ChatService.listThreads(session.user.id),
     ]);
   const displayName = profile.user.name ?? session.user.name ?? "Patient";

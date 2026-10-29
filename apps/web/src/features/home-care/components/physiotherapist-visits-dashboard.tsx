@@ -5,6 +5,7 @@ import {
   AssignedHomeVisitsDashboard,
   type AssignedHomeVisitsServiceLabels,
 } from "./assigned-home-visits-dashboard";
+import { AUTH_ROUTES } from "@/lib/auth/routes";
 
 const SERVICE_LABELS: AssignedHomeVisitsServiceLabels = {
   [HomeVisitServiceTypes.PHYSIOTHERAPY]: "physiotherapy",
@@ -14,5 +15,11 @@ const SERVICE_LABELS: AssignedHomeVisitsServiceLabels = {
 };
 
 export function PhysiotherapistVisitsDashboard() {
-  return <AssignedHomeVisitsDashboard serviceLabels={SERVICE_LABELS} requireVisitSummary />;
+  return (
+    <AssignedHomeVisitsDashboard
+      serviceLabels={SERVICE_LABELS}
+      messagesHref={AUTH_ROUTES.physiotherapistMessages}
+      requireVisitSummary
+    />
+  );
 }

@@ -1,0 +1,323 @@
+ZINDAGICARE - CHANGES ON 29 OCT 2026
+=====================================
+
+1. THE PROBLEM WE STARTED WITH
+------------------------------
+A patient booked a doctor, opened the chat, and the chat disappeared after
+2-3 seconds ("No conversations yet").
+
+Root cause:
+- Opening a chat (POST /api/v1/chat/threads) checks both sides of an account
+  ("you as doctor" and "you as patient"), so the chat opens.
+- The chat list (GET /api/v1/chat/threads) checks only ONE side: if the
+  account has the "doctor" role it only looks for patients who booked that
+  doctor. The thread is filtered out.
+- The inbox refreshes every 8 seconds, replaces the list, and the open chat
+  vanishes.
+- This only happens to accounts holding BOTH "patient" and "doctor" roles.
+  The account used for testing (Ibrahim Aslam Bajwa) had
+  patient + doctor + physiotherapist, which confirms the cause.
+
+Why two-role accounts still existed: one-role-per-account was only enforced
+for NEW sign-ups. Older accounts were never fixed, and the database did not
+reject two roles.
+
+
+2. CODE CHANGES (ROLE FIX) - NOT COMMITTED YET
+----------------------------------------------
+Rule: an account is either a PATIENT or ONE clinical role (doctor, nurse,
+physiotherapist, herbalist, nutritionist), never both. Admin, super_admin,
+rider, lab and other can sit alongside.
+
+New files:
+- packages/shared/src/auth/role-policy.ts
+    The single rule: roleSetViolation, withClinicalRole,
+    resolveAccountRoles, CLINICAL_ROLES.
+- apps/web/src/server/services/account-roles.service.ts
+    Finds accounts that break the rule and fixes them. Only writes if the
+    account's roles have not changed since they were checked.
+- apps/web/scripts/normalize-account-roles.ts
+    Cleanup script. Read-only by default; --apply writes. Saves a JSON
+    report (user ids and roles only) that can be used to roll back.
+- apps/web/tests/unit/security/role-policy.test.ts
+- apps/web/tests/integration/account-roles.test.ts
+
+Changed files:
+- packages/shared/src/auth/index.ts: exports the new rule.
+- packages/database/src/models/user.model.ts: the database now rejects an
+  invalid role set when an account is created or its roles change. Other
+  edits on old accounts still save.
+- apps/web/src/server/services/physiotherapist.service.ts: converting a
+  doctor to physiotherapist no longer keeps the "patient" role.
+- apps/web/src/server/services/admin-users.service.ts: revoking admin from
+  an admin-only account now leaves it as "patient" instead of no role.
+- 4 test files (chat-api, chat-sse, medical-qa-api, medical-qa-state):
+  test doctors are now created as [doctor] instead of [doctor, patient].
+
+Deleted file:
+- apps/web/scripts/migrate-strip-patient-role-from-staff.ts
+  (old script; it deleted patient profiles and ignored which provider
+  profiles exist. Replaced by normalize-account-roles.ts.)
+
+
+3. TESTS AND CHECKS
+-------------------
+- New role tests: 43 of 43 passed.
+- Related suites: 20 of 21 suites passed (432 of 437 tests).
+- chat-sse.test.ts: 5 failures from a duplicate-key error on the "payments"
+  index in the test's own setup data. Not related to roles; believed to be
+  an earlier problem, not confirmed by running the original code.
+- TypeScript (tsc): 1 error, in tests/unit/errors/route-error-boundary.test.ts
+  (missing "children" prop). Unrelated; no errors in changed files.
+- ESLint: clean on changed web files.
+
+
+4. DATABASE CLEANUP (PRODUCTION, WITH PERMISSION)
+-------------------------------------------------
+Run 1 (automatic rule): 168 accounts updated, 0 skipped.
+Every account kept its provider role and only lost the extra "patient" role.
+No provider was turned into a patient.
+
+  patient + doctor            -> doctor                     117
+  patient + physiotherapist   -> physiotherapist             40
+  patient + nurse             -> nurse                        9
+  admin + patient + doctor    -> admin + doctor               1
+  admin + patient + physio    -> admin + physiotherapist      1
+
+5 of these accounts had booked consultations as patients. Their appointment
+records are unchanged, but those accounts can no longer book as patients.
+
+Run 2 (manual decisions for accounts with both a doctor and a physio
+profile):
+  Ibrahim Aslam Bajwa      (6a1abdf46b9f8be2a8aa0e01) -> patient
+  Muhammad Abdul Munaf     (6a8d61d4a72910abb9623490) -> physiotherapist
+  Dr. Syeda Izza Shujat    (6a8df6df845038102f926cac) -> doctor
+
+Rollback report (outside the repo):
+C:\Users\ADMINI~1\AppData\Local\Temp\claude\c--Users-Administrator-Desktop-Ibrahim-ZindagiCare\52e2a655-9814-425e-a137-df1523e570b7\scratchpad\role-fix-report-2026-10-28T21-12-24-452Z.json
+
+
+5. STILL WAITING FOR A DECISION
+-------------------------------
+- Dr Haider (6a1c786b4d5537f39209b840): skipped. Someone removed its admin
+  role at 21:22:56 UTC just before the update ran. Now:
+  patient + doctor + physiotherapist.
+  Choose: doctor only (suggested), or admin + doctor (re-grants admin).
+- Asifa (6a8d7f9b595c4164a39276a6): not touched. Doctor and physiotherapist
+  applications are both pending. Choose: doctor or physiotherapist.
+  Note: her email ends in ".con" instead of ".com".
+
+
+6. THINGS TO KNOW
+-----------------
+- Users already signed in on the website keep their old roles until they
+  sign in again (up to 30 days). Mobile updates immediately.
+- Ibrahim's account must sign out and back in before re-testing the
+  Dr. Fatima chat.
+- Ponytail plugin: not used; no Ponytail command was available in the session.
+- Nothing has been committed or pushed.
+
+
+7. PLANNED NEXT (APPROVED DIRECTION, NOT BUILT YET)
+---------------------------------------------------
+One shared chat and consultation system for all providers, free and paid:
+- Phase 1: shared "care" core. Chat decides who can talk from real
+  consultations, never from roles. Sunday free chat works exactly like paid.
+- Phase 2: one completion flow. Every online consult (paid, urgent, Sunday
+  free) ends when the provider clicks "Finish consultation". Chat then
+  becomes read-only. Automatic fallback 72 hours after the scheduled end.
+  Leaving the video call no longer completes the consult.
+- Phase 3: chat for nurse and physiotherapist home visits (open from
+  assignment until the visit is completed).
+- Later: herbalist and nutritionist online booking, plugging into the same
+  core with no chat changes.
+- Decisions made: one chat thread per patient-provider pair; 72-hour grace
+  period; Finish button plus fallback.
+- Risks: provider earnings can be delayed up to 72 hours if Finish is not
+  clicked; Sunday consults could be completed (and reviewed) by the
+  fallback.
+
+
+8. NEW FEATURE: RING TO JOIN A VIDEO CONSULT (NOT COMMITTED YET)
+----------------------------------------------------------------
+If the other person has not joined the video call, the doctor can "ring"
+the patient (and the patient can ring the doctor), like a WhatsApp call.
+
+How it works:
+- In the video call header there is a new "Ring patient" / "Ring doctor"
+  button (bell icon only on phones). You must be in the call to ring.
+- The ring repeats every ~7 seconds for about 45 seconds. A banner shows
+  "Ringing <name>...", then "They're joining now", "Call declined" or
+  "No answer". Tapping the button again, or leaving the call, stops it.
+- The other person:
+  - App open on any page: full-screen incoming call screen with photo,
+    ringtone, vibration, and Join / Decline buttons.
+  - PWA closed or in the background: a call notification that stays on
+    screen, vibrates, and has Join / Decline buttons. Repeated pushes keep
+    the phone buzzing for the 45 seconds. Decline works from the
+    notification.
+  - Native mobile app: gets a push; tapping it opens the web call page.
+- Joining the call marks the ring as answered and stops it on both sides.
+
+Limits:
+- No custom ringtone when the PWA is closed (browsers do not allow it);
+  the phone's normal notification sound and vibration are used instead.
+- iPhone: push only works if the PWA is installed to the home screen; no
+  vibration pattern or Join/Decline buttons, but tapping opens the call.
+- The other person must have notifications turned on, or have the app
+  open, to see the ring.
+
+Files:
+- New: apps/web/src/server/services/video-ring.service.ts
+- New: apps/web/src/app/api/v1/video/sessions/[appointmentId]/ring/route.ts
+- New: apps/web/src/app/api/v1/video/ring/incoming/route.ts
+- New: apps/web/src/app/api/v1/video/ring/events/route.ts
+- New: apps/web/src/lib/realtime/call-ring-emitter.ts
+- New: apps/web/src/features/consult/components/incoming-call-listener.tsx
+- New: apps/web/src/features/consult/hooks/use-outgoing-call-ring.ts
+- New: apps/web/src/features/consult/incoming-call.ts, ringtone.ts
+- Changed: apps/web/src/app/sw.ts (call-style notification, Decline action)
+- Changed: video-consult-client.tsx (Ring button), app-providers.tsx
+  (listener mounted), push.service.ts, video-session.service.ts (two
+  helpers made public), en.ts / ur.ts (new text)
+- Changed: apps/mobile/src/lib/push-notifications.ts (opens call page)
+
+Checks: typecheck and lint pass for the new code.
+Automated tests (new, all passing):
+- tests/integration/video-call-ring.test.ts - 13 tests, real local
+  MongoDB, real API routes (ring, re-ring, decline, answer, cancel,
+  45s timeout, outsiders blocked, finished consult blocked).
+- tests/unit/consult/video-call-ring-client.test.ts - 9 tests for the
+  incoming call screen and the caller's re-ring loop.
+- Existing video/consult suites still pass (24 tests).
+Not yet tested on a real phone with real push and Zoom.
+Not built, committed or pushed.
+
+
+9. SHARED CHAT AND CONSULTATION SYSTEM - BUILT (NOT COMMITTED YET)
+------------------------------------------------------------------
+Section 7's plan is now built: phases 1, 2 and 3. Herbalist and nutritionist
+online booking is still for later.
+
+How it works now:
+- Chat never looks at account roles. Who can talk to whom comes only from
+  real consultations and home visits (who is the patient, who is the
+  provider). The "chat disappears" bug cannot come back, even if two-role
+  accounts reappear.
+- Chat has no stored open/closed flag. It is worked out each time:
+    Visible:  the pair has had an eligible consult or visit (history stays
+              readable).
+    Writable: a consult is booked or in progress, or a home visit is
+              assigned / en route / arrived, and it is not more than 72
+              hours past its scheduled time.
+    Completed, cancelled or no-show -> read-only (or hidden if never valid).
+- Paid and Sunday free consults follow exactly the same rules.
+- One chat thread per patient-provider pair. A new booking reopens it.
+- Works for doctors, herbalists, nutritionists, nurses and physiotherapists.
+
+
+10. PHASE BY PHASE
+------------------
+Phase 1 - shared "care" core and chat:
+- New: apps/web/src/server/services/care/
+    policy.ts             the one rule table (free and paid, 72h grace)
+    provider-registry.ts  doctor, herbalist, nutritionist, nurse, physio
+    sources/appointment.source.ts, sources/home-visit.source.ts
+    care.service.ts       linksFor(user), linkBetween(a, b)
+    types.ts
+- chat.service.ts: about 580 lines removed. Inbox, unread badge, contacts,
+  opening a chat and sending a message all use the care core.
+  closeSundayConsultThread removed. Contacts merged into listContacts.
+- contacts route: no role check. Patient dashboard uses listContacts.
+- en/ur chat text no longer says Sunday free is video-only.
+
+Phase 2 - one way to end an online consult:
+- New: apps/web/src/server/services/consultation/
+    consultation-lifecycle.service.ts  finish() and finalizeStale()
+    finish-policy.ts                   "can Finish now?" rule
+- New endpoint: POST /api/v1/appointments/:id/finish (doctor, herbalist,
+  nutritionist; rate limited). The old Sunday status endpoint forwards to
+  it, so older mobile builds keep working.
+- Finish (completed or patient no-show): ends the video room, runs the
+  Sunday steps (slot/request status, no-show ban) or the urgent step
+  (urgent request completed), sends the patient a "please rate your doctor"
+  notification (all consult types now, not only Sunday). Chat becomes
+  read-only on its own. Ten Finish clicks at once close it exactly once.
+- Removed completion paths: leaving the video call, writing a prescription,
+  submitting a review, and the lazy "auto-complete on page load" in the
+  doctor dashboard, online-consult and patient-appointments services.
+- Fallback: the existing daily cron (doctor-miss-sweep) also completes
+  attended consults 72h after the slot. Nobody-joined consults are still
+  marked as a doctor no-show by the existing sweep.
+- Web: Finish button on the doctor's consult requests list; the video page's
+  "still open - Finish / Rejoin" screen now applies to every consult type;
+  Sunday dashboard uses the same Finish call.
+- Mobile: "Finish consultation" button on the doctor requests screen.
+- Doctor guide and sunday-consult/SYSTEM.md updated.
+
+Phase 3 - home visits (nurse, physio, doctor visits):
+- Assigning staff to a visit opens the patient-staff chat (in
+  commitAssignment, the one place staff get assigned). Shows in both
+  inboxes on web and mobile.
+- Home visits do not need payment for chat (visits can be paid later).
+- A doctor's home visit shares the same thread as their consults with that
+  patient, and keeps the consult it belongs to.
+- New nurse and physio Messages pages and sidebar links. One shared page
+  component now also replaces the duplicated herbalist/nutritionist pages.
+- Header chat button now sends each provider to their own Messages page
+  (before, every non-doctor provider landed on the patient inbox).
+- "Message patient" / "Message provider" buttons on nurse, physio,
+  doctor-home-visit and patient visit cards.
+- Provider-side chat text no longer says "paid-consult" only.
+
+
+11. TESTS AND CHECKS (PHASES 1-3)
+---------------------------------
+New tests (all passing):
+- tests/unit/chat/care-policy.test.ts - 17 tests (consult and home-visit
+  rules, 72h boundary).
+- tests/integration/care-chat-access.test.ts - 6 tests (the original bug
+  with a two-role account, Sunday like paid, reopen on new booking, 72h,
+  herbalist, outsiders blocked).
+- tests/integration/consultation-lifecycle.test.ts - 7 tests through the
+  real HTTP route (Finish, leave keeps it open, wrong user, twice, 10 at
+  once, Sunday no-show, 72h fallback).
+- tests/integration/home-visit-chat.test.ts - 6 tests through the real
+  assignment path.
+Updated tests:
+- appointment-lifecycle.test.ts: leaving the call no longer completes.
+- online-consult-checkout/stress tests: removed mocks of a deleted method.
+Unreliable test setups fixed:
+- chat-api and chat-sse: payments collided on a unique index (this was the
+  chat-sse failure noted in section 3).
+- video-session-concurrency and my own tests: appointments collided on the
+  unique (doctorId, scheduledStart) index depending on timing.
+Results:
+- Affected suites one at a time: 30 suites, 567 tests, all passing.
+- Full web run: only copilot-performance fails for real, and it fails the
+  same way on the last commit (already broken). medical-qa-state,
+  doctor-discovery-stress and events-rate-limit failed only under load and
+  pass alone.
+- Typecheck and lint clean for these files. Remaining typecheck errors are
+  in route-error-boundary.test.ts (known) and the in-progress ring feature
+  (callRing text missing in en.ts, video-call-ring-client.test.ts).
+- Mobile: typecheck clean; requests screen test passes. One doctor journey
+  test fails in the messages screen ("useAuth must be used within
+  AuthProvider"), not touched by these changes.
+
+
+12. THINGS TO KNOW (PHASES 1-3)
+-------------------------------
+- Paid consults: chat now closes when the consult is completed. Before the
+  doctor presses Finish, chat stays open; video rejoin works only inside
+  the booked slot window. Sunday video stays open until Finish.
+- Doctor earnings count completed consults, so a forgotten Finish delays
+  them by up to 72h plus the next daily cron run.
+- Visits assigned before this change get their chat thread when someone
+  presses a Message button on web. Mobile has no "start chat" call, so on
+  mobile they appear after that.
+- Mobile visit cards have no Message button; the chat shows in the mobile
+  inbox instead.
+- Not yet checked in a real browser or on a phone.
+- Not built, committed or pushed. Commit only these files; the role fix
+  and the ring feature are separate work in the same folder.

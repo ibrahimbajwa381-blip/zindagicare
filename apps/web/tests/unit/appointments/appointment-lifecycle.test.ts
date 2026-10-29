@@ -16,10 +16,10 @@
  *      |                                  |                          |
  *      +---(stale/failed payment)---> CANCELLED <---(patient cancel)-+
  *                                                                     |
- *                                                        (video leave) --> COMPLETED
+ *                                              (provider presses Finish) --> COMPLETED
  *
  * via OnlineConsultService.confirmAfterPayment / failPayment,
- * VideoSessionService.recordJoin / recordLeave / finalizeAppointmentIfAttended,
+ * VideoSessionService.recordJoin / recordLeave (never completes),
  * and PatientAppointmentsService.requestCancellation.
  *
  * Pure unit tests: @zindagi/database mocked outright, no real MongoDB.
@@ -235,8 +235,10 @@ describe("APT-L-002 — CONFIRMED -> IN_PROGRESS via recordJoin", () => {
 // ===========================================================================
 // APT-L-003 — IN_PROGRESS -> COMPLETED (valid)
 // ===========================================================================
-describe("APT-L-003 — IN_PROGRESS -> COMPLETED via recordLeave", () => {
-  test("an in-progress appointment the patient attended transitions to COMPLETED on leave", async () => {
+// Completion moved to ConsultationLifecycleService.finish (provider presses
+// Finish); see tests/integration/consultation-lifecycle.test.ts.
+describe("APT-L-003 — IN_PROGRESS stays open on recordLeave", () => {
+  test("leaving an attended in-progress consult does not complete it or end the session", async () => {
     mockAppointmentFindById.mockReturnValue(
       chain(appointmentFixture({ status: AppointmentStatuses.IN_PROGRESS })),
     );
@@ -251,13 +253,8 @@ describe("APT-L-003 — IN_PROGRESS -> COMPLETED via recordLeave", () => {
     const { VideoSessionService } = await import("@/server/services/video-session.service");
     await VideoSessionService.recordLeave(PATIENT_ID, APPOINTMENT_ID);
 
-    expect(mockAppointmentUpdateOne).toHaveBeenCalledWith(
-      {
-        _id: APPOINTMENT_ID_REF,
-        status: { $in: [AppointmentStatuses.CONFIRMED, AppointmentStatuses.IN_PROGRESS] },
-      },
-      expect.objectContaining({ $set: expect.objectContaining({ status: AppointmentStatuses.COMPLETED }) }),
-    );
+    expect(mockAppointmentUpdateOne).not.toHaveBeenCalled();
+    expect(mockVideoSessionUpdateOne).not.toHaveBeenCalled();
   });
 });
 

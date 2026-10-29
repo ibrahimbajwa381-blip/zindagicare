@@ -12,6 +12,7 @@ import { CheckCircle2, FileText, Info } from "lucide-react";
 import { surfaceCardInteractive, surfaceInset } from "@/lib/ui/surfaces";
 import { DoctorIntakeSummary } from "@/features/intake/components/doctor-intake-summary";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
+import { finishConsult } from "@/features/consult/finish-consult";
 import { DoctorSundayRequests } from "./doctor-sunday-requests";
 
 type QueueAppointment = {
@@ -82,16 +83,9 @@ export function DoctorSundayDashboard() {
 
     setBusyId(appointmentId);
     setStatusError(null);
-    const res = await fetch("/api/v1/sunday/doctor/appointment-status", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appointmentId, status }),
-    }).catch(() => null);
-    const json = await res?.json().catch(() => null);
+    const error = await finishConsult(appointmentId, status);
     setBusyId(null);
-    if (!res?.ok) {
-      setStatusError(json?.error?.message ?? "Could not update this consultation");
-    }
+    if (error) setStatusError(error);
     loadQueue();
   };
 
