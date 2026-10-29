@@ -42,8 +42,11 @@ describe("RouteError", () => {
       root.render(
         createElement(
           LocaleProvider,
-          { initialLocale: "en", initialDictionary: getDictionary("en") },
-          createElement(RouteError, { error, unstable_retry: retry }),
+          {
+            initialLocale: "en",
+            initialDictionary: getDictionary("en"),
+            children: createElement(RouteError, { error, unstable_retry: retry }),
+          },
         ),
       ),
     );

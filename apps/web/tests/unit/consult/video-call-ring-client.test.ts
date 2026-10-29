@@ -100,8 +100,11 @@ describe("IncomingCallListener", () => {
       root.render(
         createElement(
           LocaleProvider,
-          { initialLocale: "en", initialDictionary: getDictionary("en") },
-          createElement(IncomingCallListener),
+          {
+            initialLocale: "en",
+            initialDictionary: getDictionary("en"),
+            children: createElement(IncomingCallListener),
+          },
         ),
       );
     });
