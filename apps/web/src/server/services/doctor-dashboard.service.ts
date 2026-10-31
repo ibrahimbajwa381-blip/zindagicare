@@ -22,6 +22,7 @@ import {
   Roles,
   SUNDAY_CONSULT_CONFIG,
   UrgentCareRequestStatuses,
+  VerificationStatuses,
   VIDEO_CONSULT_CONFIG,
 } from "@zindagi/shared";
 import {
@@ -37,6 +38,7 @@ import {
   resolveEffectiveCommissionPercent,
 } from "./commission.service";
 import { canFinishConsult } from "./consultation/finish-policy";
+import { SundayConsultService } from "./sunday-consult.service";
 
 const ACTIVE_APPOINTMENT_STATUSES = [
   AppointmentStatuses.PENDING,
@@ -75,6 +77,8 @@ export type DoctorDashboardSummary = {
   patients: number;
   pendingRequests: number;
   sundayQueue: number;
+  /** Free Sunday requests on this doctor's board still needing action. */
+  sundayOpenRequests: number;
   homeVisitRequests: number;
   urgentCalls: number;
   totalEarnings: number;
@@ -102,6 +106,7 @@ export function emptyDoctorDashboardSummary(): DoctorDashboardSummary {
     patients: 0,
     pendingRequests: 0,
     sundayQueue: 0,
+    sundayOpenRequests: 0,
     homeVisitRequests: 0,
     urgentCalls: 0,
     totalEarnings: 0,
@@ -585,6 +590,7 @@ export async function getDoctorDashboardSummary(
     patientIds,
     pendingRequests,
     sundayQueue,
+    sundayOpenRequests,
     homeVisitRequests,
     urgentCalls,
     earnings,
@@ -616,6 +622,10 @@ export async function getDoctorDashboardSummary(
         ],
       }),
     ),
+    // Unverified doctors cannot open the Sunday board.
+    profile.verificationStatus === VerificationStatuses.APPROVED
+      ? SundayConsultService.countOpenDoctorRequests(profile)
+      : 0,
     HomeVisitModel.countDocuments(
       mongoFilter({
         serviceType: HomeVisitServiceTypes.DOCTOR_VISIT,
@@ -738,6 +748,7 @@ export async function getDoctorDashboardSummary(
     patients: patientIds.length,
     pendingRequests,
     sundayQueue,
+    sundayOpenRequests,
     homeVisitRequests,
     urgentCalls,
     totalEarnings: earnings.totalEarnings,

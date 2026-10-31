@@ -7,6 +7,7 @@ export const PLANNING_KINDS = [
   "achievement",
   "campaign",
   "challenge",
+  "expense",
 ] as const;
 export const PLANNING_STATUSES = ["planned", "in_progress", "on_hold", "done", "cancelled"] as const;
 export const PLANNING_PRIORITIES = ["low", "medium", "high"] as const;
@@ -73,6 +74,9 @@ export const planningItemSchema = z
       if (!item.targetValue) {
         ctx.addIssue({ code: "custom", path: ["targetValue"], message: "Set a target number" });
       }
+    }
+    if (item.kind === "expense" && !item.budget) {
+      ctx.addIssue({ code: "custom", path: ["budget"], message: "Set the monthly amount" });
     }
     if (item.startDate && item.dueDate && item.dueDate < item.startDate) {
       ctx.addIssue({ code: "custom", path: ["dueDate"], message: "Due date is before the start" });

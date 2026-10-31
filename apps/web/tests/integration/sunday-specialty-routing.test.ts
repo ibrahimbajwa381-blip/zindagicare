@@ -184,6 +184,17 @@ describe("Sunday free consult — preferred specialty routing", () => {
     expect(picked.preferredSpecialty).toBe("Gynecologist");
   });
 
+  test("sidebar badge count matches the doctor's board minus completed rows", async () => {
+    for (const doctor of [gynecologist, dermatologist]) {
+      const userId = doctor.userId.toString();
+      const profile = await DoctorProfileModel.findOne({ userId }).lean();
+      const board = await SundayConsultService.listDoctorRequests(userId);
+      const open = board.filter((r) => r.status !== "completed").length;
+      expect(open).toBeGreaterThan(0);
+      expect(await SundayConsultService.countOpenDoctorRequests(profile!)).toBe(open);
+    }
+  });
+
   test("asking for a specialty no verified doctor holds is rejected", async () => {
     await expect(submit("Cardiologist")).rejects.toMatchObject({ statusCode: 400 });
   });

@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import {
   urgentCareAssignSchema,
   type UrgentCareAssignInput,
@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: Params) {
   const handler = withApiHandler<UrgentCareAssignInput>(
     async ({ session, body }) =>
       UrgentConsultService.assignDoctor(id, session!.user!.id, body),
-    { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN], bodySchema: urgentCareAssignSchema },
+    { auth: true, roles: ADMIN_PANEL_ROLES, bodySchema: urgentCareAssignSchema },
   );
   return handler(req as import("next/server").NextRequest);
 }

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
-import { AppError, isAdmin } from "@zindagi/shared";
+import { AppError, isAdmin, isAdminPanelUser, type Role } from "@zindagi/shared";
+import { forPanelViewer } from "@/server/lib/manager-access";
 import {
   adminDeleteHerbalist,
   getHerbalistDetailForAdmin,
@@ -8,18 +9,18 @@ import {
 
 type Params = { params: Promise<{ id: string }> };
 
-async function requireAdmin() {
+async function requireRole(allowed: (roles: Role[] | undefined) => boolean) {
   const session = await auth();
   if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
-  if (!isAdmin(session.user.roles)) throw new AppError("Forbidden", "FORBIDDEN", 403);
+  if (!allowed(session.user.roles)) throw new AppError("Forbidden", "FORBIDDEN", 403);
   return session;
 }
 
 export async function GET(_req: Request, { params }: Params) {
   try {
-    await requireAdmin();
+    const session = await requireRole(isAdminPanelUser);
     const { id } = await params;
-    return apiSuccess(await getHerbalistDetailForAdmin(id));
+    return apiSuccess(forPanelViewer(session.user.roles, await getHerbalistDetailForAdmin(id)));
   } catch (error) {
     return apiError(error);
   }
@@ -27,7 +28,7 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    await requireAdmin();
+    await requireRole(isAdmin);
     const { id } = await params;
     await adminDeleteHerbalist(id);
     return apiSuccess({ deleted: true });

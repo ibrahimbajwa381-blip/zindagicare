@@ -1,4 +1,4 @@
-import { isAdmin, Roles, type Role } from "@zindagi/shared";
+import { isAdminPanelUser, Roles, type Role } from "@zindagi/shared";
 
 /**
  * Maps in-app notification payloads to workspace routes for deep linking.
@@ -15,7 +15,7 @@ export function resolveNotificationHref(
   }
 
   const isDoctor = roles.includes(Roles.DOCTOR);
-  const isStaffAdmin = isAdmin(roles);
+  const isStaffAdmin = isAdminPanelUser(roles);
   const requestId =
     typeof payload.requestId === "string" ? payload.requestId : undefined;
   const appointmentId =

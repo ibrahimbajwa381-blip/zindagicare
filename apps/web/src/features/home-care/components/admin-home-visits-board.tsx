@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
+  isManagerOnly,
   HomeVisitStatuses,
   HomeVisitServiceTypes,
   HOME_CARE_MATCH_RADIUS_KM,
@@ -96,6 +98,8 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
   const [manualOverride, setManualOverride] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  // Refund decisions are admin-only (the API refuses managers too).
+  const canResolveRefunds = !isManagerOnly(useSession().data?.user?.roles);
   const [proofPaymentId, setProofPaymentId] = useState<string | null>(null);
   const [copiedPhoneKey, setCopiedPhoneKey] = useState<string | null>(null);
 
@@ -727,7 +731,7 @@ export function AdminHomeVisitsBoard({ provider, focusVisitId }: AdminHomeVisits
                             : ""}
                         </p>
                       )}
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className={cn("mt-2 flex flex-wrap gap-2", !canResolveRefunds && "hidden")}>
                         <Button
                           size="sm"
                           variant="outline"

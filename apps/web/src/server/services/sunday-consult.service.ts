@@ -1826,6 +1826,48 @@ export class SundayConsultService {
     return doctor;
   }
 
+  private static doctorBoardFilter(
+    doctor: { _id: unknown; specialties?: readonly string[] | null },
+    sundayDateKey: string,
+  ) {
+    // Unpicked requests are only shown to doctors verified in the patient's
+    // preferred specialty; `null` in $in also matches requests without one.
+    const specialtyMatch = {
+      preferredSpecialty: { $in: [null, ...(doctor.specialties ?? [])] },
+    };
+    return {
+      $or: [
+        { sundayDateKey, status: SundayFreeRequestStatuses.REQUESTED, ...specialtyMatch },
+        {
+          sundayDateKey,
+          status: {
+            $in: [SundayFreeRequestStatuses.ASSIGNED, SundayFreeRequestStatuses.COMPLETED],
+          },
+          assignedDoctorId: doctor._id,
+        },
+        {
+          status: SundayFreeRequestStatuses.REQUESTED,
+          createdAt: { $lte: new Date(Date.now() - OVERDUE_REQUEST_AGE_MS) },
+          ...specialtyMatch,
+        },
+      ],
+      deletedAt: null,
+    };
+  }
+
+  /** Board rows still needing action (open or picked by this doctor, not completed) — the sidebar badge. */
+  static async countOpenDoctorRequests(
+    doctor: { _id: unknown; specialties?: readonly string[] | null },
+  ): Promise<number> {
+    const sundayDateKey = formatSundayDateKey(getActiveOrNextSundayDate());
+    return SundayFreeRequestModel.countDocuments(
+      mongoFilter({
+        ...SundayConsultService.doctorBoardFilter(doctor, sundayDateKey),
+        status: { $ne: SundayFreeRequestStatuses.COMPLETED },
+      }),
+    );
+  }
+
   /**
    * Open-requests board for doctors: every unpicked request for the Sunday,
    * plus the requests this doctor has already picked. Any verified doctor can
@@ -1840,31 +1882,9 @@ export class SundayConsultService {
     await connectDatabase();
     const doctor = await SundayConsultService.requireApprovedDoctor(userId);
     const sundayDateKey = dateKey ?? formatSundayDateKey(getActiveOrNextSundayDate());
-    // Unpicked requests are only shown to doctors verified in the patient's
-    // preferred specialty; `null` in $in also matches requests without one.
-    const specialtyMatch = {
-      preferredSpecialty: { $in: [null, ...(doctor.specialties ?? [])] },
-    };
 
     const docs = await SundayFreeRequestModel.find(
-      mongoFilter({
-        $or: [
-          { sundayDateKey, status: SundayFreeRequestStatuses.REQUESTED, ...specialtyMatch },
-          {
-            sundayDateKey,
-            status: {
-              $in: [SundayFreeRequestStatuses.ASSIGNED, SundayFreeRequestStatuses.COMPLETED],
-            },
-            assignedDoctorId: doctor._id,
-          },
-          {
-            status: SundayFreeRequestStatuses.REQUESTED,
-            createdAt: { $lte: new Date(Date.now() - OVERDUE_REQUEST_AGE_MS) },
-            ...specialtyMatch,
-          },
-        ],
-        deletedAt: null,
-      }),
+      mongoFilter(SundayConsultService.doctorBoardFilter(doctor, sundayDateKey)),
     )
       .sort({ createdAt: 1 })
       .populate("patientId", "name")

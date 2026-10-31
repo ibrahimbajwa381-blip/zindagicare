@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { saveDoctorAvatar } from "@/server/services/doctor-avatar.storage";
 import { getDoctorDetailForAdmin } from "@/server/services/admin-doctor.service";
-import { AppError, Roles } from "@zindagi/shared";
+import { AppError, isAdminPanelUser } from "@zindagi/shared";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -14,7 +14,7 @@ export async function POST(req: Request, { params }: Params) {
       throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
     }
     const roles = session.user.roles ?? [];
-    if (!roles.includes(Roles.ADMIN) && !roles.includes(Roles.SUPER_ADMIN)) {
+    if (!isAdminPanelUser(roles)) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }
 

@@ -689,10 +689,10 @@ export function AdminPhysiotherapistsManagement() {
                         </td>
                         <td className="hidden px-5 py-4 xl:table-cell">
                           <p className="font-medium text-slate-900">
-                            {formatCurrency(row.stats.totalEarnings)}
+                            {row.stats.totalEarnings === undefined ? "—" : formatCurrency(row.stats.totalEarnings)}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {formatCurrency(row.stats.earningsThisMonth)} this month
+                            {row.stats.earningsThisMonth === undefined ? "—" : `${formatCurrency(row.stats.earningsThisMonth)} this month`}
                           </p>
                         </td>
                         <td className="px-5 py-4">
@@ -808,11 +808,13 @@ export function AdminPhysiotherapistsManagement() {
                                   On duty
                                 </Badge>
                               )}
-                              <Badge variant="secondary" className="text-xs">
-                                {row.commissionOverride == null
-                                  ? `Keeps ${SPLIT.physiotherapistPercent}% of visit fees`
-                                  : `Keeps ${row.commissionPercent}% of visit fees`}
-                              </Badge>
+                              {row.commissionPercent !== undefined && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {row.commissionOverride == null
+                                    ? `Keeps ${SPLIT.physiotherapistPercent}% of visit fees`
+                                    : `Keeps ${row.commissionPercent}% of visit fees`}
+                                </Badge>
+                              )}
                             </div>
                             {row.verificationStatus === VerificationStatuses.REJECTED &&
                               row.rejectionReason && (

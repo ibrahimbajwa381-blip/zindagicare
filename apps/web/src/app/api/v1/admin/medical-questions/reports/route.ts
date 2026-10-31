@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { MEDICAL_QA_LIMITS, moderateMedicalQaReportSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { readJsonBody } from "@/server/api/read-json-body";
@@ -7,7 +7,7 @@ import { scheduleQuestionAlerts } from "@/server/lib/schedule-question-alerts";
 import { QUESTION_ALERT_CONFIG } from "@/server/lib/medical-qa-alert-rules";
 import { MedicalQaService } from "@/server/services/medical-qa.service";
 
-const ADMIN_ROLES = [Roles.ADMIN, Roles.SUPER_ADMIN];
+const ADMIN_ROLES = ADMIN_PANEL_ROLES;
 
 /** Open reports on public Q&A content. */
 export const GET = withApiHandler(async () => MedicalQaService.listReports(), {

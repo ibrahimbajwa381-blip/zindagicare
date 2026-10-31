@@ -468,11 +468,13 @@ export function ConsultProvidersManagement({ kind }: { kind: ConsultProviderKind
                               <Badge variant="secondary" className="text-xs">
                                 Fee {formatCurrency(row.consultationFee)}
                               </Badge>
-                              <Badge variant="secondary" className="text-xs">
+                              {row.onlineCommissionPercent !== undefined && (
+                                <Badge variant="secondary" className="text-xs">
                                 {row.onlineCommissionPercent == null
                                   ? "Default commission"
                                   : `Keeps ${row.onlineCommissionPercent}% of consult fees`}
-                              </Badge>
+                                </Badge>
+                              )}
                             </div>
                             {row.rejectionReason &&
                               row.verificationStatus !== VerificationStatuses.APPROVED && (

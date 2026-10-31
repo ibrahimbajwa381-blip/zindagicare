@@ -3,7 +3,7 @@ import {
   resetWeeklySundaySlots,
   applyDefaultSlotsToAllDoctors,
 } from "@/server/services/admin-sunday.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export const POST = withApiHandler(
   async ({ searchParams }) => {
@@ -16,5 +16,5 @@ export const POST = withApiHandler(
 
     return resetWeeklySundaySlots(dateKey);
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );

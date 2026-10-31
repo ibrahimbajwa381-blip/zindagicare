@@ -4,14 +4,15 @@ import { registerModel } from "../lib/register-model";
 /**
  * PlanningItem — an entry on the admin Planning board, used to track how the
  * business is growing: strategic plans, monthly / city targets, hospital and
- * clinic partnerships, achievements, campaigns and open challenges. One model
- * for all of them so the board can filter and group across kinds.
+ * clinic partnerships, achievements, campaigns, open challenges and recurring
+ * monthly costs. One model for all of them so the board can filter and group
+ * across kinds.
  */
 const planningItemSchema = new Schema(
   {
     kind: {
       type: String,
-      enum: ["plan", "target", "partnership", "achievement", "campaign", "challenge"],
+      enum: ["plan", "target", "partnership", "achievement", "campaign", "challenge", "expense"],
       required: true,
       index: true,
     },
@@ -31,6 +32,7 @@ const planningItemSchema = new Schema(
 
     /** Targets: the month the target is for, as YYYY-MM. */
     month: { type: String, match: /^\d{4}-\d{2}$/, index: true },
+    /** Targets: what is measured. Monthly costs: the cost category. */
     metric: { type: String, maxlength: 120 },
     unit: { type: String, maxlength: 40 },
     targetValue: { type: Number, min: 0 },
@@ -50,7 +52,7 @@ const planningItemSchema = new Schema(
 
     /** Achievements: when it happened. */
     achievedAt: { type: Date },
-    /** Campaigns: money spent, in PKR. */
+    /** Campaigns: money spent. Monthly costs: amount per month. In PKR. */
     budget: { type: Number, min: 0 },
 
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },

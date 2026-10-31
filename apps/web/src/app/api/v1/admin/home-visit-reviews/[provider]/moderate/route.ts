@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { adminReviewModerationSchema } from "@zindagi/validators";
 import { homeVisitReviewProviderFromUrl } from "@/server/api/home-visit-review-provider";
 import { withApiHandler } from "@/server/api/with-api-handler";
@@ -14,7 +14,7 @@ export const POST = withApiHandler(
     ),
   {
     auth: true,
-    roles: [Roles.ADMIN, Roles.SUPER_ADMIN],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: adminReviewModerationSchema,
   },
 );

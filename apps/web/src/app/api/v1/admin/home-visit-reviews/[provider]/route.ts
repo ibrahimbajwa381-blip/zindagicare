@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { parseAdminReviewVisibility } from "@/features/admin/types/admin-reviews";
 import { homeVisitReviewProviderFromUrl } from "@/server/api/home-visit-review-provider";
 import { withApiHandler } from "@/server/api/with-api-handler";
@@ -9,5 +9,5 @@ export const GET = withApiHandler(
     HomeVisitReviewService.listAdminReviews(homeVisitReviewProviderFromUrl(req.url), {
       visibility: parseAdminReviewVisibility(searchParams.get("visibility")),
     }),
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );

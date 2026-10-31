@@ -1,6 +1,6 @@
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { adminCreateManualAppointment } from "@/server/services/admin-appointment.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { adminCreateManualAppointmentSchema } from "@zindagi/validators";
 
 export const POST = withApiHandler(
@@ -8,5 +8,5 @@ export const POST = withApiHandler(
     const result = await adminCreateManualAppointment(body);
     return result;
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN], bodySchema: adminCreateManualAppointmentSchema },
+  { auth: true, roles: ADMIN_PANEL_ROLES, bodySchema: adminCreateManualAppointmentSchema },
 );

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { cn, isAdmin } from "@zindagi/shared";
+import { cn, isAdminPanelUser } from "@zindagi/shared";
 import { auth } from "@/lib/auth";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -20,7 +20,7 @@ export const metadata = {
 export default async function AdminReviewsPage() {
   const session = await auth();
   if (!session?.user) redirect(`/login?callbackUrl=${ADMIN_REVIEWS_ROOT}`);
-  if (!isAdmin(session.user.roles)) redirect("/dashboard");
+  if (!isAdminPanelUser(session.user.roles)) redirect("/dashboard");
 
   const counts = await getAdminNavCounts();
 

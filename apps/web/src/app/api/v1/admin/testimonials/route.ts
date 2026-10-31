@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { adminAddTestimonialSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { TestimonialService } from "@/server/services/testimonial.service";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export async function GET(req: NextRequest) {
   const visibility = req.nextUrl.searchParams.get("visibility");
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
         visibility: visibility === "visible" || visibility === "hidden" ? visibility : "all",
       });
     },
-    { auth: true, roles: ["admin", "super_admin"] },
+    { auth: true, roles: ADMIN_PANEL_ROLES },
   )(req);
 }
 
@@ -22,7 +23,7 @@ export const POST = withApiHandler(
   },
   {
     auth: true,
-    roles: ["admin", "super_admin"],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: adminAddTestimonialSchema,
   },
 );

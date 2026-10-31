@@ -17,6 +17,7 @@ import {
   Target,
   Trash2,
   Trophy,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ import {
   STATUS_LABELS,
   currentMonthKey,
   formatMonthKey,
+  isActiveCost,
+  monthlyCostTotal,
   planningBoardToText,
   targetProgress,
   type PlanningBoard,
@@ -58,6 +61,7 @@ const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: "achievement", label: "Achievements", icon: Trophy },
   { key: "campaign", label: "Campaigns", icon: Megaphone },
   { key: "challenge", label: "Challenges", icon: AlertTriangle },
+  { key: "expense", label: "Monthly costs", icon: Wallet },
 ];
 
 const NATIONWIDE = "__nationwide__";
@@ -277,6 +281,16 @@ function ItemCard({
         </p>
       )}
 
+      {item.kind === "expense" && (
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold tabular-nums text-slate-900">
+            PKR {formatNumber(item.budget ?? 0)}
+          </span>{" "}
+          / month
+          {item.metric && <span className="text-slate-500"> · {item.metric}</span>}
+        </p>
+      )}
+
       {item.description && (
         <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
           {item.description}
@@ -292,11 +306,66 @@ function ItemCard({
             {formatDay(item.dueDate)}
           </span>
         )}
-        {item.budget != null && <span>Budget PKR {formatNumber(item.budget)}</span>}
+        {item.budget != null && item.kind !== "expense" && (
+          <span>Budget PKR {formatNumber(item.budget)}</span>
+        )}
         {item.owner && <span>Owner: {item.owner}</span>}
         <span>Added by {item.createdByName}</span>
       </div>
     </div>
+  );
+}
+
+/** Budget view of the monthly costs: total to arrange each month, split by category. */
+function CostSummary({ items }: { items: PlanningItemRow[] }) {
+  const active = items.filter(isActiveCost);
+  const total = monthlyCostTotal(items);
+  const byCategory = new Map<string, number>();
+  for (const i of active) {
+    const category = i.metric ?? "Uncategorised";
+    byCategory.set(category, (byCategory.get(category) ?? 0) + (i.budget ?? 0));
+  }
+  const rows = [...byCategory].sort((a, b) => b[1] - a[1]);
+
+  return (
+    <Card className={surfaceCard}>
+      <CardContent className="grid gap-6 p-5 md:grid-cols-[auto_1fr]">
+        <div className="space-y-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Budget needed per month
+          </p>
+          <p className="text-3xl font-semibold tabular-nums text-slate-900">
+            PKR {formatNumber(total)}
+          </p>
+          <p className="text-sm text-slate-500">
+            PKR {formatNumber(total * 12)} per year · {active.length} active cost
+            {active.length === 1 ? "" : "s"}
+          </p>
+          <p className="text-xs text-slate-400">Done or cancelled costs are not counted.</p>
+        </div>
+        {rows.length > 0 && (
+          <div className="space-y-2 text-sm">
+            {rows.map(([category, amount]) => (
+              <div key={category} className="space-y-1">
+                <div className="flex justify-between gap-2 text-slate-600">
+                  <span>{category}</span>
+                  <span className="tabular-nums">
+                    PKR {formatNumber(amount)}
+                    <span className="text-slate-400"> · {Math.round((amount / total) * 100)}%</span>
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-brand"
+                    style={{ width: `${(amount / total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -453,6 +522,8 @@ export function AdminPlanningBoard() {
   const openChallenges = items.filter(
     (i) => i.kind === "challenge" && OPEN_STATUSES.includes(i.status),
   );
+  const costPerMonth = monthlyCostTotal(items);
+  const activeCostCount = items.filter(isActiveCost).length;
   const overdue = items.filter(isOverdue);
   const upcoming = items
     .filter((i) => i.dueDate && OPEN_STATUSES.includes(i.status))
@@ -771,7 +842,9 @@ export function AdminPlanningBoard() {
       .sort((a, b) =>
         kind === "achievement"
           ? (b.achievedAt ?? "").localeCompare(a.achievedAt ?? "")
-          : Number(isOverdue(b)) - Number(isOverdue(a)) ||
+          : kind === "expense"
+            ? Number(isActiveCost(b)) - Number(isActiveCost(a)) || (b.budget ?? 0) - (a.budget ?? 0)
+            : Number(isOverdue(b)) - Number(isOverdue(a)) ||
             (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999"),
       );
     content = (
@@ -780,6 +853,7 @@ export function AdminPlanningBoard() {
           <p className="text-sm text-slate-500">{KIND_LABELS[kind].hint}.</p>
           {filters}
         </div>
+        {kind === "expense" && <CostSummary items={items} />}
         {visible.length === 0 ? (
           <EmptyState text={`No ${KIND_LABELS[kind].plural.toLowerCase()} yet.`} />
         ) : (
@@ -794,7 +868,7 @@ export function AdminPlanningBoard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         <StatTile
           label="Targets this month"
           value={avgTargetProgress === null ? "—" : `${avgTargetProgress}%`}
@@ -812,6 +886,11 @@ export function AdminPlanningBoard() {
           label="Overdue"
           value={String(overdue.length)}
           sub={overdue.length ? "Past their due date" : "All on track"}
+        />
+        <StatTile
+          label="Monthly costs"
+          value={`PKR ${formatNumber(costPerMonth)}`}
+          sub={`${activeCostCount} active · PKR ${formatNumber(costPerMonth * 12)} / year`}
         />
       </div>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { forPanelViewer } from "@/server/lib/manager-access";
 import { AdminDoctorManageDetail } from "@/features/admin/components/admin-doctor-manage-detail";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { getDoctorDetailForAdmin } from "@/server/services/admin-doctor.service";
@@ -26,7 +27,7 @@ export default async function AdminDoctorManageDetailPage({ params }: Params) {
   const { id } = await params;
   let doctor;
   try {
-    doctor = await getDoctorDetailForAdmin(id);
+    doctor = forPanelViewer(session.user.roles, await getDoctorDetailForAdmin(id));
   } catch {
     return (
       <div className="space-y-4">

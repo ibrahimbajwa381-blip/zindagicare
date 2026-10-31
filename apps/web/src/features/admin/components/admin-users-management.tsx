@@ -19,6 +19,7 @@ const ROLE_LABELS: Record<Role, string> = {
   doctor: "Doctor",
   admin: "Admin",
   super_admin: "Super admin",
+  manager: "Manager",
   rider: "Rider",
   nurse: "Nurse",
   physiotherapist: "Physiotherapist",
@@ -30,7 +31,7 @@ const ROLE_LABELS: Record<Role, string> = {
 
 function formatOtherRoles(roles: Role[]): string {
   return roles
-    .filter((r) => r !== Roles.ADMIN && r !== Roles.SUPER_ADMIN)
+    .filter((r) => r !== Roles.ADMIN && r !== Roles.SUPER_ADMIN && r !== Roles.MANAGER)
     .map((r) => ROLE_LABELS[r] ?? r)
     .join(" · ");
 }
@@ -38,12 +39,12 @@ function formatOtherRoles(roles: Role[]): string {
 export function AdminUsersManagement() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
-  const currentIsSuperAdmin = session?.user?.roles?.includes(Roles.SUPER_ADMIN);
 
   const [admins, setAdmins] = useState<AdminUserRow[]>([]);
   const [candidates, setCandidates] = useState<AdminGrantCandidate[]>([]);
   const [search, setSearch] = useState("");
   const [grantEmail, setGrantEmail] = useState("");
+  const [grantRole, setGrantRole] = useState<"admin" | "manager">("admin");
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [granting, setGranting] = useState(false);
@@ -110,18 +111,18 @@ export function AdminUsersManagement() {
     const res = await fetch("/api/v1/admin/admins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, role: grantRole }),
     });
     const json = await res.json();
     setGranting(false);
 
     if (!json.success) {
-      setError(json?.error?.message ?? "Failed to grant admin access");
+      setError(json?.error?.message ?? "Failed to grant access");
       return;
     }
 
     setSuccess(
-      `${json.data?.admin?.name ?? "User"} now has admin access. They must sign out and back in to use the admin workspace.`,
+      `${json.data?.admin?.name ?? "User"} now has ${grantRole} access. They must sign out and back in to use the admin workspace.`,
     );
     setGrantEmail("");
     setSearch("");
@@ -156,9 +157,7 @@ export function AdminUsersManagement() {
   }
 
   function canRevoke(admin: AdminUserRow): boolean {
-    if (admin.id === currentUserId) return false;
-    if (admin.isSuperAdmin && !currentIsSuperAdmin) return false;
-    return true;
+    return admin.id !== currentUserId;
   }
 
   return (
@@ -191,6 +190,29 @@ export function AdminUsersManagement() {
             </p>
           </div>
         </div>
+
+        <fieldset className="mt-5">
+          <legend className="text-sm font-medium text-slate-700">Access level</legend>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:gap-6">
+            {(
+              [
+                ["admin", "Admin — full access"],
+                ["manager", "Manager — appointments, patients, verifications; no finances"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="radio"
+                  name="grant-role"
+                  value={value}
+                  checked={grantRole === value}
+                  onChange={() => setGrantRole(value)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
           <Input
@@ -247,7 +269,7 @@ export function AdminUsersManagement() {
                   disabled={granting}
                   onClick={() => grantAccess({ userId: candidate.id })}
                 >
-                  Make admin
+                  {grantRole === "manager" ? "Make manager" : "Make admin"}
                 </Button>
               </li>
             ))}
@@ -294,6 +316,8 @@ export function AdminUsersManagement() {
                       <p className="font-semibold text-slate-900">{admin.name}</p>
                       {admin.isSuperAdmin ? (
                         <Badge>Super admin</Badge>
+                      ) : admin.isManager ? (
+                        <Badge variant="outline">Manager</Badge>
                       ) : (
                         <Badge variant="secondary">Admin</Badge>
                       )}
@@ -324,7 +348,11 @@ export function AdminUsersManagement() {
                     onClick={() => revokeAccess(admin.id, admin.name)}
                   >
                     <ShieldOff className="mr-1.5 h-4 w-4" />
-                    {revokingId === admin.id ? "Removing…" : "Remove admin"}
+                    {revokingId === admin.id
+                      ? "Removing…"
+                      : admin.isManager
+                        ? "Remove manager"
+                        : "Remove admin"}
                   </Button>
                 </li>
               );

@@ -3,7 +3,7 @@ import {
   adminCreatePhysiotherapist,
   listPhysiotherapistsForManagement,
 } from "@/server/services/admin-physiotherapist.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { adminCreatePhysiotherapistSchema } from "@zindagi/validators";
 
 export const GET = withApiHandler(
@@ -12,7 +12,7 @@ export const GET = withApiHandler(
     const physiotherapists = await listPhysiotherapistsForManagement(search);
     return { physiotherapists };
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );
 
 export const POST = withApiHandler(
@@ -22,7 +22,7 @@ export const POST = withApiHandler(
   },
   {
     auth: true,
-    roles: [Roles.ADMIN, Roles.SUPER_ADMIN],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: adminCreatePhysiotherapistSchema,
   },
 );

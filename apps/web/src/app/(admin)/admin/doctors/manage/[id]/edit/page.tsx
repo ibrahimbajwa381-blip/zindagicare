@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { forPanelViewer } from "@/server/lib/manager-access";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { DoctorProfileEditForm } from "@/features/doctor/components/doctor-profile-edit-form";
 import { getDoctorProfileForAdmin } from "@/server/services/doctor-profile.service";
@@ -26,7 +27,7 @@ export default async function AdminDoctorProfileEditPage({ params }: Params) {
   const { id } = await params;
   let profile;
   try {
-    profile = await getDoctorProfileForAdmin(id);
+    profile = forPanelViewer(session.user.roles, await getDoctorProfileForAdmin(id));
   } catch {
     return (
       <div className="space-y-4">

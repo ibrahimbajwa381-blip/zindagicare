@@ -123,6 +123,8 @@ export function AdminNurseManageDetail({
 }: AdminNurseManageDetailProps) {
   const router = useSafeRouter();
   const [profile, setProfile] = useState(initialProfile);
+  // Earnings and commission are stripped from managers' responses.
+  const showFinance = profile.stats.totalEarnings !== undefined;
   // Bumped after each successful refresh so the edit form re-seeds from saved data.
   const [formVersion, setFormVersion] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
@@ -323,19 +325,23 @@ export function AdminNurseManageDetail({
           value={String(profile.stats.completedTotal)}
           hint={`${profile.stats.completedThisMonth} this month`}
         />
-        <StatTile
-          label="Total earnings"
-          value={formatCurrency(profile.stats.totalEarnings)}
-          hint={
-            profile.commissionOverride == null
-              ? `Keeps ${SPLIT.nursePercent}% of visit fees (platform keeps ${SPLIT.platformPercent}%)`
-              : `Keeps ${profile.commissionPercent}% of visit fees`
-          }
-        />
-        <StatTile
-          label="Earnings this month"
-          value={formatCurrency(profile.stats.earningsThisMonth)}
-        />
+        {showFinance && (
+          <>
+            <StatTile
+              label="Total earnings"
+              value={formatCurrency(profile.stats.totalEarnings)}
+              hint={
+                profile.commissionOverride == null
+                  ? `Keeps ${SPLIT.nursePercent}% of visit fees (platform keeps ${SPLIT.platformPercent}%)`
+                  : `Keeps ${profile.commissionPercent}% of visit fees`
+              }
+            />
+            <StatTile
+              label="Earnings this month"
+              value={formatCurrency(profile.stats.earningsThisMonth)}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -430,6 +436,7 @@ export function AdminNurseManageDetail({
               disableLabel="Deactivate"
             />
 
+            {showFinance && (
             <div className="border-b border-slate-100 py-4">
               <Label htmlFor="commission">Revenue share kept by nurse (%)</Label>
               <div className="mt-1 flex gap-2">
@@ -462,6 +469,7 @@ export function AdminNurseManageDetail({
                 {SPLIT.platformPercent}%.
               </p>
             </div>
+            )}
 
             <div className="pt-4">
               <Button

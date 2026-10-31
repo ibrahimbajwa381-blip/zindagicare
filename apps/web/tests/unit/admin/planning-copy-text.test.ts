@@ -1,4 +1,5 @@
 import {
+  monthlyCostTotal,
   planningBoardToText,
   type PlanningBoard,
   type PlanningItemRow,
@@ -55,8 +56,17 @@ const board: PlanningBoard = {
       contactPhone: "03001234567",
     }),
     row({ kind: "achievement", title: "First hospital signed", achievedAt: "2026-03-01" }),
+    row({ kind: "expense", title: "Hosting", metric: "Hosting & servers", budget: 15000, status: "in_progress" }),
+    row({ kind: "expense", title: "Office rent", budget: 60000, status: "planned" }),
+    row({ kind: "expense", title: "Old CRM", budget: 9000, status: "cancelled" }),
   ],
 };
+
+describe("monthlyCostTotal", () => {
+  test("sums active monthly costs only, skipping cancelled ones and other kinds", () => {
+    expect(monthlyCostTotal(board.items)).toBe(75000);
+  });
+});
 
 describe("planningBoardToText", () => {
   const text = planningBoardToText(board, new Date("2026-10-29T08:00:00Z"));
@@ -76,6 +86,11 @@ describe("planningBoardToText", () => {
       "Services Hospital — Hospital · Negotiating · Lahore · Planned · Medium priority · Contact: Dr. Contact, 03001234567",
     );
     expect(text).toMatch(/- .*Mar.*2026 — First hospital signed — Nationwide/);
+  });
+
+  test("lists monthly costs with their total", () => {
+    expect(text).toContain("MONTHLY COSTS (3)\nTotal: PKR 75,000 / month (active only)");
+    expect(text).toContain("- Hosting — Hosting & servers · Nationwide · In progress · Medium priority · PKR 15,000 / month");
   });
 
   test("keeps multi-line notes, dropping blank lines", () => {

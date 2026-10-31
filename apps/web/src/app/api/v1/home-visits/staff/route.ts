@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { HomeVisitService } from "@/server/services/home-visit.service";
-import { AppError, Roles } from "@zindagi/shared";
+import { AppError, isAdminPanelUser } from "@zindagi/shared";
 
 export async function GET(req: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     }
 
     const roles = session.user.roles ?? [];
-    if (!roles.includes(Roles.ADMIN) && !roles.includes(Roles.SUPER_ADMIN)) {
+    if (!isAdminPanelUser(roles)) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }
 

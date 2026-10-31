@@ -2,7 +2,8 @@ import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
 import { getDoctorProfileForAdmin } from "@/server/services/doctor-profile.service";
 import { adminDeleteDoctor } from "@/server/services/admin-doctor.service";
-import { AppError, Roles } from "@zindagi/shared";
+import { AppError, Roles, isAdminPanelUser } from "@zindagi/shared";
+import { forPanelViewer } from "@/server/lib/manager-access";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -14,13 +15,13 @@ export async function GET(_req: Request, { params }: Params) {
     }
 
     const roles = session.user.roles ?? [];
-    if (!roles.includes("admin") && !roles.includes("super_admin")) {
+    if (!isAdminPanelUser(roles)) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }
 
     const { id } = await params;
     const profile = await getDoctorProfileForAdmin(id);
-    return apiSuccess(profile);
+    return apiSuccess(forPanelViewer(roles, profile));
   } catch (error) {
     return apiError(error);
   }

@@ -623,10 +623,10 @@ export function AdminDoctorsManagement() {
                       </td>
                       <td className="hidden px-5 py-4 xl:table-cell">
                         <p className="font-medium text-slate-900">
-                          {formatCurrency(doc.stats.totalEarnings)}
+                          {doc.stats.totalEarnings === undefined ? "—" : formatCurrency(doc.stats.totalEarnings)}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {formatCurrency(doc.stats.earningsThisMonth)} this month
+                          {doc.stats.earningsThisMonth === undefined ? "—" : `${formatCurrency(doc.stats.earningsThisMonth)} this month`}
                         </p>
                         {doc.referredPatientCount > 0 && (
                           <Badge

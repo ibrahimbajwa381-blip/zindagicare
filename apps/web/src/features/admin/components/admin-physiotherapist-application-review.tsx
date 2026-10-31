@@ -480,13 +480,13 @@ export function AdminPhysiotherapistApplicationReview({ profile }: Props) {
               <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
                 <p className="text-sm text-slate-500">Total earnings</p>
                 <p className="mt-1 text-2xl font-semibold text-slate-900">
-                  {formatCurrency(profile.stats.totalEarnings)}
+                  {profile.stats.totalEarnings === undefined ? "—" : formatCurrency(profile.stats.totalEarnings)}
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
                 <p className="text-sm text-slate-500">This month</p>
                 <p className="mt-1 text-2xl font-semibold text-slate-900">
-                  {formatCurrency(profile.stats.earningsThisMonth)}
+                  {profile.stats.earningsThisMonth === undefined ? "—" : formatCurrency(profile.stats.earningsThisMonth)}
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">

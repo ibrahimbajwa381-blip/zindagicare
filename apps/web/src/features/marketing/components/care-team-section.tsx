@@ -79,18 +79,8 @@ export async function CareTeamSection() {
     };
   };
 
+  // Physiotherapists come first so theirs is the tab selected by default.
   const groups: CareTeamGroup[] = [
-    {
-      id: "nurses",
-      label: t.nav.nurses,
-      viewAllHref: siteConfig.links.nurses,
-      viewAllLabel: viewAll(t.nav.nurses),
-      cards: nurses
-        .slice(0, CARDS_PER_ROLE)
-        .map((n) =>
-          staffCard(n, nurseProfilePath(n.slug, n.id), "Nurse", t.careTeam.homeVisitsIn),
-        ),
-    },
     {
       id: "physiotherapists",
       label: t.nav.physiotherapists,
@@ -105,6 +95,17 @@ export async function CareTeamSection() {
             "Physiotherapist",
             t.careTeam.homeVisitsIn,
           ),
+        ),
+    },
+    {
+      id: "nurses",
+      label: t.nav.nurses,
+      viewAllHref: siteConfig.links.nurses,
+      viewAllLabel: viewAll(t.nav.nurses),
+      cards: nurses
+        .slice(0, CARDS_PER_ROLE)
+        .map((n) =>
+          staffCard(n, nurseProfilePath(n.slug, n.id), "Nurse", t.careTeam.homeVisitsIn),
         ),
     },
     consultGroup("herbalist", t.nav.herbalists, herbalists),

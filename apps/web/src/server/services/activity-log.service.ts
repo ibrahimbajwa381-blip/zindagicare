@@ -155,61 +155,76 @@ export async function listActivityForAdmin(params: {
   return { events, page, pageSize, total };
 }
 
+/** Time window the admin summary covers: last 24 hours, 7 days or 30 days. */
+export const ACTIVITY_RANGES = ["day", "week", "month"] as const;
+export type ActivityRange = (typeof ACTIVITY_RANGES)[number];
+
+const RANGE_MS: Record<ActivityRange, number> = {
+  day: 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000,
+};
+
+/** Unknown or missing values fall back to the weekly window. */
+export function parseActivityRange(value: string | null | undefined): ActivityRange {
+  return ACTIVITY_RANGES.find((r) => r === value) ?? "week";
+}
+
 export type ActivitySummary = {
+  range: ActivityRange;
   totalEvents: number;
-  last24h: number;
-  errorRate7d: number;
+  /** Events inside the selected range. */
+  eventsInRange: number;
+  errorRate: number;
   topActions: { action: string; count: number }[];
   topErrorActions: { action: string; count: number }[];
   byRole: { role: string; count: number }[];
   topCities: { city: string; count: number }[];
-  signups7d: number;
-  visitors7d: number;
-  visitorsNotConverted7d: number;
+  signups: number;
+  visitors: number;
+  visitorsNotConverted: number;
   androidInstallsTotal: number;
-  androidInstalls7d: number;
+  androidInstalls: number;
 };
 
 const PAGE_VIEW_ACTION = "page.view";
 const SIGNUP_ACTION = "user.signup";
 const PWA_INSTALL_ACTION = "pwa.install";
 
-export async function getActivitySummary(): Promise<ActivitySummary> {
+export async function getActivitySummary(
+  range: ActivityRange = "week",
+): Promise<ActivitySummary> {
   await connectDatabase();
 
-  const now = new Date();
-  const last24hStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const last7dStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const rangeStart = new Date(Date.now() - RANGE_MS[range]);
 
   const [
     totalEvents,
-    last24h,
-    window7d,
-    signups7d,
-    visitorIds7d,
-    signupVisitorIds7d,
+    windowEvents,
+    signups,
+    visitorIds,
+    signupVisitorIds,
     androidInstallsTotal,
-    androidInstalls7d,
+    androidInstalls,
   ] = await Promise.all([
       ActivityEventModel.countDocuments({}),
-      ActivityEventModel.countDocuments({ createdAt: { $gte: last24hStart } }),
-      ActivityEventModel.find({ createdAt: { $gte: last7dStart } })
+      ActivityEventModel.find({ createdAt: { $gte: rangeStart } })
         .select("action status userRole city country")
         .lean(),
       ActivityEventModel.countDocuments({
         action: SIGNUP_ACTION,
-        createdAt: { $gte: last7dStart },
+        createdAt: { $gte: rangeStart },
       }),
       ActivityEventModel.distinct("visitorId", {
         action: PAGE_VIEW_ACTION,
         userId: { $exists: false },
         visitorId: { $exists: true },
-        createdAt: { $gte: last7dStart },
+        createdAt: { $gte: rangeStart },
       }),
       ActivityEventModel.distinct("visitorId", {
         action: SIGNUP_ACTION,
         visitorId: { $exists: true },
-        createdAt: { $gte: last7dStart },
+        createdAt: { $gte: rangeStart },
       }),
       ActivityEventModel.countDocuments({
         action: PWA_INSTALL_ACTION,
@@ -218,7 +233,7 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
       ActivityEventModel.countDocuments({
         action: PWA_INSTALL_ACTION,
         "metadata.platform": "android",
-        createdAt: { $gte: last7dStart },
+        createdAt: { $gte: rangeStart },
       }),
     ]);
 
@@ -228,7 +243,7 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
   const cityCounts = new Map<string, number>();
   let errors = 0;
 
-  for (const row of window7d) {
+  for (const row of windowEvents) {
     actionCounts.set(row.action, (actionCounts.get(row.action) ?? 0) + 1);
     if (row.status === "error") {
       errors += 1;
@@ -261,23 +276,24 @@ export async function getActivitySummary(): Promise<ActivitySummary> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  const convertedVisitorIds = new Set(signupVisitorIds7d as string[]);
-  const visitorsNotConverted7d = (visitorIds7d as string[]).filter(
+  const convertedVisitorIds = new Set(signupVisitorIds as string[]);
+  const visitorsNotConverted = (visitorIds as string[]).filter(
     (id) => !convertedVisitorIds.has(id),
   ).length;
 
   return {
+    range,
     totalEvents,
-    last24h,
-    errorRate7d: window7d.length ? errors / window7d.length : 0,
+    eventsInRange: windowEvents.length,
+    errorRate: windowEvents.length ? errors / windowEvents.length : 0,
     topActions,
     topErrorActions,
     byRole,
     topCities,
-    signups7d,
-    visitors7d: (visitorIds7d as string[]).length,
-    visitorsNotConverted7d,
+    signups,
+    visitors: (visitorIds as string[]).length,
+    visitorsNotConverted,
     androidInstallsTotal,
-    androidInstalls7d,
+    androidInstalls,
   };
 }

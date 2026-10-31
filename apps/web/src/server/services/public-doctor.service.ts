@@ -18,6 +18,17 @@ import { OnlineConsultService } from "@/server/services/online-consult.service";
 import type { WeeklyWindow } from "@/lib/consult/slot-utils";
 import { CacheTags, cacheKey, cached } from "@/server/lib/cache";
 
+export type PublicDoctorDirectoryEntry = {
+  slug: string;
+  name: string;
+  specialty: string;
+  city?: string;
+  hospital?: string;
+  consultationFee: number;
+  avatarUrl?: string;
+  updatedAt?: string;
+};
+
 const PUBLIC_DOCTOR_FILTER = {
   isListed: true,
   verificationStatus: VerificationStatuses.APPROVED,
@@ -43,6 +54,7 @@ async function mapProfileDoc(
 ): Promise<PublicDoctorProfile> {
   const user = doc.userId as { name?: string; avatarUrl?: string } | null | undefined;
   const name = user?.name ?? "Doctor";
+  const portfolio = mapDoctorPortfolio(doc as Parameters<typeof mapDoctorPortfolio>[0]);
   const slug = await ensureCanonicalDoctorSlug(
     doc._id.toString(),
     name,
@@ -90,9 +102,8 @@ async function mapProfileDoc(
         startTimeLocal: w.startTimeLocal,
         endTimeLocal: w.endTimeLocal,
       })),
-    portfolio: toPublicDoctorPortfolio(
-      mapDoctorPortfolio(doc as Parameters<typeof mapDoctorPortfolio>[0]),
-    ),
+    portfolio: toPublicDoctorPortfolio(portfolio),
+    faqsHidden: portfolio.hiddenSections.includes("faqs"),
   };
 }
 
@@ -211,24 +222,37 @@ export class PublicDoctorService {
     }
   }
 
-  static async listPublicDoctorSlugs(): Promise<string[]> {
-    return cached(cacheKey("doctor-slugs"), { ttl: 900, tags: [CacheTags.DOCTORS] }, () =>
-      PublicDoctorService.loadPublicDoctorSlugs(),
+  /** Slug, photo and last edit of every public doctor, for the sitemap and llms.txt. */
+  static async listPublicDoctorDirectory(): Promise<PublicDoctorDirectoryEntry[]> {
+    return cached(cacheKey("doctor-directory"), { ttl: 900, tags: [CacheTags.DOCTORS] }, () =>
+      PublicDoctorService.loadPublicDoctorDirectory(),
     );
   }
 
-  private static async loadPublicDoctorSlugs(): Promise<string[]> {
+  private static async loadPublicDoctorDirectory(): Promise<PublicDoctorDirectoryEntry[]> {
     await PublicDoctorService.ensureConnected();
 
     const doctors = await DoctorProfileModel.find(PUBLIC_DOCTOR_FILTER)
-      .select("slug userId")
-      .populate("userId", "name")
+      .select("slug userId specialties primarySpecialty hospitals consultationFee updatedAt")
+      .populate("userId", "name avatarUrl")
       .lean();
 
     return doctors.map((doc) => {
-      const user = doc.userId as { name?: string } | null;
+      const user = doc.userId as { name?: string; avatarUrl?: string } | null;
       const name = user?.name ?? "Doctor";
-      return resolveDoctorSlug(doc.slug, name);
+      return {
+        slug: resolveDoctorSlug(doc.slug, name),
+        name: withDoctorTitle(name),
+        specialty: resolveDisplaySpecialty({
+          primarySpecialty: doc.primarySpecialty,
+          specialties: doc.specialties ?? [],
+        }),
+        city: doc.hospitals?.[0]?.city ?? undefined,
+        hospital: doc.hospitals?.[0]?.name ?? undefined,
+        consultationFee: doc.consultationFee ?? 0,
+        avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
+        updatedAt: (doc.updatedAt as Date | undefined)?.toISOString(),
+      };
     });
   }
 }

@@ -1,13 +1,15 @@
 import { connectDatabase, UserModel } from "@zindagi/database";
 import {
   AppError,
+  ADMIN_PANEL_ROLES,
   Roles,
   isAdmin,
+  isManagerOnly,
   type Role,
   emailLookupHash,
 } from "@zindagi/shared";
 import type { z } from "zod";
-import type { adminGrantSchema } from "@zindagi/validators";
+import { normalizePhoneDigits, type adminGrantSchema } from "@zindagi/validators";
 import { formatPhoneForDisplay, mapUserPii } from "@/server/lib/decrypt-pii";
 import { recordAdminActivity } from "@/server/services/admin-activity.service";
 
@@ -20,6 +22,8 @@ export type AdminUserRow = {
   phone?: string;
   roles: Role[];
   isSuperAdmin: boolean;
+  /** Restricted operations manager (no admin role). */
+  isManager: boolean;
   isActive: boolean;
   createdAt: string;
   grantedVia: "admin" | "super_admin";
@@ -53,10 +57,30 @@ function mapAdminRow(user: {
     phone: formatPhoneForDisplay(pii.phone),
     roles,
     isSuperAdmin,
+    isManager: isManagerOnly(roles),
     isActive: user.isActive !== false,
     createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
     grantedVia: isSuperAdmin ? "super_admin" : "admin",
   };
+}
+
+/**
+ * name/email/phone are encrypted at rest, so substring matching can't happen
+ * in the database — decrypt a bounded candidate set and filter in memory.
+ */
+function matchesUserSearch(
+  user: { name?: string | null; email?: string | null; phone?: string | null },
+  q: string,
+): boolean {
+  const needle = q.toLowerCase();
+  const needleDigits = normalizePhoneDigits(q);
+  const pii = mapUserPii(user);
+  const phoneDigits = pii.phone ? normalizePhoneDigits(pii.phone) : "";
+  return Boolean(
+    pii.name?.toLowerCase().includes(needle) ||
+      pii.email?.toLowerCase().includes(needle) ||
+      (needleDigits.length >= 3 && phoneDigits.includes(needleDigits)),
+  );
 }
 
 async function countActiveAdmins(): Promise<number> {
@@ -69,28 +93,19 @@ async function countActiveAdmins(): Promise<number> {
 
 export async function listAdmins(search?: string): Promise<AdminUserRow[]> {
   await connectDatabase();
+  const q = search?.trim();
 
-  const filter: Record<string, unknown> = {
-    roles: { $in: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  const users = await UserModel.find({
+    roles: { $in: ADMIN_PANEL_ROLES },
     deletedAt: null,
-  };
-
-  if (search?.trim()) {
-    const q = search.trim();
-    filter.$or = [
-      { name: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } },
-      { phone: { $regex: q, $options: "i" } },
-    ];
-  }
-
-  const users = await UserModel.find(filter)
+  })
     .select("name email phone roles isActive createdAt")
     .sort({ createdAt: -1 })
-    .limit(100)
+    .limit(q ? 1000 : 100)
     .lean();
 
-  return users.map((user) => mapAdminRow(user));
+  const matched = q ? users.filter((user) => matchesUserSearch(user, q)) : users;
+  return matched.slice(0, 100).map((user) => mapAdminRow(user));
 }
 
 export async function searchAdminGrantCandidates(
@@ -103,18 +118,15 @@ export async function searchAdminGrantCandidates(
   const users = await UserModel.find({
     deletedAt: null,
     roles: { $nin: [Roles.ADMIN, Roles.SUPER_ADMIN] },
-    $or: [
-      { name: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } },
-      { phone: { $regex: q, $options: "i" } },
-    ],
   })
     .select("name email phone roles")
     .sort({ createdAt: -1 })
-    .limit(20)
+    .limit(3000)
     .lean();
 
-  return users.map((user) => {
+  const matched = users.filter((user) => matchesUserSearch(user, q)).slice(0, 20);
+
+  return matched.map((user) => {
     const pii = mapUserPii(user);
     return {
       id: user._id.toString(),
@@ -156,7 +168,15 @@ export async function grantAdminAccess(
     throw new AppError("User is already an admin", "CONFLICT", 409);
   }
 
-  target.roles = [...target.roles, Roles.ADMIN];
+  if (input.role === Roles.MANAGER) {
+    if (target.roles.includes(Roles.MANAGER)) {
+      throw new AppError("User is already a manager", "CONFLICT", 409);
+    }
+    target.roles = [...target.roles, Roles.MANAGER];
+  } else {
+    // Promoting a manager to admin replaces the restricted role.
+    target.roles = [...target.roles.filter((r) => r !== Roles.MANAGER), Roles.ADMIN];
+  }
   await target.save();
 
   await recordAdminActivity({
@@ -165,6 +185,7 @@ export async function grantAdminAccess(
     entityType: "User",
     entityId: target._id.toString(),
     targetLabel: mapUserPii(target).name,
+    changes: { role: input.role },
   });
 
   return mapAdminRow(target);
@@ -193,15 +214,22 @@ export async function revokeAdminAccess(
     throw new AppError("User not found", "NOT_FOUND", 404);
   }
 
+  // Admin and super admin have the same powers here: either can manage any admin or manager.
   const targetIsSuperAdmin = target.roles.includes(Roles.SUPER_ADMIN);
-  const actorIsSuperAdmin = actor.roles.includes(Roles.SUPER_ADMIN);
 
-  if (targetIsSuperAdmin && !actorIsSuperAdmin) {
-    throw new AppError(
-      "Only a super admin can modify another super admin",
-      "FORBIDDEN",
-      403,
-    );
+  if (isManagerOnly(target.roles)) {
+    target.roles = target.roles.filter((r) => r !== Roles.MANAGER);
+    if (target.roles.length === 0) target.roles = [Roles.PATIENT];
+    await target.save();
+    await recordAdminActivity({
+      actor: actorUserId,
+      action: "admin.access_revoked",
+      entityType: "User",
+      entityId: target._id.toString(),
+      targetLabel: mapUserPii(target).name,
+      changes: { role: Roles.MANAGER },
+    });
+    return { revoked: true };
   }
 
   if (!target.roles.includes(Roles.ADMIN) && !targetIsSuperAdmin) {

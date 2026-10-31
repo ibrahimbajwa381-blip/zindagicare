@@ -296,17 +296,21 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
           label="Completed (month)"
           value={stats.completedThisMonth}
         />
-        <StatCard
-          icon={CheckCircle2}
-          label="Total earnings"
-          value={formatCurrency(stats.totalEarnings)}
-          sub={formatCurrency(stats.earningsThisMonth) + " this month"}
-        />
+        {/* Earnings and commission are stripped from managers' responses. */}
+        {stats.totalEarnings !== undefined && (
+          <StatCard
+            icon={CheckCircle2}
+            label="Total earnings"
+            value={formatCurrency(stats.totalEarnings)}
+            sub={formatCurrency(stats.earningsThisMonth) + " this month"}
+          />
+        )}
       </div>
 
       <AccountabilityCard doctor={doctor} />
       <ProviderAgreementCard doctor={doctor} />
 
+      {doctor.effectiveOnlineCommissionPercent !== undefined && (
       <Card className="rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Commission rates</CardTitle>
@@ -354,6 +358,7 @@ export function AdminDoctorManageDetail({ initialDoctor }: Props) {
           </p>
         </CardContent>
       </Card>
+      )}
 
       <Card className="rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader>

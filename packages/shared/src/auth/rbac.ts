@@ -11,6 +11,7 @@ export const ROLE_RANK: Record<Role, number> = {
   [Roles.LAB]: 28,
   [Roles.OTHER]: 5,
   [Roles.DOCTOR]: 30,
+  [Roles.MANAGER]: 35,
   [Roles.ADMIN]: 40,
   [Roles.SUPER_ADMIN]: 50,
 };
@@ -40,6 +41,18 @@ export function isAdmin(userRoles: Role[] | undefined): boolean {
   return hasAnyRole(userRoles, [Roles.ADMIN, Roles.SUPER_ADMIN]);
 }
 
+/** Everyone who can open the admin panel; managers get a restricted slice of it. */
+export const ADMIN_PANEL_ROLES: Role[] = [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.MANAGER];
+
+export function isAdminPanelUser(userRoles: Role[] | undefined): boolean {
+  return hasAnyRole(userRoles, ADMIN_PANEL_ROLES);
+}
+
+/** A manager without admin rights: no finances, payouts, settings or admin management. */
+export function isManagerOnly(userRoles: Role[] | undefined): boolean {
+  return hasRole(userRoles, Roles.MANAGER) && !isAdmin(userRoles);
+}
+
 export const STAFF_ROLES: Role[] = [
   Roles.NURSE,
   Roles.PHYSIOTHERAPIST,
@@ -47,6 +60,7 @@ export const STAFF_ROLES: Role[] = [
   Roles.NUTRITIONIST,
   Roles.RIDER,
   Roles.DOCTOR,
+  Roles.MANAGER,
   Roles.ADMIN,
   Roles.SUPER_ADMIN,
 ];
@@ -83,10 +97,10 @@ export function highestRole(userRoles: Role[] | undefined): Role {
 export const Permissions = {
   "admin.users.read": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.users.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
-  "admin.doctors.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
-  "admin.herbalists.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.doctors.verify": ADMIN_PANEL_ROLES,
+  "admin.herbalists.verify": ADMIN_PANEL_ROLES,
   "admin.herbalists.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
-  "admin.nutritionists.verify": [Roles.ADMIN, Roles.SUPER_ADMIN],
+  "admin.nutritionists.verify": ADMIN_PANEL_ROLES,
   "admin.nutritionists.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "admin.doctors.profile.write": [Roles.ADMIN, Roles.SUPER_ADMIN],
   "doctor.profile.manage": [Roles.DOCTOR],

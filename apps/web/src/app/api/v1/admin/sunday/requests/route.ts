@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
 
@@ -15,5 +15,5 @@ export const GET = withApiHandler(
     ]);
     return { requests, dates };
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );

@@ -1,6 +1,6 @@
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { listAdminAppointments } from "@/server/services/admin-appointment.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export const GET = withApiHandler(
   async ({ searchParams }) => {
@@ -19,5 +19,5 @@ export const GET = withApiHandler(
     });
     return { appointments };
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );

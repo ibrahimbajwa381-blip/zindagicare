@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { cn, isAdmin } from "@zindagi/shared";
+import { cn, isAdminPanelUser } from "@zindagi/shared";
 import { auth } from "@/lib/auth";
 import { surfaceCard } from "@/lib/ui/surfaces";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -28,7 +28,7 @@ type Props = {
 export default async function AdminHomeVisitsPage({ searchParams }: Props) {
   const session = await auth();
   if (!session?.user) redirect(`/login?callbackUrl=${ADMIN_HOME_VISITS_ROOT}`);
-  if (!isAdmin(session.user.roles)) redirect("/dashboard");
+  if (!isAdminPanelUser(session.user.roles)) redirect("/dashboard");
 
   const { visitId } = await searchParams;
   if (typeof visitId === "string" && visitId) {

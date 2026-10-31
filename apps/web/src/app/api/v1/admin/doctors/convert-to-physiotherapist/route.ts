@@ -1,6 +1,7 @@
 import { convertDoctorToPhysiotherapistSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { convertDoctorApplicationToPhysiotherapist } from "@/server/services/physiotherapist.service";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export const POST = withApiHandler(
   async ({ session, body }) => {
@@ -8,7 +9,7 @@ export const POST = withApiHandler(
   },
   {
     auth: true,
-    roles: ["admin", "super_admin"],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: convertDoctorToPhysiotherapistSchema,
   },
 );

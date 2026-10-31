@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import type { Session } from "next-auth";
 import { resolveSession } from "./resolve-session";
 import { apiError, apiSuccess } from "./response";
-import { AppError } from "@zindagi/shared";
+import { AppError, isManagerOnly } from "@zindagi/shared";
+import { assertNoFinanceWrite, redactFinance } from "@/server/lib/manager-access";
 import type { ZodType } from "zod";
 import { createRateLimiter, enforceRateLimit, getClientIp } from "@/server/lib/rate-limit";
 import { flushCacheInvalidations } from "@/server/lib/cache";
@@ -95,6 +96,12 @@ export function withApiHandler<TBody = unknown>(
         body = options.bodySchema.parse(json) as TBody;
       }
 
+      // Managers reach admin routes, but never their money fields (read or write).
+      const managerAdminCall =
+        isManagerOnly(session?.user?.roles) &&
+        new URL(req.url).pathname.startsWith("/api/v1/admin/");
+      if (managerAdminCall) assertNoFinanceWrite(body);
+
       const data = await handler({
         req,
         session,
@@ -106,7 +113,7 @@ export function withApiHandler<TBody = unknown>(
         await flushCacheInvalidations();
       }
 
-      return apiSuccess(data);
+      return apiSuccess(managerAdminCall ? redactFinance(data) : data);
     } catch (e) {
       return apiError(e);
     }

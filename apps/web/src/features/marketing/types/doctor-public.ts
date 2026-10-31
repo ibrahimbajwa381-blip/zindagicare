@@ -32,6 +32,8 @@ export type PublicDoctorProfile = {
   weeklyAvailability: PublicDoctorWeeklyWindow[];
   /** Doctor-authored portfolio with hidden sections already removed. */
   portfolio: DoctorPortfolio;
+  /** The doctor chose to hide their FAQ section, so none should be generated for them either. */
+  faqsHidden?: boolean;
 };
 
 export type PublicDoctorWeeklyWindow = {

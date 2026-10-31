@@ -213,4 +213,31 @@ describe("Account roles (real local MongoDB)", () => {
       expect(await rolesOf(target._id)).toEqual([Roles.PATIENT]);
     });
   });
+
+  describe("searchAdminGrantCandidates", () => {
+    test("finds non-doctor users even though their PII is encrypted at rest", async () => {
+      const patient = await db.UserModel.create({
+        name: "Ayesha Khan",
+        email: "ayesha@example.com",
+        phone: "+923001234567",
+        roles: [Roles.PATIENT],
+      });
+      const nurse = await db.UserModel.create({ name: "Nurse Ayesha", roles: [Roles.NURSE] });
+      await db.UserModel.create({ name: "Ayesha Admin", roles: [Roles.ADMIN] });
+
+      const raw = await db.UserModel.collection.findOne({ _id: patient._id });
+      expect(raw?.name).not.toBe("Ayesha Khan");
+
+      const byName = await adminUsers.searchAdminGrantCandidates("ayesha");
+      expect(byName.map((c) => c.id).sort()).toEqual(
+        [patient._id.toString(), nurse._id.toString()].sort(),
+      );
+
+      const byEmail = await adminUsers.searchAdminGrantCandidates("ayesha@exa");
+      expect(byEmail.map((c) => c.id)).toEqual([patient._id.toString()]);
+
+      const byPhone = await adminUsers.searchAdminGrantCandidates("1234567");
+      expect(byPhone.map((c) => c.id)).toEqual([patient._id.toString()]);
+    });
+  });
 });

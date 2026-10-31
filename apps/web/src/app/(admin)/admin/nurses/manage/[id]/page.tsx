@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { AppError, isAdmin } from "@zindagi/shared";
+import { AppError, isAdminPanelUser, isManagerOnly } from "@zindagi/shared";
 import { auth } from "@/lib/auth";
+import { forPanelViewer } from "@/server/lib/manager-access";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminNurseFinance } from "@/features/admin/components/admin-nurse-finance";
@@ -24,14 +25,14 @@ export async function generateMetadata({ params }: Params) {
 export default async function AdminNurseManageDetailPage({ params }: Params) {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/admin/nurses/manage");
-  if (!isAdmin(session.user.roles)) redirect("/dashboard");
+  if (!isAdminPanelUser(session.user.roles)) redirect("/dashboard");
 
   const { id } = await params;
   if (!/^[a-f0-9]{24}$/i.test(id)) notFound();
 
   let profile;
   try {
-    profile = await getNurseProfileForAdmin(id);
+    profile = forPanelViewer(session.user.roles, await getNurseProfileForAdmin(id));
   } catch (e) {
     if (e instanceof AppError && e.statusCode === 404) notFound();
     throw e;
@@ -55,7 +56,7 @@ export default async function AdminNurseManageDetailPage({ params }: Params) {
       <AdminNurseManageDetail initialProfile={profile} />
       <section className="mt-8 space-y-4">
         <h2 className="text-lg font-semibold text-slate-900">Earnings &amp; Sunday payouts</h2>
-        <AdminNurseFinance staffProfileId={id} />
+        {!isManagerOnly(session.user.roles) && <AdminNurseFinance staffProfileId={id} />}
       </section>
     </>
   );

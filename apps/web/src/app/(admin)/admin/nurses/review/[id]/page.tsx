@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { isAdmin, AppError } from "@zindagi/shared";
+import { forPanelViewer } from "@/server/lib/manager-access";
+import { isAdminPanelUser, AppError } from "@zindagi/shared";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminNurseApplicationReview } from "@/features/admin/components/admin-nurse-application-review";
@@ -25,13 +26,13 @@ export async function generateMetadata({ params }: Params) {
 export default async function AdminNurseReviewPage({ params }: Params) {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/admin/nurses");
-  if (!isAdmin(session.user.roles)) redirect("/dashboard");
+  if (!isAdminPanelUser(session.user.roles)) redirect("/dashboard");
 
   const { id } = await params;
 
   let profile;
   try {
-    profile = await getNurseProfileForAdmin(id);
+    profile = forPanelViewer(session.user.roles, await getNurseProfileForAdmin(id));
   } catch (e) {
     if (e instanceof AppError && e.statusCode === 404) notFound();
     throw e;

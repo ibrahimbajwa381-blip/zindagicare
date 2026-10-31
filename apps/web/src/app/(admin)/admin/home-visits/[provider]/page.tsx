@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { isAdmin } from "@zindagi/shared";
+import { isAdminPanelUser } from "@zindagi/shared";
 import { auth } from "@/lib/auth";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminHomeVisitsBoard } from "@/features/home-care/components/admin-home-visits-board";
@@ -24,7 +24,7 @@ export default async function AdminProviderHomeVisitsPage({ params, searchParams
 
   const session = await auth();
   if (!session?.user) redirect(`/login?callbackUrl=${encodeURIComponent(provider.href)}`);
-  if (!isAdmin(session.user.roles)) redirect("/dashboard");
+  if (!isAdminPanelUser(session.user.roles)) redirect("/dashboard");
 
   const { visitId } = await searchParams;
 

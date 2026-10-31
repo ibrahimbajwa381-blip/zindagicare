@@ -262,6 +262,8 @@ export const adminGrantSchema = z
   .object({
     email: z.string().email().optional(),
     userId: z.string().min(1).optional(),
+    /** "manager" is the restricted operations role (no finances or admin management). */
+    role: z.enum(["admin", "manager"]).default("admin"),
   })
   .refine((data) => Boolean(data.email || data.userId), {
     message: "Provide an email or userId",

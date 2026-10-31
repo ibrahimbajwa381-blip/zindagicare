@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import type {
   ActivityFeedRow,
+  ActivityRange,
   ActivitySummary,
 } from "@/server/services/activity-log.service";
 import { cn } from "@zindagi/shared";
@@ -24,6 +25,17 @@ import { cn } from "@zindagi/shared";
 const PAGE_SIZE = 50;
 
 type ViewMode = "journeys" | "table";
+
+const RANGE_OPTIONS: readonly {
+  id: ActivityRange;
+  label: string;
+  suffix: string;
+  span: string;
+}[] = [
+  { id: "day", label: "Daily", suffix: "24h", span: "24 hours" },
+  { id: "week", label: "Weekly", suffix: "7d", span: "7 days" },
+  { id: "month", label: "Monthly", suffix: "30d", span: "30 days" },
+];
 
 type Focus = { kind: "user" | "visitor"; id: string; label: string } | null;
 
@@ -238,13 +250,14 @@ export function AdminActivityLog() {
   const [statusFilter, setStatusFilter] = useState("");
   const [focus, setFocus] = useState<Focus>(null);
   const [view, setView] = useState<ViewMode>("journeys");
+  const [range, setRange] = useState<ActivityRange>("week");
   const [loading, setLoading] = useState(true);
 
   const loadSummary = useCallback(async () => {
-    const res = await fetch("/api/v1/admin/activity/summary");
+    const res = await fetch(`/api/v1/admin/activity/summary?range=${range}`);
     const json = await res.json();
     if (json.success) setSummary(json.data as ActivitySummary);
-  }, []);
+  }, [range]);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -311,6 +324,10 @@ export function AdminActivityLog() {
   }, [events]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const { suffix: rangeSuffix, span: rangeSpan } =
+    RANGE_OPTIONS.find((r) => r.id === range) ?? RANGE_OPTIONS[1];
+  /** Stale numbers from the previous range are hidden until the new summary arrives. */
+  const current = summary?.range === range ? summary : null;
 
   const focusButton = (event: ActivityFeedRow, children: ReactNode, className?: string) => {
     const target = focusFor(event);
@@ -329,32 +346,57 @@ export function AdminActivityLog() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">
+          Stats below cover the last {rangeSpan}.
+        </p>
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          {RANGE_OPTIONS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setRange(id)}
+              aria-pressed={range === id}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition",
+                range === id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "Total events", value: summary?.totalEvents ?? "—" },
-          { label: "Last 24 hours", value: summary?.last24h ?? "—" },
+          { label: "Total events (all time)", value: current?.totalEvents ?? "—" },
+          { label: `Events (${rangeSuffix})`, value: current?.eventsInRange ?? "—" },
           {
-            label: "Error rate (7d)",
-            value: summary ? `${(summary.errorRate7d * 100).toFixed(1)}%` : "—",
+            label: `Error rate (${rangeSuffix})`,
+            value: current ? `${(current.errorRate * 100).toFixed(1)}%` : "—",
           },
           {
-            label: "Active roles (7d)",
-            value: summary?.byRole.length ?? "—",
+            label: `Active roles (${rangeSuffix})`,
+            value: current?.byRole.length ?? "—",
           },
-          { label: "Signups (7d)", value: summary?.signups7d ?? "—" },
-          { label: "Site visitors (7d)", value: summary?.visitors7d ?? "—" },
+          { label: `Signups (${rangeSuffix})`, value: current?.signups ?? "—" },
+          { label: `Site visitors (${rangeSuffix})`, value: current?.visitors ?? "—" },
           {
-            label: "Visited, didn't sign up (7d)",
-            value: summary?.visitorsNotConverted7d ?? "—",
+            label: `Visited, didn't sign up (${rangeSuffix})`,
+            value: current?.visitorsNotConverted ?? "—",
           },
           {
             label: "Android app installs (all time)",
-            value: summary?.androidInstallsTotal ?? "—",
+            value: current?.androidInstallsTotal ?? "—",
           },
-          { label: "Android app installs (7d)", value: summary?.androidInstalls7d ?? "—" },
           {
-            label: "Top city (7d)",
-            value: summary?.topCities.find((c) => c.city !== "Unknown")?.city ?? "—",
+            label: `Android app installs (${rangeSuffix})`,
+            value: current?.androidInstalls ?? "—",
+          },
+          {
+            label: `Top city (${rangeSuffix})`,
+            value: current?.topCities.find((c) => c.city !== "Unknown")?.city ?? "—",
           },
         ].map((s) => (
           <div
@@ -369,27 +411,27 @@ export function AdminActivityLog() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <DistributionList
-          title="Most-used features (7d)"
-          rows={(summary?.topActions ?? []).map((a) => ({
+          title={`Most-used features (${rangeSuffix})`}
+          rows={(current?.topActions ?? []).map((a) => ({
             label: formatAction(a.action),
             count: a.count,
           }))}
         />
         <DistributionList
-          title="Where users hit errors (7d)"
-          rows={(summary?.topErrorActions ?? []).map((a) => ({
+          title={`Where users hit errors (${rangeSuffix})`}
+          rows={(current?.topErrorActions ?? []).map((a) => ({
             label: formatAction(a.action),
             count: a.count,
           }))}
           emphasis="danger"
         />
         <DistributionList
-          title="Activity by role (7d)"
-          rows={(summary?.byRole ?? []).map((r) => ({ label: r.role, count: r.count }))}
+          title={`Activity by role (${rangeSuffix})`}
+          rows={(current?.byRole ?? []).map((r) => ({ label: r.role, count: r.count }))}
         />
         <DistributionList
-          title="Activity by city (7d)"
-          rows={(summary?.topCities ?? []).map((c) => ({ label: c.city, count: c.count }))}
+          title={`Activity by city (${rangeSuffix})`}
+          rows={(current?.topCities ?? []).map((c) => ({ label: c.city, count: c.count }))}
         />
       </div>
 

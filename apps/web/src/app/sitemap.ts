@@ -60,12 +60,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let doctorEntries: MetadataRoute.Sitemap = [];
   try {
-    const slugs = await PublicDoctorService.listPublicDoctorSlugs();
-    doctorEntries = slugs.map((slug) => ({
-      url: getSiteUrl(`/doctors/${slug}`),
-      lastModified,
+    const doctors = await PublicDoctorService.listPublicDoctorDirectory();
+    doctorEntries = doctors.map((doctor) => ({
+      url: getSiteUrl(`/doctors/${doctor.slug}`),
+      lastModified: doctor.updatedAt ? new Date(doctor.updatedAt) : lastModified,
       changeFrequency: "weekly" as const,
-      priority: 0.6,
+      priority: 0.8,
+      // Image sitemap entry so the doctor's photo can surface in image search for their name.
+      ...(doctor.avatarUrl
+        ? {
+            images: [
+              doctor.avatarUrl.startsWith("http") ? doctor.avatarUrl : getSiteUrl(doctor.avatarUrl),
+            ],
+          }
+        : {}),
     }));
   } catch {
     // Sitemap still works without DB (e.g. local build without MongoDB).

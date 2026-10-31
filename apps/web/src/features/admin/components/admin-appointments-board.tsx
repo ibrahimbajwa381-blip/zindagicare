@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Calendar, Check, Copy, Eye, Star, Stethoscope, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { surfaceCard } from "@/lib/ui/surfaces";
-import { cn } from "@zindagi/shared";
+import { cn, isManagerOnly } from "@zindagi/shared";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import {
   AdminAppointmentDetailModal,
@@ -192,6 +193,8 @@ export function AdminAppointmentsBoard() {
   const [typeFilter, setTypeFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  // Refund decisions are admin-only (the API refuses managers too).
+  const canResolveRefunds = !isManagerOnly(useSession().data?.user?.roles);
   const [reassignFor, setReassignFor] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [detailFor, setDetailFor] = useState<Appointment | null>(null);
@@ -595,7 +598,7 @@ export function AdminAppointmentsBoard() {
                   <Button size="sm" variant="outline" onClick={() => setDetailFor(a)}>
                     View details
                   </Button>
-                  {a.cancellationRequestStatus === "pending" && (
+                  {canResolveRefunds && a.cancellationRequestStatus === "pending" && (
                     <>
                       <Button
                         size="sm"

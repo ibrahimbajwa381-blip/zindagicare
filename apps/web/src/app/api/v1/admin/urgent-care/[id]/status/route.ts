@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import {
   urgentCareStatusSchema,
   type UrgentCareStatusInput,
@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: Params) {
   const { id } = await params;
   const handler = withApiHandler<UrgentCareStatusInput>(
     async ({ body }) => UrgentConsultService.updateStatus(id, body),
-    { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN], bodySchema: urgentCareStatusSchema },
+    { auth: true, roles: ADMIN_PANEL_ROLES, bodySchema: urgentCareStatusSchema },
   );
   return handler(req as import("next/server").NextRequest);
 }

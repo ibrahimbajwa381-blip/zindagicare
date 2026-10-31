@@ -3,7 +3,7 @@ import {
   getAdminSundayOverview,
   updateAdminSundaySettings,
 } from "@/server/services/admin-sunday.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { adminSundaySettingsSchema } from "@zindagi/validators";
 
 export const GET = withApiHandler(
@@ -11,14 +11,14 @@ export const GET = withApiHandler(
     const dateKey = searchParams.get("date") ?? undefined;
     return getAdminSundayOverview(dateKey);
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );
 
 export const PATCH = withApiHandler(
   async ({ body }) => updateAdminSundaySettings(body),
   {
     auth: true,
-    roles: [Roles.ADMIN, Roles.SUPER_ADMIN],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: adminSundaySettingsSchema,
   },
 );

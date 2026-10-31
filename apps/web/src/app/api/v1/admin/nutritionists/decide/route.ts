@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { decideNutritionistVerification } from "@/server/services/nutritionist-verification.service";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 const decideSchema = z.object({
   nutritionistProfileId: z.string().min(1),
@@ -22,7 +23,7 @@ export const POST = withApiHandler(
   },
   {
     auth: true,
-    roles: ["admin", "super_admin"],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: decideSchema,
   },
 );

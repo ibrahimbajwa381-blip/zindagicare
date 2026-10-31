@@ -1,6 +1,7 @@
 import { adminDoctorDecisionSchema } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { decideDoctorVerification } from "@/server/services/doctor-verification.service";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export const POST = withApiHandler(
   async ({ session, body }) => {
@@ -19,7 +20,7 @@ export const POST = withApiHandler(
   },
   {
     auth: true,
-    roles: ["admin", "super_admin"],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: adminDoctorDecisionSchema,
   },
 );

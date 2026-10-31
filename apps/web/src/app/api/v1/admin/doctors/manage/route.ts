@@ -3,7 +3,7 @@ import {
   adminCreateDoctor,
   listAllDoctors,
 } from "@/server/services/admin-doctor.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { adminCreateDoctorSchema } from "@zindagi/validators";
 
 export const GET = withApiHandler(
@@ -12,7 +12,7 @@ export const GET = withApiHandler(
     const doctors = await listAllDoctors(search);
     return { doctors };
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );
 
 export const POST = withApiHandler(
@@ -22,7 +22,7 @@ export const POST = withApiHandler(
   },
   {
     auth: true,
-    roles: [Roles.ADMIN, Roles.SUPER_ADMIN],
+    roles: ADMIN_PANEL_ROLES,
     bodySchema: adminCreateDoctorSchema,
   },
 );

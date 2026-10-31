@@ -3,7 +3,9 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
-import { AppError } from "@zindagi/shared";
+import { AppError, isManagerOnly } from "@zindagi/shared";
+import { auth } from "@/lib/auth";
+import { forPanelViewer } from "@/server/lib/manager-access";
 import { Button } from "@/components/ui/button";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { getHerbalistDetailForAdmin } from "@/server/services/admin-herbalist.service";
@@ -45,7 +47,8 @@ async function loadProviderOr404(
 ): Promise<AdminConsultProviderDetail> {
   if (!OBJECT_ID.test(id)) notFound();
   try {
-    return await loadDetail(kind, id);
+    const session = await auth();
+    return forPanelViewer(session?.user?.roles, await loadDetail(kind, id));
   } catch (error) {
     if (error instanceof AppError && error.statusCode === 404) notFound();
     throw error;
@@ -150,6 +153,7 @@ export async function ConsultProviderManageDetailPage({
 }) {
   const config = getConsultProviderAdminConfig(kind);
   const provider = await loadProviderOr404(kind, id);
+  const session = await auth();
   return (
     <>
       <AdminPageHeader
@@ -166,10 +170,12 @@ export async function ConsultProviderManageDetailPage({
         }
       />
       <ConsultProviderManageDetail kind={kind} initialProvider={provider} />
-      <section className="mt-8 space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Earnings &amp; payouts</h2>
-        <ConsultProviderFinance kind={kind} providerId={provider.id} />
-      </section>
+      {!isManagerOnly(session?.user?.roles) && (
+        <section className="mt-8 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Earnings &amp; payouts</h2>
+          <ConsultProviderFinance kind={kind} providerId={provider.id} />
+        </section>
+      )}
     </>
   );
 }

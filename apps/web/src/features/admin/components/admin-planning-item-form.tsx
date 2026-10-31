@@ -16,6 +16,7 @@ import {
   PLANNING_STATUSES,
   PRIORITY_LABELS,
   STATUS_LABELS,
+  SUGGESTED_COST_CATEGORIES,
   SUGGESTED_TARGET_METRICS,
   currentMonthKey,
   type PartnerStage,
@@ -65,7 +66,7 @@ function toFormState(kind: PlanningKind, item?: PlanningItemRow): FormState {
     title: item?.title ?? "",
     description: item?.description ?? "",
     city: item?.city ?? "",
-    status: item?.status ?? "planned",
+    status: item?.status ?? (kind === "expense" ? "in_progress" : "planned"),
     priority: item?.priority ?? "medium",
     owner: item?.owner ?? "",
     startDate: item?.startDate ?? "",
@@ -101,7 +102,7 @@ function toRequestBody(form: FormState) {
     startDate: k !== "achievement" ? optionalString(form.startDate) : undefined,
     dueDate: k !== "achievement" ? optionalString(form.dueDate) : undefined,
     month: k === "target" ? optionalString(form.month) : undefined,
-    metric: k === "target" ? optionalString(form.metric) : undefined,
+    metric: k === "target" || k === "expense" ? optionalString(form.metric) : undefined,
     unit: k === "target" ? optionalString(form.unit) : undefined,
     targetValue: k === "target" ? optionalNumber(form.targetValue) : undefined,
     currentValue: k === "target" ? optionalNumber(form.currentValue) : undefined,
@@ -110,7 +111,7 @@ function toRequestBody(form: FormState) {
     contactName: k === "partnership" ? optionalString(form.contactName) : undefined,
     contactPhone: k === "partnership" ? optionalString(form.contactPhone) : undefined,
     achievedAt: k === "achievement" ? optionalString(form.achievedAt) : undefined,
-    budget: k === "campaign" ? optionalNumber(form.budget) : undefined,
+    budget: k === "campaign" || k === "expense" ? optionalNumber(form.budget) : undefined,
   };
 }
 
@@ -158,6 +159,10 @@ export function PlanningItemForm({
     }
     if (k === "target" && (!form.month || !(Number(form.targetValue) > 0))) {
       setError("A target needs a month and a target number above zero");
+      return;
+    }
+    if (k === "expense" && !(Number(form.budget) > 0)) {
+      setError("Set the monthly amount");
       return;
     }
     setSaving(true);
@@ -241,7 +246,9 @@ export function PlanningItemForm({
                     ? "e.g. Services Hospital"
                     : k === "achievement"
                       ? "e.g. 100th completed consultation"
-                      : undefined
+                      : k === "expense"
+                        ? "e.g. Vercel Pro hosting"
+                        : undefined
               }
               onChange={(e) => update({ title: e.target.value })}
             />
@@ -390,6 +397,38 @@ export function PlanningItemForm({
                 onChange={(e) => update({ budget: e.target.value })}
               />
             </div>
+          )}
+
+          {k === "expense" && (
+            <>
+              <div>
+                <Label htmlFor="pl-amount">Amount per month (PKR)</Label>
+                <Input
+                  id="pl-amount"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={form.budget}
+                  onChange={(e) => update({ budget: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="pl-category">Category</Label>
+                <Input
+                  id="pl-category"
+                  list="pl-category-options"
+                  value={form.metric}
+                  maxLength={120}
+                  placeholder="e.g. Hosting & servers"
+                  onChange={(e) => update({ metric: e.target.value })}
+                />
+                <datalist id="pl-category-options">
+                  {SUGGESTED_COST_CATEGORIES.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+            </>
           )}
 
           <div>

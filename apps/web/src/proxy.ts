@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import { NextResponse, type NextRequest } from "next/server";
-import { Roles, VerificationStatuses, canUsePatientWorkspace } from "@zindagi/shared";
+import { Roles, VerificationStatuses, canUsePatientWorkspace, isManagerOnly } from "@zindagi/shared";
 import { authConfig } from "@/lib/auth/auth.config";
 import { REFERRAL_COOKIE_NAME } from "@/lib/doctors/referral-cookie";
 import {
@@ -15,6 +15,7 @@ import {
   isPatientDashboardPath,
   ONBOARDING_EXEMPT_PREFIXES,
   ROLE_ROUTE_RULES,
+  MANAGER_BLOCKED_ADMIN_PREFIXES,
   needsPatientProfileCompletion,
   resolvePostAuthPath,
 } from "@/lib/auth/routes";
@@ -184,6 +185,10 @@ function routeGuard(req: Parameters<Parameters<typeof auth>[0]>[0]) {
         );
       }
     }
+  }
+
+  if (isManagerOnly(roles) && matchesPrefix(pathname, MANAGER_BLOCKED_ADMIN_PREFIXES)) {
+    return NextResponse.redirect(new URL(AUTH_ROUTES.adminDashboard, req.nextUrl.origin));
   }
 
   return NextResponse.next();

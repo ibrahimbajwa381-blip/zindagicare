@@ -80,11 +80,19 @@ export function buildPageMetadata({
   description,
   path,
   noIndex = false,
+  routeImages = false,
+  openGraphType = "website",
 }: {
   title: string;
   description: string;
   path: string;
   noIndex?: boolean;
+  /**
+   * The route has its own `opengraph-image` / `twitter-image` files. Leave `images` unset
+   * so Next uses them — an explicit `images` key here would override them with the logo.
+   */
+  routeImages?: boolean;
+  openGraphType?: "website" | "profile";
 }): Metadata {
   const canonical = getSiteUrl(path);
   const ogImage = getSiteUrl(DEFAULT_OG_IMAGE);
@@ -94,18 +102,18 @@ export function buildPageMetadata({
     description,
     alternates: { canonical },
     openGraph: {
-      type: "website",
+      type: openGraphType,
       url: canonical,
       siteName: siteConfig.name,
       title: `${title} | ${siteConfig.name}`,
       description,
-      images: [{ url: ogImage, alt: `${siteConfig.name} logo` }],
+      ...(routeImages ? {} : { images: [{ url: ogImage, alt: `${siteConfig.name} logo` }] }),
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} | ${siteConfig.name}`,
       description,
-      images: [ogImage],
+      ...(routeImages ? {} : { images: [ogImage] }),
     },
     robots: noIndex ? { index: false, follow: false } : undefined,
   };

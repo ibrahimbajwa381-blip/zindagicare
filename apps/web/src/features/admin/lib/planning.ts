@@ -47,6 +47,11 @@ export const KIND_LABELS: Record<PlanningKind, { singular: string; plural: strin
     plural: "Challenges",
     hint: "Problems, risks and blockers to fix",
   },
+  expense: {
+    singular: "Monthly cost",
+    plural: "Monthly costs",
+    hint: "Recurring bills we pay every month — hosting, salaries, subscriptions, rent",
+  },
 };
 
 export const STATUS_LABELS: Record<PlanningStatus, string> = {
@@ -96,6 +101,20 @@ export const SUGGESTED_TARGET_METRICS = [
   "App downloads",
   "Social media followers",
   "Patient reviews",
+];
+
+/** Categories offered when adding a monthly cost; free text is allowed too. */
+export const SUGGESTED_COST_CATEGORIES = [
+  "Hosting & servers",
+  "Domains & email",
+  "Software subscriptions",
+  "SMS / WhatsApp / calls",
+  "Salaries",
+  "Office rent",
+  "Marketing & ads",
+  "Internet & utilities",
+  "Legal & accounting",
+  "Other",
 ];
 
 export type PlanningItemRow = {
@@ -159,6 +178,16 @@ export function targetProgress(item: Pick<PlanningItemRow, "targetValue" | "curr
   return Math.min(100, Math.round(((item.currentValue ?? 0) / item.targetValue) * 100));
 }
 
+/** A monthly cost still being paid (or about to be) — done / cancelled ones are stopped. */
+export function isActiveCost(item: Pick<PlanningItemRow, "kind" | "status">): boolean {
+  return item.kind === "expense" && item.status !== "done" && item.status !== "cancelled";
+}
+
+/** Total PKR per month of every active monthly cost. */
+export function monthlyCostTotal(items: PlanningItemRow[]): number {
+  return items.filter(isActiveCost).reduce((sum, i) => sum + (i.budget ?? 0), 0);
+}
+
 function formatDayKey(key: string): string {
   return new Date(`${key}T12:00:00+05:00`).toLocaleDateString("en-PK", {
     day: "numeric",
@@ -175,6 +204,7 @@ const COPY_ORDER: PlanningKind[] = [
   "campaign",
   "achievement",
   "challenge",
+  "expense",
 ];
 
 /**
@@ -209,6 +239,9 @@ export function planningBoardToText(board: PlanningBoard, copiedOn = new Date())
         return (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
       });
     lines.push("", `${KIND_LABELS[kind].plural.toUpperCase()} (${items.length})`);
+    if (kind === "expense" && items.length) {
+      lines.push(`Total: PKR ${monthlyCostTotal(items).toLocaleString("en-PK")} / month (active only)`);
+    }
     if (items.length === 0) {
       lines.push("- None yet");
       continue;
@@ -223,6 +256,7 @@ export function planningBoardToText(board: PlanningBoard, copiedOn = new Date())
         );
         if (item.metric) details.push(item.metric);
       }
+      if (kind === "expense" && item.metric) details.push(item.metric);
       if (kind === "partnership") {
         if (item.partnerType) details.push(PARTNER_TYPE_LABELS[item.partnerType]);
         if (item.stage) details.push(PARTNER_STAGE_LABELS[item.stage]);
@@ -233,7 +267,10 @@ export function planningBoardToText(board: PlanningBoard, copiedOn = new Date())
       }
       if (item.startDate) details.push(`Starts ${formatDayKey(item.startDate)}`);
       if (item.dueDate) details.push(`Due ${formatDayKey(item.dueDate)}`);
-      if (item.budget != null) details.push(`Budget PKR ${item.budget.toLocaleString("en-PK")}`);
+      if (item.budget != null) {
+        const amount = `PKR ${item.budget.toLocaleString("en-PK")}`;
+        details.push(kind === "expense" ? `${amount} / month` : `Budget ${amount}`);
+      }
       if (item.owner) details.push(`Owner: ${item.owner}`);
       if (item.contactName || item.contactPhone) {
         details.push(`Contact: ${[item.contactName, item.contactPhone].filter(Boolean).join(", ")}`);

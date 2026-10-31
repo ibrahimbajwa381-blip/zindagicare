@@ -3,6 +3,8 @@ export const Roles = {
   DOCTOR: "doctor",
   ADMIN: "admin",
   SUPER_ADMIN: "super_admin",
+  /** Operations manager: admin panel without finances or admin management. */
+  MANAGER: "manager",
   RIDER: "rider",
   NURSE: "nurse",
   PHYSIOTHERAPIST: "physiotherapist",

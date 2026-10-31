@@ -1,5 +1,6 @@
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { listAllHerbalists } from "@/server/services/admin-herbalist.service";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export const GET = withApiHandler(
   async ({ searchParams }) => ({
@@ -8,5 +9,5 @@ export const GET = withApiHandler(
       searchParams.get("status") ?? undefined,
     ),
   }),
-  { auth: true, roles: ["admin", "super_admin"] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );

@@ -14,7 +14,8 @@ import { TopDoctorsSection } from "@/features/marketing/components/top-doctors-s
 import { TopDoctorsSectionSkeleton } from "@/features/marketing/components/top-doctors-section-skeleton";
 import { DoctorBrowseSection } from "@/features/marketing/components/doctor-browse-section";
 import { CareTeamSection } from "@/features/marketing/components/care-team-section";
-import { ConsultProvidersSection } from "@/features/marketing/components/consult-providers-section";
+// Hidden for now: re-enable with the <ConsultProvidersSection /> below.
+// import { ConsultProvidersSection } from "@/features/marketing/components/consult-providers-section";
 import { ProviderOnboardingPreview } from "@/features/marketing/components/provider-onboarding-preview";
 import { TestimonialsSection } from "@/features/marketing/components/testimonials-section";
 import { TrustBar } from "@/features/marketing/components/trust-bar";
@@ -40,9 +41,10 @@ export default async function HomePage() {
       {/* <HomeQaSection /> */}
       <HomeServicesPreview />
       <HomePhysioBanner />
-      <Suspense fallback={null}>
+      {/* Herbalists & nutritionists section hidden from the landing page for now. */}
+      {/* <Suspense fallback={null}>
         <ConsultProvidersSection />
-      </Suspense>
+      </Suspense> */}
       <Suspense fallback={<TopDoctorsSectionSkeleton />}>
         <TopDoctorsSection />
       </Suspense>

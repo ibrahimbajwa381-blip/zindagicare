@@ -34,6 +34,8 @@ import {
   VerificationStatuses,
   VISIT_SUMMARY_MIN_LENGTH,
   isAdmin,
+  isAdminPanelUser,
+  isManagerOnly,
   resolveNurseHomeVisitFee,
   resolvePhysioHomeVisitFee,
   isDoctorHomeVisitService,
@@ -52,6 +54,7 @@ import type {
   UpdateHomeVisitStatusInput,
 } from "@zindagi/validators";
 import { saveHomeVisitReport } from "./home-visit-reports.storage";
+import { redactFinance } from "@/server/lib/manager-access";
 import {
   citiesMatch,
   doctorCoversCity,
@@ -405,6 +408,8 @@ function refId(ref: unknown): string | undefined {
 /** Strips provider-to-admin fields from a visit shown to someone other than admin or the assigned provider. */
 function redactForViewer(dto: HomeVisitDto, userId: string, roles: string[]): HomeVisitDto {
   if (isAdmin(roles as never) || dto.assignedStaff?.id === userId) return dto;
+  // Managers get the admin view minus money; their own visits as a patient stay untouched below.
+  if (isManagerOnly(roles as never) && dto.patient?.id !== userId) return redactFinance(dto);
   return { ...dto, visitSummary: undefined };
 }
 
@@ -1308,7 +1313,8 @@ export class HomeVisitService {
 
     if (status) filter.status = status;
 
-    if (isAdmin(roles as never) && (scope === "all" || scope === "pending")) {
+    if (isAdminPanelUser(roles as never) && (scope === "all" || scope === "pending")) {
+      sort = { createdAt: -1 };
       if (scope === "pending") {
         filter.status = HomeVisitStatuses.REQUESTED;
       }
@@ -1377,7 +1383,7 @@ export class HomeVisitService {
       )
     ).map((dto) => redactForViewer(dto, userId, roles));
 
-    return isAdmin(roles as never) ? attachPatientReviews(dtos) : dtos;
+    return isAdminPanelUser(roles as never) ? attachPatientReviews(dtos) : dtos;
   }
 
   /**
@@ -1450,7 +1456,7 @@ export class HomeVisitService {
       userId,
       roles,
     );
-    return isAdmin(roles as never) ? (await attachPatientReviews([dto]))[0] : dto;
+    return isAdminPanelUser(roles as never) ? (await attachPatientReviews([dto]))[0] : dto;
   }
 
   static assertCanAccess(
@@ -1464,7 +1470,7 @@ export class HomeVisitService {
     const staffId = refId(
       (visit as Record<string, unknown>).assignedStaffId,
     );
-    const admin = isAdmin(roles as never);
+    const admin = isAdminPanelUser(roles as never);
 
     if (patientId !== userId && staffId !== userId && !admin) {
       throw new AppError("Forbidden", ErrorCodes.FORBIDDEN, 403);
@@ -1988,7 +1994,7 @@ export class HomeVisitService {
 
     HomeVisitService.assertCanAccess(visit, userId, roles);
 
-    const admin = isAdmin(roles as never);
+    const admin = isAdminPanelUser(roles as never);
     const isAssignedStaff = refId(visit.assignedStaffId) === userId;
     const visitPatientId = refId(visit.patientId);
     const isPatient = visitPatientId === userId;

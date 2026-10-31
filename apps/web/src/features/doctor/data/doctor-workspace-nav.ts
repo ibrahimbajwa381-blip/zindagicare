@@ -205,7 +205,7 @@ export function summaryToNavStats(
   return {
     unreadMessages,
     pendingRequests: summary.pendingRequests,
-    sundayQueue: summary.sundayQueue,
+    sundayQueue: summary.sundayOpenRequests,
     homeVisits: summary.homeVisitRequests,
     urgentCalls: summary.urgentCalls,
   };

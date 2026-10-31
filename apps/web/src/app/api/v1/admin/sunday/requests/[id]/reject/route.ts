@@ -1,4 +1,4 @@
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 import { sundayFreeRejectSchema, type SundayFreeRejectInput } from "@zindagi/validators";
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: Params) {
       SundayConsultService.rejectRequestByAdmin(session!.user!.id, id, body.reason),
     {
       auth: true,
-      roles: [Roles.ADMIN, Roles.SUPER_ADMIN],
+      roles: ADMIN_PANEL_ROLES,
       bodySchema: sundayFreeRejectSchema,
     },
   );

@@ -1,4 +1,5 @@
 import { siteConfig } from "@/config/site";
+import { doctorPlainName } from "@/lib/seo/doctor-seo";
 import { getSiteUrl } from "@/lib/seo/metadata";
 
 export type FaqItem = { q: string; a: string };
@@ -39,12 +40,17 @@ export function buildPhysicianSchema(doctor: {
   specialties: string[];
   bio?: string;
   avatarUrl?: string;
-  hospitals: { name: string; city: string }[];
+  hospitals: { name: string; city: string; area?: string; address?: string }[];
   pmdcVerified: boolean;
   ratingAvg: number;
   ratingCount: number;
   consultationFee: number;
   medicalCollege?: string;
+  medicalDegree?: string;
+  qualifications?: string[];
+  languages?: string[];
+  videoConsultEnabled?: boolean;
+  reviews?: { rating: number; comment?: string; patientName: string; createdAt: string }[];
   portfolio?: {
     headline?: string;
     conditionsTreated: string[];
@@ -58,12 +64,20 @@ export function buildPhysicianSchema(doctor: {
   const hospital = doctor.hospitals[0];
   const portfolio = doctor.portfolio;
   const sameAs = portfolio ? Object.values(portfolio.links).filter(Boolean) : [];
+  const url = getSiteUrl(`/doctors/${doctor.slug}`);
+  const plainName = doctorPlainName(doctor.name);
+  const credentials = [doctor.medicalDegree, ...(doctor.qualifications ?? [])].filter(
+    (c, i, all): c is string => Boolean(c?.trim()) && all.indexOf(c) === i,
+  );
+  const reviews = (doctor.reviews ?? []).filter((r) => r.comment?.trim()).slice(0, 5);
 
   return {
     "@context": "https://schema.org",
     "@type": "Physician",
+    "@id": `${url}#physician`,
     name: doctor.name,
-    url: getSiteUrl(`/doctors/${doctor.slug}`),
+    ...(plainName && plainName !== doctor.name ? { alternateName: plainName } : {}),
+    url,
     image: doctor.avatarUrl?.startsWith("http")
       ? doctor.avatarUrl
       : doctor.avatarUrl
@@ -94,6 +108,39 @@ export function buildPhysicianSchema(doctor: {
         }
       : {}),
     ...(sameAs.length ? { sameAs } : {}),
+    ...(credentials.length
+      ? {
+          hasCredential: credentials.map((name) => ({
+            "@type": "EducationalOccupationalCredential",
+            credentialCategory: "degree",
+            name,
+          })),
+        }
+      : {}),
+    ...(doctor.languages?.length ? { knowsLanguage: doctor.languages } : {}),
+    ...(doctor.consultationFee > 0 ? { priceRange: `Rs. ${doctor.consultationFee}` } : {}),
+    ...(doctor.videoConsultEnabled ? { areaServed: { "@type": "Country", name: "Pakistan" } } : {}),
+    ...(hospital
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            ...(hospital.address ? { streetAddress: hospital.address } : {}),
+            addressLocality: hospital.city,
+            addressCountry: "PK",
+          },
+        }
+      : {}),
+    ...(reviews.length
+      ? {
+          review: reviews.map((r) => ({
+            "@type": "Review",
+            author: { "@type": "Person", name: r.patientName },
+            datePublished: r.createdAt.slice(0, 10),
+            reviewBody: r.comment,
+            reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+          })),
+        }
+      : {}),
     ...(hospital
       ? {
           hospitalAffiliation: {
@@ -121,13 +168,35 @@ export function buildPhysicianSchema(doctor: {
       price: doctor.consultationFee,
       priceCurrency: "PKR",
       availability: "https://schema.org/InStock",
-      url: getSiteUrl(`/doctors/${doctor.slug}`),
+      url,
     },
     parentOrganization: {
       "@type": "MedicalOrganization",
+      "@id": getSiteUrl("/#organization"),
       name: siteConfig.name,
       url: getSiteUrl(),
     },
+  };
+}
+
+/** Marks a page as the profile of `mainEntityId` (a Physician or other provider node). */
+export function buildProfilePageSchema(page: {
+  path: string;
+  name: string;
+  mainEntityId: string;
+  dateModified?: string;
+}) {
+  const url = getSiteUrl(page.path);
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "@id": url,
+    url,
+    name: page.name,
+    mainEntity: { "@id": page.mainEntityId },
+    isPartOf: { "@id": getSiteUrl("/#website") },
+    inLanguage: "en-PK",
+    ...(page.dateModified ? { dateModified: page.dateModified } : {}),
   };
 }
 

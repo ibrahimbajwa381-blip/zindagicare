@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
-import { cn } from "@zindagi/shared";
+import { cn, isManagerOnly } from "@zindagi/shared";
+import { MANAGER_BLOCKED_ADMIN_PREFIXES } from "@/lib/auth/routes";
 import { siteConfig } from "@/config/site";
 import {
   ADMIN_REVIEWS_ROOT,
@@ -279,6 +281,9 @@ const NAV_SECTIONS: AdminNavSection[] = [
   },
 ];
 
+/** Hidden from managers; the proxy and APIs block these too. */
+const MANAGER_HIDDEN_HREFS = new Set<string>(MANAGER_BLOCKED_ADMIN_PREFIXES);
+
 const VERIFICATION_QUEUE_ROOTS = new Set([
   "/admin/doctors",
   "/admin/nurses",
@@ -316,6 +321,14 @@ type AdminSidebarProps = {
 
 export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const managerOnly = isManagerOnly(session?.user?.roles);
+  const sections = managerOnly
+    ? NAV_SECTIONS.map((section) => ({
+        ...section,
+        items: section.items.filter((item) => !MANAGER_HIDDEN_HREFS.has(item.href)),
+      }))
+    : NAV_SECTIONS;
   const [counts, setCounts] = useState<AdminNavCounts | null>(null);
   /** Explicit open/closed per group; unset groups default to open when a child page is active. */
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -592,7 +605,7 @@ export function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
 
       <nav className="sidebar-scroll min-h-0 flex-1 px-3 py-4">
         <div className="space-y-6">
-          {NAV_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.title}>
               <p className="mb-2.5 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <span className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />

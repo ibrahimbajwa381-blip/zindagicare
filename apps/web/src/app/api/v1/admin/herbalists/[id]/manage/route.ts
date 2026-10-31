@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
-import { AppError, isAdmin } from "@zindagi/shared";
+import { assertPanelWrite, forPanelViewer } from "@/server/lib/manager-access";
+import { AppError, isAdminPanelUser } from "@zindagi/shared";
 import { adminUpdateHerbalist } from "@/server/services/admin-herbalist.service";
 import { adminUpdateHerbalistSchema } from "@zindagi/validators";
 
@@ -10,13 +11,14 @@ export async function PATCH(req: Request, { params }: Params) {
   try {
     const session = await auth();
     if (!session?.user?.id) throw new AppError("Unauthorized", "UNAUTHORIZED", 401);
-    if (!isAdmin(session.user.roles)) {
+    if (!isAdminPanelUser(session.user.roles)) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }
 
     const { id } = await params;
     const body = adminUpdateHerbalistSchema.parse(await req.json());
-    return apiSuccess(await adminUpdateHerbalist(session.user.id, id, body));
+    assertPanelWrite(session.user.roles, body);
+    return apiSuccess(forPanelViewer(session.user.roles, await adminUpdateHerbalist(session.user.id, id, body)));
   } catch (error) {
     return apiError(error);
   }

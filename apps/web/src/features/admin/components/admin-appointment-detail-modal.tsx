@@ -194,7 +194,9 @@ export function AdminAppointmentDetailModal({
                 <Row label="Patient" value={a.patient.name} />
                 <Row label="Patient phone" value={a.patient.phone} />
                 <Row label="Patient email" value={a.patient.email} />
-                <Row label="Referral" value={a.isReferred ? "Yes — referred by this doctor" : "No"} />
+                {a.isReferred !== undefined && (
+                  <Row label="Referral" value={a.isReferred ? "Yes — referred by this doctor" : "No"} />
+                )}
                 {a.clinic && (
                   <Row
                     label="Clinic"
@@ -222,6 +224,8 @@ export function AdminAppointmentDetailModal({
                   </>
                 )}
               </div>
+              {/* Referral drives commission, so managers' responses omit it. */}
+              {a.isReferred !== undefined && (
               <div className="mt-2 space-y-1.5">
                 <button
                   type="button"
@@ -237,6 +241,7 @@ export function AdminAppointmentDetailModal({
                 </button>
                 {referralError && <p className="text-sm text-red-500">{referralError}</p>}
               </div>
+              )}
             </section>
 
             {a.refundMethod && (
@@ -261,9 +266,16 @@ export function AdminAppointmentDetailModal({
                 Payment
               </h3>
               {a.amountPkr === undefined ? (
-                <p className="rounded-xl border border-slate-100 px-3 py-3 text-sm text-slate-500">
-                  No payment record found for this appointment.
-                </p>
+                // Managers get the status only; amounts and payment details are withheld.
+                a.paymentStatus ? (
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 px-3">
+                    <Row label="Payment status" value={a.paymentStatus} />
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-slate-100 px-3 py-3 text-sm text-slate-500">
+                    No payment record found for this appointment.
+                  </p>
+                )
               ) : (
                 <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 px-3">
                   <Row

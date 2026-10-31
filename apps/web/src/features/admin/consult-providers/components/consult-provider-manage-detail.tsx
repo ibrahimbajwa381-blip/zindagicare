@@ -46,6 +46,8 @@ export function ConsultProviderManageDetail({ kind, initialProvider }: Props) {
   const { singularLower } = config.labels;
 
   const [provider, setProvider] = useState(initialProvider);
+  // Commission is stripped from managers' responses (null still means "platform default").
+  const showFinance = provider.onlineCommissionPercent !== undefined;
   // Bumped after each save so the edit form re-seeds from saved data.
   const [formVersion, setFormVersion] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
@@ -210,15 +212,17 @@ export function ConsultProviderManageDetail({ kind, initialProvider }: Props) {
           hint={`${provider.ratingCount} review${provider.ratingCount === 1 ? "" : "s"}`}
         />
         <StatTile label="Consultation fee" value={formatCurrency(provider.consultationFee)} />
-        <StatTile
-          label="Commission"
-          value={
-            provider.onlineCommissionPercent == null
-              ? "Default"
-              : `${provider.onlineCommissionPercent}%`
-          }
-          hint="Share of each consult fee the provider keeps"
-        />
+        {showFinance && (
+          <StatTile
+            label="Commission"
+            value={
+              provider.onlineCommissionPercent == null
+                ? "Default"
+                : `${provider.onlineCommissionPercent}%`
+            }
+            hint="Share of each consult fee the provider keeps"
+          />
+        )}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -301,6 +305,7 @@ export function ConsultProviderManageDetail({ kind, initialProvider }: Props) {
               disableLabel="Deactivate"
             />
 
+            {showFinance && (
             <div className="border-b border-slate-100 py-4">
               <Label htmlFor={`${config.kind}-commission`}>
                 Share of consult fee kept by {singularLower} (%)
@@ -329,6 +334,7 @@ export function ConsultProviderManageDetail({ kind, initialProvider }: Props) {
                 Leave empty to use the platform default rate.
               </p>
             </div>
+            )}
 
             <div className="pt-4">
               <Button

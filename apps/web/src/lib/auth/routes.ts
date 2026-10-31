@@ -1,6 +1,7 @@
 import {
+  ADMIN_PANEL_ROLES,
   canUsePatientWorkspace,
-  isAdmin,
+  isAdminPanelUser,
   Roles,
   VerificationStatuses,
   type Role,
@@ -233,7 +234,7 @@ export function resolveLoginRedirectPath(
 export function resolvePostAuthPath(user: PostAuthUser): string {
   const roles = user.roles ?? [];
   // Staff roles take priority over patient (doctor > nurse > physio > … > patient).
-  if (isAdmin(roles)) {
+  if (isAdminPanelUser(roles)) {
     return AUTH_ROUTES.adminDashboard;
   }
 
@@ -288,13 +289,25 @@ export function resolvePostAuthPath(user: PostAuthUser): string {
 
 export const ROLE_ROUTE_RULES: { prefix: string; roles: Role[] }[] = [
   { prefix: "/doctor", roles: [Roles.DOCTOR] },
-  { prefix: "/admin", roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { prefix: "/admin", roles: ADMIN_PANEL_ROLES },
   { prefix: "/nurse", roles: [Roles.NURSE] },
   { prefix: "/physiotherapist", roles: [Roles.PHYSIOTHERAPIST] },
   { prefix: "/herbalist", roles: [Roles.HERBALIST] },
   { prefix: "/nutritionist", roles: [Roles.NUTRITIONIST] },
   { prefix: "/rider", roles: [Roles.RIDER] },
 ];
+
+/** Admin pages a manager may not open (finances, analytics, admin management). Their APIs are admin-only too. */
+export const MANAGER_BLOCKED_ADMIN_PREFIXES = [
+  "/admin/finances",
+  "/admin/platform-earnings",
+  "/admin/planning",
+  "/admin/doctor-stats",
+  "/admin/patient-stats",
+  "/admin/users",
+  "/admin/admins",
+  "/admin/admin-activity",
+] as const;
 
 export function matchesPrefix(pathname: string, prefixes: readonly string[]) {
   return prefixes.some(

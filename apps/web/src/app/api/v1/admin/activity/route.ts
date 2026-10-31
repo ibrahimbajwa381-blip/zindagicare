@@ -1,6 +1,6 @@
 import { withApiHandler } from "@/server/api/with-api-handler";
 import { listActivityForAdmin } from "@/server/services/activity-log.service";
-import { Roles } from "@zindagi/shared";
+import { ADMIN_PANEL_ROLES } from "@zindagi/shared";
 
 export const GET = withApiHandler(
   async ({ searchParams }) => {
@@ -13,5 +13,5 @@ export const GET = withApiHandler(
     const pageSize = Number(searchParams.get("pageSize") ?? "25");
     return listActivityForAdmin({ action, role, status, userId, visitorId, page, pageSize });
   },
-  { auth: true, roles: [Roles.ADMIN, Roles.SUPER_ADMIN] },
+  { auth: true, roles: ADMIN_PANEL_ROLES },
 );

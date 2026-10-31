@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/server/api/response";
+import { forPanelViewer } from "@/server/lib/manager-access";
 import { HomeVisitService } from "@/server/services/home-visit.service";
-import { AppError, Roles } from "@zindagi/shared";
+import { AppError, isAdminPanelUser } from "@zindagi/shared";
 import { assignHomeVisitSchema } from "@zindagi/validators";
 
 type Params = { params: Promise<{ id: string }> };
@@ -14,7 +15,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const roles = session.user.roles ?? [];
-    if (!roles.includes(Roles.ADMIN) && !roles.includes(Roles.SUPER_ADMIN)) {
+    if (!isAdminPanelUser(roles)) {
       throw new AppError("Forbidden", "FORBIDDEN", 403);
     }
 
@@ -22,7 +23,7 @@ export async function POST(req: Request, { params }: Params) {
     const json = await req.json();
     const body = assignHomeVisitSchema.parse(json);
     const result = await HomeVisitService.assignStaff(id, body);
-    return apiSuccess(result);
+    return apiSuccess(forPanelViewer(roles, result));
   } catch (error) {
     return apiError(error);
   }
