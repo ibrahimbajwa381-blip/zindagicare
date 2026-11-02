@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime";
 import { useTranslations } from "@/i18n/locale-provider";
+import { FinishConsultButton } from "@/features/consult/components/finish-consult-button";
 import { VideoJoinLinkButton } from "@/features/consult/components/video-join-link-button";
 import { VideoSessionStatusBanner } from "@/features/consult/components/video-session-status-banner";
 import { useVideoJoinWindow } from "@/features/consult/hooks/use-video-join-window";
@@ -54,6 +55,12 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
     !canJoin &&
     now !== null &&
     now > joinClosesAt.getTime();
+  // Mirrors the server's finish policy: an open consult that has started (or whose room is open).
+  const canComplete =
+    (booking.status === AppointmentStatuses.CONFIRMED ||
+      booking.status === AppointmentStatuses.IN_PROGRESS) &&
+    !isMissed &&
+    (canJoin || (now !== null && now >= new Date(booking.scheduledStart).getTime()));
 
   const statusLabel = isMissed
     ? t.dashboard.appointmentHistory.missed
@@ -184,6 +191,9 @@ export function PatientOnlineBookingCard({ booking, variant = "dashboard" }: Pro
             className="gap-1.5"
             iconClassName="h-4 w-4"
           />
+          {canComplete && (
+            <FinishConsultButton appointmentId={booking.appointmentId} asPatient size="default" />
+          )}
           <Button variant="outline" asChild className="gap-1.5">
             <Link href={`${siteConfig.links.messages}?doctor=${doctor.userId}`}>
               <MessageCircle className="h-4 w-4" />

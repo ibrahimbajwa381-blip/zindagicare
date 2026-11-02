@@ -19,7 +19,8 @@ import { VideoSessionService } from "@/server/services/video-session.service";
 
 /**
  * One way to end an online consult, for every type (paid, urgent, Sunday free)
- * and every provider role: the provider presses Finish, or the daily sweep
+ * and every provider role: the provider presses Finish, the patient presses
+ * Complete, or the daily sweep
  * completes an attended consult left open past the grace period. Leaving the
  * call, issuing a prescription or posting a review never ends a consult.
  * Chat access follows the appointment status on its own (care policy).
@@ -49,10 +50,13 @@ const AFTER_CLOSE: Partial<Record<string, (consult: ConsultRow, outcome: Consult
 };
 
 export class ConsultationLifecycleService {
-  /** Provider ends their own consult as completed or patient no-show. */
+  /**
+   * Provider ends their own consult as completed or patient no-show; the
+   * patient may also mark their own consult completed (never no-show).
+   */
   static async finish(
     appointmentId: string,
-    providerUserId: string,
+    userId: string,
     outcome: ConsultOutcome,
     doctorNotes?: string,
   ): Promise<{ status: string }> {
@@ -61,8 +65,13 @@ export class ConsultationLifecycleService {
     const consult = Types.ObjectId.isValid(appointmentId)
       ? await AppointmentModel.findById(appointmentId).lean()
       : null;
-    if (!consult || (await providerUserIdOf(consult)) !== providerUserId) {
+    const providerUserId = consult ? await providerUserIdOf(consult) : null;
+    const byPatient = Boolean(consult && consult.patientId.toString() === userId);
+    if (!consult || (providerUserId !== userId && !byPatient)) {
       throw new AppError("Appointment not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    if (byPatient && outcome !== "completed") {
+      throw new AppError("Only your doctor can mark a no-show.", ErrorCodes.FORBIDDEN, 403);
     }
     if (!FINISHABLE_TYPES.includes(consult.type)) {
       throw new AppError("Only online consultations are finished here.", ErrorCodes.VALIDATION, 400);
@@ -78,7 +87,10 @@ export class ConsultationLifecycleService {
       );
     }
 
-    if (!(await ConsultationLifecycleService.close(consult, outcome, doctorNotes))) {
+    const closed = byPatient
+      ? await ConsultationLifecycleService.close(consult, outcome, undefined, providerUserId)
+      : await ConsultationLifecycleService.close(consult, outcome, doctorNotes);
+    if (!closed) {
       throw new AppError("This consultation is already closed.", ErrorCodes.VALIDATION, 400);
     }
     return {
@@ -114,11 +126,15 @@ export class ConsultationLifecycleService {
     return { scanned: stale.length, completed };
   }
 
-  /** Moves an open consult to its outcome once; false when it was already closed. */
+  /**
+   * Moves an open consult to its outcome once; false when it was already closed.
+   * `notifyProviderUserId` is set when the patient closed it: the provider is told instead.
+   */
   private static async close(
     consult: ConsultRow,
     outcome: ConsultOutcome,
     doctorNotes?: string,
+    notifyProviderUserId?: string | null,
   ): Promise<boolean> {
     const now = new Date();
     const result = await AppointmentModel.updateOne(
@@ -145,12 +161,21 @@ export class ConsultationLifecycleService {
     });
 
     if (outcome === "completed") {
-      await deliverUserNotification({
-        userId: consult.patientId.toString(),
-        title: "Your consultation is complete",
-        body: "Your doctor has finished your consultation. Please take a moment to rate your doctor.",
-        payload: { type: "consult_completed", appointmentId },
-      }).catch((error: unknown) => {
+      await deliverUserNotification(
+        notifyProviderUserId
+          ? {
+              userId: notifyProviderUserId,
+              title: "Consultation marked complete",
+              body: "Your patient has marked the consultation as complete.",
+              payload: { type: "consult_completed", appointmentId },
+            }
+          : {
+              userId: consult.patientId.toString(),
+              title: "Your consultation is complete",
+              body: "Your doctor has finished your consultation. Please take a moment to rate your doctor.",
+              payload: { type: "consult_completed", appointmentId },
+            },
+      ).catch((error: unknown) => {
         console.error("[consultation] completion notification failed", {
           appointmentId,
           error: error instanceof Error ? error.name : "unknown",

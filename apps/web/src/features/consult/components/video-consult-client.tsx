@@ -27,6 +27,7 @@ import type { VideoJoinPayload } from "@/features/consult/types";
 import { AppointmentStatuses, AppointmentTypes } from "@zindagi/shared";
 import { videoConsultPath } from "@/features/consult/paths";
 import { finishConsult } from "@/features/consult/finish-consult";
+import { FinishConsultButton } from "@/features/consult/components/finish-consult-button";
 import { useOutgoingCallRing } from "@/features/consult/hooks/use-outgoing-call-ring";
 import { postCallRingAction } from "@/features/consult/incoming-call";
 import { useTranslations } from "@/i18n/locale-provider";
@@ -251,8 +252,9 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
           {patientOpenCopy.title}
         </h1>
         <p className="mt-2 text-sm text-slate-600">{patientOpenCopy.description}</p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button className="gap-1.5" onClick={rejoin}>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+          <FinishConsultButton appointmentId={appointmentId} asPatient size="default" />
+          <Button variant="outline" className="gap-1.5" onClick={rejoin}>
             <Video className="h-4 w-4" />
             {patientOpenCopy.rejoin}
           </Button>

@@ -21,7 +21,8 @@ export const POST = withApiHandler<FinishConsultInput>(
     ),
   {
     auth: true,
-    roles: [Roles.DOCTOR, Roles.HERBALIST, Roles.NUTRITIONIST],
+    // The service lets the patient only mark their own consult completed.
+    roles: [Roles.DOCTOR, Roles.HERBALIST, Roles.NUTRITIONIST, Roles.PATIENT],
     bodySchema: finishConsultSchema,
     rateLimit: { limit: 30, windowMs: 60_000 },
   },

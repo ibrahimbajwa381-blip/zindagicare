@@ -1573,8 +1573,11 @@ export const en = {
       patientOpen: {
         title: "You left the video call",
         description:
-          "Your consultation stays open until your doctor finishes it, so you can keep chatting and rejoin while the video room is open. You can rate your doctor once they close the consultation.",
+          "Your consultation stays open, so you can keep chatting and rejoin while the video room is open. When you are done, press Complete consultation to rate your doctor and ZindagiCare.",
         rejoin: "Rejoin video",
+        finish: "Complete consultation",
+        confirm:
+          "Complete this consultation? The video room and chat will close and you will be asked to rate your doctor and ZindagiCare.",
       },
       errors: {
         generic: "Could not join the video room. Please try again.",

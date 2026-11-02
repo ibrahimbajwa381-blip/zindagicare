@@ -1,6 +1,6 @@
 /**
  * One way to end an online consult (paid, urgent, Sunday free): the provider
- * presses Finish, or the daily sweep completes an attended consult left open
+ * presses Finish, the patient presses Complete, or the daily sweep completes an attended consult left open
  * past the 72h grace period. Leaving the call never completes it.
  *
  * Real local MongoDB (mongodb-memory-server, ephemeral) + real route handler,
@@ -184,14 +184,44 @@ describe("Consultation lifecycle (real local MongoDB)", () => {
     expect(session?.status).toBe(shared.VideoSessionStatuses.ACTIVE);
   });
 
-  test("only the consult's own provider can finish it", async () => {
+  test("patient completes their own consult, the doctor is told, and both reviews open", async () => {
     const patientId = await createPatient();
+    const doctor = await createDoctor();
+    const appointmentId = await book(patientId, doctor.profileId);
+
+    expect((await finishViaApi(appointmentId, patientId, { outcome: "no_show" })).status).toBe(403);
+    const res = await finishViaApi(appointmentId, patientId, { doctorNotes: "ignored" });
+
+    expect(res.status).toBe(200);
+    const stored = await db.AppointmentModel.findById(appointmentId).select("+doctorNotes").lean();
+    expect(stored).toMatchObject({ status: shared.AppointmentStatuses.COMPLETED });
+    expect(stored?.doctorNotes).toBeUndefined();
+    const { deliverUserNotification } = await import("@/lib/notifications/deliver-notification");
+    expect(deliverUserNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: doctor.userId,
+        payload: { type: "consult_completed", appointmentId },
+      }),
+    );
+
+    const { ReviewService } = await import("@/server/services/review.service");
+    await expect(
+      ReviewService.submitReview(patientId, appointmentId, { rating: 5 }),
+    ).resolves.toMatchObject({ rating: 5 });
+    await expect(
+      ReviewService.submitPlatformReview(patientId, appointmentId, { rating: 4 }),
+    ).resolves.toMatchObject({ rating: 4 });
+  });
+
+  test("only the consult's own provider or patient can finish it", async () => {
+    const patientId = await createPatient();
+    const otherPatientId = await createPatient();
     const doctor = await createDoctor();
     const otherDoctor = await createDoctor();
     const appointmentId = await book(patientId, doctor.profileId);
 
     expect((await finishViaApi(appointmentId, otherDoctor.userId)).status).toBe(404);
-    expect((await finishViaApi(appointmentId, patientId)).status).toBe(403);
+    expect((await finishViaApi(appointmentId, otherPatientId)).status).toBe(404);
     expect((await finishViaApi("not-an-id", doctor.userId)).status).toBe(404);
     expect(await statusOf(appointmentId)).toBe(shared.AppointmentStatuses.IN_PROGRESS);
   });
