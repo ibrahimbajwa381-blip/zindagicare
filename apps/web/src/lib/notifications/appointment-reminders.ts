@@ -1,5 +1,11 @@
 import { withDoctorTitle } from "@zindagi/shared";
 import { deliverUserNotification } from "@/lib/notifications/deliver-notification";
+import { siteConfig } from "@/config/site";
+import { videoConsultPath } from "@/features/consult/paths";
+
+function videoJoinUrl(appointmentId: string) {
+  return `${siteConfig.url.replace(/\/+$/, "")}${videoConsultPath(appointmentId)}`;
+}
 
 function formatSlotTime(slotStart: Date) {
   return slotStart.toLocaleString("en-PK", {
@@ -169,6 +175,8 @@ export async function sendAppointmentStartNow(params: {
     phone: params.phone,
     title: "Consultation starts now",
     body: `Your ${label} with ${withDoctorTitle(params.doctorName)} is starting now. Join from your dashboard.`,
+    ctaLabel: "Join consultation",
+    ctaUrl: videoJoinUrl(params.appointmentId),
     payload: {
       type: "appointment_reminder_start_now",
       appointmentId: params.appointmentId,
@@ -193,6 +201,9 @@ export async function sendDoctorAppointmentStartNow(params: {
     body: isVideo
       ? `Your ${label} with ${params.patientName} is starting now. Tap to join the Zoom call.`
       : `Your ${label} with ${params.patientName} is starting now.`,
+    ...(isVideo
+      ? { ctaLabel: "Join consultation", ctaUrl: videoJoinUrl(params.appointmentId) }
+      : {}),
     payload: {
       type: "doctor_appointment_reminder_start_now",
       appointmentId: params.appointmentId,

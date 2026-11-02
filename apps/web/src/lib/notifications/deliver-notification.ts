@@ -17,6 +17,9 @@ export type DeliverNotificationInput = {
   skipPush?: boolean;
   /** Skip email even when the account has one on file. Default false. */
   skipEmail?: boolean;
+  /** Optional email button; both must be set. `ctaUrl` must be absolute. */
+  ctaLabel?: string;
+  ctaUrl?: string;
 };
 
 /**
@@ -62,6 +65,8 @@ export async function deliverUserNotification(
             name: user.name,
             title: input.title,
             body: input.body,
+            ctaLabel: input.ctaLabel,
+            ctaUrl: input.ctaUrl,
           });
           return sendEmail({ to: user.email, subject, html, text });
         })
