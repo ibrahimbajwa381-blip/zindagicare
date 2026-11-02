@@ -310,10 +310,45 @@
           loadZoomI18n(payload);
         }
 
+        // Zoom redirects here (leaveUrl) after leaving; hand control back to the app.
+        if (new URLSearchParams(window.location.search).has("left")) {
+          postToParent("zindagi-zoom-left");
+          return;
+        }
+
+        // Leave properly so Zoom drops this participant; otherwise a rejoin hangs on "Joining Meeting…".
+        function leaveZoom() {
+          if (!started || typeof ZoomMtg === "undefined") {
+            postToParent("zindagi-zoom-left");
+            return;
+          }
+          try {
+            ZoomMtg.leaveMeeting({
+              error: function () {
+                postToParent("zindagi-zoom-left");
+              },
+            });
+          } catch (e) {
+            postToParent("zindagi-zoom-left");
+          }
+        }
+
+        window.addEventListener("pagehide", function () {
+          if (!started || typeof ZoomMtg === "undefined") return;
+          try {
+            ZoomMtg.leaveMeeting({});
+          } catch (e) {
+            /* ignore */
+          }
+        });
+
         window.addEventListener("message", function (event) {
           if (event.origin !== window.location.origin) return;
           if (event.data && event.data.type === "zindagi-zoom-join") {
             joinMeeting(event.data.payload);
+          }
+          if (event.data && event.data.type === "zindagi-zoom-leave") {
+            leaveZoom();
           }
         });
 

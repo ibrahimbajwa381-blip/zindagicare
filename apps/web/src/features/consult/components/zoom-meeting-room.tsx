@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { MessageCircle } from "lucide-react";
 import type { VideoJoinPayload } from "@/features/consult/types";
 import { getWhatsAppSupportUrl } from "@/lib/support-contact";
@@ -10,16 +10,19 @@ type Props = {
   appointmentId: string;
   payload: VideoJoinPayload;
   onLeave: () => void;
+  /** Set by this component: asks Zoom to leave cleanly, then calls onLeave. */
+  leaveRef: MutableRefObject<(() => void) | null>;
 };
 
 /** Embedded Zoom via isolated iframe (Zoom CDN + React 18), stays on ZindagiCare. */
-export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
+export function ZoomMeetingRoom({ appointmentId, payload, onLeave, leaveRef }: Props) {
   const t = useTranslations();
   const copy = t.consult.videoSession;
   const locale = useOptionalLocale();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const joinSentRef = useRef(false);
   const joinedRecordedRef = useRef(false);
+  const leaveTimerRef = useRef<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   const uiCopy = useMemo(
@@ -53,14 +56,28 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
           sdkKey: payload.sdkKey,
           passcode: payload.passcode,
           meetingTitle: payload.meetingTitle,
-          leaveUrl: `${window.location.origin}/consult/video/${appointmentId}?left=1`,
+          leaveUrl: `${window.location.origin}/zoom/meeting.html?left=1`,
           locale,
           uiCopy,
         },
       },
       window.location.origin,
     );
-  }, [appointmentId, locale, payload, uiCopy]);
+  }, [locale, payload, uiCopy]);
+
+  useEffect(() => {
+    leaveRef.current = () => {
+      const frame = iframeRef.current?.contentWindow;
+      if (!frame || !joinSentRef.current) return onLeave();
+      frame.postMessage({ type: "zindagi-zoom-leave" }, window.location.origin);
+      leaveTimerRef.current = window.setTimeout(onLeave, 3000); // fallback if Zoom never confirms
+    };
+    return () => {
+      leaveRef.current = null;
+    };
+  }, [leaveRef, onLeave]);
+
+  useEffect(() => () => window.clearTimeout(leaveTimerRef.current), []);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -73,6 +90,10 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
       if (event.data?.type === "zindagi-zoom-joined" && !joinedRecordedRef.current) {
         joinedRecordedRef.current = true;
         void fetch(`/api/v1/video/sessions/${appointmentId}/joined`, { method: "POST" });
+      }
+
+      if (event.data?.type === "zindagi-zoom-left") {
+        onLeave();
       }
 
       if (event.data?.type === "zindagi-zoom-error") {
@@ -91,7 +112,7 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave }: Props) {
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [appointmentId, copy.errors, sendJoinToFrame]);
+  }, [appointmentId, copy.errors, onLeave, sendJoinToFrame]);
 
   if (error) {
     return (

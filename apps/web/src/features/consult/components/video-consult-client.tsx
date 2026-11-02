@@ -92,6 +92,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   const [rxPanelOpen, setRxPanelOpen] = useState(false);
   const rxAutoOpenedRef = useRef(false);
   const joinAttemptedRef = useRef(false);
+  const zoomLeaveRef = useRef<(() => void) | null>(null);
+  const leavingRef = useRef(false);
   const outgoingRing = useOutgoingCallRing(appointmentId);
   const ringCopy = t.consult.callRing;
 
@@ -147,6 +149,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
       if (!json.success) {
         throw new Error(json.error?.message ?? copy.couldNotJoin);
       }
+      leavingRef.current = false;
       setJoinPayload(json.data as VideoJoinPayload);
       setInCall(true);
       // Joining answers any ring the other side started.
@@ -184,6 +187,8 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
   }, [sessionStatus?.canJoin, inCall, joining, startCall]);
 
   const handleLeave = async () => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
     outgoingRing.cancel();
     await fetch(`/api/v1/video/sessions/${appointmentId}/leave`, { method: "POST" });
     setInCall(false);
@@ -438,7 +443,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
               variant="outline"
               size="sm"
               className="border-white/20 bg-transparent text-white hover:bg-white/10"
-              onClick={() => void handleLeave()}
+              onClick={() => (zoomLeaveRef.current ? zoomLeaveRef.current() : void handleLeave())}
             >
               {copy.endSession}
             </Button>
@@ -470,6 +475,7 @@ export function VideoConsultClient({ appointmentId, leftSession }: Props) {
               appointmentId={appointmentId}
               payload={joinPayload}
               onLeave={handleLeave}
+              leaveRef={zoomLeaveRef}
             />
           </div>
           {isDoctor && rxPanelOpen && (
