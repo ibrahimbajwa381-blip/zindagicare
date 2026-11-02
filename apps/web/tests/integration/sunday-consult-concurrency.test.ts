@@ -318,11 +318,22 @@ describe("Sunday Free Consultation — P0 concurrency audit (real local MongoDB)
     const requestId = request._id.toString();
 
     await SundayConsultService.claimRequest(doctorA.userId.toString(), requestId, { startTimeLocal: "23:20" });
-    await SundayConsultService.releaseRequest(doctorA.userId.toString(), requestId);
+    await SundayConsultService.releaseRequest(doctorA.userId.toString(), requestId, {
+      note: "I'm not a dermatologist",
+    });
 
     const released = await SundayFreeRequestModel.findById(requestId).lean();
     expect(released?.status).toBe(SundayFreeRequestStatuses.REQUESTED);
     expect(released?.assignedDoctorId).toBeUndefined();
+
+    // The note is stored encrypted and shown to the next doctor on the board.
+    const raw = await SundayFreeRequestModel.collection.findOne({ _id: request._id });
+    expect(JSON.stringify(raw?.releaseNotes)).not.toContain("dermatologist");
+    const board = await SundayConsultService.listDoctorRequests(doctorB.userId.toString());
+    const row = board.find((r) => r.requestId === requestId);
+    expect(row?.releaseNotes).toEqual([
+      expect.objectContaining({ note: "I'm not a dermatologist", byMe: false }),
+    ]);
 
     const picked = await SundayConsultService.claimRequest(doctorB.userId.toString(), requestId, { startTimeLocal: "23:20" });
     expect(picked.pickedByMe).toBe(true);

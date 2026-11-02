@@ -49,6 +49,13 @@ export const sundayFreeClaimSchema = z.object({
 
 export type SundayFreeClaimInput = z.infer<typeof sundayFreeClaimSchema>;
 
+/** Doctor leaves a picked request; the note is shown to the next doctors on the board. */
+export const sundayFreeReleaseSchema = z.object({
+  note: z.string().trim().max(300).optional(),
+});
+
+export type SundayFreeReleaseInput = z.infer<typeof sundayFreeReleaseSchema>;
+
 export const reserveSlotSchema = z.object({
   doctorId: z.string().min(1),
   instanceId: z.string().min(1),

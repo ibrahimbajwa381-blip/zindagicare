@@ -54,7 +54,11 @@ export function resolveDashboardMenuLinks(
   },
 ): DashboardMenuLink[] {
   if (isAdminPanelUser(roles)) {
-    return [{ href: AUTH_ROUTES.adminDashboard, label: labels.myDashboard }];
+    const adminLink = { href: AUTH_ROUTES.adminDashboard, label: labels.adminDashboard };
+    // Admins who are also patients need both their own dashboard and the admin panel.
+    return roles?.includes(Roles.PATIENT)
+      ? [{ href: siteConfig.links.dashboard, label: labels.myDashboard }, adminLink]
+      : [adminLink];
   }
   if (roles?.includes(Roles.DOCTOR)) {
     return [{ href: AUTH_ROUTES.doctorProfile, label: labels.myDashboard }];

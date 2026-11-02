@@ -21,9 +21,10 @@ export async function OnlineConsultHero() {
   const page = t.doctors.page;
 
   return (
-    <PageSection spacing="tall" variant="soft" innerClassName="py-8 sm:py-12 lg:py-16">
-      <div className="overflow-hidden rounded-2xl border border-brand-light/30 bg-white shadow-premium-lg sm:rounded-3xl">
-        <div className="flex flex-col lg:flex-row-reverse">
+    <PageSection spacing="tall" variant="soft" className="min-h-svh" innerClassName="py-8 sm:py-12 lg:py-16 max-lg:flex max-lg:flex-col max-lg:self-stretch">
+      {/* Below lg the card stretches to fill the full-height section instead of floating in it. */}
+      <div className="overflow-hidden rounded-2xl border border-brand-light/30 bg-white shadow-premium-lg sm:rounded-3xl max-lg:flex max-lg:flex-1 max-lg:flex-col">
+        <div className="flex flex-1 flex-col lg:flex-row-reverse">
           <div className="relative order-0 h-52 shrink-0 sm:h-64 lg:order-none lg:h-auto lg:w-[42%] xl:w-[40%]">
             <Image
               src={ONLINE_CONSULT_HERO_IMAGE}

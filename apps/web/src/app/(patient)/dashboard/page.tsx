@@ -67,26 +67,6 @@ export default async function PatientDashboardPage() {
         description={formatMessage(t.dashboard.welcomeMessage, { name: displayName })}
       />
 
-      <Link
-        href={siteConfig.links.refundRequest}
-        className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-red-100 bg-red-50/60 px-5 py-4 transition-colors hover:bg-red-50"
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
-            <Undo2 className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Need a refund?</p>
-            <p className="text-xs text-slate-600">
-              Cancel an appointment and get your money back — full refund, sent manually to your account.
-            </p>
-          </div>
-        </div>
-        <Button size="sm" variant="outline" className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-100">
-          Request refund
-        </Button>
-      </Link>
-
       <section className="mt-8 min-w-0 space-y-8">
         <div>
           <h2 className="font-display text-lg font-semibold text-slate-900">
@@ -169,6 +149,27 @@ export default async function PatientDashboardPage() {
         </div>
         <PatientProfileSection initialProfile={profile} />
       </section>
+
+      <Link
+        href={siteConfig.links.refundRequest}
+        className="group mt-10 flex flex-col gap-4 rounded-2xl border border-red-100 bg-gradient-to-br from-white via-red-50/40 to-red-50/80 p-4 shadow-sm transition-all hover:border-red-200 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:px-5"
+      >
+        <div className="flex min-w-0 items-start gap-3 sm:items-center">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 ring-4 ring-red-50">
+            <Undo2 className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900">Need a refund?</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
+              Cancel an appointment and get your money back — full refund, sent manually to your account.
+            </p>
+          </div>
+        </div>
+        {/* span, not button: the whole card is already a link */}
+        <Button asChild size="sm" variant="outline" className="w-full shrink-0 border-red-200 bg-white text-red-700 group-hover:bg-red-100 sm:w-auto">
+          <span>Request refund</span>
+        </Button>
+      </Link>
     </PageShell>
   );
 }

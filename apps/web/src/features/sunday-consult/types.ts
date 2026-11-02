@@ -107,6 +107,8 @@ export type SundayDoctorRequestDto = {
   consultDateKey: string;
   /** True when the signed-in doctor picked this request. */
   pickedByMe: boolean;
+  /** Doctors who picked then left this request, with their note for the next doctor. */
+  releaseNotes: { note?: string; releasedAt: string; byMe: boolean }[];
   appointmentId?: string;
   scheduledStart?: string;
   scheduledEnd?: string;

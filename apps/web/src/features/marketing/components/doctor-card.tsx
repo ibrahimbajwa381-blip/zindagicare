@@ -63,7 +63,7 @@ export function DoctorCard({
   const card = (
     <article
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden duration-300 hover:-translate-y-1",
+        "group relative flex h-full min-w-0 flex-col overflow-hidden duration-300 hover:-translate-y-1",
         surfaceCardInteractive,
         href && "cursor-pointer",
       )}
@@ -116,7 +116,7 @@ export function DoctorCard({
                   <Badge
                     key={credential}
                     variant="outline"
-                    className="h-5 border-slate-200 bg-slate-50 px-1.5 text-[10px] font-medium text-slate-700"
+                    className="h-5 whitespace-nowrap border-slate-200 bg-slate-50 px-1.5 text-[10px] font-medium text-slate-700"
                   >
                     {credential}
                   </Badge>
@@ -146,11 +146,11 @@ export function DoctorCard({
         </div>
 
         {showSlots ? (
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Badge
               variant="outline"
               className={cn(
-                "border-brand/20 text-xs font-medium",
+                "whitespace-nowrap border-brand/20 text-xs font-medium",
                 isFull
                   ? "bg-slate-50 text-slate-500"
                   : "border-brand/30 bg-brand-muted/40 text-brand-dark",
@@ -159,7 +159,7 @@ export function DoctorCard({
               {isFull ? noSlotsLabel : slotsOpenLabel}
             </Badge>
             {bookLabel && href ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-dark transition group-hover:gap-1.5">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-brand-dark transition group-hover:gap-1.5">
                 {bookLabel}
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>
@@ -174,7 +174,8 @@ export function DoctorCard({
     return (
       <Link
         href={href}
-        className="block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        // min-w-0: the truncated hospital line would otherwise stretch the grid cell past the viewport.
+        className="block h-full min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         {card}
       </Link>

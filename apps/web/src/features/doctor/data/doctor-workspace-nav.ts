@@ -94,6 +94,10 @@ export const DOCTOR_OVERVIEW_ACTIONS = DOCTOR_WORKSPACE_ACTIONS.filter(
 
 export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
   {
+    title: "Practice",
+    items: DOCTOR_WORKSPACE_ACTIONS,
+  },
+  {
     title: "Profile",
     items: [
       {
@@ -134,10 +138,6 @@ export const DOCTOR_APPROVED_NAV_SECTIONS: DoctorWorkspaceNavSection[] = [
         icon: Gift,
       },
     ],
-  },
-  {
-    title: "Practice",
-    items: DOCTOR_WORKSPACE_ACTIONS,
   },
 ];
 

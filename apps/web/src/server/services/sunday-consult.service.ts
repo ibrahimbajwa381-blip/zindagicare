@@ -66,6 +66,7 @@ import type {
 } from "@/features/sunday-consult/types";
 import type {
   SundayFreeClaimInput,
+  SundayFreeReleaseInput,
   SundayFreeRequestInput,
   PaymentProviderInput,
 } from "@zindagi/validators";
@@ -1748,6 +1749,46 @@ export class SundayConsultService {
   }
 
   /**
+   * Admin drops a waiting request's specialty filter (e.g. no dermatologist is
+   * around) so every Sunday doctor, General Physicians included, can pick it.
+   */
+  static async openRequestToAllDoctors(requestId: string): Promise<{ opened: true }> {
+    await connectDatabase();
+
+    const request = await SundayFreeRequestModel.findOneAndUpdate(
+      mongoFilter({
+        _id: requestId,
+        deletedAt: null,
+        status: SundayFreeRequestStatuses.REQUESTED,
+        preferredSpecialty: { $nin: [null, ""] },
+      }),
+      { $unset: { preferredSpecialty: "" } },
+    ).lean();
+    if (!request) {
+      throw new AppError(
+        "Request is no longer waiting or is already open to all doctors",
+        ErrorCodes.CONFLICT,
+        409,
+      );
+    }
+
+    await SundayConsultService.notifyDoctorsOfOpenRequest(requestId, request.sundayDateKey).catch(
+      (err) => {
+        console.error("[sunday-consult] doctor notification failed", err);
+      },
+    );
+
+    publishSundayEvent({
+      type: "instance_updated",
+      doctorId: "queue",
+      sundayDateKey: request.sundayDateKey,
+      instanceId: requestId,
+    });
+
+    return { opened: true };
+  }
+
+  /**
    * In-app + push heads-up to doctors who opted into Sunday consults. A request
    * with a preferred specialty only alerts doctors verified in that specialty.
    */
@@ -1918,6 +1959,11 @@ export class SundayConsultService {
         overdue,
         consultDateKey: overdue ? sundayDateKey : mapped.sundayDateKey,
         pickedByMe,
+        releaseNotes: (doc.releaseNotes ?? []).map((r) => ({
+          note: safeDisplayText(r.note) ?? undefined,
+          releasedAt: r.releasedAt.toISOString(),
+          byMe: r.doctorId.toString() === doctor._id.toString(),
+        })),
         appointmentId: pickedByMe ? mapped.appointmentId : undefined,
         scheduledStart: pickedByMe ? mapped.scheduledStart : undefined,
         scheduledEnd: pickedByMe ? mapped.scheduledEnd : undefined,
@@ -2165,10 +2211,15 @@ export class SundayConsultService {
   }
 
   /**
-   * Doctor hands a picked request back to the open board (e.g. can no longer
-   * make the time). Only allowed before the consult has started.
+   * Doctor leaves a picked request so another doctor can pick it (e.g. wrong
+   * specialty, can no longer make the time). Only allowed before the consult
+   * has started. The optional note is shown to the next doctors on the board.
    */
-  static async releaseRequest(userId: string, requestId: string): Promise<{ released: true }> {
+  static async releaseRequest(
+    userId: string,
+    requestId: string,
+    input: SundayFreeReleaseInput = {},
+  ): Promise<{ released: true }> {
     await connectDatabase();
     const doctor = await SundayConsultService.requireApprovedDoctor(userId);
 
@@ -2214,7 +2265,14 @@ export class SundayConsultService {
         assignedDoctorId: doctor._id,
       }),
       {
-        $set: { status: SundayFreeRequestStatuses.REQUESTED },
+        $set: {
+          status: SundayFreeRequestStatuses.REQUESTED,
+          // $set the whole array (not $push) so the encryption plugin encrypts the note.
+          releaseNotes: [
+            ...(request.releaseNotes ?? []),
+            { doctorId: doctor._id, note: input.note || undefined, releasedAt: new Date() },
+          ],
+        },
         $unset: { assignedDoctorId: "", assignedAt: "", appointmentId: "" },
       },
     );
@@ -2222,7 +2280,7 @@ export class SundayConsultService {
     await deliverUserNotification({
       userId: request.patientId.toString(),
       title: "Sunday consult rescheduling",
-      body: "Your doctor is no longer available at the chosen time. Your request is back in the queue and another doctor will pick it shortly.",
+      body: "Your doctor could not take this consult. Your request is back in the queue and another doctor will pick it shortly.",
       payload: { type: "sunday_free_released", requestId },
     }).catch((err) => {
       console.error("[sunday-consult] patient release notification failed", err);

@@ -282,6 +282,48 @@ function RejectRequestForm({
   );
 }
 
+function OpenToAllButton({
+  request,
+  onOpened,
+}: {
+  request: SundayAdminRequestDto;
+  onOpened: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (
+      !window.confirm(
+        `Show this request to all Sunday doctors, not only ${request.preferredSpecialty}s?`,
+      )
+    ) {
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch(`/api/v1/admin/sunday/requests/${request.requestId}/open-to-all`, {
+      method: "POST",
+    });
+    const json = await res.json().catch(() => null);
+    setSubmitting(false);
+    if (!res.ok || !json?.success) {
+      setError(json?.error?.message ?? "Could not open this request to all doctors.");
+      return;
+    }
+    onOpened();
+  };
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button size="sm" variant="outline" disabled={submitting} onClick={submit}>
+        {submitting ? "Opening…" : "Open to all doctors"}
+      </Button>
+      {error && <p className="text-xs text-rose-700">{error}</p>}
+    </div>
+  );
+}
+
 function SundayRequestCard({
   request,
   onViewProof,
@@ -450,7 +492,10 @@ function SundayRequestCard({
       )}
 
       {canReject(request) && (
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex flex-wrap items-start justify-end gap-2">
+          {request.status === SundayFreeRequestStatuses.REQUESTED && request.preferredSpecialty && (
+            <OpenToAllButton request={request} onOpened={onRejected} />
+          )}
           <RejectRequestForm request={request} onRejected={onRejected} />
         </div>
       )}

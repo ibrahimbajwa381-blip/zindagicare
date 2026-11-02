@@ -184,6 +184,29 @@ describe("Sunday free consult — preferred specialty routing", () => {
     expect(picked.preferredSpecialty).toBe("Gynecologist");
   });
 
+  test("admin can open a specialty request to every doctor, once, while it waits", async () => {
+    const request = await submit("Gynecologist");
+    expect(await boardIds(dermatologist.userId.toString())).not.toContain(request.requestId);
+
+    await SundayConsultService.openRequestToAllDoctors(request.requestId);
+
+    expect(await boardIds(dermatologist.userId.toString())).toContain(request.requestId);
+    expect(await boardIds(gynecologist.userId.toString())).toContain(request.requestId);
+    await expect(
+      SundayConsultService.openRequestToAllDoctors(request.requestId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    const picked = await SundayConsultService.claimRequest(
+      dermatologist.userId.toString(),
+      request.requestId,
+      { startTimeLocal: "23:40" },
+    );
+    expect(picked.pickedByMe).toBe(true);
+    await expect(
+      SundayConsultService.openRequestToAllDoctors(request.requestId),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
   test("sidebar badge count matches the doctor's board minus completed rows", async () => {
     for (const doctor of [gynecologist, dermatologist]) {
       const userId = doctor.userId.toString();

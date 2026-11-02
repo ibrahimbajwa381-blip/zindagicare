@@ -17,6 +17,16 @@ const historyAnswerSchema = new Schema(
   { _id: false },
 );
 
+/** A doctor who picked the request and then left it, with an optional note for the next doctor. */
+const releaseNoteSchema = new Schema(
+  {
+    doctorId: { type: Schema.Types.ObjectId, ref: "DoctorProfile", required: true },
+    note: { type: String, maxlength: 300 },
+    releasedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 /**
  * Sunday free consult request — patient asks for a free video consult;
  * any verified doctor picks it and chooses a time (no patient-side doctor picker).
@@ -60,6 +70,7 @@ const sundayFreeRequestSchema = new Schema(
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
     assignedAt: { type: Date },
     appointmentId: { type: Schema.Types.ObjectId, ref: "Appointment", index: true },
+    releaseNotes: { type: [releaseNoteSchema], default: [] },
     adminNotes: { type: String, maxlength: 2000, select: false },
     completedAt: { type: Date },
     cancelledAt: { type: Date },
@@ -97,6 +108,7 @@ applyFieldEncryption(sundayFreeRequestSchema, {
     { path: "adminNotes", kind: "string" },
     { path: "cancellationReason", kind: "string" },
     { path: "history", kind: "nestedArray", subFields: ["text", "answer"] },
+    { path: "releaseNotes", kind: "nestedArray", subFields: ["note"] },
   ],
 });
 
