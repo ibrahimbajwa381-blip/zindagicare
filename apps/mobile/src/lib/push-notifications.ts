@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Linking, Platform } from "react-native";
 import * as Device from "expo-device";
-import Constants, { ExecutionEnvironment } from "expo-constants";
+import Constants from "expo-constants";
+import { isRunningInExpoGo } from "expo";
 import { router } from "expo-router";
 import { registerExpoPushToken, unregisterExpoPushToken } from "@/api/push";
 import { getNotificationSummary } from "@/api/notifications";
@@ -15,7 +16,7 @@ import { API_URL } from "@/lib/config";
  * @react-native-google-signin/google-signin, so the rest of the app still works when
  * testing in plain Expo Go; push notifications are just unavailable there.
  */
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isExpoGo = isRunningInExpoGo();
 
 type NotificationsModule = typeof import("expo-notifications");
 const Notifications: NotificationsModule | null = isExpoGo

@@ -8,8 +8,9 @@
   ],
   "overrides": {
     "mongoose": "9.6.3",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "expo": "~58.0.21",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "scripts": {
     "dev": "npm run dev --workspace=web",

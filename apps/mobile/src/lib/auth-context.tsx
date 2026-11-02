@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import Constants, { ExecutionEnvironment } from "expo-constants";
+import { isRunningInExpoGo } from "expo";
 import { API_URL } from "./config";
 import { clearStoredTokens, getStoredTokens, setStoredTokens } from "./token-storage";
 import { apiFetch, type AuthUser } from "@/api/client";
@@ -12,7 +12,7 @@ import { unregisterCurrentPushToken } from "./push-notifications";
  * Guard it so the rest of the app (email/password auth included) still works
  * when testing in plain Expo Go; only Google sign-in itself is unavailable.
  */
-export const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+export const isExpoGo = isRunningInExpoGo();
 
 type GoogleSigninModule = typeof import("@react-native-google-signin/google-signin");
 
