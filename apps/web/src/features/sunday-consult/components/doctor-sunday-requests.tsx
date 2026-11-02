@@ -168,7 +168,7 @@ export function DoctorSundayRequests({ onChange }: Props) {
           {request.preferredSpecialty && (
             <Badge variant="default">Asked for {request.preferredSpecialty}</Badge>
           )}
-          {request.overdue && <Badge variant="accent">Waiting over a week</Badge>}
+          {request.overdue && <Badge variant="accent">From an earlier Sunday</Badge>}
           {request.affordabilityChoice === SundayAffordabilityChoices.CANNOT_AFFORD && (
             <Badge variant="secondary">Cannot afford paid care</Badge>
           )}
@@ -227,7 +227,7 @@ export function DoctorSundayRequests({ onChange }: Props) {
           <div className="space-y-3 pt-2">
             <div>
               <p className="text-sm font-medium text-slate-700">
-                Waiting over a week ({overdue.length})
+                From an earlier Sunday ({overdue.length})
               </p>
               <p className="text-xs text-slate-500">
                 No doctor picked these patients on their Sunday. Picking one schedules the consult

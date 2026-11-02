@@ -163,6 +163,20 @@ describe("Sunday free consult — preferred specialty routing", () => {
     expect(await boardIds(gynecologist.userId.toString())).not.toContain(request.requestId);
   });
 
+  test("a request from a past Sunday shows at once, not only after 7 days", async () => {
+    const request = await submit("Gynecologist");
+    // Asked yesterday for a Sunday that has now passed.
+    await SundayFreeRequestModel.collection.updateOne(
+      { _id: new mongooseMod.Types.ObjectId(request.requestId) },
+      { $set: { sundayDateKey: "2020-01-12", createdAt: new Date(Date.now() - 24 * 60 * 60_000) } },
+    );
+    const row = (await SundayConsultService.listDoctorRequests(gynecologist.userId.toString())).find(
+      (r) => r.requestId === request.requestId,
+    );
+    expect(row?.overdue).toBe(true);
+    expect(await boardIds(dermatologist.userId.toString())).not.toContain(request.requestId);
+  });
+
   test("a doctor outside the specialty cannot pick the request; a matching doctor can", async () => {
     const request = await submit("Gynecologist");
 

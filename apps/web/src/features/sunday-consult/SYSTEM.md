@@ -10,7 +10,7 @@ Request lifecycle: `requested` → (doctor picks + time) `assigned` → `complet
 
 Closing a consult: follows the shared consult lifecycle (`src/server/services/consultation/consultation-lifecycle.service.ts`), the same as paid and urgent consults. Video stays open from the usual join-window opening (`VIDEO_CONSULT_CONFIG.joinEarlyMinutes` before the start) until the **doctor** presses "Finish consultation" or "No-show" (`POST /api/v1/appointments/:id/finish`; the older `PATCH /api/v1/sunday/doctor/appointment-status` forwards to it). Leaving the call does not end it. Only a completed consult can be reviewed. Closing ends the video session, runs the Sunday follow-up (`SundayConsultService.onConsultClosed`: request/slot status, no-show ban, review notification), and makes chat read-only on its own (care policy; the pair's chat reopens if they share another open consult). If the doctor never closes it, the daily sweep completes it 72h after the slot when either side joined; the doctor-miss sweep still records a no-show if the doctor never joins.
 
-Overdue requests: `requested` requests older than 7 days (no doctor ever picked them) also appear on the doctor board under "Waiting over a week". Picking one moves the request to the current board Sunday and schedules the consult there.
+Overdue requests: `requested` requests whose Sunday has passed (no doctor picked them) also appear on the doctor board under "From an earlier Sunday". Picking one moves the request to the current board Sunday and schedules the consult there.
 
 ## 2. Data model
 

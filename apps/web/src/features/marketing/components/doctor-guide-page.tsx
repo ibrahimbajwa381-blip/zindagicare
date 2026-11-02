@@ -501,8 +501,8 @@ function SundaySection() {
       desc: "If the patient does not turn up, tap No-show. This also closes video and chat. Patients with 3 no-shows are blocked from Sunday consults for 4 weeks.",
     },
     {
-      title: "Patients waiting over a week",
-      desc: "Requests that no doctor picked for more than 7 days appear under Waiting over a week. Picking one schedules it on the current Sunday.",
+      title: "Patients from an earlier Sunday",
+      desc: "Requests that no doctor picked on their Sunday appear under From an earlier Sunday. Picking one schedules it on the current Sunday.",
     },
     {
       title: "Reviews count toward your profile",

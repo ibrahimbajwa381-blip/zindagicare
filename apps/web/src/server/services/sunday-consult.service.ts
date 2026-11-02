@@ -177,8 +177,6 @@ const ACTIVE_APPOINTMENT_STATUSES = [
 
 /** A doctor picking "now" may land a minute or two after the chosen HH:mm. */
 const CLAIM_PAST_GRACE_MS = 5 * 60_000;
-/** Unpicked requests older than this stay on the doctor board as overdue. */
-const OVERDUE_REQUEST_AGE_MS = 7 * 24 * 60 * 60_000;
 
 const HOLD_SWEEP_INTERVAL_MS = 60_000;
 let lastHoldSweepAt = 0;
@@ -1888,7 +1886,7 @@ export class SundayConsultService {
         },
         {
           status: SundayFreeRequestStatuses.REQUESTED,
-          createdAt: { $lte: new Date(Date.now() - OVERDUE_REQUEST_AGE_MS) },
+          sundayDateKey: { $lt: sundayDateKey },
           ...specialtyMatch,
         },
       ],
@@ -1913,7 +1911,7 @@ export class SundayConsultService {
    * Open-requests board for doctors: every unpicked request for the Sunday,
    * plus the requests this doctor has already picked. Any verified doctor can
    * see the board — opting into Sunday consults is not required. Requests
-   * older than a week that no doctor ever picked stay on the board (flagged
+   * from an earlier Sunday that no doctor picked stay on the board (flagged
    * `overdue`) so those patients are not silently dropped.
    */
   static async listDoctorRequests(
