@@ -1,5 +1,11 @@
 import { siteConfig } from "@/config/site";
 import { getSiteUrl } from "@/lib/seo/metadata";
+import {
+  cityFacts,
+  homeVisitCityPath,
+  listHomeVisitCities,
+  type HomeVisitCity,
+} from "@/lib/seo/home-visit-cities";
 import { marketingPageSeo } from "@/lib/seo/pages";
 import {
   PublicDoctorService,
@@ -35,6 +41,12 @@ function doctorLine(doctor: PublicDoctorDirectoryEntry): string {
   return `- [${doctor.name}](${getSiteUrl(`/doctors/${doctor.slug}`)}): ${details}`;
 }
 
+function cityLine(city: HomeVisitCity): string {
+  const { serviceList, prices, coverage } = cityFacts(city);
+  const priceText = prices.length ? ` Prices: ${prices.join(", ")}.` : "";
+  return `- [Doctor home visit in ${city.name}](${getSiteUrl(homeVisitCityPath(city.slug))}): verified ${serviceList} visit patients at home in ${city.name}. ${coverage}.${priceText} Book online or on WhatsApp ${siteConfig.supportWhatsAppDisplay}.`;
+}
+
 export async function GET() {
   let doctors: PublicDoctorDirectoryEntry[] = [];
   try {
@@ -42,6 +54,7 @@ export async function GET() {
   } catch {
     // Still serve the site summary without the database.
   }
+  const homeVisitCities = await listHomeVisitCities();
 
   const body = [
     `# ${siteConfig.name}`,
@@ -53,6 +66,14 @@ export async function GET() {
     "## Key pages",
     "",
     ...KEY_PAGES.map(({ path, seo }) => `- [${seo.title}](${getSiteUrl(path)}): ${seo.description}`),
+    "",
+    "## Home visits by city",
+    "",
+    "Book a doctor, nurse or physiotherapist to come to the patient's home. Each page lists the verified providers in that city with their fees.",
+    "",
+    ...(homeVisitCities.length
+      ? homeVisitCities.map(cityLine)
+      : [`- [In-house medical services](${getSiteUrl("/home-services")})`]),
     "",
     "## Doctors",
     "",

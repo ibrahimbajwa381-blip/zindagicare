@@ -3,6 +3,8 @@ import { z } from "zod";
 export const listConsultDoctorsQuerySchema = z.object({
   city: z.string().optional(),
   specialty: z.string().optional(),
+  /** List doctors offering in-house visits in `city` instead of online consults. */
+  homeVisit: z.boolean().optional(),
 });
 
 export const listConsultSlotsQuerySchema = z.object({

@@ -1344,6 +1344,29 @@ export const ur: Dictionary = {
       slotsOpen: "{count} سلاٹ دستیاب",
       noSlots: "مکمل بک",
       bookCta: "پروفائل دیکھیں اور بک کریں",
+      filters: {
+        label: "ڈاکٹرز فلٹر کریں",
+        visitType: "مشورے کی قسم",
+        online: "آن لائن مشورہ",
+        homeVisit: "گھر پر وزٹ",
+        city: "شہر",
+        allCities: "تمام شہر",
+        clearCity: "شہر ہٹائیں",
+        homeVisitBadge: "گھر پر وزٹ کرتے ہیں",
+        homeVisitCta: "پروفائل دیکھیں",
+        homeVisitTitle: "ڈاکٹر آپ کے گھر پر",
+        homeVisitBody:
+          "فی وزٹ {fee} روپے۔ وزٹ کی درخواست دیں، اس فہرست میں سے قریب ترین دستیاب ڈاکٹر آپ کو دیا جائے گا۔",
+        homeVisitBodyCity:
+          "{city} میں فی وزٹ {fee} روپے۔ وزٹ کی درخواست دیں، اس فہرست میں سے قریب ترین دستیاب ڈاکٹر آپ کو دیا جائے گا۔",
+        homeVisitRequest: "گھر پر وزٹ کی درخواست دیں",
+        pickCityHint: "اپنا شہر منتخب کریں تاکہ آپ کے قریب گھر پر آنے والے ڈاکٹر نظر آئیں۔",
+        homeVisitEmptyTitle: "{city} میں ابھی گھر پر ڈاکٹر وزٹ دستیاب نہیں",
+        homeVisitEmptyTitleAll: "ابھی کوئی ڈاکٹر گھر پر وزٹ نہیں کرتا",
+        homeVisitEmptyBody:
+          "کوئی اور شہر آزمائیں، آن لائن مشورہ لیں، یا گھر پر نرس یا فزیوتھراپسٹ بک کریں۔",
+        homeVisitEmptyLink: "ہوم کیئر سروسز دیکھیں",
+      },
       emptyTitle: "ابھی کوئی ڈاکٹر دستیاب نہیں",
       emptyBeforeLink:
         "ویڈیو سلاٹ والے ڈاکٹر جلد یہاں ظاہر ہوں گے۔ اس دوران آپ",

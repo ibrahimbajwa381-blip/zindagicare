@@ -8,6 +8,10 @@ import { FaqJsonLd } from "@/components/seo/faq-json-ld";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-json-ld";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { PageSection } from "@/components/layout/page-section";
+import { SectionHeader } from "@/features/marketing/components/section-header";
+import { homeVisitCityPath, listHomeVisitCities } from "@/lib/seo/home-visit-cities";
 import { getDictionary } from "@/i18n";
 import { getLocale } from "@/i18n/server";
 import { buildPageMetadata } from "@/lib/seo/metadata";
@@ -26,6 +30,7 @@ export function generateMetadata(): Metadata {
 export default async function HomeServicesPage() {
   const locale = await getLocale();
   const faqItems = getDictionary(locale).homeServices.faq.items;
+  const cities = await listHomeVisitCities();
 
   return (
     <>
@@ -47,6 +52,23 @@ export default async function HomeServicesPage() {
       <HomeServicesPicker />
       <HomeServicesHowItWorks />
       <HomeServicesCoverage />
+      {cities.length > 0 && (
+        <PageSection variant="soft" spacing="default">
+          <SectionHeader title="Home visits by city" className="mb-6" />
+          <ul className="flex flex-wrap gap-2">
+            {cities.map((city) => (
+              <li key={city.slug}>
+                <Link
+                  href={homeVisitCityPath(city.slug)}
+                  className="inline-block rounded-full border border-brand/20 bg-white px-4 py-2 text-sm font-medium text-brand-dark transition hover:border-brand/40"
+                >
+                  Doctor home visit in {city.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </PageSection>
+      )}
       <HomeServicesFaq />
       <HomeServicesCta />
     </>

@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageSection } from "@/components/layout/page-section";
 import { surfaceMuted } from "@/lib/ui/surfaces";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/config/site";
+import { HOME_CARE_PRICING, HomeVisitServiceTypes } from "@zindagi/shared";
 import { PatientOnlineBookingCard } from "@/features/consult/components/patient-online-booking-card";
 import type { OnlinePatientBookingDto } from "@/features/consult/types";
 import { DoctorCard } from "@/features/marketing/components/doctor-card";
+import { DoctorFilterBar } from "@/features/marketing/components/doctor-filter-bar";
 import { DoctorSearchBar } from "@/features/marketing/components/doctor-search-bar";
 import { SectionHeader } from "@/features/marketing/components/section-header";
 import { resolveDoctorPortrait } from "@/features/marketing/data/demo-doctor-images";
@@ -83,9 +85,13 @@ type DoctorsConsultClientProps = {
 };
 
 /** Same key the server used to load `initialDoctors`. */
-function listingKey(city: string | undefined, specialty: string | undefined) {
-  return `${city ?? ""}|${specialty ?? ""}`;
+function listingKey(city: string | undefined, specialty: string | undefined, homeVisit = false) {
+  return `${city ?? ""}|${specialty ?? ""}|${homeVisit ? "home" : ""}`;
 }
+
+/** Doctor home visits are billed at the platform rate, not a per-doctor fee. */
+const DOCTOR_HOME_VISIT_FEE = HOME_CARE_PRICING[HomeVisitServiceTypes.DOCTOR_VISIT];
+const HOME_VISIT_REQUEST_HREF = `${siteConfig.links.homeCareRequest}?service=${HomeVisitServiceTypes.DOCTOR_VISIT}`;
 
 export function DoctorsConsultClient({
   initialSpecialty,
@@ -94,9 +100,15 @@ export function DoctorsConsultClient({
 }: DoctorsConsultClientProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations();
   const copy = t.doctors.page;
+  const filterCopy = copy.filters;
+  // A city-scoped page (e.g. /doctors/lahore) fixes the city; elsewhere `?city=` and
+  // `?visit=home` keep the filters in the URL so a filtered list can be shared.
+  const city = initialCity ?? searchParams.get("city")?.trim() ?? "";
+  const homeVisit = searchParams.get("visit") === "home";
   const [doctors, setDoctors] = useState<DoctorRow[]>(initialDoctors ?? []);
   const [loading, setLoading] = useState(initialDoctors === undefined);
   const [booking, setBooking] = useState<OnlinePatientBookingDto | null>(null);
@@ -139,7 +151,8 @@ export function DoctorsConsultClient({
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (initialCity) params.set("city", initialCity);
+      if (city) params.set("city", city);
+      if (homeVisit) params.set("homeVisit", "1");
       // When free-text search is active we fetch the full city list and filter
       // client-side, since search can match name/hospital/disease as well as specialty.
       if (activeSpecialty && !hasSearchQuery) params.set("specialty", activeSpecialty);
@@ -151,7 +164,18 @@ export function DoctorsConsultClient({
     } finally {
       setLoading(false);
     }
-  }, [activeSpecialty, hasSearchQuery, initialCity]);
+  }, [activeSpecialty, city, hasSearchQuery, homeVisit]);
+
+  const setFilter = useCallback(
+    (key: "city" | "visit", value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) params.set(key, value);
+      else params.delete(key);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   const loadMyBooking = useCallback(async () => {
     if (!session?.user) return;
@@ -164,8 +188,9 @@ export function DoctorsConsultClient({
 
   // Listing the current state needs, mirroring the params `loadDoctors` sends.
   const fetchKey = listingKey(
-    initialCity,
+    city || undefined,
     activeSpecialty && !hasSearchQuery ? activeSpecialty : undefined,
+    homeVisit,
   );
   const loadedKey = useRef<string | null>(
     initialDoctors ? listingKey(initialCity, initialSpecialty) : null,
@@ -243,22 +268,33 @@ export function DoctorsConsultClient({
         hospital={doc.hospital ?? ""}
         rating={doc.ratingAvg}
         reviews={doc.ratingCount}
-        fee={doc.consultationFee}
+        fee={homeVisit ? DOCTOR_HOME_VISIT_FEE : doc.consultationFee}
         pmdcVerified={doc.pmdcVerified}
         imageUrl={resolveDoctorPortrait(doc.name, doc.avatarUrl) ?? undefined}
         credentials={formatQualificationsList(doc.medicalDegree, doc.qualifications ?? [])}
         pmdcLabel={t.common.pmdc}
-        isFull={doc.isFull}
+        // Online slot counts don't apply to in-house visits.
+        isFull={homeVisit ? false : doc.isFull}
         slotsOpenLabel={
-          doc.isFull
-            ? undefined
-            : formatMessage(copy.slotsOpen, { count: String(doc.availableSlots) })
+          homeVisit
+            ? filterCopy.homeVisitBadge
+            : doc.isFull
+              ? undefined
+              : formatMessage(copy.slotsOpen, { count: String(doc.availableSlots) })
         }
         noSlotsLabel={copy.noSlots}
-        bookLabel={copy.bookCta}
+        bookLabel={homeVisit ? filterCopy.homeVisitCta : copy.bookCta}
       />
     ),
-    [copy.bookCta, copy.noSlots, copy.slotsOpen, t.common.pmdc],
+    [
+      copy.bookCta,
+      copy.noSlots,
+      copy.slotsOpen,
+      filterCopy.homeVisitBadge,
+      filterCopy.homeVisitCta,
+      homeVisit,
+      t.common.pmdc,
+    ],
   );
 
   return (
@@ -277,9 +313,43 @@ export function DoctorsConsultClient({
         className="mx-auto"
       />
 
-      <div className="mt-6 sm:mt-8">
+      <div className="mt-6 space-y-4 sm:mt-8">
+        <DoctorFilterBar
+          homeVisit={homeVisit}
+          onHomeVisitChange={(next) => setFilter("visit", next ? "home" : "")}
+          city={city}
+          onCityChange={initialCity ? undefined : (next) => setFilter("city", next)}
+        />
         <DoctorSearchBar value={searchQuery} onChange={setSearchQuery} />
       </div>
+
+      {homeVisit && (
+        <div
+          className={`mt-6 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 ${surfaceMuted}`}
+        >
+          <div className="min-w-0">
+            <p className="font-display text-base font-semibold text-slate-900 sm:text-lg">
+              {filterCopy.homeVisitTitle}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              {city
+                ? formatMessage(filterCopy.homeVisitBodyCity, {
+                    fee: DOCTOR_HOME_VISIT_FEE.toLocaleString(),
+                    city,
+                  })
+                : formatMessage(filterCopy.homeVisitBody, {
+                    fee: DOCTOR_HOME_VISIT_FEE.toLocaleString(),
+                  })}
+            </p>
+            {!city && (
+              <p className="mt-1 text-sm font-medium text-brand-dark">{filterCopy.pickCityHint}</p>
+            )}
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href={HOME_VISIT_REQUEST_HREF}>{filterCopy.homeVisitRequest}</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="mt-8 sm:mt-12">
         {loading ? (
@@ -336,6 +406,23 @@ export function DoctorsConsultClient({
             </p>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
               Try a different name, specialty, or condition — or clear the search to browse all doctors.
+            </p>
+          </div>
+        ) : homeVisit ? (
+          <div className={`rounded-2xl border border-dashed p-8 text-center sm:p-10 ${surfaceMuted}`}>
+            <p className="font-display text-lg font-semibold text-slate-800">
+              {city
+                ? formatMessage(filterCopy.homeVisitEmptyTitle, { city })
+                : filterCopy.homeVisitEmptyTitleAll}
+            </p>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+              {filterCopy.homeVisitEmptyBody}{" "}
+              <Link
+                href={siteConfig.links.homeServices}
+                className="font-medium text-brand-dark underline-offset-2 hover:underline"
+              >
+                {filterCopy.homeVisitEmptyLink}
+              </Link>
             </p>
           </div>
         ) : (

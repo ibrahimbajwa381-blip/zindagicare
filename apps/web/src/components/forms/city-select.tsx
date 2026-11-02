@@ -10,10 +10,11 @@ type Props = {
   value: string;
   onChange: (city: string) => void;
   className?: string;
+  placeholder?: string;
 };
 
 /** Searchable Pakistani city picker; a town not in the list can be typed. */
-export function CitySelect({ id, value, onChange, className }: Props) {
+export function CitySelect({ id, value, onChange, className, placeholder = "Select city" }: Props) {
   return (
     <SearchableSelect
       id={id}
@@ -21,7 +22,7 @@ export function CitySelect({ id, value, onChange, className }: Props) {
       onChange={onChange}
       options={CITY_OPTIONS}
       label="Cities"
-      placeholder="Select city"
+      placeholder={placeholder}
       searchPlaceholder="Search city…"
       allowCustom
       className={className}

@@ -1,6 +1,7 @@
 export const LAUNCH_CITY = "Lahore" as const;
 
-export const SUPPORTED_CITIES = [LAUNCH_CITY, "Faisalabad"] as const;
+/** Main home-visit cities — our team fulfils requests here even before a provider is listed. */
+export const SUPPORTED_CITIES = [LAUNCH_CITY, "Karachi", "Faisalabad"] as const;
 
 export type SupportedCity = (typeof SUPPORTED_CITIES)[number];
 

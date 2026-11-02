@@ -27,6 +27,9 @@ export type PublicDoctorDirectoryEntry = {
   consultationFee: number;
   avatarUrl?: string;
   updatedAt?: string;
+  /** Cities the doctor visits patients at home in — empty when home visits are off. */
+  homeVisitCities: string[];
+  homeVisitFee: number;
 };
 
 const PUBLIC_DOCTOR_FILTER = {
@@ -233,7 +236,9 @@ export class PublicDoctorService {
     await PublicDoctorService.ensureConnected();
 
     const doctors = await DoctorProfileModel.find(PUBLIC_DOCTOR_FILTER)
-      .select("slug userId specialties primarySpecialty hospitals consultationFee updatedAt")
+      .select(
+        "slug userId specialties primarySpecialty hospitals consultationFee updatedAt homeVisitEnabled coverageCities homeVisitFee",
+      )
       .populate("userId", "name avatarUrl")
       .lean();
 
@@ -252,6 +257,8 @@ export class PublicDoctorService {
         consultationFee: doc.consultationFee ?? 0,
         avatarUrl: resolveDoctorPortrait(name, user?.avatarUrl),
         updatedAt: (doc.updatedAt as Date | undefined)?.toISOString(),
+        homeVisitCities: doc.homeVisitEnabled ? (doc.coverageCities ?? []) : [],
+        homeVisitFee: doc.homeVisitFee ?? 0,
       };
     });
   }

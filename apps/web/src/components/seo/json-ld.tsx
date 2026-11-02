@@ -1,3 +1,4 @@
+import { SUPPORTED_CITIES } from "@zindagi/shared";
 import { siteConfig } from "@/config/site";
 import { getSiteUrl } from "@/lib/seo/metadata";
 import { marketingPageSeo } from "@/lib/seo/pages";
@@ -75,7 +76,10 @@ export function SiteJsonLd() {
       addressLocality: siteConfig.launchCity,
       addressCountry: "PK",
     },
-    areaServed: [{ "@type": "Country", name: "Pakistan" }],
+    areaServed: [
+      { "@type": "Country", name: "Pakistan" },
+      ...SUPPORTED_CITIES.map((name) => ({ "@type": "City", name })),
+    ],
     sameAs: [...siteConfig.seo.sameAs],
     knowsAbout: [
       "Telemedicine",

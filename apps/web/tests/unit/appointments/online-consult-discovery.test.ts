@@ -112,6 +112,35 @@ describe("Discovery — deactivated/deleted doctor exclusion (follow-up to APT-0
     expect(body.data[0].doctorId).toBe(VALID_DOCTOR_ID);
   });
 
+  test("homeVisit=1 lists only in-house-visit doctors covering the city (case-insensitive), without the online fee floor", async () => {
+    mockDoctorProfileFind.mockReturnValue(chain([doctorFixture({ homeVisitEnabled: true })]));
+
+    const { GET } = await import("@/app/api/v1/consult/doctors/route");
+    const res = await GET(
+      new NextRequest("http://localhost/api/v1/consult/doctors?city=lahore&homeVisit=1"),
+    );
+    const body = await res.json();
+
+    expect(body.data).toHaveLength(1);
+    const filter = mockDoctorProfileFind.mock.calls[0][0];
+    expect(filter.homeVisitEnabled).toBe(true);
+    expect(filter.consultationFee).toBeUndefined();
+    expect(filter.coverageCities.$elemMatch.$regex.test("Lahore")).toBe(true);
+    expect(filter.coverageCities.$elemMatch.$regex.test("Lahore Cantt")).toBe(false);
+  });
+
+  test("without homeVisit the online listing filter is unchanged", async () => {
+    mockDoctorProfileFind.mockReturnValue(chain([doctorFixture()]));
+
+    const { GET } = await import("@/app/api/v1/consult/doctors/route");
+    await GET(new NextRequest("http://localhost/api/v1/consult/doctors?city=Lahore&homeVisit=0"));
+
+    const filter = mockDoctorProfileFind.mock.calls[0][0];
+    expect(filter.homeVisitEnabled).toBeUndefined();
+    expect(filter.coverageCities).toBe("Lahore");
+    expect(filter.consultationFee).toBeDefined();
+  });
+
   test("getSlotsForDoctor (slots endpoint) returns 404 for a deactivated doctor instead of leaking their slots", async () => {
     mockDoctorProfileFindById.mockReturnValue(
       chain(doctorFixture({ userId: { isActive: false, deletedAt: null } })),

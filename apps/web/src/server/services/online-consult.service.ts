@@ -60,6 +60,7 @@ import { sendOnlineConsultConfirmation, sendDoctorConsultBooked } from "@/lib/no
 import { notifyAdmins } from "@/lib/notifications/notify-admins";
 import { formatKarachiDateTime } from "@/lib/format/datetime";
 import { mongoFilter } from "@/lib/mongo/query";
+import { mongoCoverageCityFilter } from "@/lib/geo/city-match";
 import { resolveMongoRefId } from "@/lib/mongo/resolve-id";
 import { ChatService } from "@/server/services/chat.service";
 import { randomUUID } from "crypto";
@@ -401,7 +402,8 @@ export class OnlineConsultService {
     return resumable;
   }
 
-  static async listConsultDoctors(city?: string, specialty?: string) {
+  /** `homeVisit` lists doctors who do in-house visits in `city` instead of online consults. */
+  static async listConsultDoctors(city?: string, specialty?: string, homeVisit = false) {
     // Throttled sweep; runs outside the cache so expired holds still free up
     // slots on cache hits (its writes invalidate the cached counts).
     await OnlineConsultService.expireStalePendingBookings();
@@ -409,21 +411,29 @@ export class OnlineConsultService {
     // Slot counts here are display-only — booking re-validates the slot live
     // (validateSlotForBooking), so a briefly stale count can't double-book.
     return cached(
-      cacheKey("consult-doctors", city, specialty),
+      cacheKey("consult-doctors", city, specialty, homeVisit ? "home" : undefined),
       { ttl: 120, tags: [CacheTags.DOCTORS, CacheTags.DOCTOR_AVAILABILITY] },
-      () => OnlineConsultService.loadConsultDoctors(city, specialty),
+      () => OnlineConsultService.loadConsultDoctors(city, specialty, homeVisit),
     );
   }
 
-  private static async loadConsultDoctors(city?: string, specialty?: string) {
+  private static async loadConsultDoctors(city?: string, specialty?: string, homeVisit = false) {
     await OnlineConsultService.ensureConnected();
 
-    const filter: Record<string, unknown> = {
-      isListed: true,
-      verificationStatus: VerificationStatuses.APPROVED,
-      ...(city ? { coverageCities: city } : {}),
-      consultationFee: { $gte: ONLINE_CONSULT_CONFIG.minConsultationFee },
-    };
+    const filter: Record<string, unknown> = homeVisit
+      ? {
+          // Same pool the in-house visit dispatcher (listDoctorCandidates) assigns from.
+          isListed: true,
+          verificationStatus: VerificationStatuses.APPROVED,
+          homeVisitEnabled: true,
+          ...(city ? mongoCoverageCityFilter(city) : {}),
+        }
+      : {
+          isListed: true,
+          verificationStatus: VerificationStatuses.APPROVED,
+          ...(city ? { coverageCities: city } : {}),
+          consultationFee: { $gte: ONLINE_CONSULT_CONFIG.minConsultationFee },
+        };
 
     if (specialty?.trim()) {
       // Case-insensitive regex can't use the specialties index (COLLSCAN) and

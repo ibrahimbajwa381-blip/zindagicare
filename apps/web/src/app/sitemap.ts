@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/seo/metadata";
 import { getAllConditionSlugs, conditionDoctorPath } from "@/lib/seo/conditions";
 import { getAllSpecialtySlugs, specialtyDoctorPath } from "@/lib/seo/specialties";
+import { homeVisitCityPath, listHomeVisitCities } from "@/lib/seo/home-visit-cities";
 import { PublicDoctorService } from "@/server/services/public-doctor.service";
 import { PublicConsultProviderService } from "@/server/services/public-consult-provider.service";
 import { PublicNurseService } from "@/server/services/public-nurse.service";
@@ -56,6 +57,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified,
     changeFrequency: "weekly" as const,
     priority: 0.7,
+  }));
+
+  // Only cities with live home-visit providers (the loader swallows DB errors).
+  const homeVisitCityEntries: MetadataRoute.Sitemap = (await listHomeVisitCities()).map((city) => ({
+    url: getSiteUrl(homeVisitCityPath(city.slug)),
+    lastModified,
+    changeFrequency: "daily" as const,
+    priority: 0.85,
   }));
 
   let doctorEntries: MetadataRoute.Sitemap = [];
@@ -123,6 +132,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticEntries,
+    ...homeVisitCityEntries,
     ...specialtyEntries,
     ...conditionEntries,
     ...doctorEntries,

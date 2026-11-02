@@ -1351,6 +1351,29 @@ export const en = {
       slotsOpen: "{count} slots available",
       noSlots: "Fully booked",
       bookCta: "View profile & book",
+      filters: {
+        label: "Filter doctors",
+        visitType: "Visit type",
+        online: "Online consult",
+        homeVisit: "In-house visit",
+        city: "City",
+        allCities: "All cities",
+        clearCity: "Clear city",
+        homeVisitBadge: "Visits at home",
+        homeVisitCta: "View profile",
+        homeVisitTitle: "Doctor visit at your home",
+        homeVisitBody:
+          "Rs. {fee} per visit. Request a visit and the nearest available doctor from this list is assigned to you.",
+        homeVisitBodyCity:
+          "Rs. {fee} per visit in {city}. Request a visit and the nearest available doctor from this list is assigned to you.",
+        homeVisitRequest: "Request in-house visit",
+        pickCityHint: "Select your city to see doctors who visit homes near you.",
+        homeVisitEmptyTitle: "No in-house doctor visits in {city} yet",
+        homeVisitEmptyTitleAll: "No doctors offer in-house visits yet",
+        homeVisitEmptyBody:
+          "Try another city, switch to an online consult, or book a nurse or physiotherapist at home.",
+        homeVisitEmptyLink: "Browse home care services",
+      },
       emptyTitle: "No doctors available yet",
       emptyBeforeLink:
         "Doctors with open video slots will appear here soon. You can still book a",

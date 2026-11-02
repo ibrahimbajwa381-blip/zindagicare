@@ -7,8 +7,9 @@ export const GET = withApiHandler(
     const query = listConsultDoctorsQuerySchema.parse({
       city: searchParams.get("city") || undefined,
       specialty: searchParams.get("specialty") ?? undefined,
+      homeVisit: searchParams.get("homeVisit") === "1",
     });
-    return OnlineConsultService.listConsultDoctors(query.city, query.specialty);
+    return OnlineConsultService.listConsultDoctors(query.city, query.specialty, query.homeVisit);
   },
   { public: true },
 );

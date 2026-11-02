@@ -204,6 +204,8 @@ export function buildMedicalServiceSchema(service: {
   name: string;
   description: string;
   path: string;
+  /** Narrows `areaServed` from Pakistan to this city. */
+  city?: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -213,9 +215,16 @@ export function buildMedicalServiceSchema(service: {
     url: getSiteUrl(service.path),
     provider: {
       "@type": "MedicalOrganization",
+      "@id": getSiteUrl("/#organization"),
       name: siteConfig.name,
       url: getSiteUrl(),
     },
-    areaServed: { "@type": "Country", name: "Pakistan" },
+    areaServed: service.city
+      ? {
+          "@type": "City",
+          name: service.city,
+          containedInPlace: { "@type": "Country", name: "Pakistan" },
+        }
+      : { "@type": "Country", name: "Pakistan" },
   };
 }
