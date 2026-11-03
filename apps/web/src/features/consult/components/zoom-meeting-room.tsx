@@ -24,6 +24,7 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave, leaveRef }: P
   const joinedRecordedRef = useRef(false);
   const leaveTimerRef = useRef<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState("");
 
   const uiCopy = useMemo(
     () => ({
@@ -106,6 +107,8 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave, leaveRef }: P
               : raw.includes("permission") || raw.includes("Permission")
                 ? copy.errors.permissions
                 : copy.errors.generic;
+        console.error("Zoom join failed:", raw);
+        setErrorDetail(raw);
         setError(message);
       }
     };
@@ -118,6 +121,8 @@ export function ZoomMeetingRoom({ appointmentId, payload, onLeave, leaveRef }: P
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="max-w-md text-sm text-red-600">{error}</p>
+        {/* Zoom's own reason, so support can diagnose failures the generic copy hides. */}
+        {errorDetail && <p className="max-w-md text-xs text-slate-400">{errorDetail}</p>}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"

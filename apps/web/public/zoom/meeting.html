@@ -221,7 +221,8 @@
         function formatZoomError(err) {
           if (!err) return uiCopy.errors.generic;
           if (typeof err === "string") return err;
-          return err.reason || err.message || err.errorMessage || uiCopy.errors.generic;
+          var text = err.reason || err.message || err.errorMessage || uiCopy.errors.generic;
+          return err.errorCode ? text + " (Zoom code " + err.errorCode + ")" : text;
         }
 
         function startZoomSession(payload) {
