@@ -5,7 +5,8 @@ import * as DocumentPicker from "expo-document-picker";
 import { uploadChatFile } from "@/api/chat";
 import { colors } from "@/lib/theme";
 
-const MAX_BYTES = 20 * 1024 * 1024;
+// Vercel rejects request bodies over 4.5 MB; leave room for multipart overhead.
+const MAX_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_TYPES = [
   "image/png",
   "image/jpeg",
@@ -37,7 +38,7 @@ export function FileAttachmentButton({
 
     const asset = result.assets[0];
     if (asset.size && asset.size > MAX_BYTES) {
-      Alert.alert("File too large", "Please choose a file under 20 MB.");
+      Alert.alert("File too large", "Please choose a file under 4 MB.");
       return;
     }
 

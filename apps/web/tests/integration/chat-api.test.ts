@@ -518,6 +518,8 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
       expect(uploadJson.success).toBe(true);
       expect(uploadJson.data.url).toBeDefined();
       expect(uploadJson.data.storageKey).toBeDefined();
+      // Photos are re-encoded to WebP by the server.
+      expect(uploadJson.data.mimeType).toBe("image/webp");
 
       // Send message with attachment
       const sendReq = new Request(`http://localhost/api/v1/chat/threads/${threadId}/messages`, {
@@ -526,7 +528,7 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
         body: JSON.stringify({
           body: "Here is my blood test report",
           attachmentUrl: uploadJson.data.url,
-          attachmentMime: "image/jpeg",
+          attachmentMime: uploadJson.data.mimeType,
         }),
       });
 
@@ -537,7 +539,7 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
 
       expect(sendRes.status).toBe(200);
       expect(sendJson.data.attachmentUrl).toBe(uploadJson.data.url);
-      expect(sendJson.data.attachmentMime).toBe("image/jpeg");
+      expect(sendJson.data.attachmentMime).toBe("image/webp");
 
       // Doctor can download attachment
       const keyParts = uploadJson.data.storageKey.split("/");
@@ -549,7 +551,7 @@ describe("Chat API & Security Audit (real local MongoDB)", () => {
         params: Promise.resolve({ key: keyParts }),
       });
       expect(dlRes.status).toBe(200);
-      expect(dlRes.headers.get("content-type")).toBe("image/jpeg");
+      expect(dlRes.headers.get("content-type")).toBe("image/webp");
     });
 
     test("valid voice note (audio/webm) can be uploaded and sent without body", async () => {

@@ -9,8 +9,10 @@ import {
   voiceNoteMimeType,
 } from "@/features/chat/lib/voice-note-format";
 import { ChatRequestError } from "@/features/chat/lib/chat-api";
+import { preparePhotoUpload } from "@/lib/ui/prepare-photo-upload";
 
-const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+// Vercel rejects request bodies over 4.5 MB before they reach the route; leave room for multipart overhead.
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_FILE_TYPES =
   "image/png,image/jpeg,image/webp,image/heic,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -52,21 +54,23 @@ export function ChatComposer({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !onSendFile || disabled) return;
+    if (!picked || !onSendFile || disabled) return;
 
     setFileError(null);
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      setFileError("File must be 20 MB or smaller");
-      return;
-    }
-
     setSending(true);
     try {
+      const file = await preparePhotoUpload(picked);
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        setFileError("File must be 4 MB or smaller");
+        return;
+      }
       await onSendFile(file);
-    } catch {
-      setFileError("Couldn't send file");
+    } catch (error) {
+      setFileError(
+        error instanceof ChatRequestError ? `Couldn't send file: ${error.message}` : "Couldn't send file",
+      );
     } finally {
       setSending(false);
     }

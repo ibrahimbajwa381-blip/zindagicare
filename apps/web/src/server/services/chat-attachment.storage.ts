@@ -1,6 +1,7 @@
 import { AppError } from "@zindagi/shared";
 import { randomUUID } from "crypto";
 import { wrapEncryptedFile } from "@zindagi/shared/crypto/field-encryption";
+import { processMedicalImage } from "@/server/lib/medical-image-pipeline";
 import {
   getObject,
   putObject,
@@ -23,6 +24,11 @@ const ALLOWED_MIME_EXT: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
+// Chat photos are often dense reports; allow more than the Q&A 150 KB ceiling rather than refuse them.
+const IMAGE_LIMITS = { targetBytes: 200 * 1024, maxProcessedBytes: 1024 * 1024 };
+// HEIC can't be decoded by the bundled sharp build, so it is stored as uploaded.
+const RECOMPRESSED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
 export type StoredChatAttachment = {
   storageKey: string;
   url: string;
@@ -41,10 +47,16 @@ export async function saveChatAttachment(
     throw new AppError("Attachment must be 20 MB or smaller", "VALIDATION_ERROR", 400);
   }
 
-  const ext = ALLOWED_MIME_EXT[mimeType];
-  if (!ext) {
+  if (!ALLOWED_MIME_EXT[mimeType]) {
     throw new AppError("Unsupported attachment format", "VALIDATION_ERROR", 400);
   }
+
+  // Photos are re-encoded to metadata-free WebP; documents and audio can't be, so they pass through.
+  if (RECOMPRESSED_IMAGE_TYPES.has(mimeType)) {
+    buffer = (await processMedicalImage(buffer, IMAGE_LIMITS)).buffer;
+    mimeType = "image/webp";
+  }
+  const ext = ALLOWED_MIME_EXT[mimeType];
 
   const storageKey = `${threadId}/${randomUUID()}.${ext}`;
   const encrypted = wrapEncryptedFile(buffer);
