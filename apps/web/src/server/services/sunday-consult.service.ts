@@ -22,6 +22,7 @@ import {
   PaymentProviders,
   PaymentStatuses,
   SlotStatuses,
+  type SundayAdminOutcome,
   SundayAffordabilityChoices,
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
@@ -1518,6 +1519,7 @@ export class SundayConsultService {
     const docs = await SundayFreeRequestModel.find(
       mongoFilter(allSundays ? { deletedAt: null } : { sundayDateKey, deletedAt: null }),
     )
+      .select("+adminNotes")
       .sort(allSundays ? { sundayDateKey: -1, createdAt: 1 } : { createdAt: 1 })
       .limit(allSundays ? ADMIN_REQUEST_HISTORY_LIMIT : 0)
       .populate("patientId", "name phone")
@@ -1642,6 +1644,9 @@ export class SundayConsultService {
         platformReview: mapped.appointmentId
           ? platformReviews.get(mapped.appointmentId)
           : undefined,
+        adminOutcome: doc.adminOutcome ?? undefined,
+        adminNote: safeDisplayText(doc.adminNotes) ?? undefined,
+        adminOutcomeAt: doc.adminOutcomeAt?.toISOString(),
       };
     });
   }
@@ -1744,6 +1749,37 @@ export class SundayConsultService {
     });
 
     return { rejected: true };
+  }
+
+  /** Admin records whether the consult went well, with an internal note (never shown to patient/doctor). */
+  static async setAdminOutcome(
+    adminUserId: string,
+    requestId: string,
+    outcome: SundayAdminOutcome,
+    note?: string,
+  ): Promise<{ saved: true }> {
+    await connectDatabase();
+
+    const updated = await SundayFreeRequestModel.findOneAndUpdate(
+      mongoFilter({ _id: requestId, deletedAt: null }),
+      note
+        ? {
+            $set: {
+              adminOutcome: outcome,
+              adminNotes: note,
+              adminOutcomeBy: adminUserId,
+              adminOutcomeAt: new Date(),
+            },
+          }
+        : {
+            $set: { adminOutcome: outcome, adminOutcomeBy: adminUserId, adminOutcomeAt: new Date() },
+            $unset: { adminNotes: "" },
+          },
+    );
+    if (!updated) {
+      throw new AppError("Request not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    return { saved: true };
   }
 
   /**

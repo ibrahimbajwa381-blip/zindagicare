@@ -19,6 +19,14 @@ function isRetryableStatus(status: number) {
 import { colors, fonts } from "@/lib/theme";
 import { formatDuration } from "@/lib/format-duration";
 
+// Speech needs far less than the music-grade preset (128 kbps stereo): ~4x smaller files, same AAC/.m4a output.
+const VOICE_NOTE_RECORDING = {
+  ...RecordingPresets.HIGH_QUALITY,
+  sampleRate: 22050,
+  numberOfChannels: 1,
+  bitRate: 32000,
+};
+
 export function VoiceRecorderButton({
   threadId,
   onUploaded,
@@ -28,7 +36,7 @@ export function VoiceRecorderButton({
   onUploaded: (attachment: { url: string; mime: string }) => Promise<void> | void;
   disabled?: boolean;
 }) {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(VOICE_NOTE_RECORDING);
   const recorderState = useAudioRecorderState(recorder, 250);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -67,7 +75,7 @@ export function VoiceRecorderButton({
     await upload(uri);
   };
 
-  // RecordingPresets.HIGH_QUALITY writes AAC in an .m4a (MPEG-4) container on iOS and Android.
+  // VOICE_NOTE_RECORDING (HIGH_QUALITY-based) writes AAC in an .m4a (MPEG-4) container on iOS and Android.
   // `uploaded` is passed back on retry so a finished upload is reused; the server
   // treats a resend with the same attachment URL as the original message (no duplicate).
   const upload = async (uri: string, uploaded?: { url: string; mimeType: string }) => {

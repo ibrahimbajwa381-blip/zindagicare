@@ -1,4 +1,5 @@
 import {
+  SundayAdminOutcomes,
   SundayAffordabilityChoices,
   SundayFreeRequestStatuses,
   type SundayAffordabilityChoice,
@@ -72,6 +73,10 @@ const sundayFreeRequestSchema = new Schema(
     appointmentId: { type: Schema.Types.ObjectId, ref: "Appointment", index: true },
     releaseNotes: { type: [releaseNoteSchema], default: [] },
     adminNotes: { type: String, maxlength: 2000, select: false },
+    /** Admin's verdict on the consult; `adminNotes` holds their note about it. */
+    adminOutcome: { type: String, enum: Object.values(SundayAdminOutcomes) },
+    adminOutcomeBy: { type: Schema.Types.ObjectId, ref: "User" },
+    adminOutcomeAt: { type: Date },
     completedAt: { type: Date },
     cancelledAt: { type: Date },
     cancellationReason: { type: String, maxlength: 500 },

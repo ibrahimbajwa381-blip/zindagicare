@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   PAID_ONLINE_INTAKE_QUESTION_KEYS,
   SPECIALTIES,
+  SundayAdminOutcomes,
   SundayAffordabilityChoices,
 } from "@zindagi/shared";
 import { phoneSchema } from "./auth.schema";
@@ -122,3 +123,11 @@ export const sundayFreeRejectSchema = z.object({
 });
 
 export type SundayFreeRejectInput = z.infer<typeof sundayFreeRejectSchema>;
+
+/** Admin marks how a Sunday consult went, with an internal note (e.g. "patient did not appear"). */
+export const sundayFreeOutcomeSchema = z.object({
+  outcome: z.enum([SundayAdminOutcomes.WELL_COMPLETED, SundayAdminOutcomes.NOT_COMPLETED]),
+  note: z.string().trim().max(2000, "Keep the note under 2000 characters").optional(),
+});
+
+export type SundayFreeOutcomeInput = z.infer<typeof sundayFreeOutcomeSchema>;

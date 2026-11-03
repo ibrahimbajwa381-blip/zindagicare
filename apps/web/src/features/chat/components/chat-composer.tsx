@@ -13,6 +13,7 @@ import { preparePhotoUpload } from "@/lib/ui/prepare-photo-upload";
 
 // Vercel rejects request bodies over 4.5 MB before they reach the route; leave room for multipart overhead.
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+const VOICE_NOTE_BITS_PER_SECOND = 32_000;
 const ACCEPTED_FILE_TYPES =
   "image/png,image/jpeg,image/webp,image/heic,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -114,10 +115,11 @@ export function ChatComposer({
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Mono speech at 32 kbps (Opus/AAC) is ~4x smaller than the browser default and still clear.
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
       streamRef.current = stream;
       chunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+      const recorder = new MediaRecorder(stream, { audioBitsPerSecond: VOICE_NOTE_BITS_PER_SECOND });
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {

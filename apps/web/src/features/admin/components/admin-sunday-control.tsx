@@ -13,7 +13,9 @@ import { formatKarachiDateTime, formatKarachiTime } from "@/lib/format/datetime"
 import {
   AppointmentStatuses,
   cn,
+  SundayAdminOutcomes,
   SundayAffordabilityChoices,
+  type SundayAdminOutcome,
   SundayFreeRequestStatuses,
   SUNDAY_CONSULT_CONFIG,
   withDoctorTitle,
@@ -282,6 +284,140 @@ function RejectRequestForm({
   );
 }
 
+const OUTCOME_OPTIONS: { value: SundayAdminOutcome; label: string; className: string }[] = [
+  {
+    value: SundayAdminOutcomes.WELL_COMPLETED,
+    label: "Well completed",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  {
+    value: SundayAdminOutcomes.NOT_COMPLETED,
+    label: "Not completed",
+    className: "border-rose-200 bg-rose-50 text-rose-700",
+  },
+];
+
+/** Admin's own verdict on the consult plus an internal note (not shown to patient or doctor). */
+function AdminOutcomeForm({
+  request,
+  onSaved,
+}: {
+  request: SundayAdminRequestDto;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(!request.adminOutcome);
+  const [outcome, setOutcome] = useState<SundayAdminOutcome | undefined>(request.adminOutcome);
+  const [note, setNote] = useState(request.adminNote ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const saved = OUTCOME_OPTIONS.find((option) => option.value === request.adminOutcome);
+
+  const submit = async () => {
+    if (!outcome) {
+      setError("Choose whether the consultation was completed well.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch(`/api/v1/admin/sunday/requests/${request.requestId}/outcome`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome, note: note.trim() }),
+    });
+    const json = await res.json().catch(() => null);
+    setSubmitting(false);
+    if (!res.ok || !json?.success) {
+      setError(json?.error?.message ?? "Could not save the admin review.");
+      return;
+    }
+    setEditing(false);
+    onSaved();
+  };
+
+  if (!editing && saved) {
+    return (
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-slate-700">Admin review</span>
+          <Badge variant="outline" className={saved.className}>
+            {saved.label}
+          </Badge>
+          {request.adminOutcomeAt && (
+            <span className="text-slate-400">{formatKarachiDateTime(request.adminOutcomeAt)}</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="ml-auto font-medium text-brand hover:underline"
+          >
+            Edit
+          </button>
+        </div>
+        {request.adminNote ? (
+          <p className="whitespace-pre-line text-slate-600">{request.adminNote}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <span className="font-medium text-slate-700">Admin review</span>
+      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Consultation outcome">
+        {OUTCOME_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={outcome === option.value}
+            onClick={() => setOutcome(option.value)}
+            className={cn(
+              "rounded-full border px-3 py-1 font-medium transition",
+              outcome === option.value
+                ? option.className
+                : "border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <label className="block text-slate-600">
+        Note (internal, only admins see it)
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={2000}
+          rows={2}
+          placeholder="e.g. Patient did not appear / doctor ended the call early"
+          className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none"
+        />
+      </label>
+      {error && <p className="text-rose-700">{error}</p>}
+      <div className="flex justify-end gap-2">
+        {saved && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={submitting}
+            onClick={() => {
+              setEditing(false);
+              setOutcome(request.adminOutcome);
+              setNote(request.adminNote ?? "");
+              setError(null);
+            }}
+          >
+            Cancel
+          </Button>
+        )}
+        <Button size="sm" disabled={submitting} onClick={submit}>
+          {submitting ? "Saving…" : "Save admin review"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function OpenToAllButton({
   request,
   onOpened,
@@ -544,6 +680,9 @@ function SundayRequestCard({
             ) : (
               <span className="text-slate-400">No ZindagiCare review yet</span>
             )}
+          </div>
+          <div className="mt-2 border-t border-slate-200/70 pt-2">
+            <AdminOutcomeForm request={request} onSaved={onRejected} />
           </div>
         </div>
       )}

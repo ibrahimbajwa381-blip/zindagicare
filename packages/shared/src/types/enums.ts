@@ -151,6 +151,14 @@ export const SundayFreeRequestStatuses = {
 export type SundayFreeRequestStatus =
   (typeof SundayFreeRequestStatuses)[keyof typeof SundayFreeRequestStatuses];
 
+/** Admin's own verdict on how a Sunday consult went (independent of the appointment status). */
+export const SundayAdminOutcomes = {
+  WELL_COMPLETED: "well_completed",
+  NOT_COMPLETED: "not_completed",
+} as const;
+
+export type SundayAdminOutcome = (typeof SundayAdminOutcomes)[keyof typeof SundayAdminOutcomes];
+
 export const OrderStatuses = {
   DRAFT: "draft",
   PENDING_PAYMENT: "pending_payment",

@@ -1,5 +1,6 @@
 import type {
   AppointmentStatus,
+  SundayAdminOutcome,
   SundayAffordabilityChoice,
   SundayFreeRequestStatus,
 } from "@zindagi/shared";
@@ -165,4 +166,8 @@ export type SundayAdminRequestDto = {
     comment?: string;
     createdAt: string;
   };
+  /** Admin's verdict on the consult and their internal note. */
+  adminOutcome?: SundayAdminOutcome;
+  adminNote?: string;
+  adminOutcomeAt?: string;
 };
