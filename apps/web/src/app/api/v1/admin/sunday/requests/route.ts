@@ -3,7 +3,7 @@ import { withApiHandler } from "@/server/api/with-api-handler";
 import { SundayConsultService } from "@/server/services/sunday-consult.service";
 
 /**
- * Read-only progress view — doctors pick requests themselves.
+ * Progress view — doctors pick requests themselves; admins can also assign (see [id]/assign).
  * `?date=YYYY-MM-DD` for one Sunday, `?date=all` for full history.
  */
 export const GET = withApiHandler(

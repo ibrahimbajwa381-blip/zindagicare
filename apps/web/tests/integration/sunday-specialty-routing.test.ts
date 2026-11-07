@@ -221,6 +221,27 @@ describe("Sunday free consult — preferred specialty routing", () => {
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
+  test("admin can assign any verified doctor, overriding the specialty, once", async () => {
+    const request = await submit("Gynecologist");
+    const profile = await DoctorProfileModel.findOne({
+      userId: dermatologist.userId.toString(),
+    }).lean();
+
+    const assigned = await SundayConsultService.assignRequestByAdmin(request.requestId, {
+      doctorId: profile!._id.toString(),
+      startTimeLocal: "23:50",
+    });
+    expect(assigned.pickedByMe).toBe(true);
+    expect(assigned.appointmentId).toBeDefined();
+
+    await expect(
+      SundayConsultService.assignRequestByAdmin(request.requestId, {
+        doctorId: profile!._id.toString(),
+        startTimeLocal: "23:20",
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
   test("sidebar badge count matches the doctor's board minus completed rows", async () => {
     for (const doctor of [gynecologist, dermatologist]) {
       const userId = doctor.userId.toString();

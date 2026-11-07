@@ -66,6 +66,7 @@ import type {
   SundayHistoryAnswerDto,
 } from "@/features/sunday-consult/types";
 import type {
+  SundayFreeAssignInput,
   SundayFreeClaimInput,
   SundayFreeReleaseInput,
   SundayFreeRequestInput,
@@ -2016,6 +2017,7 @@ export class SundayConsultService {
     requestId: string,
     input: SundayFreeClaimInput,
     locale?: "en" | "ur",
+    { byAdmin = false }: { byAdmin?: boolean } = {},
   ): Promise<SundayDoctorRequestDto> {
     await connectDatabase();
     const doctor = await SundayConsultService.requireApprovedDoctor(userId);
@@ -2031,7 +2033,9 @@ export class SundayConsultService {
         409,
       );
     }
+    // Admins may appoint any verified doctor, overriding the specialty preference.
     if (
+      !byAdmin &&
       !SundayConsultService.doctorMatchesRequestSpecialty(
         doctor.specialties,
         request.preferredSpecialty,
@@ -2071,7 +2075,9 @@ export class SundayConsultService {
     );
     if (clash) {
       throw new AppError(
-        "You already have a consultation at that time — pick another time",
+        byAdmin
+          ? "This doctor already has a consultation at that time — pick another time"
+          : "You already have a consultation at that time — pick another time",
         ErrorCodes.CONFLICT,
         409,
       );
@@ -2242,6 +2248,25 @@ export class SundayConsultService {
       throw new AppError("Picked request not found", ErrorCodes.NOT_FOUND, 404);
     }
     return row;
+  }
+
+  /** Admin appoints a verified doctor to a waiting request — same flow as the doctor picking it. */
+  static async assignRequestByAdmin(
+    requestId: string,
+    input: SundayFreeAssignInput,
+  ): Promise<SundayDoctorRequestDto> {
+    await connectDatabase();
+    const doctor = await DoctorProfileModel.findById(input.doctorId).select("userId").lean();
+    if (!doctor?.userId) {
+      throw new AppError("Doctor not found", ErrorCodes.NOT_FOUND, 404);
+    }
+    return SundayConsultService.claimRequest(
+      doctor.userId.toString(),
+      requestId,
+      { startTimeLocal: input.startTimeLocal },
+      undefined,
+      { byAdmin: true },
+    );
   }
 
   /**

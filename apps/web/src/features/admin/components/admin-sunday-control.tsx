@@ -460,12 +460,123 @@ function OpenToAllButton({
   );
 }
 
+type DoctorOption = { id: string; name: string; specialties: string[] };
+
+/** Admin appoints a doctor to a waiting request; the doctor and patient are notified as if the doctor picked it. */
+function AssignDoctorForm({
+  request,
+  doctors,
+  onAssigned,
+}: {
+  request: SundayAdminRequestDto;
+  doctors: DoctorOption[];
+  onAssigned: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [doctorId, setDoctorId] = useState("");
+  const [startTimeLocal, setStartTimeLocal] = useState("10:00");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const specialty = request.preferredSpecialty;
+  // Doctors in the patient's preferred specialty first.
+  const sorted = specialty
+    ? [...doctors].sort(
+        (a, b) => Number(b.specialties.includes(specialty)) - Number(a.specialties.includes(specialty)),
+      )
+    : doctors;
+
+  const submit = async () => {
+    if (!doctorId) {
+      setError("Choose a doctor.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch(`/api/v1/admin/sunday/requests/${request.requestId}/assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ doctorId, startTimeLocal }),
+    });
+    const json = await res.json().catch(() => null);
+    setSubmitting(false);
+    if (!res.ok || !json?.success) {
+      setError(json?.error?.message ?? "Could not assign this doctor.");
+      return;
+    }
+    setOpen(false);
+    onAssigned();
+  };
+
+  if (!open) {
+    return (
+      <Button size="sm" onClick={() => setOpen(true)}>
+        Assign doctor
+      </Button>
+    );
+  }
+
+  return (
+    <div className="w-full rounded-md border border-slate-200 bg-slate-50/60 p-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block min-w-0 flex-1 text-xs font-medium text-slate-700">
+          Doctor
+          <select
+            value={doctorId}
+            onChange={(e) => setDoctorId(e.target.value)}
+            className="mt-1 block h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800"
+          >
+            <option value="">Select a doctor…</option>
+            {sorted.map((d) => (
+              <option key={d.id} value={d.id}>
+                {withDoctorTitle(d.name)}
+                {d.specialties.length ? ` — ${d.specialties.join(", ")}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-xs font-medium text-slate-700">
+          Time (PKT)
+          <Input
+            type="time"
+            value={startTimeLocal}
+            onChange={(e) => setStartTimeLocal(e.target.value)}
+            className="mt-1 h-9 w-32"
+          />
+        </label>
+      </div>
+      <p className="mt-1.5 text-xs text-slate-500">
+        Scheduled on {formatSundayKey(request.sundayDateKey)} (or the upcoming Sunday if that has
+        passed). The doctor and patient are notified.
+      </p>
+      {error && <p className="mt-1.5 text-xs text-rose-700">{error}</p>}
+      <div className="mt-2 flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={submitting}
+          onClick={() => {
+            setOpen(false);
+            setError(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button size="sm" disabled={submitting || !startTimeLocal} onClick={submit}>
+          {submitting ? "Assigning…" : "Assign doctor"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function SundayRequestCard({
   request,
+  doctors,
   onViewProof,
   onRejected,
 }: {
   request: SundayAdminRequestDto;
+  doctors: DoctorOption[];
   onViewProof: (paymentId: string) => void;
   onRejected: () => void;
 }) {
@@ -632,6 +743,9 @@ function SundayRequestCard({
           {request.status === SundayFreeRequestStatuses.REQUESTED && request.preferredSpecialty && (
             <OpenToAllButton request={request} onOpened={onRejected} />
           )}
+          {request.status === SundayFreeRequestStatuses.REQUESTED && (
+            <AssignDoctorForm request={request} doctors={doctors} onAssigned={onRejected} />
+          )}
           <RejectRequestForm request={request} onRejected={onRejected} />
         </div>
       )}
@@ -702,6 +816,16 @@ export function AdminSundayControl() {
   const [requestDate, setRequestDate] = useState("all");
   const [requestDates, setRequestDates] = useState<string[]>([]);
   const [requestFilter, setRequestFilter] = useState<RequestFilter>("all");
+  const [doctorOptions, setDoctorOptions] = useState<DoctorOption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/v1/admin/doctors/options")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) setDoctorOptions(json.data?.doctors ?? []);
+      })
+      .catch(() => {});
+  }, []);
 
   const hasLoadedRef = useRef(false);
   const load = useCallback(async () => {
@@ -784,8 +908,8 @@ export function AdminSundayControl() {
             <div>
               <CardTitle className="text-base">Patient requests — progress</CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Doctors pick patients from their open-requests board and choose a time. This view
-                is read-only.
+                Doctors pick patients from their open-requests board and choose a time. You can
+                also assign a doctor to a waiting patient.
               </p>
             </div>
             <label className="text-xs text-slate-500">
@@ -846,6 +970,7 @@ export function AdminSundayControl() {
                 )}
               <SundayRequestCard
                 request={request}
+                doctors={doctorOptions}
                 onViewProof={setActiveProofPaymentId}
                 onRejected={load}
               />

@@ -50,6 +50,13 @@ export const sundayFreeClaimSchema = z.object({
 
 export type SundayFreeClaimInput = z.infer<typeof sundayFreeClaimSchema>;
 
+/** Admin appoints a doctor (profile id) to a waiting Sunday request at a chosen time. */
+export const sundayFreeAssignSchema = sundayFreeClaimSchema.extend({
+  doctorId: z.string().regex(/^[a-f0-9]{24}$/i, "Choose a doctor"),
+});
+
+export type SundayFreeAssignInput = z.infer<typeof sundayFreeAssignSchema>;
+
 /** Doctor leaves a picked request; the note is shown to the next doctors on the board. */
 export const sundayFreeReleaseSchema = z.object({
   note: z.string().trim().max(300).optional(),
